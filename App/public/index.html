@@ -1,0 +1,1696 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verta Delivery Service</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <!-- Socket.io client is served by our own Node/Socket.io backend (same origin,
+         no CDN needed) — this is what replaces Firebase's realtime database. -->
+    <script src="/socket.io/socket.io.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --primary-light: #a5b4fc;
+            --secondary: #10b981;
+            --accent: #f59e0b;
+            --slate: #1e293b;
+            --slate-light: #64748b;
+            --slate-lighter: #94a3b8;
+            --bg-light: #f1f5f9;
+            --white: #ffffff;
+            --border: #e2e8f0;
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: var(--bg-light);
+            color: var(--slate);
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        h1, h2, h3, h4 {
+            font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            color: var(--slate);
+            letter-spacing: -0.025em;
+        }
+
+        header {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            padding: 1.5rem 2.5rem;
+            box-shadow: var(--shadow-lg);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header-content {
+            max-width: 1500px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1.5rem;
+        }
+
+        .logo-container { display: flex; align-items: center; gap: 1rem; }
+
+        .quick-access-btns { display: flex; gap: 0.875rem; flex-wrap: wrap; align-items: center; }
+
+        .quick-access-btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 0.875rem;
+            cursor: pointer;
+            font-weight: 700;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            align-items: center;
+            gap: 0.625rem;
+            font-size: 0.9375rem;
+            letter-spacing: 0.01em;
+        }
+
+        .quick-access-btn.primary { background: white; color: var(--primary); box-shadow: var(--shadow-md); }
+        .quick-access-btn.primary:hover { transform: translateY(-3px); box-shadow: var(--shadow-xl); }
+        .quick-access-btn.secondary {
+            background: rgba(255, 255, 255, 0.15);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            backdrop-filter: blur(10px);
+        }
+        .quick-access-btn.secondary:hover { background: rgba(255, 255, 255, 0.25); transform: translateY(-2px); box-shadow: var(--shadow-md); }
+
+        main { max-width: 1400px; margin: 2.5rem auto; padding: 0 1.5rem; }
+
+        .hero {
+            background: linear-gradient(135deg, #ede9fe 0%, #dbeafe 100%);
+            padding: 4rem 2.5rem;
+            border-radius: 2rem;
+            margin-bottom: 2.5rem;
+            text-align: center;
+            box-shadow: var(--shadow-sm);
+            border: 1px solid rgba(99,102,241,0.1);
+        }
+
+        .hero h2 { font-size: 2.5rem; margin-bottom: 1rem; color: var(--slate); }
+        .hero p { font-size: 1.25rem; color: var(--slate-light); margin-bottom: 2rem; max-width: 600px; margin-left: auto; margin-right: auto; }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            padding: 0.9375rem 2.5rem;
+            border: none;
+            border-radius: 1rem;
+            font-size: 1rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+            letter-spacing: 0.01em;
+        }
+        .btn-primary:hover { transform: translateY(-3px); box-shadow: 0 12px 24px rgba(99, 102, 241, 0.5); }
+        .btn-primary:active { transform: translateY(-1px); }
+        .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+        .orders-section { margin-bottom: 2.5rem; }
+        .section-title { font-size: 1.75rem; margin-bottom: 1.25rem; font-weight: 700; color: var(--slate); }
+
+        .orders-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1.75rem; }
+
+        .order-card {
+            background: white;
+            padding: 1.75rem;
+            border-radius: 1.25rem;
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--border);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+        .order-card::before {
+            content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            transform: scaleX(0); transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .order-card:hover { transform: translateY(-6px); box-shadow: var(--shadow-xl); border-color: var(--primary-light); }
+        .order-card:hover::before { transform: scaleX(1); }
+
+        .order-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 0.75rem; }
+        .order-id { font-size: 0.875rem; color: var(--slate-light); font-weight: 600; font-family: 'SF Mono', 'Fira Code', monospace; }
+
+        .status-badge { padding: 0.375rem 1rem; border-radius: 9999px; font-size: 0.8125rem; font-weight: 700; letter-spacing: 0.025em; text-transform: uppercase; }
+        .status-pending { background: #fef3c7; color: #92400e; border: 1px solid #fcd34d; }
+        .status-accepted { background: #dbeafe; color: #1e40af; border: 1px solid #93c5fd; }
+        .status-picked-up { background: #ddd6fe; color: #5b21b6; border: 1px solid #a78bfa; }
+        .status-delivered { background: #d1fae5; color: #065f46; border: 1px solid #6ee7b7; }
+
+        .order-details { margin-bottom: 1.25rem; }
+        .order-detail { margin-bottom: 0.75rem; display: flex; gap: 0.75rem; align-items: flex-start; }
+        .order-detail-label { font-weight: 700; min-width: 110px; color: var(--slate-light); font-size: 0.875rem; }
+        .order-detail-value { flex: 1; color: var(--slate); font-size: 0.9375rem; }
+
+        .order-actions { display: flex; gap: 0.625rem; flex-wrap: wrap; padding-top: 0.5rem; border-top: 1px solid var(--border); margin-top: 1rem; }
+
+        .btn-small { padding: 0.625rem 1.25rem; border: none; border-radius: 0.75rem; font-size: 0.875rem; font-weight: 700; cursor: pointer; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); letter-spacing: 0.01em; }
+        .btn-secondary { background: var(--slate); color: white; box-shadow: 0 2px 8px rgba(30, 41, 59, 0.3); }
+        .btn-secondary:hover { background: #334155; transform: translateY(-2px); box-shadow: 0 6px 16px rgba(30, 41, 59, 0.4); }
+        .btn-success { background: linear-gradient(135deg, var(--secondary) 0%, #059669 100%); color: white; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3); }
+        .btn-success:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(16, 185, 129, 0.4); }
+        .btn-success:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+        .btn-danger { background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white; box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3); }
+        .btn-danger:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(239, 68, 68, 0.4); }
+
+        .modal-overlay {
+            display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(6px);
+            align-items: center; justify-content: center; z-index: 1000; padding: 1.5rem;
+            animation: fadeIn 0.2s ease-out;
+        }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .modal-overlay.active { display: flex; }
+
+        .modal {
+            background: white; padding: 2.5rem; border-radius: 1.5rem; max-width: 650px; width: 100%;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            animation: slideUp 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            border: 1px solid rgba(99,102,241,0.1);
+        }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border); }
+        .modal-header h3 { font-size: 1.5rem; font-weight: 700; }
+
+        .close-btn {
+            background: var(--bg-light); border: 1px solid var(--border); width: 2.5rem; height: 2.5rem;
+            border-radius: 9999px; font-size: 1.5rem; cursor: pointer; color: var(--slate-light);
+            transition: all 0.2s; display: flex; align-items: center; justify-content: center;
+        }
+        .close-btn:hover { background: #e2e8f0; color: var(--slate); transform: rotate(90deg); }
+
+        .form-group { margin-bottom: 1.5rem; }
+        .form-label { display: block; margin-bottom: 0.625rem; font-weight: 700; color: var(--slate); font-size: 0.9375rem; }
+        .form-input {
+            width: 100%; padding: 0.875rem 1rem; border: 2px solid var(--border); border-radius: 0.875rem;
+            font-size: 1rem; font-family: 'Inter', sans-serif; transition: all 0.2s; background: var(--bg-light);
+        }
+        .form-input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1); background: white; }
+        .form-input::placeholder { color: var(--slate-lighter); }
+
+        .modal-footer { margin-top: 2rem; display: flex; justify-content: flex-end; gap: 1rem; padding-top: 1rem; border-top: 1px solid var(--border); }
+
+        .timeline { margin-top: 1.5rem; padding-left: 1.5rem; }
+        .timeline-item { display: flex; gap: 1.25rem; margin-bottom: 1.5rem; position: relative; }
+        .timeline-item::before { content: ''; position: absolute; left: 0.625rem; top: 2rem; bottom: -1rem; width: 2px; background: var(--border); }
+        .timeline-item:last-child::before { display: none; }
+        .timeline-dot {
+            width: 1.75rem; height: 1.75rem; border-radius: 50%; background: var(--bg-light);
+            display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+            border: 3px solid var(--border); z-index: 10;
+        }
+        .timeline-dot.completed { background: var(--secondary); border-color: var(--secondary); color: white; box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.1); }
+        .timeline-content { padding-top: 0.125rem; }
+        .timeline-title { font-weight: 700; font-size: 1rem; }
+        .timeline-date { font-size: 0.875rem; color: var(--slate-light); margin-top: 0.25rem; }
+
+        .stat-card {
+            background: white; padding: 2rem; border-radius: 1.25rem; box-shadow: var(--shadow-sm);
+            border: 1px solid var(--border); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative; overflow: hidden;
+        }
+        .stat-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 5px; background: linear-gradient(90deg, var(--primary), var(--secondary)); }
+        .stat-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-lg); border-color: var(--primary-light); }
+        .stat-card h4 { color: var(--slate-light); font-weight: 600; margin-bottom: 0.75rem; font-size: 1rem; }
+        .stat-card p { font-size: 2.5rem; font-weight: 800; color: var(--primary); letter-spacing: -0.05em; }
+        .stat-card.success p { color: var(--secondary); }
+        .stat-card.warning p { color: var(--accent); }
+
+        .user-info { display: flex; align-items: center; gap: 1rem; }
+        .user-avatar {
+            width: 2.75rem; height: 2.75rem; border-radius: 50%; background: rgba(255,255,255,0.2);
+            display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 1.25rem;
+            border: 2px solid rgba(255,255,255,0.3);
+        }
+        .user-name { font-weight: 700; font-size: 1rem; }
+
+        .order-checkbox { width: 1.5rem; height: 1.5rem; cursor: pointer; accent-color: var(--primary); }
+
+        #connection-status {
+            position: fixed; bottom: 1rem; right: 1rem; padding: 0.5rem 1rem; border-radius: 9999px;
+            font-size: 0.8125rem; font-weight: 700; z-index: 2000; box-shadow: var(--shadow-md); transition: all 0.2s;
+        }
+        #connection-status.online { background: #d1fae5; color: #065f46; border: 1px solid #6ee7b7; }
+        #connection-status.offline { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
+
+        /* Auth screen */
+        #auth-screen { max-width: 480px; margin: 4rem auto; padding: 0 1.5rem; }
+        .auth-card { background: white; border-radius: 1.5rem; box-shadow: var(--shadow-lg); border: 1px solid var(--border); padding: 2.5rem; }
+        .auth-tabs { display: flex; gap: 0.5rem; margin-bottom: 2rem; background: var(--bg-light); padding: 0.375rem; border-radius: 0.875rem; }
+        .auth-tab {
+            flex: 1; padding: 0.75rem; border: none; background: transparent; border-radius: 0.625rem;
+            font-weight: 700; cursor: pointer; color: var(--slate-light); transition: all 0.2s;
+        }
+        .auth-tab.active { background: white; color: var(--primary); box-shadow: var(--shadow-sm); }
+        .auth-error { color: #dc2626; font-size: 0.875rem; margin-bottom: 1rem; display: none; }
+        .auth-switch-link { text-align: center; margin-top: 1.5rem; }
+        .auth-switch-link a { color: var(--primary); font-weight: 700; text-decoration: none; cursor: pointer; }
+        .mode-toggle { display: flex; gap: 0.75rem; justify-content: center; margin-bottom: 2rem; }
+        .mode-toggle button {
+            padding: 0.625rem 1.25rem; border-radius: 9999px; border: 2px solid var(--border);
+            background: white; font-weight: 700; cursor: pointer; color: var(--slate-light);
+        }
+        .mode-toggle button.active { border-color: var(--primary); color: var(--primary); background: #eef2ff; }
+    </style>
+</head>
+<body>
+    <div id="connection-status" class="offline" style="display:none;">Connecting…</div>
+
+    <!-- ============== AUTH SCREEN (logged out) ============== -->
+    <div id="auth-screen">
+        <div style="text-align:center; margin-bottom: 2rem;">
+            <img src="assets/logo.png" alt="Verta Delivery Service" style="height: 70px; max-width: 320px; object-fit: contain;">
+        </div>
+        <div class="mode-toggle">
+            <button type="button" id="mode-sender-btn" class="active">Send a Package</button>
+            <button type="button" id="mode-admin-btn">Admin</button>
+        </div>
+
+        <!-- Sender login/register card -->
+        <div class="auth-card" id="sender-auth-card">
+            <div class="auth-tabs">
+                <button type="button" class="auth-tab active" id="tab-login">Login</button>
+                <button type="button" class="auth-tab" id="tab-register">Create Account</button>
+            </div>
+
+            <form id="sender-login-form">
+                <div class="form-group">
+                    <label class="form-label">Email</label>
+                    <input type="email" class="form-input" id="login-email" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Password</label>
+                    <input type="password" class="form-input" id="login-password" required>
+                </div>
+                <div class="auth-error" id="login-error"></div>
+                <button type="submit" class="btn-primary" style="width:100%;" id="login-submit-btn">Login</button>
+            </form>
+
+            <form id="sender-register-form" style="display:none;">
+                <div class="form-group">
+                    <label class="form-label">Business / Sender Name</label>
+                    <select class="form-input" id="register-business-name" required>
+                        <option value="">-- Select --</option>
+                        <option value="Roberta Business HUB">Roberta Business HUB</option>
+                        <option value="SM Salon">SM Salon</option>
+                        <option value="Prinda">Prinda</option>
+                        <option value="Pralex">Pralex</option>
+                        <option value="Mako's Fruit">Mako's Fruit</option>
+                        <option value="Monrovia Slay">Monrovia Slay</option>
+                        <option value="Dream Girl Collections">Dream Girl Collections</option>
+                        <option value="Ella's Collection">Ella's Collection</option>
+                        <option value="TY Collection">TY Collection</option>
+                        <option value="Dara's Kitchen">Dara's Kitchen</option>
+                        <option value="Denise Kitchen">Denise Kitchen</option>
+                        <option value="Yanabuy">Yanabuy</option>
+                        <option value="Teera Cotta">Teera Cotta</option>
+                        <option value="Others">Others (type below)</option>
+                    </select>
+                </div>
+                <div class="form-group" id="register-custom-name-group" style="display:none;">
+                    <label class="form-label">Your Business Name</label>
+                    <input type="text" class="form-input" id="register-custom-name" placeholder="Enter your business name">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Email</label>
+                    <input type="email" class="form-input" id="register-email" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Password</label>
+                    <input type="password" class="form-input" id="register-password" placeholder="At least 8 characters" required minlength="8">
+                </div>
+                <div class="auth-error" id="register-error"></div>
+                <button type="submit" class="btn-primary" style="width:100%;" id="register-submit-btn">Create Account</button>
+            </form>
+        </div>
+
+        <!-- Admin login card -->
+        <div class="auth-card" id="admin-auth-card" style="display:none;">
+            <h3 style="margin-bottom: 1.5rem; text-align:center;">Admin Login</h3>
+            <form id="admin-login-form">
+                <div class="form-group">
+                    <label class="form-label">Admin Password</label>
+                    <input type="password" class="form-input" id="admin-password" placeholder="••••••••" required>
+                </div>
+                <div class="auth-error" id="admin-login-error"></div>
+                <button type="submit" class="btn-primary" style="width:100%;" id="admin-login-submit-btn">Login as Admin</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- ============== SENDER HOME (logged in as sender) ============== -->
+    <div id="home-screen" style="display:none;">
+        <header>
+            <div class="header-content">
+                <div class="logo-container">
+                    <img src="assets/logo.png" alt="Verta Delivery Service" style="height: 60px; max-width: 300px; object-fit: contain;">
+                </div>
+                <div class="quick-access-btns">
+                    <div class="user-info">
+                        <div class="user-avatar" id="sender-avatar">V</div>
+                        <div class="user-name" id="sender-display-name">—</div>
+                    </div>
+                    <button class="quick-access-btn secondary" id="sender-logout-btn">Logout</button>
+                </div>
+            </div>
+        </header>
+        <main>
+            <section class="hero" id="hero-section">
+                <h2>Send a Package Today!</h2>
+                <p>Fast, Secure, and Reliable Delivery Solution You Can Trust</p>
+                <button class="btn-primary" id="btn-new-order">Create New Order</button>
+            </section>
+
+            <section class="orders-section">
+                <h2 class="section-title">Your Orders</h2>
+                <div class="orders-grid" id="orders-grid"></div>
+            </section>
+        </main>
+    </div>
+
+    <!-- ============== ADMIN DASHBOARD (logged in as admin) ============== -->
+    <div id="delivery-app" style="display: none;">
+        <header>
+            <div class="header-content">
+                <div class="logo-container">
+                    <img src="assets/logo.png" alt="Verta Delivery Service" style="height: 60px; max-width: 300px; object-fit: contain;">
+                </div>
+                <div class="quick-access-btns">
+                    <button class="quick-access-btn primary" id="view-order-history-delivery">📊 Order History</button>
+                    <button class="quick-access-btn primary" id="add-expense-btn">💸 Add Expense</button>
+                    <div class="user-info" id="user-info" style="margin: 0;">
+                        <div class="user-avatar" id="user-avatar">A</div>
+                        <div class="user-name" id="user-name">Admin</div>
+                    </div>
+                    <button class="quick-access-btn secondary" id="admin-logout-btn">Logout</button>
+                </div>
+            </div>
+        </header>
+        <main>
+            <section class="hero">
+                <h2>Admin — Manage Deliveries</h2>
+                <p>Accept incoming orders and track them through to delivery</p>
+            </section>
+
+            <section class="stats-section" style="margin-bottom: 2.5rem;">
+                <div class="stats-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.5rem;">
+                    <div class="stat-card"><h4>Total Orders</h4><p id="total-orders-delivery">0</p></div>
+                    <div class="stat-card"><h4>Total Earnings</h4><p id="total-earnings">$0.00</p></div>
+                    <div class="stat-card success"><h4>Delivered Orders</h4><p id="delivered-orders-delivery">0</p></div>
+                    <div class="stat-card warning"><h4>In Progress</h4><p id="in-progress-orders">0</p></div>
+                </div>
+            </section>
+
+            <div style="text-align: center; margin: 2rem 0 1rem;">
+                <h2 style="font-size: 1.5rem; font-weight: 700; color: var(--slate);">TODAY</h2>
+            </div>
+
+            <section class="orders-section">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 1rem;">
+                    <h2 class="section-title" style="margin: 0;">Available Orders</h2>
+                    <div style="display: flex; gap: 1rem; align-items: center;">
+                        <label style="display: flex; align-items: center; gap: 0.5rem; font-weight: 500;">
+                            <input type="checkbox" id="select-all-orders"> Select All
+                        </label>
+                        <button class="btn-small btn-danger" id="delete-selected-btn">🗑️ Delete Selected</button>
+                    </div>
+                </div>
+                <div id="orders-grouped-delivery"></div>
+            </section>
+
+            <section class="orders-section">
+                <h2 class="section-title">Agent Contacts</h2>
+                <div id="agent-contacts-container"></div>
+            </section>
+
+            <section class="orders-section">
+                <h2 class="section-title">Order History</h2>
+                <div id="order-history-container"></div>
+            </section>
+        </main>
+    </div>
+
+    <!-- New Order Modal -->
+    <div class="modal-overlay" id="new-order-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>Create New Delivery Order</h3>
+                <button class="close-btn" id="close-new-order">&times;</button>
+            </div>
+            <form id="new-order-form">
+                <div class="form-group">
+                    <label class="form-label">Pickup Address</label>
+                    <input type="text" class="form-input" id="pickup-address" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Dropoff Address</label>
+                    <input type="text" class="form-input" id="dropoff-address" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Item Description</label>
+                    <textarea class="form-input" id="item-description" rows="3" required></textarea>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-small btn-secondary" id="cancel-new-order">Cancel</button>
+                    <button type="submit" class="btn-small btn-success">Create Order</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Order Details Modal -->
+    <div class="modal-overlay" id="order-details-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>Order Details</h3>
+                <button class="close-btn" id="close-order-details">&times;</button>
+            </div>
+            <div id="order-details-content"></div>
+        </div>
+    </div>
+
+    <!-- Set Amount Modal when accepting order -->
+    <div class="modal-overlay" id="set-amount-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>Accept Order & Set Details</h3>
+                <button class="close-btn" id="close-set-amount-modal">&times;</button>
+            </div>
+            <form id="set-amount-form">
+                <div class="form-group">
+                    <label class="form-label">Select Agent</label>
+                    <select class="form-input" id="agent-select" required>
+                        <option value="">-- Choose an Agent --</option>
+                        <option value="Titus">Titus</option>
+                        <option value="Emmanuel">Emmanuel</option>
+                        <option value="Augustine">Augustine</option>
+                        <option value="Boima">Boima</option>
+                        <option value="Arthur">Arthur</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Delivery Amount ($)</label>
+                    <input type="number" class="form-input" id="delivery-amount-input" min="0" step="0.01" required>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-small btn-secondary" id="cancel-set-amount">Cancel</button>
+                    <button type="submit" class="btn-small btn-success">Accept Order</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Order History Modal -->
+    <div class="modal-overlay" id="order-history-modal">
+        <div class="modal" style="max-width: 1400px; width: 95%; max-height: 90vh; overflow-y: auto;">
+            <div class="modal-header" style="position: sticky; top: 0; background: white; z-index: 10; padding-bottom: 1rem;">
+                <h3>📊 Order History</h3>
+                <button class="close-btn" id="close-order-history">&times;</button>
+            </div>
+            <div id="order-history-modal-content"></div>
+        </div>
+    </div>
+
+    <!-- Bulk Delete Confirmation Modal (admin already authenticated — just confirm) -->
+    <div class="modal-overlay" id="bulk-delete-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>🗑️ Bulk Delete Orders</h3>
+                <button class="close-btn" id="close-bulk-delete-modal">&times;</button>
+            </div>
+            <p style="margin-bottom: 1.5rem;">Are you sure you want to delete <span id="bulk-delete-count">0</span> selected orders? This action cannot be undone.</p>
+            <div class="modal-footer">
+                <button type="button" class="btn-small btn-secondary" id="cancel-bulk-delete">Cancel</button>
+                <button type="button" class="btn-small btn-danger" id="confirm-bulk-delete">Delete Selected Orders</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Expense Modal -->
+    <div class="modal-overlay" id="add-expense-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>💸 Add Expense</h3>
+                <button class="close-btn" id="close-add-expense-modal">&times;</button>
+            </div>
+            <form id="add-expense-form">
+                <div class="form-group">
+                    <label class="form-label">Date</label>
+                    <input type="date" class="form-input" id="expense-date-input" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Amount ($)</label>
+                    <input type="number" class="form-input" id="expense-amount-input" min="0" step="0.01" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Description</label>
+                    <textarea class="form-input" id="expense-description-input" rows="3" required></textarea>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-small btn-secondary" id="cancel-add-expense">Cancel</button>
+                    <button type="submit" class="btn-small btn-success">Add Expense</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Delete Expense Confirmation Modal (admin already authenticated — just confirm) -->
+    <div class="modal-overlay" id="delete-expense-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>🗑️ Delete Expense</h3>
+                <button class="close-btn" id="close-delete-expense-modal">&times;</button>
+            </div>
+            <p style="margin-bottom: 1.5rem;" id="delete-expense-text">Are you sure you want to delete this expense?</p>
+            <div class="modal-footer">
+                <button type="button" class="btn-small btn-secondary" id="cancel-delete-expense">Cancel</button>
+                <button type="button" class="btn-small" style="background-color: #dc2626; color: white;" id="confirm-delete-expense">Delete Expense</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ============================================================
+        // Agent data (delivery personnel — unrelated to login accounts)
+        // ============================================================
+        const agents = {
+            'Titus': '0772558553',
+            'Emmanuel': '0760566696',
+            'Augustine': '0772558559',
+            'Boima': '0778643650',
+            'Arthur': '0772558557'
+        };
+
+        function getDateKey(date) {
+            const d = new Date(date);
+            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        }
+
+        function debounce(fn, delayMs = 400) {
+            let timer = null;
+            return function debounced(...args) {
+                clearTimeout(timer);
+                timer = setTimeout(() => fn.apply(this, args), delayMs);
+            };
+        }
+
+        // ============================================================
+        // Auth state — persisted in localStorage so a refresh (or a new
+        // tab/device) stays logged in without re-entering credentials.
+        // ============================================================
+        const AUTH_STORAGE_KEY = 'verta_auth';
+        let authToken = null;
+        let currentUser = null; // { id, businessName, email, role }
+        let socket = null;
+
+        function saveAuth(token, user) {
+            authToken = token;
+            currentUser = user;
+            localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify({ token, user }));
+        }
+
+        function clearAuth() {
+            authToken = null;
+            currentUser = null;
+            localStorage.removeItem(AUTH_STORAGE_KEY);
+            if (socket) { socket.disconnect(); socket = null; }
+        }
+
+        function loadStoredAuth() {
+            try {
+                const raw = localStorage.getItem(AUTH_STORAGE_KEY);
+                if (!raw) return null;
+                return JSON.parse(raw);
+            } catch (e) {
+                return null;
+            }
+        }
+
+        async function apiFetch(path, options = {}) {
+            const headers = Object.assign({ 'Content-Type': 'application/json' }, options.headers || {});
+            if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
+            const res = await fetch(path, Object.assign({}, options, { headers }));
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
+            return data;
+        }
+
+        // ============================================================
+        // Realtime layer (Socket.io) — replaces Firebase Realtime Database.
+        // Connection only opens AFTER login, authenticated with the JWT.
+        // Same-origin: the Node/Express server that serves this page also
+        // runs Socket.io on the same port, which is what Railway needs
+        // since a service only exposes one public port.
+        // ============================================================
+        function connectSocket() {
+            socket = io({ auth: { token: authToken } });
+
+            socket.on('connect', () => {
+                const el = document.getElementById('connection-status');
+                el.style.display = 'block';
+                el.textContent = 'Live';
+                el.className = 'online';
+            });
+            socket.on('disconnect', () => {
+                const el = document.getElementById('connection-status');
+                el.style.display = 'block';
+                el.textContent = 'Reconnecting…';
+                el.className = 'offline';
+            });
+            socket.on('connect_error', (err) => {
+                console.error('Socket connection error', err.message);
+                if (err.message === 'unauthorized') {
+                    // Token expired/invalid — force back to login.
+                    clearAuth();
+                    showAuthScreen();
+                }
+            });
+
+            socket.on('order:created', (order) => {
+                const normalized = normalizeOrder(order);
+                if (!orders.some(o => o.id === normalized.id)) {
+                    orders.unshift(normalized);
+                    refreshAllViews();
+                }
+            });
+
+            socket.on('order:updated', (order) => {
+                const normalized = normalizeOrder(order);
+                const idx = orders.findIndex(o => o.id === normalized.id);
+                if (idx !== -1) orders[idx] = normalized; else orders.unshift(normalized);
+                refreshAllViews();
+            });
+
+            socket.on('order:deleted', ({ ids }) => {
+                orders = orders.filter(o => !ids.includes(o.id));
+                selectedOrderIds = selectedOrderIds.filter(id => !ids.includes(id));
+                refreshAllViews();
+            });
+
+            socket.on('expense:created', (expense) => {
+                const normalized = normalizeExpense(expense);
+                if (!expenses.some(e => e.id === normalized.id)) {
+                    expenses.push(normalized);
+                    renderOrderHistory();
+                    renderOrderHistoryToModal();
+                }
+            });
+
+            socket.on('expense:deleted', ({ id }) => {
+                expenses = expenses.filter(e => e.id !== id);
+                renderOrderHistory();
+                renderOrderHistoryToModal();
+            });
+        }
+
+        function emitWithAck(event, payload) {
+            return new Promise((resolve) => {
+                socket.emit(event, payload, (response) => resolve(response || { ok: false, error: 'No response from server' }));
+            });
+        }
+
+        // ============================================================
+        // Global data + DOM refs
+        // ============================================================
+        let orders = [];
+        let expenses = [];
+        let selectedOrderIds = [];
+        let selectedYear = new Date().getFullYear();
+        let selectedMonth = new Date().getMonth() + 1;
+        let selectedDay = null;
+        let selectedYearMain = new Date().getFullYear();
+        let selectedMonthMain = new Date().getMonth() + 1;
+        let selectedDayMain = null;
+        let currentAcceptingOrderId = null;
+        let expenseIdToDelete = null;
+        let pendingBulkDeleteIds = [];
+
+        function normalizeOrder(o) {
+            return {
+                ...o,
+                createdAt: o.createdAt ? new Date(o.createdAt) : null,
+                acceptedAt: o.acceptedAt ? new Date(o.acceptedAt) : null,
+                pickedUpAt: o.pickedUpAt ? new Date(o.pickedUpAt) : null,
+                deliveredAt: o.deliveredAt ? new Date(o.deliveredAt) : null
+            };
+        }
+        function normalizeExpense(e) {
+            return { ...e, date: e.date ? new Date(e.date) : null };
+        }
+
+        function refreshAllViews() {
+            if (currentUser && currentUser.role === 'sender') renderOrdersHome();
+            if (currentUser && currentUser.role === 'admin') {
+                renderOrdersDelivery();
+                calculateAndRenderStats();
+                renderOrderHistory();
+                renderAgentContacts();
+            }
+        }
+
+        // ============================================================
+        // Bootstrap: figure out logged-in state on page load
+        // ============================================================
+        document.addEventListener('DOMContentLoaded', async () => {
+            wireAuthScreenEvents();
+            wireAppEvents();
+
+            const stored = loadStoredAuth();
+            if (stored && stored.token) {
+                authToken = stored.token;
+                currentUser = stored.user;
+                try {
+                    const me = await apiFetch('/api/me');
+                    currentUser = me.user;
+                    saveAuth(authToken, currentUser);
+                    await enterApp();
+                    return;
+                } catch (err) {
+                    clearAuth();
+                }
+            }
+            showAuthScreen();
+        });
+
+        function showAuthScreen() {
+            document.getElementById('auth-screen').style.display = 'block';
+            document.getElementById('home-screen').style.display = 'none';
+            document.getElementById('delivery-app').style.display = 'none';
+            document.getElementById('connection-status').style.display = 'none';
+        }
+
+        async function enterApp() {
+            document.getElementById('auth-screen').style.display = 'none';
+            connectSocket();
+            try {
+                const data = await apiFetch('/api/state');
+                orders = (data.orders || []).map(normalizeOrder);
+                expenses = (data.expenses || []).map(normalizeExpense);
+            } catch (err) {
+                console.error('Failed to load initial state', err);
+                orders = [];
+                expenses = [];
+            }
+
+            if (currentUser.role === 'admin') {
+                document.getElementById('home-screen').style.display = 'none';
+                document.getElementById('delivery-app').style.display = 'block';
+                document.getElementById('user-name').textContent = currentUser.businessName || 'Admin';
+                document.getElementById('user-avatar').textContent = (currentUser.businessName || 'A').charAt(0).toUpperCase();
+            } else {
+                document.getElementById('delivery-app').style.display = 'none';
+                document.getElementById('home-screen').style.display = 'block';
+                document.getElementById('sender-display-name').textContent = currentUser.businessName;
+                document.getElementById('sender-avatar').textContent = currentUser.businessName.charAt(0).toUpperCase();
+            }
+            refreshAllViews();
+        }
+
+        // ============================================================
+        // Auth screen wiring (login / register / admin login)
+        // ============================================================
+        function wireAuthScreenEvents() {
+            const modeSenderBtn = document.getElementById('mode-sender-btn');
+            const modeAdminBtn = document.getElementById('mode-admin-btn');
+            const senderCard = document.getElementById('sender-auth-card');
+            const adminCard = document.getElementById('admin-auth-card');
+
+            modeSenderBtn.addEventListener('click', () => {
+                modeSenderBtn.classList.add('active');
+                modeAdminBtn.classList.remove('active');
+                senderCard.style.display = 'block';
+                adminCard.style.display = 'none';
+            });
+            modeAdminBtn.addEventListener('click', () => {
+                modeAdminBtn.classList.add('active');
+                modeSenderBtn.classList.remove('active');
+                adminCard.style.display = 'block';
+                senderCard.style.display = 'none';
+            });
+
+            const tabLogin = document.getElementById('tab-login');
+            const tabRegister = document.getElementById('tab-register');
+            const loginForm = document.getElementById('sender-login-form');
+            const registerForm = document.getElementById('sender-register-form');
+
+            tabLogin.addEventListener('click', () => {
+                tabLogin.classList.add('active');
+                tabRegister.classList.remove('active');
+                loginForm.style.display = 'block';
+                registerForm.style.display = 'none';
+            });
+            tabRegister.addEventListener('click', () => {
+                tabRegister.classList.add('active');
+                tabLogin.classList.remove('active');
+                registerForm.style.display = 'block';
+                loginForm.style.display = 'none';
+            });
+
+            document.getElementById('register-business-name').addEventListener('change', (e) => {
+                const group = document.getElementById('register-custom-name-group');
+                group.style.display = e.target.value === 'Others' ? 'block' : 'none';
+            });
+
+            loginForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const errorEl = document.getElementById('login-error');
+                const btn = document.getElementById('login-submit-btn');
+                errorEl.style.display = 'none';
+                btn.disabled = true;
+                btn.textContent = 'Logging in…';
+                try {
+                    const data = await apiFetch('/api/auth/login', {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            email: document.getElementById('login-email').value,
+                            password: document.getElementById('login-password').value
+                        })
+                    });
+                    saveAuth(data.token, data.user);
+                    await enterApp();
+                } catch (err) {
+                    errorEl.textContent = err.message;
+                    errorEl.style.display = 'block';
+                } finally {
+                    btn.disabled = false;
+                    btn.textContent = 'Login';
+                }
+            });
+
+            registerForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const errorEl = document.getElementById('register-error');
+                const btn = document.getElementById('register-submit-btn');
+                errorEl.style.display = 'none';
+
+                const selected = document.getElementById('register-business-name').value;
+                const businessName = selected === 'Others'
+                    ? document.getElementById('register-custom-name').value.trim()
+                    : selected;
+
+                if (!businessName) {
+                    errorEl.textContent = 'Please select or enter a business name.';
+                    errorEl.style.display = 'block';
+                    return;
+                }
+
+                btn.disabled = true;
+                btn.textContent = 'Creating account…';
+                try {
+                    const data = await apiFetch('/api/auth/register', {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            businessName,
+                            email: document.getElementById('register-email').value,
+                            password: document.getElementById('register-password').value
+                        })
+                    });
+                    saveAuth(data.token, data.user);
+                    await enterApp();
+                } catch (err) {
+                    errorEl.textContent = err.message;
+                    errorEl.style.display = 'block';
+                } finally {
+                    btn.disabled = false;
+                    btn.textContent = 'Create Account';
+                }
+            });
+
+            document.getElementById('admin-login-form').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const errorEl = document.getElementById('admin-login-error');
+                const btn = document.getElementById('admin-login-submit-btn');
+                errorEl.style.display = 'none';
+                btn.disabled = true;
+                btn.textContent = 'Logging in…';
+                try {
+                    const data = await apiFetch('/api/auth/admin-login', {
+                        method: 'POST',
+                        body: JSON.stringify({ password: document.getElementById('admin-password').value })
+                    });
+                    saveAuth(data.token, data.user);
+                    await enterApp();
+                } catch (err) {
+                    errorEl.textContent = err.message;
+                    errorEl.style.display = 'block';
+                    document.getElementById('admin-password').value = '';
+                } finally {
+                    btn.disabled = false;
+                    btn.textContent = 'Login as Admin';
+                }
+            });
+
+            document.getElementById('sender-logout-btn').addEventListener('click', () => {
+                clearAuth();
+                showAuthScreen();
+            });
+            document.getElementById('admin-logout-btn').addEventListener('click', () => {
+                clearAuth();
+                showAuthScreen();
+            });
+        }
+
+        // ============================================================
+        // Rest of the app (orders, expenses, history, PDF) — same
+        // behavior as before, now driven by role-scoped data from the
+        // server instead of a picked "sender name".
+        // ============================================================
+        function wireAppEvents() {
+            document.getElementById('btn-new-order').addEventListener('click', openNewOrderModal);
+            document.getElementById('close-new-order').addEventListener('click', closeNewOrderModal);
+            document.getElementById('cancel-new-order').addEventListener('click', closeNewOrderModal);
+            document.getElementById('close-order-details').addEventListener('click', closeOrderDetailsModal);
+            document.getElementById('new-order-form').addEventListener('submit', handleNewOrder);
+
+            document.getElementById('add-expense-btn').addEventListener('click', openAddExpenseModal);
+            document.getElementById('close-add-expense-modal').addEventListener('click', closeAddExpenseModal);
+            document.getElementById('cancel-add-expense').addEventListener('click', closeAddExpenseModal);
+            document.getElementById('add-expense-form').addEventListener('submit', handleAddExpenseSubmit);
+
+            document.getElementById('close-delete-expense-modal').addEventListener('click', closeDeleteExpenseModal);
+            document.getElementById('cancel-delete-expense').addEventListener('click', closeDeleteExpenseModal);
+            document.getElementById('confirm-delete-expense').addEventListener('click', handleDeleteExpenseConfirm);
+
+            const selectAllCheckbox = document.getElementById('select-all-orders');
+            selectAllCheckbox.addEventListener('change', (e) => {
+                const checkboxes = document.getElementById('orders-grouped-delivery').querySelectorAll('.order-checkbox');
+                checkboxes.forEach(cb => {
+                    cb.checked = e.target.checked;
+                    const orderId = cb.dataset.id;
+                    if (e.target.checked && !selectedOrderIds.includes(orderId)) selectedOrderIds.push(orderId);
+                    else if (!e.target.checked) selectedOrderIds = selectedOrderIds.filter(id => id !== orderId);
+                });
+            });
+
+            document.getElementById('delete-selected-btn').addEventListener('click', () => {
+                if (selectedOrderIds.length === 0) { alert('Please select at least one order to delete'); return; }
+                pendingBulkDeleteIds = [...selectedOrderIds];
+                document.getElementById('bulk-delete-count').textContent = pendingBulkDeleteIds.length;
+                document.getElementById('bulk-delete-modal').classList.add('active');
+            });
+            document.getElementById('close-bulk-delete-modal').addEventListener('click', closeBulkDeleteModal);
+            document.getElementById('cancel-bulk-delete').addEventListener('click', closeBulkDeleteModal);
+            document.getElementById('confirm-bulk-delete').addEventListener('click', handleBulkDeleteConfirm);
+
+            document.getElementById('close-set-amount-modal').addEventListener('click', closeSetAmountModal);
+            document.getElementById('cancel-set-amount').addEventListener('click', closeSetAmountModal);
+            document.getElementById('set-amount-form').addEventListener('submit', handleSetAmountSubmit);
+
+            document.getElementById('view-order-history-delivery').addEventListener('click', openOrderHistoryModal);
+            document.getElementById('close-order-history').addEventListener('click', closeOrderHistoryModal);
+
+            document.getElementById('order-history-modal').addEventListener('change', (e) => {
+                if (e.target.id === 'oh-year-select') { selectedYear = parseInt(e.target.value); selectedMonth = 1; selectedDay = null; renderOrderHistoryToModal(); }
+                else if (e.target.id === 'oh-month-select') { selectedMonth = parseInt(e.target.value); selectedDay = null; renderOrderHistoryToModal(); }
+                else if (e.target.id === 'oh-day-select') { selectedDay = e.target.value ? parseInt(e.target.value) : null; renderOrderHistoryToModal(); }
+            });
+            document.getElementById('order-history-container').addEventListener('change', (e) => {
+                if (e.target.id === 'oh-year-select-main') { selectedYearMain = parseInt(e.target.value); selectedMonthMain = 1; selectedDayMain = null; renderOrderHistory(); }
+                else if (e.target.id === 'oh-month-select-main') { selectedMonthMain = parseInt(e.target.value); selectedDayMain = null; renderOrderHistory(); }
+                else if (e.target.id === 'oh-day-select-main') { selectedDayMain = e.target.value ? parseInt(e.target.value) : null; renderOrderHistory(); }
+            });
+
+            document.getElementById('orders-grid').addEventListener('click', handleOrderGridClick);
+            const ordersGroupedDelivery = document.getElementById('orders-grouped-delivery');
+            ordersGroupedDelivery.addEventListener('click', handleOrderGridClick);
+            ordersGroupedDelivery.addEventListener('change', (e) => {
+                if (e.target.classList.contains('order-checkbox')) {
+                    const orderId = e.target.dataset.id;
+                    if (e.target.checked) { if (!selectedOrderIds.includes(orderId)) selectedOrderIds.push(orderId); }
+                    else { selectedOrderIds = selectedOrderIds.filter(id => id !== orderId); }
+                    const allCheckboxes = ordersGroupedDelivery.querySelectorAll('.order-checkbox');
+                    const checkedCount = ordersGroupedDelivery.querySelectorAll('.order-checkbox:checked').length;
+                    document.getElementById('select-all-orders').checked = allCheckboxes.length > 0 && checkedCount === allCheckboxes.length;
+                }
+            });
+        }
+
+        // ---- Expenses ----
+        function openAddExpenseModal() {
+            const today = new Date();
+            document.getElementById('expense-date-input').value = today.toISOString().split('T')[0];
+            document.getElementById('expense-amount-input').value = '';
+            document.getElementById('expense-description-input').value = '';
+            document.getElementById('add-expense-modal').classList.add('active');
+        }
+        function closeAddExpenseModal() { document.getElementById('add-expense-modal').classList.remove('active'); }
+
+        async function handleAddExpenseSubmit(e) {
+            e.preventDefault();
+            const newExpense = {
+                date: new Date(document.getElementById('expense-date-input').value).toISOString(),
+                amount: parseFloat(document.getElementById('expense-amount-input').value),
+                description: document.getElementById('expense-description-input').value.trim()
+            };
+            const result = await emitWithAck('expense:create', newExpense);
+            if (!result.ok) { alert(result.error || 'Failed to add expense'); return; }
+            closeAddExpenseModal();
+        }
+
+        function deleteExpense(expenseId) {
+            expenseIdToDelete = expenseId;
+            const expense = expenses.find(e => e.id === expenseId);
+            if (expense) {
+                document.getElementById('delete-expense-text').textContent = `Are you sure you want to delete the expense: "${expense.description}" ($${expense.amount.toFixed(2)})?`;
+            }
+            document.getElementById('delete-expense-modal').classList.add('active');
+        }
+        function closeDeleteExpenseModal() {
+            document.getElementById('delete-expense-modal').classList.remove('active');
+            expenseIdToDelete = null;
+        }
+        async function handleDeleteExpenseConfirm() {
+            const result = await emitWithAck('expense:delete', { id: expenseIdToDelete });
+            if (result.ok) closeDeleteExpenseModal();
+            else alert(result.error || 'Failed to delete expense');
+        }
+
+        // ---- Bulk delete ----
+        function closeBulkDeleteModal() { document.getElementById('bulk-delete-modal').classList.remove('active'); }
+        async function handleBulkDeleteConfirm() {
+            const result = await emitWithAck('order:delete-bulk', { ids: pendingBulkDeleteIds });
+            if (result.ok) {
+                selectedOrderIds = [];
+                document.getElementById('select-all-orders').checked = false;
+                closeBulkDeleteModal();
+            } else {
+                alert(result.error || 'Failed to delete orders');
+            }
+        }
+
+        // ---- Order history (modal + main) ----
+        function openOrderHistoryModal() { renderOrderHistoryToModal(); document.getElementById('order-history-modal').classList.add('active'); }
+        function closeOrderHistoryModal() { document.getElementById('order-history-modal').classList.remove('active'); }
+
+        function renderOrderHistoryToModal() {
+            const container = document.getElementById('order-history-modal-content');
+            if (!container) return;
+            const allYears = getAllYears();
+            const filteredOrders = filterByDate(orders, o => o.createdAt, selectedYear, selectedMonth, selectedDay);
+            const filteredExpenses = filterByDate(expenses, e => e.date, selectedYear, selectedMonth, selectedDay);
+            const groupedByDay = groupByDay(filteredOrders, filteredExpenses);
+            const sortedDates = Object.keys(groupedByDay).sort((a, b) => b.localeCompare(a));
+
+            let html = renderDateFilterControls('oh-year-select', 'oh-month-select', 'oh-day-select', allYears, selectedYear, selectedMonth, selectedDay);
+            if (sortedDates.length === 0) {
+                html += '<p style="text-align: center; color: var(--slate-light);">No orders or expenses found for selected date.</p>';
+            } else {
+                sortedDates.forEach(dateKey => { html += renderDayBlock(dateKey, groupedByDay[dateKey]); });
+            }
+            container.innerHTML = html;
+        }
+
+        function renderOrderHistory() {
+            const container = document.getElementById('order-history-container');
+            if (!container) return;
+            const allYears = getAllYears();
+            const filteredOrders = filterByDate(orders, o => o.createdAt, selectedYearMain, selectedMonthMain, selectedDayMain);
+            const filteredExpenses = filterByDate(expenses, e => e.date, selectedYearMain, selectedMonthMain, selectedDayMain);
+
+            let html = renderDateFilterControls('oh-year-select-main', 'oh-month-select-main', 'oh-day-select-main', allYears, selectedYearMain, selectedMonthMain, selectedDayMain);
+
+            const groupedByYear = {};
+            filteredOrders.forEach(order => {
+                const year = new Date(order.createdAt).getFullYear();
+                if (!groupedByYear[year]) groupedByYear[year] = {};
+                const dateKey = getDateKey(order.createdAt);
+                if (!groupedByYear[year][dateKey]) groupedByYear[year][dateKey] = { orders: [], expenses: [] };
+                groupedByYear[year][dateKey].orders.push(order);
+            });
+            filteredExpenses.forEach(expense => {
+                const year = new Date(expense.date).getFullYear();
+                if (!groupedByYear[year]) groupedByYear[year] = {};
+                const dateKey = getDateKey(expense.date);
+                if (!groupedByYear[year][dateKey]) groupedByYear[year][dateKey] = { orders: [], expenses: [] };
+                groupedByYear[year][dateKey].expenses.push(expense);
+            });
+
+            const sortedYears = Object.keys(groupedByYear).sort((a, b) => b - a);
+            if (sortedYears.length === 0) {
+                html += '<p style="text-align: center; color: var(--slate-light);">No orders or expenses found for selected date.</p>';
+            } else {
+                sortedYears.forEach(year => {
+                    html += `<h3 style="color: var(--primary); margin-bottom: 1rem; margin-top: 2rem; font-size: 1.5rem;">${year}</h3>`;
+                    Object.keys(groupedByYear[year]).sort((a, b) => b.localeCompare(a)).forEach(dateKey => {
+                        html += renderDayBlock(dateKey, groupedByYear[year][dateKey]);
+                    });
+                });
+            }
+            container.innerHTML = html;
+        }
+
+        function getAllYears() {
+            const orderYears = [...new Set(orders.map(o => new Date(o.createdAt).getFullYear()))];
+            const expenseYears = [...new Set(expenses.map(e => new Date(e.date).getFullYear()))];
+            const allYears = [...new Set([...orderYears, ...expenseYears])].sort((a, b) => b - a);
+            if (allYears.length === 0) allYears.push(new Date().getFullYear());
+            return allYears;
+        }
+
+        function filterByDate(list, getDate, year, month, day) {
+            return list.filter(item => {
+                const d = new Date(getDate(item));
+                let match = d.getFullYear() === year && (d.getMonth() + 1) === month;
+                if (day !== null) match = match && d.getDate() === day;
+                return match;
+            });
+        }
+
+        function groupByDay(filteredOrders, filteredExpenses) {
+            const groupedByDay = {};
+            filteredOrders.forEach(order => {
+                const dateKey = getDateKey(order.createdAt);
+                if (!groupedByDay[dateKey]) groupedByDay[dateKey] = { orders: [], expenses: [] };
+                groupedByDay[dateKey].orders.push(order);
+            });
+            filteredExpenses.forEach(expense => {
+                const dateKey = getDateKey(expense.date);
+                if (!groupedByDay[dateKey]) groupedByDay[dateKey] = { orders: [], expenses: [] };
+                groupedByDay[dateKey].expenses.push(expense);
+            });
+            return groupedByDay;
+        }
+
+        function renderDateFilterControls(yearId, monthId, dayId, allYears, year, month, day) {
+            return `
+                <div style="background: white; padding: 1.5rem; border-radius: 1rem; margin-bottom: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                    <h4 style="color: var(--slate); font-weight: 600; margin-bottom: 1rem;">📅 Select Date Range</h4>
+                    <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+                        <div style="flex: 1; min-width: 150px;">
+                            <label class="form-label">Year</label>
+                            <select id="${yearId}" class="form-input">
+                                ${allYears.map(y => `<option value="${y}" ${y === year ? 'selected' : ''}>${y}</option>`).join('')}
+                            </select>
+                        </div>
+                        <div style="flex: 1; min-width: 150px;">
+                            <label class="form-label">Month</label>
+                            <select id="${monthId}" class="form-input">
+                                ${Array.from({length: 12}, (_, i) => i + 1).map(m => {
+                                    const monthName = new Date(2000, m - 1, 1).toLocaleDateString('en-US', { month: 'long' });
+                                    return `<option value="${m}" ${m === month ? 'selected' : ''}>${monthName}</option>`;
+                                }).join('')}
+                            </select>
+                        </div>
+                        <div style="flex: 1; min-width: 150px;">
+                            <label class="form-label">Day</label>
+                            <select id="${dayId}" class="form-input">
+                                <option value="" ${day === null ? 'selected' : ''}>All Days</option>
+                                ${Array.from({length: new Date(year, month, 0).getDate()}, (_, i) => i + 1).map(d => `<option value="${d}" ${d === day ? 'selected' : ''}>${d}</option>`).join('')}
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderDayBlock(dateKey, dataForDate) {
+            const dateOrders = dataForDate.orders;
+            const dateExpenses = dataForDate.expenses;
+            const dateObj = new Date(dateKey);
+            const formattedDate = dateObj.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+
+            const agentGroups = {};
+            const unassignedOrders = [];
+            dateOrders.forEach(order => {
+                if (order.acceptedBy) { if (!agentGroups[order.acceptedBy]) agentGroups[order.acceptedBy] = []; agentGroups[order.acceptedBy].push(order); }
+                else unassignedOrders.push(order);
+            });
+
+            const dailyTotalOrders = dateOrders.length;
+            const dailyTotalAmount = dateOrders.reduce((sum, o) => sum + (o.amount || 0), 0);
+            const dailyTotalExpenses = dateExpenses.reduce((sum, e) => sum + e.amount, 0);
+            const dailyNetAmount = dailyTotalAmount - dailyTotalExpenses;
+
+            let html = `
+                <div style="background: white; padding: 1.5rem; border-radius: 1rem; margin-bottom: 1rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem; padding-bottom: 1rem; border-bottom: 1px solid #e5e7eb;">
+                        <h4 style="color: var(--slate); font-weight: 600; margin: 0; font-size: 1.25rem;">${formattedDate}</h4>
+                        <div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
+                            <button class="btn-small btn-success" onclick="generateDailyReportPDF('${dateKey}')">📥 Download PDF</button>
+                            <div style="display: flex; gap: 2.5rem; flex-wrap: wrap;">
+                                <div style="text-align: center;"><div style="font-size: 0.875rem; color: var(--slate-light); text-transform: uppercase; letter-spacing: 0.05em;">Grand Total Orders</div><div style="font-weight: 800; font-size: 1.5rem; color: var(--slate);">${dailyTotalOrders}</div></div>
+                                <div style="text-align: center;"><div style="font-size: 0.875rem; color: var(--slate-light); text-transform: uppercase; letter-spacing: 0.05em;">Grand Total Amount</div><div style="font-weight: 800; font-size: 1.5rem; color: var(--primary);">$${dailyTotalAmount.toFixed(2)}</div></div>
+                                <div style="text-align: center;"><div style="font-size: 0.875rem; color: #dc2626; text-transform: uppercase; letter-spacing: 0.05em;">Total Expenses</div><div style="font-weight: 800; font-size: 1.5rem; color: #dc2626;">-$${dailyTotalExpenses.toFixed(2)}</div></div>
+                                <div style="text-align: center;"><div style="font-size: 0.875rem; color: ${dailyNetAmount >=0 ? '#10b981' : '#dc2626'}; text-transform: uppercase; letter-spacing: 0.05em;">Net Amount</div><div style="font-weight: 800; font-size: 1.5rem; color: ${dailyNetAmount >=0 ? '#10b981' : '#dc2626'};">${dailyNetAmount >=0 ? '' : '-'}$${Math.abs(dailyNetAmount).toFixed(2)}</div></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div style="display: grid; gap: 1.5rem;">
+            `;
+
+            Object.keys(agentGroups).forEach(agentName => {
+                const agentOrders = agentGroups[agentName];
+                const agentTotalAmount = agentOrders.reduce((sum, o) => sum + (o.amount || 0), 0);
+                html += `
+                    <div style="background: var(--bg-light); padding: 1.25rem; border-radius: 0.75rem;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 1rem;">
+                            <div><div style="font-weight: 700; color: var(--slate); font-size: 1.125rem;">${agentName}${agents[agentName] ? `<span style="font-weight: 500; color: var(--slate-light); margin-left: 0.5rem;">(${agents[agentName]})</span>` : ''}</div></div>
+                            <div style="display: flex; gap: 2rem;">
+                                <div style="text-align: right;"><div style="font-size: 0.75rem; color: var(--slate-light);">Orders</div><div style="font-weight: 700; color: var(--slate);">${agentOrders.length}</div></div>
+                                <div style="text-align: right;"><div style="font-size: 0.75rem; color: var(--slate-light);">Amount</div><div style="font-weight: 700; color: var(--primary);">$${agentTotalAmount.toFixed(2)}</div></div>
+                            </div>
+                        </div>
+                        <div style="display: grid; gap: 0.75rem;">
+                `;
+                agentOrders.forEach(order => { html += renderHistoryOrderRow(order); });
+                html += `</div></div>`;
+            });
+
+            if (unassignedOrders.length > 0) {
+                html += `<div style="background: #f3f4f6; padding: 1.25rem; border-radius: 0.75rem;"><div style="font-weight: 700; color: var(--slate-light); margin-bottom: 1rem;">Unassigned Orders (${unassignedOrders.length})</div><div style="display: grid; gap: 0.75rem;">`;
+                unassignedOrders.forEach(order => { html += renderHistoryOrderRow(order); });
+                html += `</div></div>`;
+            }
+
+            if (dateExpenses.length > 0) {
+                html += `<div style="background: #fef2f2; padding: 1.25rem; border-radius: 0.75rem; border: 1px solid #fecaca;"><div style="font-weight: 700; color: #dc2626; margin-bottom: 1rem;">💸 Expenses (${dateExpenses.length})</div><div style="display: grid; gap: 0.75rem;">`;
+                dateExpenses.forEach(expense => {
+                    html += `
+                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem; background: white; border-radius: 0.5rem; flex-wrap: wrap; gap: 1rem;">
+                            <div style="flex: 1; min-width: 200px;"><div style="font-weight: 600; color: #dc2626;">${expense.description}</div></div>
+                            <div style="display: flex; align-items: center; gap: 1rem;">
+                                <div style="color: #dc2626; font-weight: 700; font-size: 1.125rem;">-$${expense.amount.toFixed(2)}</div>
+                                <button class="btn-small" style="background-color: #dc2626; color: white;" onclick="deleteExpense('${expense.id}')">🗑️</button>
+                            </div>
+                        </div>
+                    `;
+                });
+                html += `</div></div>`;
+            }
+
+            html += `</div></div>`;
+            return html;
+        }
+
+        function renderHistoryOrderRow(order) {
+            const statusClass = `status-${order.status.replace(' ', '-')}`;
+            const statusText = order.status.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+            const isDelivered = order.status === 'delivered';
+            return `
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem; background: white; border-radius: 0.5rem; flex-wrap: wrap; gap: 1rem;">
+                    <div style="flex: 1; min-width: 200px;">
+                        <div style="font-weight: 600; display: flex; align-items: center; gap: 0.5rem;">
+                            ${order.id} - ${order.itemDescription}
+                            ${isDelivered ? `<span style="color: #10b981; font-size: 0.875rem;">✅ Delivered</span>` : ''}
+                        </div>
+                        <div style="font-size: 0.875rem; color: var(--slate-light); margin-top: 0.25rem;">${order.senderName} — ${order.pickupAddress} → ${order.dropoffAddress}</div>
+                    </div>
+                    <div style="text-align: right; display: flex; align-items: center; gap: 1rem;">
+                        ${order.amount !== null ? `<div style="color: var(--primary); font-weight: 700; font-size: 1.125rem;">$${order.amount.toFixed(2)}</div>` : ''}
+                        <span class="status-badge ${statusClass}" style="font-size: 0.75rem;">${statusText}</span>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderAgentContacts() {
+            const container = document.getElementById('agent-contacts-container');
+            if (!container) return;
+            let html = '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem;">';
+            Object.entries(agents).forEach(([name, phone]) => {
+                html += `
+                    <div style="background: white; padding: 1.25rem; border-radius: 0.75rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                        <div style="font-weight: 700; color: var(--slate); font-size: 1.125rem; margin-bottom: 0.5rem;">${name}</div>
+                        <div style="display: flex; align-items: center; gap: 0.5rem; color: var(--slate-light);">
+                            <span style="font-size: 1rem;">📞</span>
+                            <a href="tel:${phone}" style="text-decoration: none; color: var(--primary); font-weight: 600;">${phone}</a>
+                        </div>
+                    </div>
+                `;
+            });
+            html += '</div>';
+            container.innerHTML = html;
+        }
+
+        // ---- Accepting orders (admin) ----
+        function openSetAmountModal(orderId) {
+            currentAcceptingOrderId = orderId;
+            document.getElementById('set-amount-modal').classList.add('active');
+            document.getElementById('delivery-amount-input').value = '';
+            document.getElementById('agent-select').value = '';
+            document.getElementById('agent-select').focus();
+        }
+        function closeSetAmountModal() {
+            document.getElementById('set-amount-modal').classList.remove('active');
+            currentAcceptingOrderId = null;
+        }
+        async function handleSetAmountSubmit(e) {
+            e.preventDefault();
+            if (!currentAcceptingOrderId) return;
+            const amount = parseFloat(document.getElementById('delivery-amount-input').value);
+            const selectedAgent = document.getElementById('agent-select').value;
+            if (!selectedAgent) return;
+            const result = await emitWithAck('order:accept', { id: currentAcceptingOrderId, amount, acceptedBy: selectedAgent });
+            if (!result.ok) { alert(result.error || 'Failed to accept order'); return; }
+            closeSetAmountModal();
+        }
+
+        function cleanText(text) {
+            if (!text) return '';
+            return text.toString().replace(/[^\x20-\x7E]/g, '').trim();
+        }
+
+        function generateDailyReportPDF(dateKey) {
+            const dateOrders = orders.filter(o => getDateKey(o.createdAt) === dateKey);
+            const dateExpenses = expenses.filter(e => getDateKey(e.date) === dateKey);
+            const totalOrders = dateOrders.length;
+            const totalAmount = dateOrders.reduce((sum, o) => sum + (o.amount || 0), 0);
+            const totalExpenses = dateExpenses.reduce((sum, e) => sum + e.amount, 0);
+            const netAmount = totalAmount - totalExpenses;
+            const dateObj = new Date(dateKey + 'T00:00:00');
+            const formattedDate = dateObj.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            let yPosition = 20;
+            const pageMargin = 14;
+            const pageWidth = doc.internal.pageSize.getWidth();
+            const maxWidth = pageWidth - (pageMargin * 2);
+
+            doc.setFontSize(20); doc.setFont('helvetica', 'bold');
+            doc.text('Verta Delivery Service Daily Report', pageWidth / 2, yPosition, { align: 'center' });
+            yPosition += 12;
+            doc.setFontSize(14); doc.text(formattedDate, pageWidth / 2, yPosition, { align: 'center' });
+            yPosition += 18;
+
+            doc.setFontSize(12); doc.setFont('helvetica', 'bold');
+            doc.text('Daily Totals', pageMargin, yPosition); yPosition += 8;
+            doc.setFont('helvetica', 'normal');
+            doc.text(`• Total Orders: ${totalOrders}`, pageMargin, yPosition); yPosition += 7;
+            doc.text(`• Total Order Amount: $${totalAmount.toFixed(2)}`, pageMargin, yPosition); yPosition += 7;
+            doc.text(`• Total Expenses: $${totalExpenses.toFixed(2)}`, pageMargin, yPosition); yPosition += 7;
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(netAmount >= 0 ? 34 : 220, netAmount >= 0 ? 139 : 38, netAmount >= 0 ? 34 : 38);
+            doc.text(`• Net Amount: $${netAmount.toFixed(2)}`, pageMargin, yPosition);
+            doc.setTextColor(0, 0, 0); yPosition += 15;
+
+            doc.setFontSize(14); doc.setFont('helvetica', 'bold');
+            doc.text('Orders', pageMargin, yPosition); yPosition += 10;
+
+            if (dateOrders.length === 0) {
+                doc.setFontSize(11); doc.setFont('helvetica', 'normal');
+                doc.text('No orders for this day.', pageMargin, yPosition); yPosition += 7;
+            } else {
+                const agentGroups = {};
+                const unassignedOrders = [];
+                dateOrders.forEach(order => {
+                    if (order.acceptedBy) { if (!agentGroups[order.acceptedBy]) agentGroups[order.acceptedBy] = []; agentGroups[order.acceptedBy].push(order); }
+                    else unassignedOrders.push(order);
+                });
+
+                const renderOrderList = (list) => {
+                    list.forEach(order => {
+                        const statusText = order.status.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+                        doc.setFont('helvetica', 'bold');
+                        doc.text(`Order ${cleanText(order.id)}`, pageMargin + 4, yPosition); yPosition += 7;
+                        doc.setFont('helvetica', 'normal');
+                        const col1X = pageMargin + 10, col2X = pageMargin + 40, col3X = pageMargin + 70, col4X = pageMargin + 120, col5X = pageMargin + 170, col6X = pageMargin + 200;
+                        doc.setFont('helvetica', 'bold');
+                        doc.text('Item:', col1X, yPosition); doc.text('Sender:', col2X, yPosition); doc.text('Pickup:', col3X, yPosition);
+                        doc.text('Dropoff:', col4X, yPosition); doc.text('Amount:', col5X, yPosition); doc.text('Status:', col6X, yPosition);
+                        doc.setFont('helvetica', 'normal'); yPosition += 6;
+                        const itemLines = doc.splitTextToSize(cleanText(order.itemDescription), 25);
+                        const senderLines = doc.splitTextToSize(cleanText(order.senderName), 25);
+                        const pickupLines = doc.splitTextToSize(cleanText(order.pickupAddress), 45);
+                        const dropoffLines = doc.splitTextToSize(cleanText(order.dropoffAddress), 45);
+                        const maxLines = Math.max(itemLines.length, senderLines.length, pickupLines.length, dropoffLines.length);
+                        for (let i = 0; i < maxLines; i++) {
+                            if (i < itemLines.length) doc.text(itemLines[i], col1X, yPosition);
+                            if (i < senderLines.length) doc.text(senderLines[i], col2X, yPosition);
+                            if (i < pickupLines.length) doc.text(pickupLines[i], col3X, yPosition);
+                            if (i < dropoffLines.length) doc.text(dropoffLines[i], col4X, yPosition);
+                            if (i === 0) {
+                                doc.text(order.amount !== null ? `$${order.amount.toFixed(2)}` : '-', col5X, yPosition);
+                                doc.text(statusText, col6X, yPosition);
+                            }
+                            yPosition += 5;
+                        }
+                        yPosition += 5;
+                        if (yPosition > 275) { doc.addPage(); yPosition = 20; }
+                    });
+                };
+
+                Object.keys(agentGroups).forEach(agentName => {
+                    const agentOrders = agentGroups[agentName];
+                    const agentTotalAmount = agentOrders.reduce((sum, o) => sum + (o.amount || 0), 0);
+                    doc.setFontSize(12); doc.setFont('helvetica', 'bold');
+                    doc.text(`Agent: ${cleanText(agentName)}${agents[agentName] ? ` (${cleanText(agents[agentName])})` : ''} - Orders: ${agentOrders.length}, Total: $${agentTotalAmount.toFixed(2)}`, pageMargin, yPosition);
+                    yPosition += 8; doc.setFont('helvetica', 'normal'); doc.setFontSize(10);
+                    renderOrderList(agentOrders); yPosition += 5;
+                });
+
+                if (unassignedOrders.length > 0) {
+                    doc.setFontSize(12); doc.setFont('helvetica', 'bold');
+                    doc.text(`Unassigned Orders (${unassignedOrders.length})`, pageMargin, yPosition); yPosition += 8;
+                    doc.setFont('helvetica', 'normal'); doc.setFontSize(10);
+                    renderOrderList(unassignedOrders); yPosition += 5;
+                }
+            }
+
+            if (yPosition > 265) { doc.addPage(); yPosition = 20; }
+            doc.setFontSize(14); doc.setFont('helvetica', 'bold');
+            doc.text('Expenses', pageMargin, yPosition); yPosition += 10;
+            doc.setFont('helvetica', 'normal'); doc.setFontSize(11);
+            if (dateExpenses.length === 0) {
+                doc.text('No expenses for this day.', pageMargin, yPosition);
+            } else {
+                dateExpenses.forEach(expense => {
+                    const expenseLines = doc.splitTextToSize(`• ${cleanText(expense.description)}: $${expense.amount.toFixed(2)}`, maxWidth);
+                    expenseLines.forEach(line => { doc.text(line, pageMargin, yPosition); yPosition += 7; });
+                    if (yPosition > 275) { doc.addPage(); yPosition = 20; }
+                });
+            }
+            doc.save(`Verta-Delivery-Report-${dateKey}.pdf`);
+        }
+
+        // ---- Sender: their own orders ----
+        function renderOrdersHome() {
+            const grid = document.getElementById('orders-grid');
+            grid.innerHTML = '';
+            if (orders.length === 0) {
+                grid.innerHTML = '<p style="text-align: center; color: var(--slate-light); width: 100%;">No orders yet — create your first one above.</p>';
+                return;
+            }
+            orders.forEach(order => grid.appendChild(createOrderCard(order, 'sender')));
+        }
+
+        function getDayLabel(date) {
+            const today = new Date();
+            const orderDate = new Date(date);
+            today.setHours(0, 0, 0, 0);
+            orderDate.setHours(0, 0, 0, 0);
+            const diffDays = Math.floor((today - orderDate) / (1000 * 60 * 60 * 24));
+            if (diffDays === 0) return 'Today';
+            if (diffDays === 1) return 'Yesterday';
+            if (diffDays < 7) return orderDate.toLocaleDateString('en-US', { weekday: 'long' });
+            return orderDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+        }
+
+        // ---- Admin: all orders ----
+        function renderOrdersDelivery() {
+            const container = document.getElementById('orders-grouped-delivery');
+            if (!container) return;
+            container.innerHTML = '';
+            if (orders.length === 0) {
+                container.innerHTML = '<p style="text-align: center; color: var(--slate-light); width: 100%;">No orders found.</p>';
+                return;
+            }
+            const groupedOrders = {};
+            orders.forEach(order => {
+                const dayLabel = getDayLabel(order.createdAt);
+                if (!groupedOrders[dayLabel]) groupedOrders[dayLabel] = [];
+                groupedOrders[dayLabel].push(order);
+            });
+            Object.keys(groupedOrders).forEach(dayLabel => {
+                const dayHeader = document.createElement('div');
+                dayHeader.style.marginTop = '2rem';
+                dayHeader.style.marginBottom = '1rem';
+                dayHeader.style.textAlign = 'center';
+                dayHeader.innerHTML = `<h3 style="font-size: 1.25rem; font-weight: 700; color: var(--slate);">${dayLabel.toUpperCase()}</h3>`;
+                container.appendChild(dayHeader);
+                const ordersGrid = document.createElement('div');
+                ordersGrid.className = 'orders-grid';
+                groupedOrders[dayLabel].forEach(order => ordersGrid.appendChild(createOrderCard(order, 'delivery')));
+                container.appendChild(ordersGrid);
+            });
+        }
+
+        function createOrderCard(order, role) {
+            const card = document.createElement('div');
+            card.className = 'order-card';
+            const statusClass = `status-${order.status.replace(' ', '-')}`;
+            const statusText = order.status.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+
+            card.innerHTML = `
+                <div class="order-header">
+                    <span class="order-id">${order.id}</span>
+                    <span class="status-badge ${statusClass}">${statusText}</span>
+                </div>
+                <div class="order-details">
+                    ${order.senderName ? `<div class="order-detail"><span class="order-detail-label">Sender:</span><span class="order-detail-value">${order.senderName}</span></div>` : ''}
+                    <div class="order-detail"><span class="order-detail-label">Pickup:</span><span class="order-detail-value">${order.pickupAddress}</span></div>
+                    <div class="order-detail"><span class="order-detail-label">Dropoff:</span><span class="order-detail-value">${order.dropoffAddress}</span></div>
+                    <div class="order-detail"><span class="order-detail-label">Item:</span><span class="order-detail-value">${order.itemDescription}</span></div>
+                    ${order.amount !== null ? `<div class="order-detail"><span class="order-detail-label">Amount:</span><span class="order-detail-value" style="font-weight: 700; color: var(--primary);">$${order.amount.toFixed(2)}</span></div>` : ''}
+                    ${order.acceptedBy ? `<div class="order-detail"><span class="order-detail-label">Agent:</span><span class="order-detail-value" style="font-weight: 600;">${order.acceptedBy}${agents[order.acceptedBy] ? ` (${agents[order.acceptedBy]})` : ''}</span></div>` : ''}
+                </div>
+                <div class="order-actions">
+                    ${role === 'delivery' ? `<label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-weight: 600;"><input type="checkbox" class="order-checkbox" data-id="${order.id}" ${selectedOrderIds.includes(order.id) ? 'checked' : ''}> Select</label>` : ''}
+                    <button class="btn-small btn-secondary view-details" data-id="${order.id}">View Details</button>
+                    ${role === 'delivery' ? renderActionButtons(order) : ''}
+                </div>
+            `;
+            card.querySelector('.view-details').addEventListener('click', () => openOrderDetails(order.id, role));
+            return card;
+        }
+
+        function renderActionButtons(order) {
+            if (order.status === 'pending') return `<button class="btn-small btn-success accept-order" data-id="${order.id}">Accept Order</button>`;
+            if (order.status === 'accepted') return `<button class="btn-small btn-success pickup-order" data-id="${order.id}">Mark Picked Up</button>`;
+            if (order.status === 'picked-up') return `<button class="btn-small btn-success deliver-order" data-id="${order.id}">Mark Delivered</button>`;
+            return '';
+        }
+
+        function handleOrderGridClick(e) {
+            if (e.target.classList.contains('accept-order')) openSetAmountModal(e.target.dataset.id);
+            else if (e.target.classList.contains('pickup-order')) updateOrderStatus(e.target.dataset.id, 'picked-up');
+            else if (e.target.classList.contains('deliver-order')) updateOrderStatus(e.target.dataset.id, 'delivered');
+        }
+
+        function openNewOrderModal() {
+            document.getElementById('new-order-modal').classList.add('active');
+            document.getElementById('new-order-form').reset();
+        }
+        function closeNewOrderModal() { document.getElementById('new-order-modal').classList.remove('active'); }
+
+        function openOrderDetails(orderId, role) {
+            const order = orders.find(o => o.id === orderId);
+            if (!order) return;
+            const content = document.getElementById('order-details-content');
+            const statusClass = `status-${order.status.replace(' ', '-')}`;
+            const statusText = order.status.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+
+            content.innerHTML = `
+                <div class="order-header"><span class="order-id">${order.id}</span><span class="status-badge ${statusClass}">${statusText}</span></div>
+                <div class="order-details">
+                    ${order.senderName ? `<div class="order-detail"><span class="order-detail-label">Sender:</span><span class="order-detail-value">${order.senderName}</span></div>` : ''}
+                    <div class="order-detail"><span class="order-detail-label">Pickup:</span><span class="order-detail-value">${order.pickupAddress}</span></div>
+                    <div class="order-detail"><span class="order-detail-label">Dropoff:</span><span class="order-detail-value">${order.dropoffAddress}</span></div>
+                    <div class="order-detail"><span class="order-detail-label">Item:</span><span class="order-detail-value">${order.itemDescription}</span></div>
+                    ${order.amount !== null ? `<div class="order-detail"><span class="order-detail-label">Amount:</span><span class="order-detail-value" style="font-weight: 700; color: var(--primary);">$${order.amount.toFixed(2)}</span></div>` : ''}
+                    ${order.acceptedBy ? `<div class="order-detail"><span class="order-detail-label">Agent:</span><span class="order-detail-value" style="font-weight: 600;">${order.acceptedBy}${agents[order.acceptedBy] ? ` (${agents[order.acceptedBy]})` : ''}</span></div>` : ''}
+                    <div class="order-detail"><span class="order-detail-label">Created:</span><span class="order-detail-value">${order.createdAt.toLocaleDateString()} at ${order.createdAt.toLocaleTimeString()}</span></div>
+                </div>
+                <div class="timeline">${renderTimeline(order)}</div>
+            `;
+            document.getElementById('order-details-modal').classList.add('active');
+
+            if (role === 'delivery') {
+                const timelineContainer = content.querySelector('.timeline');
+                if (order.status === 'pending') {
+                    const btn = document.createElement('button');
+                    btn.className = 'btn-small btn-success'; btn.textContent = 'Accept Order'; btn.style.marginTop = '1rem';
+                    btn.addEventListener('click', () => { closeOrderDetailsModal(); openSetAmountModal(order.id); });
+                    timelineContainer.appendChild(btn);
+                } else if (order.status === 'accepted') {
+                    const btn = document.createElement('button');
+                    btn.className = 'btn-small btn-success'; btn.textContent = 'Mark Picked Up'; btn.style.marginTop = '1rem';
+                    btn.addEventListener('click', () => { updateOrderStatus(order.id, 'picked-up'); closeOrderDetailsModal(); });
+                    timelineContainer.appendChild(btn);
+                } else if (order.status === 'picked-up') {
+                    const btn = document.createElement('button');
+                    btn.className = 'btn-small btn-success'; btn.textContent = 'Mark Delivered'; btn.style.marginTop = '1rem';
+                    btn.addEventListener('click', () => { updateOrderStatus(order.id, 'delivered'); closeOrderDetailsModal(); });
+                    timelineContainer.appendChild(btn);
+                }
+            }
+        }
+        function closeOrderDetailsModal() { document.getElementById('order-details-modal').classList.remove('active'); }
+
+        function renderTimeline(order) {
+            const steps = [
+                { label: 'Order Created', completed: true, time: order.createdAt },
+                { label: 'Order Accepted', completed: order.status !== 'pending', time: order.acceptedAt },
+                { label: 'Picked Up', completed: order.status === 'picked-up' || order.status === 'delivered', time: order.pickedUpAt },
+                { label: 'Delivered', completed: order.status === 'delivered', time: order.deliveredAt }
+            ];
+            return steps.map(step => `
+                <div class="timeline-item">
+                    <div class="timeline-dot ${step.completed ? 'completed' : ''}">${step.completed ? '✓' : ''}</div>
+                    <div class="timeline-content">
+                        <div class="timeline-title">${step.label}</div>
+                        <div class="timeline-date">${step.completed && step.time ? `${step.time.toLocaleDateString()} at ${step.time.toLocaleTimeString()}` : (step.completed ? 'Completed' : 'Pending')}</div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function handleNewOrder(e) {
+            e.preventDefault();
+            const newOrder = {
+                pickupAddress: document.getElementById('pickup-address').value,
+                dropoffAddress: document.getElementById('dropoff-address').value,
+                itemDescription: document.getElementById('item-description').value
+            };
+            const result = await emitWithAck('order:create', newOrder);
+            if (!result.ok) { alert(result.error || 'Failed to create order'); return; }
+            closeNewOrderModal();
+        }
+
+        async function updateOrderStatus(orderId, newStatus) {
+            const fields = { status: newStatus };
+            if (newStatus === 'picked-up') fields.pickedUpAt = new Date().toISOString();
+            if (newStatus === 'delivered') fields.deliveredAt = new Date().toISOString();
+            const result = await emitWithAck('order:update', { id: orderId, fields });
+            if (!result.ok) alert(result.error || 'Failed to update order');
+        }
+
+        function calculateAndRenderStats() {
+            const totalOrders = orders.length;
+            const deliveredCount = orders.filter(o => o.status === 'delivered').length;
+            const validAgents = Object.keys(agents);
+            const todayPartnerOrders = orders.filter(o => validAgents.includes(o.acceptedBy) && isToday(o.createdAt));
+            const todayAllOrders = orders.filter(o => isToday(o.createdAt));
+            const todayDelivered = todayPartnerOrders.filter(o => o.status === 'delivered').length;
+            const todayEarnings = todayPartnerOrders.filter(o => o.status === 'delivered').reduce((sum, o) => sum + (o.amount || 0), 0);
+            const todayInProgress = todayPartnerOrders.filter(o => o.status === 'accepted' || o.status === 'picked-up').length;
+
+            const totalOrdersDeliveryEl = document.getElementById('total-orders-delivery');
+            const totalEarningsEl = document.getElementById('total-earnings');
+            const deliveredOrdersDeliveryEl = document.getElementById('delivered-orders-delivery');
+            const inProgressOrdersEl = document.getElementById('in-progress-orders');
+            if (totalOrdersDeliveryEl) totalOrdersDeliveryEl.textContent = todayAllOrders.length;
+            if (totalEarningsEl) totalEarningsEl.textContent = `$${todayEarnings.toFixed(2)}`;
+            if (deliveredOrdersDeliveryEl) deliveredOrdersDeliveryEl.textContent = todayDelivered;
+            if (inProgressOrdersEl) inProgressOrdersEl.textContent = todayInProgress;
+        }
+
+        function isToday(date) {
+            const today = new Date();
+            const d = new Date(date);
+            return today.getFullYear() === d.getFullYear() && today.getMonth() === d.getMonth() && today.getDate() === d.getDate();
+        }
+    </script>
+</body>
+</html>
