@@ -398,6 +398,7 @@
                 </div>
                 <div class="quick-access-btns">
                     <button class="quick-access-btn primary" id="view-order-history-delivery">📊 Order History</button>
+                    <button class="quick-access-btn primary" id="open-monthly-report-btn">🗓️ Monthly Report</button>
                     <button class="quick-access-btn primary" id="add-expense-btn">💸 Add Expense</button>
                     <div class="user-info" id="user-info" style="margin: 0;">
                         <div class="user-avatar" id="user-avatar">A</div>
@@ -532,18 +533,63 @@
         </div>
     </div>
 
-    <!-- Bulk Delete Confirmation Modal (admin already authenticated — just confirm) -->
+    <!-- Monthly Report Modal -->
+    <div class="modal-overlay" id="monthly-report-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>🗓️ Monthly Report</h3>
+                <button class="close-btn" id="close-monthly-report-modal">&times;</button>
+            </div>
+            <p style="margin-bottom: 1.5rem; color: var(--slate-light);">Choose a month and year to generate a summary PDF covering every order and expense recorded in that month, with monthly totals.</p>
+            <div class="form-group">
+                <label class="form-label">Year</label>
+                <select class="form-input" id="monthly-report-year-select"></select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Month</label>
+                <select class="form-input" id="monthly-report-month-select">
+                    <option value="1">January</option>
+                    <option value="2">February</option>
+                    <option value="3">March</option>
+                    <option value="4">April</option>
+                    <option value="5">May</option>
+                    <option value="6">June</option>
+                    <option value="7">July</option>
+                    <option value="8">August</option>
+                    <option value="9">September</option>
+                    <option value="10">October</option>
+                    <option value="11">November</option>
+                    <option value="12">December</option>
+                </select>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-small btn-secondary" id="cancel-monthly-report">Cancel</button>
+                <button type="button" class="btn-small btn-success" id="generate-monthly-report-btn">📥 Download Monthly PDF</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bulk Delete Confirmation Modal -->
     <div class="modal-overlay" id="bulk-delete-modal">
         <div class="modal">
             <div class="modal-header">
                 <h3>🗑️ Bulk Delete Orders</h3>
                 <button class="close-btn" id="close-bulk-delete-modal">&times;</button>
             </div>
-            <p style="margin-bottom: 1.5rem;">Are you sure you want to delete <span id="bulk-delete-count">0</span> selected orders? This action cannot be undone.</p>
-            <div class="modal-footer">
-                <button type="button" class="btn-small btn-secondary" id="cancel-bulk-delete">Cancel</button>
-                <button type="button" class="btn-small btn-danger" id="confirm-bulk-delete">Delete Selected Orders</button>
-            </div>
+            <form id="bulk-delete-form">
+                <p style="margin-bottom: 1rem;">Are you sure you want to delete <span id="bulk-delete-count">0</span> selected orders? This action cannot be undone.</p>
+                <div class="form-group">
+                    <label class="form-label">Enter Password to Confirm</label>
+                    <input type="password" class="form-input" id="bulk-delete-password-input" placeholder="•••" required>
+                </div>
+                <div id="bulk-delete-password-error" style="color: #dc2626; font-size: 0.875rem; margin-bottom: 1rem; display: none;">
+                    Incorrect password!
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-small btn-secondary" id="cancel-bulk-delete">Cancel</button>
+                    <button type="submit" class="btn-small btn-danger">Delete Selected Orders</button>
+                </div>
+            </form>
         </div>
     </div>
 
@@ -575,18 +621,27 @@
         </div>
     </div>
 
-    <!-- Delete Expense Confirmation Modal (admin already authenticated — just confirm) -->
+    <!-- Delete Expense Confirmation Modal -->
     <div class="modal-overlay" id="delete-expense-modal">
         <div class="modal">
             <div class="modal-header">
                 <h3>🗑️ Delete Expense</h3>
                 <button class="close-btn" id="close-delete-expense-modal">&times;</button>
             </div>
-            <p style="margin-bottom: 1.5rem;" id="delete-expense-text">Are you sure you want to delete this expense?</p>
-            <div class="modal-footer">
-                <button type="button" class="btn-small btn-secondary" id="cancel-delete-expense">Cancel</button>
-                <button type="button" class="btn-small" style="background-color: #dc2626; color: white;" id="confirm-delete-expense">Delete Expense</button>
-            </div>
+            <form id="delete-expense-form">
+                <p style="margin-bottom: 1rem;" id="delete-expense-text">Are you sure you want to delete this expense?</p>
+                <div class="form-group">
+                    <label class="form-label">Enter Password to Confirm</label>
+                    <input type="password" class="form-input" id="delete-expense-password-input" placeholder="•••" required>
+                </div>
+                <div id="delete-expense-password-error" style="color: #dc2626; font-size: 0.875rem; margin-bottom: 1rem; display: none;">
+                    Incorrect password!
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-small btn-secondary" id="cancel-delete-expense">Cancel</button>
+                    <button type="submit" class="btn-small" style="background-color: #dc2626; color: white;">Delete Expense</button>
+                </div>
+            </form>
         </div>
     </div>
 
@@ -990,7 +1045,7 @@
 
             document.getElementById('close-delete-expense-modal').addEventListener('click', closeDeleteExpenseModal);
             document.getElementById('cancel-delete-expense').addEventListener('click', closeDeleteExpenseModal);
-            document.getElementById('confirm-delete-expense').addEventListener('click', handleDeleteExpenseConfirm);
+            document.getElementById('delete-expense-form').addEventListener('submit', handleDeleteExpenseSubmit);
 
             const selectAllCheckbox = document.getElementById('select-all-orders');
             selectAllCheckbox.addEventListener('change', (e) => {
@@ -1007,11 +1062,13 @@
                 if (selectedOrderIds.length === 0) { alert('Please select at least one order to delete'); return; }
                 pendingBulkDeleteIds = [...selectedOrderIds];
                 document.getElementById('bulk-delete-count').textContent = pendingBulkDeleteIds.length;
+                document.getElementById('bulk-delete-password-input').value = '';
+                document.getElementById('bulk-delete-password-error').style.display = 'none';
                 document.getElementById('bulk-delete-modal').classList.add('active');
             });
             document.getElementById('close-bulk-delete-modal').addEventListener('click', closeBulkDeleteModal);
             document.getElementById('cancel-bulk-delete').addEventListener('click', closeBulkDeleteModal);
-            document.getElementById('confirm-bulk-delete').addEventListener('click', handleBulkDeleteConfirm);
+            document.getElementById('bulk-delete-form').addEventListener('submit', handleBulkDeleteSubmit);
 
             document.getElementById('close-set-amount-modal').addEventListener('click', closeSetAmountModal);
             document.getElementById('cancel-set-amount').addEventListener('click', closeSetAmountModal);
@@ -1019,6 +1076,15 @@
 
             document.getElementById('view-order-history-delivery').addEventListener('click', openOrderHistoryModal);
             document.getElementById('close-order-history').addEventListener('click', closeOrderHistoryModal);
+
+            document.getElementById('open-monthly-report-btn').addEventListener('click', openMonthlyReportModal);
+            document.getElementById('close-monthly-report-modal').addEventListener('click', closeMonthlyReportModal);
+            document.getElementById('cancel-monthly-report').addEventListener('click', closeMonthlyReportModal);
+            document.getElementById('generate-monthly-report-btn').addEventListener('click', () => {
+                const year = parseInt(document.getElementById('monthly-report-year-select').value);
+                const month = parseInt(document.getElementById('monthly-report-month-select').value);
+                generateMonthlyReportPDF(year, month);
+            });
 
             document.getElementById('order-history-modal').addEventListener('change', (e) => {
                 if (e.target.id === 'oh-year-select') { selectedYear = parseInt(e.target.value); selectedMonth = 1; selectedDay = null; renderOrderHistoryToModal(); }
@@ -1074,34 +1140,62 @@
             if (expense) {
                 document.getElementById('delete-expense-text').textContent = `Are you sure you want to delete the expense: "${expense.description}" ($${expense.amount.toFixed(2)})?`;
             }
+            document.getElementById('delete-expense-password-input').value = '';
+            document.getElementById('delete-expense-password-error').style.display = 'none';
             document.getElementById('delete-expense-modal').classList.add('active');
         }
         function closeDeleteExpenseModal() {
             document.getElementById('delete-expense-modal').classList.remove('active');
             expenseIdToDelete = null;
         }
-        async function handleDeleteExpenseConfirm() {
-            const result = await emitWithAck('expense:delete', { id: expenseIdToDelete });
-            if (result.ok) closeDeleteExpenseModal();
-            else alert(result.error || 'Failed to delete expense');
+        async function handleDeleteExpenseSubmit(e) {
+            e.preventDefault();
+            const passwordInput = document.getElementById('delete-expense-password-input');
+            const errorEl = document.getElementById('delete-expense-password-error');
+            const result = await emitWithAck('expense:delete', { id: expenseIdToDelete, password: passwordInput.value });
+            if (result.ok) {
+                closeDeleteExpenseModal();
+            } else {
+                errorEl.textContent = result.error || 'Incorrect password!';
+                errorEl.style.display = 'block';
+                passwordInput.value = '';
+                passwordInput.focus();
+            }
         }
 
         // ---- Bulk delete ----
         function closeBulkDeleteModal() { document.getElementById('bulk-delete-modal').classList.remove('active'); }
-        async function handleBulkDeleteConfirm() {
-            const result = await emitWithAck('order:delete-bulk', { ids: pendingBulkDeleteIds });
+        async function handleBulkDeleteSubmit(e) {
+            e.preventDefault();
+            const passwordInput = document.getElementById('bulk-delete-password-input');
+            const errorEl = document.getElementById('bulk-delete-password-error');
+            const result = await emitWithAck('order:delete-bulk', { ids: pendingBulkDeleteIds, password: passwordInput.value });
             if (result.ok) {
                 selectedOrderIds = [];
                 document.getElementById('select-all-orders').checked = false;
                 closeBulkDeleteModal();
             } else {
-                alert(result.error || 'Failed to delete orders');
+                errorEl.textContent = result.error || 'Incorrect password!';
+                errorEl.style.display = 'block';
+                passwordInput.value = '';
+                passwordInput.focus();
             }
         }
 
         // ---- Order history (modal + main) ----
         function openOrderHistoryModal() { renderOrderHistoryToModal(); document.getElementById('order-history-modal').classList.add('active'); }
         function closeOrderHistoryModal() { document.getElementById('order-history-modal').classList.remove('active'); }
+
+        function openMonthlyReportModal() {
+            const yearSelect = document.getElementById('monthly-report-year-select');
+            const monthSelect = document.getElementById('monthly-report-month-select');
+            const allYears = getAllYears();
+            const now = new Date();
+            yearSelect.innerHTML = allYears.map(y => `<option value="${y}" ${y === now.getFullYear() ? 'selected' : ''}>${y}</option>`).join('');
+            monthSelect.value = String(now.getMonth() + 1);
+            document.getElementById('monthly-report-modal').classList.add('active');
+        }
+        function closeMonthlyReportModal() { document.getElementById('monthly-report-modal').classList.remove('active'); }
 
         function renderOrderHistoryToModal() {
             const container = document.getElementById('order-history-modal-content');
@@ -1482,6 +1576,134 @@
                 });
             }
             doc.save(`Verta-Delivery-Report-${dateKey}.pdf`);
+        }
+
+        // ---- Monthly Report PDF ----
+        // Reuses the same filtering/grouping helpers as the on-screen
+        // history view (filterByDate, groupByDay) so the numbers in this
+        // PDF always match what's shown in the app.
+        function generateMonthlyReportPDF(year, month) {
+            const monthOrders = filterByDate(orders, o => o.createdAt, year, month, null);
+            const monthExpenses = filterByDate(expenses, e => e.date, year, month, null);
+
+            const totalOrders = monthOrders.length;
+            const totalAmount = monthOrders.reduce((sum, o) => sum + (o.amount || 0), 0);
+            const totalExpenses = monthExpenses.reduce((sum, e) => sum + e.amount, 0);
+            const netAmount = totalAmount - totalExpenses;
+            const deliveredCount = monthOrders.filter(o => o.status === 'delivered').length;
+
+            const monthName = new Date(year, month - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            let yPosition = 20;
+            const pageMargin = 14;
+            const pageWidth = doc.internal.pageSize.getWidth();
+            const maxWidth = pageWidth - (pageMargin * 2);
+
+            doc.setFontSize(20); doc.setFont('helvetica', 'bold');
+            doc.text('Verta Delivery Service Monthly Report', pageWidth / 2, yPosition, { align: 'center' });
+            yPosition += 12;
+            doc.setFontSize(14); doc.text(monthName, pageWidth / 2, yPosition, { align: 'center' });
+            yPosition += 18;
+
+            // Monthly totals
+            doc.setFontSize(12); doc.setFont('helvetica', 'bold');
+            doc.text('Monthly Totals', pageMargin, yPosition); yPosition += 8;
+            doc.setFont('helvetica', 'normal');
+            doc.text(`• Total Orders: ${totalOrders}`, pageMargin, yPosition); yPosition += 7;
+            doc.text(`• Delivered Orders: ${deliveredCount}`, pageMargin, yPosition); yPosition += 7;
+            doc.text(`• Total Order Amount: $${totalAmount.toFixed(2)}`, pageMargin, yPosition); yPosition += 7;
+            doc.text(`• Total Expenses: $${totalExpenses.toFixed(2)}`, pageMargin, yPosition); yPosition += 7;
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(netAmount >= 0 ? 34 : 220, netAmount >= 0 ? 139 : 38, netAmount >= 0 ? 34 : 38);
+            doc.text(`• Net Amount: $${netAmount.toFixed(2)}`, pageMargin, yPosition);
+            doc.setTextColor(0, 0, 0); yPosition += 15;
+
+            // Agent summary — aggregated across the whole month
+            if (yPosition > 260) { doc.addPage(); yPosition = 20; }
+            doc.setFontSize(14); doc.setFont('helvetica', 'bold');
+            doc.text('Agent Summary (Whole Month)', pageMargin, yPosition); yPosition += 10;
+            doc.setFont('helvetica', 'normal'); doc.setFontSize(11);
+
+            const agentTotals = {};
+            monthOrders.forEach(order => {
+                if (!order.acceptedBy) return;
+                if (!agentTotals[order.acceptedBy]) agentTotals[order.acceptedBy] = { count: 0, amount: 0 };
+                agentTotals[order.acceptedBy].count += 1;
+                agentTotals[order.acceptedBy].amount += (order.amount || 0);
+            });
+            const agentNames = Object.keys(agentTotals);
+            if (agentNames.length === 0) {
+                doc.text('No orders were assigned to an agent this month.', pageMargin, yPosition);
+                yPosition += 7;
+            } else {
+                agentNames.forEach(name => {
+                    const t = agentTotals[name];
+                    doc.text(`• ${cleanText(name)}${agents[name] ? ` (${cleanText(agents[name])})` : ''}: ${t.count} orders, $${t.amount.toFixed(2)}`, pageMargin, yPosition);
+                    yPosition += 7;
+                    if (yPosition > 275) { doc.addPage(); yPosition = 20; }
+                });
+            }
+            yPosition += 8;
+
+            // Day-by-day breakdown, reusing the same rendering logic as the
+            // daily report so every order and expense in the month is
+            // itemized, not just summarized.
+            if (yPosition > 250) { doc.addPage(); yPosition = 20; }
+            doc.setFontSize(14); doc.setFont('helvetica', 'bold');
+            doc.text('Daily Breakdown', pageMargin, yPosition); yPosition += 10;
+            doc.setFont('helvetica', 'normal'); doc.setFontSize(10);
+
+            const groupedByDay = groupByDay(monthOrders, monthExpenses);
+            const sortedDates = Object.keys(groupedByDay).sort((a, b) => a.localeCompare(b));
+
+            if (sortedDates.length === 0) {
+                doc.text('No orders or expenses recorded this month.', pageMargin, yPosition);
+                yPosition += 7;
+            } else {
+                sortedDates.forEach(dateKey => {
+                    const dayData = groupedByDay[dateKey];
+                    const dayOrders = dayData.orders;
+                    const dayExpenses = dayData.expenses;
+                    const dayAmount = dayOrders.reduce((sum, o) => sum + (o.amount || 0), 0);
+                    const dayExpenseTotal = dayExpenses.reduce((sum, e) => sum + e.amount, 0);
+                    const dateObj = new Date(dateKey + 'T00:00:00');
+                    const formattedDay = dateObj.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+
+                    if (yPosition > 265) { doc.addPage(); yPosition = 20; }
+                    doc.setFont('helvetica', 'bold');
+                    doc.text(`${formattedDay} — Orders: ${dayOrders.length} ($${dayAmount.toFixed(2)})  Expenses: $${dayExpenseTotal.toFixed(2)}`, pageMargin, yPosition);
+                    yPosition += 7;
+                    doc.setFont('helvetica', 'normal');
+
+                    dayOrders.forEach(order => {
+                        const statusText = order.status.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+                        const line = `${order.id} — ${cleanText(order.senderName)} — ${cleanText(order.itemDescription)} — ${order.amount !== null ? '$' + order.amount.toFixed(2) : '-'} — ${statusText}${order.acceptedBy ? ' — ' + cleanText(order.acceptedBy) : ''}`;
+                        const wrapped = doc.splitTextToSize(line, maxWidth - 8);
+                        wrapped.forEach(w => {
+                            doc.text(w, pageMargin + 4, yPosition);
+                            yPosition += 5;
+                            if (yPosition > 275) { doc.addPage(); yPosition = 20; }
+                        });
+                    });
+
+                    dayExpenses.forEach(expense => {
+                        const line = `Expense — ${cleanText(expense.description)} — $${expense.amount.toFixed(2)}`;
+                        const wrapped = doc.splitTextToSize(line, maxWidth - 8);
+                        wrapped.forEach(w => {
+                            doc.text(w, pageMargin + 4, yPosition);
+                            yPosition += 5;
+                            if (yPosition > 275) { doc.addPage(); yPosition = 20; }
+                        });
+                    });
+
+                    yPosition += 4;
+                    if (yPosition > 275) { doc.addPage(); yPosition = 20; }
+                });
+            }
+
+            doc.save(`Verta-Delivery-Monthly-Report-${year}-${String(month).padStart(2, '0')}.pdf`);
         }
 
         // ---- Sender: their own orders ----

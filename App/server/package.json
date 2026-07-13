@@ -1,7 +1,7 @@
 {
   "name": "verta-delivery-server",
   "version": "1.0.0",
-  "description": "Realtime backend for Verta Delivery Service (Express + Socket.io + Postgres + JWT auth) on Railway",
+  "description": "Realtime backend for Verta Delivery Service (Express + Socket.io + Postgres + JWT auth + Twilio notifications) on Railway",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",

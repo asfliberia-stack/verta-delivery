@@ -139,3 +139,95 @@ options for local/TRAE dev:
   extension of the existing `users.role = 'admin'` model — just remove
   the `/api/auth/admin-login` shortcut and have admins register/log in
   like senders, with `role` set manually in the database.
+
+## Setting up WhatsApp/SMS notifications (new order alerts)
+
+Every time a sender places a new order, the server can now fire off an
+instant WhatsApp or SMS message to **+231881405696**. It's implemented in
+`server/notify.js` using Twilio's REST API directly (no extra npm
+dependency — just Node 18's built-in `fetch`).
+
+**Where to add your API keys:** `server/.env` (local) or your Railway
+service's **Variables** tab (production). Add these four:
+
+| Variable | What it is |
+|---|---|
+| `TWILIO_ACCOUNT_SID` | From your Twilio Console dashboard homepage |
+| `TWILIO_AUTH_TOKEN` | Same page, right below the Account SID |
+| `TWILIO_FROM_NUMBER` | The Twilio number (or WhatsApp sandbox number) you're sending *from* |
+| `NOTIFY_TO_NUMBER` | Already defaults to `+231881405696` — only set this if you want a different number |
+| `NOTIFY_CHANNEL` | `whatsapp` (default) or `sms` |
+
+**Nothing breaks if you skip this.** With no Twilio credentials set, the
+app just logs `[notify] Twilio credentials not set...` once at boot and
+silently skips sending — order creation, sync, everything else works
+exactly the same either way.
+
+### Step-by-step: getting it working
+
+1. **Create a Twilio account** at [twilio.com/try-twilio](https://www.twilio.com/try-twilio)
+   (free trial credit is enough to test this).
+2. On your Twilio Console dashboard, copy your **Account SID** and
+   **Auth Token** into `TWILIO_ACCOUNT_SID` / `TWILIO_AUTH_TOKEN`.
+3. **For WhatsApp (recommended first — works immediately, no approval wait):**
+   - Go to **Messaging → Try it out → Send a WhatsApp message** in the
+     Twilio Console. Twilio gives you a sandbox number (something like
+     `+1 415 523 8886`) and a join code (like `join happy-tiger`).
+   - Set `TWILIO_FROM_NUMBER=whatsapp:+14155238886` (use Twilio's actual
+     sandbox number, keep the `whatsapp:` prefix).
+   - From the WhatsApp number that should *receive* alerts
+     (+231881405696), send that join code as a WhatsApp message to the
+     Twilio sandbox number. This links your number to the sandbox — a
+     one-time step, required by WhatsApp/Meta, not optional.
+   - Leave `NOTIFY_CHANNEL=whatsapp`.
+4. **For plain SMS instead (simpler, no linking step, costs a bit per
+   message, works everywhere immediately):**
+   - Buy/use a Twilio phone number under **Phone Numbers** in the console.
+   - Set `TWILIO_FROM_NUMBER` to that number in E.164 format, e.g.
+     `+15551234567` (no `whatsapp:` prefix).
+   - Set `NOTIFY_CHANNEL=sms`.
+5. Restart the server (or redeploy on Railway). Place a test order as a
+   sender — you should get the message within a few seconds.
+6. **Going to production on WhatsApp:** the sandbox is fine for testing
+   but is rate-limited and requires that one-time join step per number.
+   For a permanent setup, apply for a WhatsApp Business sender through
+   Twilio's console (**Messaging → Senders → WhatsApp senders**) — this
+   removes the sandbox join-code requirement. This takes Meta a few days
+   to approve; SMS has no equivalent approval step.
+
+### What triggers a notification
+
+Right now, exactly one event: **a sender creates a new order**
+(`order:create` in `server/server.js`, wired to `notifyNewOrder()` in
+`server/notify.js`). The message includes the order ID, sender's business
+name, pickup/dropoff addresses, and item description. If you also want a
+notification when an order is *accepted* or *delivered*, that's a small
+addition to the `order:update` / `order:accept` handlers in
+`server/server.js` — say the word and I'll wire that in too.
+
+## Monthly Report PDF
+
+Alongside the existing daily report button, the admin dashboard now has a
+**🗓️ Monthly Report** button in the header. It opens a small dialog to
+pick a year and month, then generates a PDF (`generateMonthlyReportPDF` in
+`public/index.html`) containing:
+
+- Monthly totals (orders, delivered count, order amount, expenses, net)
+- An agent summary aggregated across the whole month
+- A day-by-day itemized breakdown of every order and expense in that
+  month, reusing the same date-filtering/grouping logic as the existing
+  Order History view — so the numbers always match what you see on screen.
+
+It's entirely additive: the original daily report button and its PDF
+format are untouched.
+
+## Restored: delete password ("SKY")
+
+Deleting a placed order (bulk delete) or a recorded expense now requires
+entering a password — defaults to **`SKY`**, overridable via
+`DELETE_PASSWORD` in `server/.env` / Railway Variables. This is enforced
+**server-side** in the Socket.io handlers (`order:delete-bulk`,
+`expense:delete` in `server/server.js`), not just hidden behind a UI
+prompt — so it can't be bypassed by calling the socket event directly.
+An empty or incorrect password blocks the deletion and shows an error in
+the same modal, letting you retry.

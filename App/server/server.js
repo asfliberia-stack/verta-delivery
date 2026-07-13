@@ -8,6 +8,7 @@ const http = require('http');
 const cors = require('cors');
 const { Server } = require('socket.io');
 const db = require('./db');
+const { notifyNewOrder } = require('./notify');
 const {
   hashPassword,
   comparePassword,
@@ -26,6 +27,11 @@ const PORT = process.env.PORT || 3000;
 const DEFAULT_ADMIN_EMAIL = 'admin@vertadelivery.com';
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || DEFAULT_ADMIN_EMAIL;
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '1Nigeria@';
+
+// Extra confirmation step for destructive actions (bulk order delete,
+// expense delete) — required on top of already being logged in as admin.
+// Matches the original app's behavior. Set DELETE_PASSWORD to override.
+const DELETE_PASSWORD = process.env.DELETE_PASSWORD || 'SKY';
 
 const app = express();
 app.use(cors());
@@ -83,6 +89,7 @@ io.on('connection', (socket) => {
       });
       orderRooms(order.senderId).forEach((r) => io.to(r).emit('order:created', order));
       ack && ack({ ok: true, order });
+      notifyNewOrder(order); // fire-and-forget — never blocks the order response
     } catch (err) {
       console.error('order:create failed', err);
       ack && ack({ ok: false, error: 'Failed to create order' });
@@ -122,9 +129,12 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on('order:delete-bulk', async ({ ids }, ack) => {
+  socket.on('order:delete-bulk', async ({ ids, password }, ack) => {
     if (socket.user.role !== 'admin') {
       return ack && ack({ ok: false, error: 'Only admins can delete orders' });
+    }
+    if (!password || password !== DELETE_PASSWORD) {
+      return ack && ack({ ok: false, error: 'Incorrect delete password' });
     }
     try {
       // Look up owning senders before deleting so we know which rooms to notify.
@@ -156,9 +166,12 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on('expense:delete', async ({ id }, ack) => {
+  socket.on('expense:delete', async ({ id, password }, ack) => {
     if (socket.user.role !== 'admin') {
       return ack && ack({ ok: false, error: 'Only admins can delete expenses' });
+    }
+    if (!password || password !== DELETE_PASSWORD) {
+      return ack && ack({ ok: false, error: 'Incorrect delete password' });
     }
     try {
       await db.deleteExpense(id);
