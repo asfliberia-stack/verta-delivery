@@ -231,3 +231,26 @@ entering a password — defaults to **`SKY`**, overridable via
 prompt — so it can't be bypassed by calling the socket event directly.
 An empty or incorrect password blocks the deletion and shows an error in
 the same modal, letting you retry.
+
+## Admin dashboard visual redesign
+
+The Admin/Delivery Agent dashboard now uses a sidebar layout (deep blue
+sidebar with Overview/Order History/Monthly Report/Add Expense nav, plus
+a light content area with a "Welcome back" header, stat cards, orders
+grid, and Agent Contacts) instead of the old top-header layout.
+
+This was a **styling/markup-only change**, scoped entirely to
+`#delivery-app` in `public/index.html`:
+- Every element ID your JS depends on (`user-name`, `user-avatar`,
+  `view-order-history-delivery`, `open-monthly-report-btn`,
+  `add-expense-btn`, `admin-logout-btn`, the stat card IDs, `orders-grouped-delivery`,
+  `agent-contacts-container`, `select-all-orders`, `delete-selected-btn`)
+  was preserved — only moved into the new sidebar/main-content markup.
+- All new CSS is prefixed with `#delivery-app`, so none of it can affect
+  the sender view, the auth screen, or any modal.
+- The old on-page "Order History" section was removed from view (it was
+  redundant with the Order History modal, which the sidebar nav item now
+  opens, same as before) — its container div is kept in the DOM
+  (`display:none`) purely so the existing render function has an element
+  to (harmlessly) target, with no JS changes required.
+- No backend, database, or business-logic files were touched.
