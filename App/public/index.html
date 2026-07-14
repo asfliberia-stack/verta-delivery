@@ -778,6 +778,39 @@
         }
 
         // ============================================================
+        // Local browser notifications (HTML5 Notification API) — purely
+        // client-side, session-only. No server involvement: nothing here
+        // calls an API or touches stored data.
+        // ============================================================
+        function requestNotificationPermission() {
+            if (!('Notification' in window)) {
+                console.log('[notify] This browser does not support the Notification API.');
+                return;
+            }
+            if (Notification.permission === 'default') {
+                Notification.requestPermission().catch(() => {
+                    // Some browsers reject the promise instead of resolving 'denied' —
+                    // either way, the app must keep working normally.
+                });
+            }
+        }
+
+        function sendLocalNotification(title, options = {}) {
+            if (!('Notification' in window)) return;
+            if (Notification.permission !== 'granted') return;
+            try {
+                new Notification(title, {
+                    icon: 'assets/logo.png',
+                    requireInteraction: false,
+                    ...options,
+                });
+            } catch (err) {
+                // Never let a notification failure break app flow.
+                console.error('[notify] Failed to show local notification', err);
+            }
+        }
+
+        // ============================================================
         // Auth state — persisted in localStorage so a refresh (or a new
         // tab/device) stays logged in without re-entering credentials.
         // ============================================================
@@ -854,6 +887,18 @@
                 if (!orders.some(o => o.id === normalized.id)) {
                     orders.unshift(normalized);
                     refreshAllViews();
+                    if (currentUser.role === 'admin') {
+                        sendLocalNotification('New Order Placed!', {
+                            body: `Pickup: ${normalized.pickupAddress}\nDropoff: ${normalized.dropoffAddress}`,
+                            requireInteraction: true, // stays on screen until an admin dismisses it
+                            tag: `order-created-${normalized.id}`,
+                        });
+                    } else {
+                        sendLocalNotification('Order Created', {
+                            body: `Your order ${normalized.id} was placed successfully.`,
+                            tag: `order-created-${normalized.id}`,
+                        });
+                    }
                 }
             });
 
@@ -862,6 +907,12 @@
                 const idx = orders.findIndex(o => o.id === normalized.id);
                 if (idx !== -1) orders[idx] = normalized; else orders.unshift(normalized);
                 refreshAllViews();
+                const statusText = normalized.status.split('-').map(w => w[0].toUpperCase() + w.slice(1)).join(' ');
+                sendLocalNotification(`Order ${statusText}`, {
+                    body: `${normalized.id} — ${normalized.pickupAddress} → ${normalized.dropoffAddress}`,
+                    requireInteraction: false,
+                    tag: `order-updated-${normalized.id}`,
+                });
             });
 
             socket.on('order:deleted', ({ ids }) => {
@@ -965,6 +1016,7 @@
         async function enterApp() {
             document.getElementById('auth-screen').style.display = 'none';
             connectSocket();
+            requestNotificationPermission();
             try {
                 const data = await apiFetch('/api/state');
                 orders = (data.orders || []).map(normalizeOrder);
@@ -1239,6 +1291,7 @@
             const result = await emitWithAck('expense:create', newExpense);
             if (!result.ok) { alert(result.error || 'Failed to add expense'); return; }
             closeAddExpenseModal();
+            sendLocalNotification('Expense Added', { body: `${newExpense.description} — $${newExpense.amount.toFixed(2)}` });
         }
 
         function deleteExpense(expenseId) {
@@ -1565,6 +1618,7 @@
             const result = await emitWithAck('order:accept', { id: currentAcceptingOrderId, amount, acceptedBy: selectedAgent });
             if (!result.ok) { alert(result.error || 'Failed to accept order'); return; }
             closeSetAmountModal();
+            sendLocalNotification('Order Accepted', { body: `Order ${currentAcceptingOrderId} has been accepted.` });
         }
 
         function cleanText(text) {
@@ -1985,6 +2039,7 @@
             const result = await emitWithAck('order:create', newOrder);
             if (!result.ok) { alert(result.error || 'Failed to create order'); return; }
             closeNewOrderModal();
+            sendLocalNotification('Order Submitted', { body: 'Your delivery request was sent.' });
         }
 
         async function updateOrderStatus(orderId, newStatus) {

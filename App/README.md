@@ -254,3 +254,26 @@ This was a **styling/markup-only change**, scoped entirely to
   (`display:none`) purely so the existing render function has an element
   to (harmlessly) target, with no JS changes required.
 - No backend, database, or business-logic files were touched.
+
+## Local browser notifications (client-side only)
+
+The dashboard now uses the browser's native Notification API to show
+on-screen alerts while a tab is open — no backend, database, or new
+dependency involved; it's entirely in `public/index.html`.
+
+- **Permission** is requested once, right when the dashboard loads after
+  login (`enterApp()` calls `requestNotificationPermission()`). If the
+  browser doesn't support notifications, or the user denies/ignores the
+  prompt, the app works exactly the same either way — every call goes
+  through `sendLocalNotification()`, which silently no-ops unless
+  permission is `'granted'`.
+- **New order alerts**: when `order:created` arrives over the socket,
+  admins get "New Order Placed!" (pickup/dropoff shown, stays on screen
+  until dismissed); senders get a lighter "Order Created" confirmation.
+- **Status changes**: `order:updated` shows a notification with the new
+  status (Accepted / Picked-up / Delivered) to whoever's screen it
+  reaches.
+- **Action confirmations**: accepting an order, adding an expense, and
+  submitting a new order each show a quick confirmation toast.
+- These are session-only, as required — closing the tab/browser ends
+  them; there's no service worker or push subscription involved.
