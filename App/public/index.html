@@ -2076,8 +2076,8 @@
                 </div>
                 <div class="order-details">
                     ${order.senderName ? `<div class="order-detail"><span class="order-detail-label">Sender:</span><span class="order-detail-value">${order.senderName}</span></div>` : ''}
-                    <div class="order-detail"><span class="order-detail-label">Pickup:</span><span class="order-detail-value">${order.pickupAddress}${order.pickedUpAt ? ` <span class="order-timestamp">- ${formatTime(order.pickedUpAt)} (Pickup time)</span>` : ''}</span></div>
-                    <div class="order-detail"><span class="order-detail-label">Dropoff:</span><span class="order-detail-value">${order.dropoffAddress}${order.deliveredAt ? ` <span class="order-timestamp">- ${formatTime(order.deliveredAt)} (Dropoff time)</span>` : ''}</span></div>
+                    <div class="order-detail"><span class="order-detail-label">Pickup:</span><span class="order-detail-value">${order.pickupAddress}${order.pickedUpAt ? ` <span class="order-timestamp">- ${formatTime(order.pickedUpAt)} (Pickup)</span>` : ''}</span></div>
+                    <div class="order-detail"><span class="order-detail-label">Dropoff:</span><span class="order-detail-value">${order.dropoffAddress}${order.deliveredAt ? ` <span class="order-timestamp">- ${formatTime(order.deliveredAt)} (Dropoff)</span>` : ''}</span></div>
                     <div class="order-detail"><span class="order-detail-label">Item:</span><span class="order-detail-value">${order.itemDescription}</span></div>
                     ${order.amount !== null ? `<div class="order-detail"><span class="order-detail-label">Amount:</span><span class="order-detail-value" style="font-weight: 700; color: var(--primary);">$${order.amount.toFixed(2)}</span></div>` : ''}
                     ${order.acceptedBy ? `<div class="order-detail"><span class="order-detail-label">Agent:</span><span class="order-detail-value" style="font-weight: 600;">${order.acceptedBy}${agents[order.acceptedBy] ? ` (${agents[order.acceptedBy]})` : ''}</span></div>` : ''}
