@@ -353,14 +353,16 @@
         #delivery-app .order-card:hover { transform: none; box-shadow: var(--shadow-md); }
         #delivery-app .order-card::before { display: none; }
 
-        /* ---- New: subtle order-date label + pickup/dropoff timestamps ---- */
+        /* ---- New: subtle order-sent time + pickup/dropoff timestamps ---- */
         #delivery-app .order-date-label,
         .order-date-label {
             color: var(--slate-light);
             font-size: 0.75rem;
             font-weight: 600;
-            margin-bottom: 0.25rem;
+            margin-bottom: 0.5rem;
             display: block;
+            width: 100%;
+            text-align: center;
         }
         .order-timestamp {
             color: var(--slate-light);
@@ -2067,11 +2069,9 @@
             const statusText = order.status.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
 
             card.innerHTML = `
+                <div class="order-date-label">${formatTime(order.createdAt)}</div>
                 <div class="order-header">
-                    <div>
-                        <span class="order-date-label">${formatShortDate(order.createdAt)}</span>
-                        <span class="order-id">${order.id}</span>
-                    </div>
+                    <span class="order-id">${order.id}</span>
                     <span class="status-badge ${statusClass}">${statusText}</span>
                 </div>
                 <div class="order-details">
