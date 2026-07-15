@@ -353,10 +353,87 @@
         #delivery-app .order-card:hover { transform: none; box-shadow: var(--shadow-md); }
         #delivery-app .order-card::before { display: none; }
 
+        /* ---- New: subtle order-date label + pickup/dropoff timestamps ---- */
+        #delivery-app .order-date-label,
+        .order-date-label {
+            color: var(--slate-light);
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+            display: block;
+        }
+        .order-timestamp {
+            color: var(--slate-light);
+            font-size: 0.8125rem;
+            font-weight: 600;
+        }
+
+        /* ---- New: sidebar toggle button + collapse transition ----
+           Guardrail-safe: purely additive layout/transition classes.
+           Default state = sidebar open (matches current behavior
+           exactly); nothing changes until the button is clicked. */
+        #delivery-app .admin-shell {
+            transition: grid-template-columns 0.3s ease-in-out;
+        }
+        #delivery-app .admin-shell.sidebar-collapsed {
+            grid-template-columns: 0px 1fr;
+        }
+        #delivery-app .admin-sidebar {
+            overflow: hidden;
+            transition: padding 0.3s ease-in-out, opacity 0.2s ease-in-out;
+        }
+        #delivery-app .admin-shell.sidebar-collapsed .admin-sidebar {
+            padding-left: 0; padding-right: 0; opacity: 0; pointer-events: none;
+        }
+        #delivery-app .sidebar-toggle-btn {
+            position: fixed;
+            top: 1.75rem;
+            left: 244px;
+            z-index: 60;
+            width: 2.75rem;
+            height: 2.75rem;
+            border-radius: 0.75rem;
+            display: flex; align-items: center; justify-content: center;
+            background: rgba(255,255,255,0.12);
+            border: 1px solid rgba(255,255,255,0.3);
+            color: white;
+            cursor: pointer;
+            transition: left 0.3s ease-in-out, background 0.2s, color 0.2s, border-color 0.2s;
+        }
+        #delivery-app .sidebar-toggle-btn:hover { background: rgba(255,255,255,0.22); }
+        #delivery-app .sidebar-toggle-btn svg { width: 20px; height: 20px; }
+        #delivery-app .admin-shell.sidebar-collapsed .sidebar-toggle-btn {
+            left: 1.25rem;
+            background: white;
+            color: var(--primary);
+            border-color: var(--border);
+            box-shadow: var(--shadow-md);
+        }
+
+        /* ---- New: scroll-reactive header (hide on scroll down, show on
+           scroll up). Sticky so the hide/show is visible during scroll;
+           existing header colors/typography are untouched — only
+           position + transform/opacity are added. ---- */
+        #delivery-app .admin-main > header {
+            position: sticky;
+            top: 0;
+            z-index: 40;
+            background: var(--bg-light);
+            transition: transform 0.3s ease-in-out, opacity 0.3s ease-in-out;
+            transform: translateY(0);
+            opacity: 1;
+        }
+        #delivery-app .admin-main > header.header-hidden {
+            transform: translateY(-120%);
+            opacity: 0;
+        }
+
         @media (max-width: 960px) {
             #delivery-app .admin-shell { grid-template-columns: 1fr; }
             #delivery-app .admin-sidebar { position: static; min-height: auto; }
             #delivery-app .admin-main { padding: 1.5rem; }
+            #delivery-app .sidebar-toggle-btn { left: auto; right: 1.25rem; }
+            #delivery-app .admin-shell.sidebar-collapsed .sidebar-toggle-btn { left: auto; right: 1.25rem; }
         }
     </style>
 </head>
@@ -477,7 +554,10 @@
 
     <!-- ============== ADMIN DASHBOARD (logged in as admin) ============== -->
     <div id="delivery-app" style="display: none;">
-        <div class="admin-shell">
+        <div class="admin-shell" id="admin-shell">
+            <button type="button" class="sidebar-toggle-btn" id="sidebar-toggle-btn" aria-label="Toggle sidebar">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+            </button>
             <aside class="admin-sidebar">
                 <div class="admin-sidebar-logo">
                     <img src="assets/logo.png" alt="Verta Delivery Service">
@@ -514,7 +594,7 @@
             </aside>
 
             <div class="admin-main">
-                <header>
+                <header id="admin-topbar">
                     <p class="admin-welcome-eyebrow">Welcome back,</p>
                     <h1 class="admin-welcome-title" id="user-name">Admin</h1>
                     <p class="admin-welcome-role">Admin</p>
@@ -769,6 +849,18 @@
             return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
         }
 
+        // Used for the subtle "Jul/15/26" label above the Order ID, and for
+        // the pickup/dropoff timestamps shown once those actions happen.
+        function formatShortDate(date) {
+            const d = new Date(date);
+            const month = d.toLocaleDateString('en-US', { month: 'short' });
+            const year = String(d.getFullYear()).slice(-2);
+            return `${month}/${d.getDate()}/${year}`;
+        }
+        function formatTime(date) {
+            return new Date(date).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+        }
+
         function debounce(fn, delayMs = 400) {
             let timer = null;
             return function debounced(...args) {
@@ -808,6 +900,43 @@
                 // Never let a notification failure break app flow.
                 console.error('[notify] Failed to show local notification', err);
             }
+        }
+
+        // ============================================================
+        // Admin dashboard: sidebar toggle + scroll-reactive header.
+        // Purely additive UI/layout behavior — no existing state,
+        // handlers, or business logic touched. Both are no-ops on the
+        // sender view since the elements they target only exist inside
+        // #delivery-app.
+        // ============================================================
+        let isSidebarOpen = true;
+
+        function setIsSidebarOpen(open) {
+            isSidebarOpen = open;
+            const shell = document.getElementById('admin-shell');
+            if (shell) shell.classList.toggle('sidebar-collapsed', !isSidebarOpen);
+        }
+
+        function wireSidebarToggle() {
+            const btn = document.getElementById('sidebar-toggle-btn');
+            if (!btn) return;
+            btn.addEventListener('click', () => setIsSidebarOpen(!isSidebarOpen));
+        }
+
+        let lastScrollY = window.scrollY;
+        function setupScrollReactiveHeader() {
+            window.addEventListener('scroll', () => {
+                if (!currentUser || currentUser.role !== 'admin') return;
+                const header = document.getElementById('admin-topbar');
+                if (!header) return;
+                const currentScrollY = window.scrollY;
+                if (currentScrollY > lastScrollY && currentScrollY > 80) {
+                    header.classList.add('header-hidden');
+                } else {
+                    header.classList.remove('header-hidden');
+                }
+                lastScrollY = currentScrollY;
+            }, { passive: true });
         }
 
         // ============================================================
@@ -988,6 +1117,8 @@
         document.addEventListener('DOMContentLoaded', async () => {
             wireAuthScreenEvents();
             wireAppEvents();
+            wireSidebarToggle();
+            setupScrollReactiveHeader();
 
             const stored = loadStoredAuth();
             if (stored && stored.token) {
@@ -1799,12 +1930,22 @@
                 doc.text('No orders were assigned to an agent this month.', pageMargin, yPosition);
                 yPosition += 7;
             } else {
+                const COMMISSION_RATE = 0.30;
+                let totalCommission = 0;
                 agentNames.forEach(name => {
                     const t = agentTotals[name];
-                    doc.text(`• ${cleanText(name)}${agents[name] ? ` (${cleanText(agents[name])})` : ''}: ${t.count} orders, $${t.amount.toFixed(2)}`, pageMargin, yPosition);
+                    const commission = t.amount * COMMISSION_RATE;
+                    totalCommission += commission;
+                    doc.text(`• ${cleanText(name)}${agents[name] ? ` (${cleanText(agents[name])})` : ''}: ${t.count} orders, $${t.amount.toFixed(2)} earned — 30% commission: $${commission.toFixed(2)}`, pageMargin, yPosition);
                     yPosition += 7;
                     if (yPosition > 275) { doc.addPage(); yPosition = 20; }
                 });
+                yPosition += 3;
+                if (yPosition > 275) { doc.addPage(); yPosition = 20; }
+                doc.setFont('helvetica', 'bold');
+                doc.text(`Grand Total Commission Payout (All Agents): $${totalCommission.toFixed(2)}`, pageMargin, yPosition);
+                doc.setFont('helvetica', 'normal');
+                yPosition += 7;
             }
             yPosition += 8;
 
@@ -1927,13 +2068,16 @@
 
             card.innerHTML = `
                 <div class="order-header">
-                    <span class="order-id">${order.id}</span>
+                    <div>
+                        <span class="order-date-label">${formatShortDate(order.createdAt)}</span>
+                        <span class="order-id">${order.id}</span>
+                    </div>
                     <span class="status-badge ${statusClass}">${statusText}</span>
                 </div>
                 <div class="order-details">
                     ${order.senderName ? `<div class="order-detail"><span class="order-detail-label">Sender:</span><span class="order-detail-value">${order.senderName}</span></div>` : ''}
-                    <div class="order-detail"><span class="order-detail-label">Pickup:</span><span class="order-detail-value">${order.pickupAddress}</span></div>
-                    <div class="order-detail"><span class="order-detail-label">Dropoff:</span><span class="order-detail-value">${order.dropoffAddress}</span></div>
+                    <div class="order-detail"><span class="order-detail-label">Pickup:</span><span class="order-detail-value">${order.pickupAddress}${order.pickedUpAt ? ` <span class="order-timestamp">- ${formatTime(order.pickedUpAt)} (Pickup time)</span>` : ''}</span></div>
+                    <div class="order-detail"><span class="order-detail-label">Dropoff:</span><span class="order-detail-value">${order.dropoffAddress}${order.deliveredAt ? ` <span class="order-timestamp">- ${formatTime(order.deliveredAt)} (Dropoff time)</span>` : ''}</span></div>
                     <div class="order-detail"><span class="order-detail-label">Item:</span><span class="order-detail-value">${order.itemDescription}</span></div>
                     ${order.amount !== null ? `<div class="order-detail"><span class="order-detail-label">Amount:</span><span class="order-detail-value" style="font-weight: 700; color: var(--primary);">$${order.amount.toFixed(2)}</span></div>` : ''}
                     ${order.acceptedBy ? `<div class="order-detail"><span class="order-detail-label">Agent:</span><span class="order-detail-value" style="font-weight: 600;">${order.acceptedBy}${agents[order.acceptedBy] ? ` (${agents[order.acceptedBy]})` : ''}</span></div>` : ''}

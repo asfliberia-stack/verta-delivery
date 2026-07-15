@@ -277,3 +277,32 @@ dependency involved; it's entirely in `public/index.html`.
   submitting a new order each show a quick confirmation toast.
 - These are session-only, as required — closing the tab/browser ends
   them; there's no service worker or push subscription involved.
+
+## Order timestamps, agent commissions, sidebar toggle & scroll header
+
+Four more additive, frontend-only updates (all in `public/index.html`):
+
+- **Order date label**: each order card now shows a subtle date (e.g.
+  "Jul/15/26") above the Order ID, styled to match existing typography —
+  not bold, not red.
+- **Pickup/dropoff timestamps**: once an order is marked Picked Up or
+  Delivered, the card shows "- 10:45 AM (Pickup time)" / "- 11:00 AM
+  (Dropoff time)" next to those fields. These use timestamps your app
+  was already capturing (`pickedUpAt`/`deliveredAt`) — no new state or
+  event handlers were added; existing ones just render more visibly.
+- **30% agent commission**: the Monthly Report PDF's "Agent Summary"
+  section now shows each agent's 30% commission next to their order
+  total, plus a "Grand Total Commission Payout (All Agents)" line at the
+  end of that section.
+- **Sidebar toggle**: a hamburger button (top-right of the sidebar, or
+  top-left of the main area once collapsed) collapses/expands the admin
+  sidebar with a smooth transition, and the main content area expands to
+  fill the freed space.
+- **Scroll-reactive header**: the "Welcome back" banner in the admin
+  view hides on scroll down and reappears on scroll up, both with a
+  smooth fade/slide.
+
+As before: no state variables, event handlers, or business logic were
+renamed or removed — everything above is new markup/CSS/JS added
+alongside what already existed. Verified the sender view and every modal
+are unaffected, and the backend files are untouched.
