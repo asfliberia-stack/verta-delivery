@@ -359,10 +359,8 @@
             color: var(--slate-light);
             font-size: 0.75rem;
             font-weight: 600;
-            margin-bottom: 0.5rem;
+            margin-bottom: 0.25rem;
             display: block;
-            width: 100%;
-            text-align: center;
         }
         .order-timestamp {
             color: var(--slate-light);
@@ -2069,9 +2067,11 @@
             const statusText = order.status.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
 
             card.innerHTML = `
-                <div class="order-date-label">${formatTime(order.createdAt)}</div>
                 <div class="order-header">
-                    <span class="order-id">${order.id}</span>
+                    <div>
+                        <span class="order-date-label">${formatTime(order.createdAt)}</span>
+                        <span class="order-id">${order.id}</span>
+                    </div>
                     <span class="status-badge ${statusClass}">${statusText}</span>
                 </div>
                 <div class="order-details">
