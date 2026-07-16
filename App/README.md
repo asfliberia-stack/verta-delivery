@@ -342,3 +342,36 @@ location-sharing client view (mobile Geolocation API), a DB table +
 Socket.io channel for live positions, and a map library with an API key.
 Ask if you want this scoped and built as its own project — it wasn't
 faked or stubbed in here.
+
+## My own addition: sender-side order cancellation
+
+While fixing the KPI math gap, I noticed there was still nowhere for a
+genuinely cancelled order to go — pending orders could be deleted by an
+admin, but a sender had no way to back out of an order they placed by
+mistake, and there was no "Cancelled" concept in the data at all. I
+added one.
+
+- **Senders** now see a "Cancel Order" button on their own orders, but
+  only while status is still `pending` (before any agent has accepted
+  it — cancelling something already in motion is an admin/ops decision,
+  not a self-service one). It appears both on the order card and inside
+  "View Details".
+- **Server-side enforcement** (`order:cancel` in `server/server.js`):
+  verifies the requester is a `sender`, owns the order, and that it's
+  still `pending` — all three checks happen before anything is written,
+  not just hidden in the UI.
+- **No database migration needed.** The `status` column was always a
+  plain `TEXT` field with no CHECK constraint (see `server/schema.sql`),
+  so `'cancelled'` is just a new value flowing through existing code —
+  nothing to migrate.
+- **Cancelled orders**: excluded from "Available Orders" (they're not
+  available) and from "Recent Deliveries" (they weren't delivered) —
+  they remain visible in Order History and the Monthly Report PDF, with
+  a new gray "CANCELLED" badge, for a complete record.
+- **KPI cards**: added a "Cancelled" count alongside Pending, so Total
+  now always equals Delivered + In Progress + Pending + Cancelled — no
+  more unaccounted orders under any circumstance.
+- Fixed a bug this surfaced: the order-details timeline previously
+  marked "Order Accepted" as complete for anything that wasn't
+  `pending` — which would have wrongly shown a checkmark for a
+  cancelled-while-pending order. Fixed to exclude cancelled explicitly.

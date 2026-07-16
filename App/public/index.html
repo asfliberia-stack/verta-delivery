@@ -156,6 +156,7 @@
         .status-accepted { background: #dbeafe; color: #1e40af; border: 1px solid #93c5fd; }
         .status-picked-up { background: #ddd6fe; color: #5b21b6; border: 1px solid #a78bfa; }
         .status-delivered { background: #d1fae5; color: #065f46; border: 1px solid #6ee7b7; }
+        .status-cancelled { background: #f3f4f6; color: #4b5563; border: 1px solid #d1d5db; }
 
         .order-details { margin-bottom: 1.25rem; }
         .order-detail { margin-bottom: 0.75rem; display: flex; gap: 0.75rem; align-items: flex-start; }
@@ -237,6 +238,7 @@
         .stat-card.success p { color: var(--secondary); }
         .stat-card.warning p { color: var(--accent); }
         .stat-card.pending p { color: var(--slate-light); }
+        .stat-card.cancelled p { color: #9ca3af; }
 
         .user-info { display: flex; align-items: center; gap: 1rem; }
         .user-avatar {
@@ -613,6 +615,7 @@
                         <div class="stat-card success"><h4>Delivered Orders</h4><p id="delivered-orders-delivery">0</p></div>
                         <div class="stat-card warning"><h4>In Progress</h4><p id="in-progress-orders">0</p></div>
                         <div class="stat-card pending"><h4>Pending Assignment</h4><p id="pending-orders-delivery">0</p></div>
+                        <div class="stat-card cancelled"><h4>Cancelled</h4><p id="cancelled-orders-delivery">0</p></div>
                     </div>
                 </section>
 
@@ -2080,12 +2083,13 @@
         }
 
         // ---- Admin: Available Orders — active/unassigned runs only.
-        // Delivered orders are excluded here (a "delivered" order isn't
-        // "available"); they show up in Recent Deliveries below instead.
+        // Delivered and cancelled orders are excluded here (neither is
+        // "available"); delivered ones show up in Recent Deliveries below,
+        // cancelled ones remain visible in Order History for the record.
         function renderOrdersDelivery() {
             const container = document.getElementById('orders-grouped-delivery');
             if (!container) return;
-            const activeOrders = orders.filter(o => o.status !== 'delivered');
+            const activeOrders = orders.filter(o => o.status !== 'delivered' && o.status !== 'cancelled');
             renderGroupedOrders(container, activeOrders, 'No available orders right now.');
         }
 
@@ -2125,6 +2129,7 @@
                     ${role === 'delivery' ? `<label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-weight: 600;"><input type="checkbox" class="order-checkbox" data-id="${order.id}" ${selectedOrderIds.includes(order.id) ? 'checked' : ''}> Select</label>` : ''}
                     <button class="btn-small btn-secondary view-details" data-id="${order.id}">View Details</button>
                     ${role === 'delivery' ? renderActionButtons(order) : ''}
+                    ${role === 'sender' && order.status === 'pending' ? `<button class="btn-small btn-danger cancel-order" data-id="${order.id}">Cancel Order</button>` : ''}
                 </div>
             `;
             card.querySelector('.view-details').addEventListener('click', () => openOrderDetails(order.id, role));
@@ -2142,6 +2147,15 @@
             if (e.target.classList.contains('accept-order')) openSetAmountModal(e.target.dataset.id);
             else if (e.target.classList.contains('pickup-order')) updateOrderStatus(e.target.dataset.id, 'picked-up');
             else if (e.target.classList.contains('deliver-order')) updateOrderStatus(e.target.dataset.id, 'delivered');
+            else if (e.target.classList.contains('cancel-order')) cancelOrder(e.target.dataset.id);
+        }
+
+        async function cancelOrder(orderId) {
+            if (!confirm('Cancel this order? This cannot be undone.')) return;
+            const result = await emitWithAck('order:cancel', { id: orderId });
+            if (!result.ok) { alert(result.error || 'Failed to cancel order'); return; }
+            sendLocalNotification('Order Cancelled', { body: `Order ${orderId} was cancelled.` });
+            // order:updated broadcast (received by this tab too) updates the views.
         }
 
         function openNewOrderModal() {
@@ -2190,6 +2204,12 @@
                     btn.addEventListener('click', () => { updateOrderStatus(order.id, 'delivered'); closeOrderDetailsModal(); });
                     timelineContainer.appendChild(btn);
                 }
+            } else if (role === 'sender' && order.status === 'pending') {
+                const timelineContainer = content.querySelector('.timeline');
+                const btn = document.createElement('button');
+                btn.className = 'btn-small btn-danger'; btn.textContent = 'Cancel Order'; btn.style.marginTop = '1rem';
+                btn.addEventListener('click', () => { closeOrderDetailsModal(); cancelOrder(order.id); });
+                timelineContainer.appendChild(btn);
             }
         }
         function closeOrderDetailsModal() { document.getElementById('order-details-modal').classList.remove('active'); }
@@ -2197,7 +2217,7 @@
         function renderTimeline(order) {
             const steps = [
                 { label: 'Order Created', completed: true, time: order.createdAt },
-                { label: 'Order Accepted', completed: order.status !== 'pending', time: order.acceptedAt },
+                { label: 'Order Accepted', completed: order.status !== 'pending' && order.status !== 'cancelled', time: order.acceptedAt },
                 { label: 'Picked Up', completed: order.status === 'picked-up' || order.status === 'delivered', time: order.pickedUpAt },
                 { label: 'Delivered', completed: order.status === 'delivered', time: order.deliveredAt }
             ];
@@ -2245,19 +2265,22 @@
             // Orders not yet assigned to any agent — previously uncounted
             // anywhere, which is why Total could look bigger than
             // Delivered + In Progress. Now every "today" order lands in
-            // exactly one of Delivered / In Progress / Pending.
+            // exactly one of Delivered / In Progress / Pending / Cancelled.
             const todayPending = todayAllOrders.filter(o => o.status === 'pending').length;
+            const todayCancelled = todayAllOrders.filter(o => o.status === 'cancelled').length;
 
             const totalOrdersDeliveryEl = document.getElementById('total-orders-delivery');
             const totalEarningsEl = document.getElementById('total-earnings');
             const deliveredOrdersDeliveryEl = document.getElementById('delivered-orders-delivery');
             const inProgressOrdersEl = document.getElementById('in-progress-orders');
             const pendingOrdersDeliveryEl = document.getElementById('pending-orders-delivery');
+            const cancelledOrdersDeliveryEl = document.getElementById('cancelled-orders-delivery');
             if (totalOrdersDeliveryEl) totalOrdersDeliveryEl.textContent = todayAllOrders.length;
             if (totalEarningsEl) totalEarningsEl.textContent = `$${todayEarnings.toFixed(2)}`;
             if (deliveredOrdersDeliveryEl) deliveredOrdersDeliveryEl.textContent = todayDelivered;
             if (inProgressOrdersEl) inProgressOrdersEl.textContent = todayInProgress;
             if (pendingOrdersDeliveryEl) pendingOrdersDeliveryEl.textContent = todayPending;
+            if (cancelledOrdersDeliveryEl) cancelledOrdersDeliveryEl.textContent = todayCancelled;
         }
 
         function isToday(date) {

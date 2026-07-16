@@ -96,6 +96,28 @@ io.on('connection', (socket) => {
     }
   });
 
+  socket.on('order:cancel', async ({ id }, ack) => {
+    if (socket.user.role !== 'sender') {
+      return ack && ack({ ok: false, error: 'Only the sender who placed an order can cancel it' });
+    }
+    try {
+      const existing = await db.getOrder(id);
+      if (!existing) return ack && ack({ ok: false, error: 'Order not found' });
+      if (existing.senderId !== socket.user.id) {
+        return ack && ack({ ok: false, error: 'You can only cancel your own orders' });
+      }
+      if (existing.status !== 'pending') {
+        return ack && ack({ ok: false, error: 'Only pending orders (not yet accepted by an agent) can be cancelled' });
+      }
+      const order = await db.updateOrder(id, { status: 'cancelled' });
+      orderRooms(order.senderId).forEach((r) => io.to(r).emit('order:updated', order));
+      ack && ack({ ok: true, order });
+    } catch (err) {
+      console.error('order:cancel failed', err);
+      ack && ack({ ok: false, error: 'Failed to cancel order' });
+    }
+  });
+
   socket.on('order:update', async ({ id, fields }, ack) => {
     if (socket.user.role !== 'admin') {
       return ack && ack({ ok: false, error: 'Only admins can update orders' });
