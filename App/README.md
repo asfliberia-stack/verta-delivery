@@ -412,3 +412,70 @@ just means "rename" isn't retroactive. If you want agent assignment to
 be a real foreign-key reference instead (so renames propagate
 everywhere), that's a bigger, separate migration — say so if you want
 it scoped.
+
+## 2026 admin dashboard modernization pass
+
+A full visual refresh of the Admin Dashboard (`#delivery-app`), done as
+a **re-skin, not a rebuild**: every existing class name, element ID,
+and JS function stayed exactly as it was — only CSS values changed for
+the admin-scoped redesign, so no HTML/JS updates were needed for the
+layout/color/typography work itself. Everything else (a few genuinely
+new, additive pieces) is called out below.
+
+### What changed and why
+
+- **Palette shift**: the sidebar moved from a bright indigo gradient to
+  a deep slate/graphite neutral (`#0f172a → #1e293b`), with the brand
+  indigo now reserved as the single high-intent color for actions —
+  active nav item, buttons, links, focus rings — rather than used as a
+  background. This only affects the admin dashboard; the sender view
+  keeps its original indigo header untouched.
+- **Typography**: admin dashboard headers/body now use Inter
+  specifically (already loaded via Google Fonts), with a tighter,
+  more restrained scale — the old all-caps 2.5rem "VERTA DELIVERY
+  SERVICES" became a normal-case 1.875rem heading with a small pill
+  badge for the role, closer to how Linear/Vercel/Stripe-style
+  dashboards present a page title.
+- **KPI cards**: added a small icon per metric, removed the heavy top
+  accent bar, softened to a single subtle shadow (`--admin-shadow-xs`)
+  instead of a border, refined the number/label hierarchy.
+- **Order cards**: removed the colored top accent bar, borders softened,
+  status badges now show a small dot indicator inline with the text.
+- **Section labels** ("Today's Snapshot" etc.): switched from centered,
+  loud, bold text to a left-aligned uppercase micro-label — much less
+  "shouty," consistent with enterprise dashboard conventions.
+
+### New, additive pieces (real interaction/feedback upgrades)
+
+- **Toast notifications** (`showToast(message, type)` + `#toast-container`):
+  replaces every `alert()` call in the app (6 of them) with a
+  non-blocking, styled toast — same underlying messages, modern
+  presentation. Available app-wide (sender + admin), not just admin.
+- **Loading skeleton**: the dashboard shell now appears immediately on
+  login, with shimmering placeholder cards while `/api/state` loads,
+  instead of a blank gap.
+- **Empty states**: "No orders yet" / "No available orders" etc. now
+  render as a centered icon + message block (`renderEmptyState()`)
+  instead of a plain line of gray text.
+- **Explicit interaction states, app-wide** (not just admin): every
+  button variant now has real `:hover`, `:active`, `:focus-visible`
+  (keyboard-navigation outline), and `:disabled` styling — several of
+  these states didn't exist before (e.g. `.btn-secondary`/`.btn-danger`
+  had no disabled style at all). Checkboxes and their labels now meet
+  the 44×44px minimum touch target.
+- **Responsive**: existing sidebar collapse/toggle and mobile breakpoint
+  behavior carried over unchanged — verified the new grid/shadow/token
+  values don't break it at the same breakpoints as before.
+
+### On "utility-based Tailwind CSS"
+
+This app is plain HTML/CSS/JS with no build step or framework — there's
+no React/Vue component tree to refactor into. Rather than pull in
+Tailwind's CDN JIT compiler (which Tailwind's own docs say not to use in
+production: it recompiles styles in the browser on every load), I used
+strictly-scoped, namespaced CSS custom properties instead
+(`#delivery-app { --admin-*: ...; }`), which gives the same
+"utility/token-driven, no accidental leakage" outcome appropriate for
+this stack. If you do move to a bundled frontend (Vite + React/Vue) down
+the line, these tokens map directly onto a Tailwind config's `theme.extend.colors`
+almost 1:1 — happy to do that migration as its own project.

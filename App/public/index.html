@@ -163,16 +163,53 @@
         .order-detail-label { font-weight: 700; min-width: 110px; color: var(--slate-light); font-size: 0.875rem; }
         .order-detail-value { flex: 1; color: var(--slate); font-size: 0.9375rem; }
 
+        .order-date-label {
+            color: var(--slate-light);
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+            display: block;
+        }
+        .order-timestamp {
+            color: var(--slate-light);
+            font-size: 0.8125rem;
+            font-weight: 600;
+        }
+
         .order-actions { display: flex; gap: 0.625rem; flex-wrap: wrap; padding-top: 0.5rem; border-top: 1px solid var(--border); margin-top: 1rem; }
 
-        .btn-small { padding: 0.625rem 1.25rem; border: none; border-radius: 0.75rem; font-size: 0.875rem; font-weight: 700; cursor: pointer; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); letter-spacing: 0.01em; }
+        .btn-small {
+            padding: 0.625rem 1.25rem; min-height: 44px; display: inline-flex; align-items: center; justify-content: center;
+            border: none; border-radius: 0.75rem; font-size: 0.875rem; font-weight: 700; cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); letter-spacing: 0.01em;
+        }
         .btn-secondary { background: var(--slate); color: white; box-shadow: 0 2px 8px rgba(30, 41, 59, 0.3); }
         .btn-secondary:hover { background: #334155; transform: translateY(-2px); box-shadow: 0 6px 16px rgba(30, 41, 59, 0.4); }
+        .btn-secondary:active { transform: translateY(0); }
+        .btn-secondary:disabled { opacity: 0.6; cursor: not-allowed; transform: none; box-shadow: none; }
         .btn-success { background: linear-gradient(135deg, var(--secondary) 0%, #059669 100%); color: white; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3); }
         .btn-success:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(16, 185, 129, 0.4); }
+        .btn-success:active { transform: translateY(0); }
         .btn-success:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
         .btn-danger { background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white; box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3); }
         .btn-danger:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(239, 68, 68, 0.4); }
+        .btn-danger:active { transform: translateY(0); }
+        .btn-danger:disabled { opacity: 0.6; cursor: not-allowed; transform: none; box-shadow: none; }
+
+        .btn-primary:focus-visible,
+        .btn-secondary:focus-visible,
+        .btn-success:focus-visible,
+        .btn-danger:focus-visible,
+        .close-btn:focus-visible,
+        .form-input:focus-visible,
+        .auth-tab:focus-visible,
+        .mode-toggle button:focus-visible,
+        input[type="checkbox"]:focus-visible {
+            outline: 2px solid var(--primary);
+            outline-offset: 2px;
+        }
+        input[type="checkbox"] { min-width: 20px; min-height: 20px; }
+        label:has(> input[type="checkbox"]) { min-height: 44px; display: inline-flex; align-items: center; }
 
         .modal-overlay {
             display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
@@ -257,6 +294,32 @@
         #connection-status.online { background: #d1fae5; color: #065f46; border: 1px solid #6ee7b7; }
         #connection-status.offline { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
 
+        /* Toast notifications — replaces native alert() for a modern,
+           non-blocking feedback pattern. Used app-wide (sender + admin). */
+        #toast-container {
+            position: fixed; bottom: 1.5rem; left: 50%; transform: translateX(-50%);
+            z-index: 3000; display: flex; flex-direction: column; gap: 0.625rem;
+            width: 100%; max-width: 420px; padding: 0 1rem; pointer-events: none;
+        }
+        .toast {
+            display: flex; align-items: flex-start; gap: 0.625rem;
+            background: #1e293b; color: white;
+            padding: 0.875rem 1.125rem; border-radius: 0.875rem;
+            box-shadow: 0 12px 32px rgba(15, 23, 42, 0.25);
+            font-size: 0.875rem; font-weight: 600; line-height: 1.4;
+            animation: toast-in 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            pointer-events: auto;
+        }
+        .toast.toast-leaving { animation: toast-out 0.2s ease forwards; }
+        .toast svg { width: 18px; height: 18px; flex-shrink: 0; margin-top: 0.0625rem; }
+        .toast.toast-error { background: #7f1d1d; }
+        .toast.toast-error svg { color: #fca5a5; }
+        .toast.toast-success { background: #064e3b; }
+        .toast.toast-success svg { color: #6ee7b7; }
+        .toast.toast-info svg { color: #93c5fd; }
+        @keyframes toast-in { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes toast-out { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(8px); } }
+
         /* Auth screen */
         #auth-screen { max-width: 480px; margin: 4rem auto; padding: 0 1.5rem; }
         .auth-card { background: white; border-radius: 1.5rem; box-shadow: var(--shadow-lg); border: 1px solid var(--border); padding: 2.5rem; }
@@ -277,158 +340,251 @@
         .mode-toggle button.active { border-color: var(--primary); color: var(--primary); background: #eef2ff; }
 
         /* ============================================================
-           Admin/Delivery Agent dashboard redesign — SCOPED ENTIRELY
-           under #delivery-app. Nothing here can affect the sender view
-           (#home-screen), the auth screen, or any modal, since every
-           selector below starts with #delivery-app. No IDs referenced
-           by JS were removed or renamed — only wrapped in new markup
-           and restyled.
+           Admin Dashboard — 2026 modernization pass. SCOPED ENTIRELY
+           under #delivery-app (or explicitly admin-* prefixed classes).
+           Nothing here touches the sender view, auth screen, or modals.
+
+           Every class name below is UNCHANGED from before this pass —
+           this is a re-skin, not a rebuild: same HTML structure, same
+           element IDs, same JS. Only CSS values changed, so no
+           JS/handler updates were needed for this part.
+
+           Palette shift (intentional, per the design brief): the
+           sidebar moves from a bright indigo gradient to a deep
+           slate/graphite neutral, with the brand indigo (--primary)
+           reserved as the single high-intent color for actions
+           (active nav, buttons, links, focus rings) rather than used
+           as a background. This only affects the admin dashboard —
+           the sender view keeps its original indigo header.
            ============================================================ */
-        #delivery-app { background: var(--bg-light); min-height: 100vh; }
+        #delivery-app {
+            --admin-bg: #f8fafc;
+            --admin-surface: #ffffff;
+            --admin-surface-alt: #f1f5f9;
+            --admin-border: #e2e8f0;
+            --admin-border-strong: #cbd5e1;
+            --admin-text: #0f172a;
+            --admin-text-secondary: #64748b;
+            --admin-text-tertiary: #94a3b8;
+            --admin-sidebar-from: #0f172a;
+            --admin-sidebar-to: #1e293b;
+            --admin-sidebar-text: #94a3b8;
+            --admin-sidebar-text-hover: #e2e8f0;
+            --admin-shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.04);
+            --admin-shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.06), 0 1px 2px rgba(15, 23, 42, 0.04);
+            --admin-shadow-md: 0 4px 16px rgba(15, 23, 42, 0.08);
+            --admin-shadow-lg: 0 16px 40px rgba(15, 23, 42, 0.12);
+            --admin-radius-lg: 1rem;
+            --admin-radius-md: 0.75rem;
+            --admin-radius-sm: 0.5rem;
+            background: var(--admin-bg);
+            min-height: 100vh;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            -webkit-font-smoothing: antialiased;
+        }
+        #delivery-app h1, #delivery-app h2, #delivery-app h3, #delivery-app h4 {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            letter-spacing: -0.01em;
+        }
         #delivery-app .admin-shell {
             display: grid;
-            grid-template-columns: 280px 1fr;
+            grid-template-columns: 272px 1fr;
             min-height: 100vh;
             align-items: start;
+            transition: grid-template-columns 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
+        #delivery-app .admin-shell.sidebar-collapsed { grid-template-columns: 0px 1fr; }
 
         /* ---- Sidebar ---- */
         #delivery-app .admin-sidebar {
-            background: linear-gradient(180deg, #1e2a78 0%, #16205c 100%);
+            background: linear-gradient(180deg, var(--admin-sidebar-from) 0%, var(--admin-sidebar-to) 100%);
             min-height: 100vh;
-            padding: 2rem 1.5rem;
+            padding: 1.75rem 1.25rem;
             display: flex;
             flex-direction: column;
             position: sticky;
             top: 0;
-        }
-        #delivery-app .admin-sidebar-logo { margin-bottom: 2.5rem; }
-        #delivery-app .admin-sidebar-logo img { height: 48px; max-width: 100%; object-fit: contain; }
-        #delivery-app .admin-nav { display: flex; flex-direction: column; gap: 0.5rem; }
-        #delivery-app .admin-nav-item {
-            display: flex; align-items: center; gap: 0.875rem;
-            padding: 0.875rem 1.125rem; border-radius: 0.875rem;
-            color: rgba(255,255,255,0.75); font-weight: 600; font-size: 0.9375rem;
-            background: transparent; border: none; cursor: pointer; text-align: left;
-            transition: all 0.2s; width: 100%;
-        }
-        #delivery-app .admin-nav-item:hover { background: rgba(255,255,255,0.08); color: white; }
-        #delivery-app .admin-nav-item.active {
-            background: var(--primary); color: white;
-            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.35);
-            cursor: default;
-        }
-        #delivery-app .admin-nav-item.active:hover { background: var(--primary); }
-        #delivery-app .admin-nav-item svg { width: 20px; height: 20px; flex-shrink: 0; }
-        #delivery-app .admin-sidebar-spacer { flex: 1; }
-        #delivery-app .admin-sidebar-footer {
-            margin-top: 2rem; padding-top: 1.5rem;
-            border-top: 1px solid rgba(255,255,255,0.12);
-            display: flex; flex-direction: column; gap: 1rem;
-        }
-        #delivery-app .admin-profile { display: flex; align-items: center; gap: 0.75rem; padding: 0 0.25rem; }
-        #delivery-app .admin-profile .user-avatar {
-            width: 2.5rem; height: 2.5rem; border-radius: 50%;
-            background: rgba(255,255,255,0.15); color: white;
-            display: flex; align-items: center; justify-content: center;
-            font-weight: 800; border: 2px solid rgba(255,255,255,0.25); flex-shrink: 0;
-        }
-        #delivery-app .admin-profile-label { color: white; font-weight: 700; font-size: 0.9375rem; }
-        #delivery-app .admin-logout { color: rgba(255,255,255,0.75); }
-        #delivery-app .admin-logout:hover { background: rgba(255,255,255,0.08); color: white; }
-
-        /* ---- Main content ---- */
-        #delivery-app .admin-main { padding: 2.5rem 3rem; max-width: 1400px; }
-        #delivery-app .admin-welcome-eyebrow { color: var(--slate-light); font-size: 1.0625rem; margin-bottom: 0.25rem; }
-        #delivery-app .admin-welcome-title {
-            font-size: 2.5rem; font-weight: 800; color: var(--slate);
-            letter-spacing: -0.02em; margin-bottom: 0.375rem; text-transform: uppercase;
-        }
-        #delivery-app .admin-welcome-role { color: var(--primary); font-weight: 700; font-size: 1.0625rem; }
-        #delivery-app .admin-section-label {
-            text-align: center; font-size: 1.25rem; font-weight: 700;
-            color: var(--slate); margin: 2rem 0 1.25rem;
-        }
-        #delivery-app .stat-card { border: 1px solid var(--border); box-shadow: none; }
-        #delivery-app .stat-card::before { display: none; }
-        #delivery-app .stat-card:hover { transform: none; box-shadow: var(--shadow-sm); }
-        #delivery-app .order-card { border: 1px solid var(--border); box-shadow: none; }
-        #delivery-app .order-card:hover { transform: none; box-shadow: var(--shadow-md); }
-        #delivery-app .order-card::before { display: none; }
-
-        /* ---- New: subtle order-sent time + pickup/dropoff timestamps ---- */
-        #delivery-app .order-date-label,
-        .order-date-label {
-            color: var(--slate-light);
-            font-size: 0.75rem;
-            font-weight: 600;
-            margin-bottom: 0.25rem;
-            display: block;
-        }
-        .order-timestamp {
-            color: var(--slate-light);
-            font-size: 0.8125rem;
-            font-weight: 600;
-        }
-
-        /* ---- New: sidebar toggle button + collapse transition ----
-           Guardrail-safe: purely additive layout/transition classes.
-           Default state = sidebar open (matches current behavior
-           exactly); nothing changes until the button is clicked. */
-        #delivery-app .admin-shell {
-            transition: grid-template-columns 0.3s ease-in-out;
-        }
-        #delivery-app .admin-shell.sidebar-collapsed {
-            grid-template-columns: 0px 1fr;
-        }
-        #delivery-app .admin-sidebar {
             overflow: hidden;
             transition: padding 0.3s ease-in-out, opacity 0.2s ease-in-out;
         }
         #delivery-app .admin-shell.sidebar-collapsed .admin-sidebar {
             padding-left: 0; padding-right: 0; opacity: 0; pointer-events: none;
         }
+        #delivery-app .admin-sidebar-logo { margin-bottom: 2rem; padding: 0 0.5rem; }
+        #delivery-app .admin-sidebar-logo img { height: 42px; max-width: 100%; object-fit: contain; }
+        #delivery-app .admin-nav { display: flex; flex-direction: column; gap: 0.25rem; }
+        #delivery-app .admin-nav-item {
+            display: flex; align-items: center; gap: 0.75rem;
+            min-height: 44px;
+            padding: 0.625rem 0.875rem; border-radius: var(--admin-radius-sm);
+            color: var(--admin-sidebar-text); font-weight: 600; font-size: 0.875rem;
+            background: transparent; border: none; cursor: pointer; text-align: left;
+            transition: background 0.15s ease, color 0.15s ease; width: 100%;
+        }
+        #delivery-app .admin-nav-item:hover { background: rgba(255,255,255,0.06); color: var(--admin-sidebar-text-hover); }
+        #delivery-app .admin-nav-item:focus-visible {
+            outline: 2px solid var(--primary); outline-offset: 2px;
+            background: rgba(255,255,255,0.06); color: var(--admin-sidebar-text-hover);
+        }
+        #delivery-app .admin-nav-item.active {
+            background: var(--primary); color: white;
+            box-shadow: 0 2px 8px rgba(99, 102, 241, 0.4);
+            cursor: default;
+        }
+        #delivery-app .admin-nav-item.active:hover { background: var(--primary); }
+        #delivery-app .admin-nav-item svg { width: 18px; height: 18px; flex-shrink: 0; }
+        #delivery-app .admin-sidebar-spacer { flex: 1; }
+        #delivery-app .admin-sidebar-footer {
+            margin-top: 1.5rem; padding-top: 1.25rem;
+            border-top: 1px solid rgba(255,255,255,0.08);
+            display: flex; flex-direction: column; gap: 0.25rem;
+        }
+        #delivery-app .admin-profile { display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem 0.875rem; }
+        #delivery-app .admin-profile .user-avatar {
+            width: 2.25rem; height: 2.25rem; border-radius: 50%;
+            background: var(--primary); color: white;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 700; font-size: 0.9375rem; border: none; flex-shrink: 0;
+        }
+        #delivery-app .admin-profile-label { color: white; font-weight: 600; font-size: 0.875rem; }
+        #delivery-app .admin-logout { color: var(--admin-sidebar-text); }
+        #delivery-app .admin-logout:hover { background: rgba(255,255,255,0.06); color: var(--admin-sidebar-text-hover); }
+
+        /* ---- Sidebar toggle ---- */
         #delivery-app .sidebar-toggle-btn {
             position: fixed;
-            top: 1.75rem;
-            left: 244px;
+            top: 1.5rem;
+            left: 236px;
             z-index: 60;
             width: 2.75rem;
             height: 2.75rem;
-            border-radius: 0.75rem;
+            border-radius: var(--admin-radius-sm);
             display: flex; align-items: center; justify-content: center;
-            background: rgba(255,255,255,0.12);
-            border: 1px solid rgba(255,255,255,0.3);
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,255,255,0.14);
             color: white;
             cursor: pointer;
-            transition: left 0.3s ease-in-out, background 0.2s, color 0.2s, border-color 0.2s;
+            transition: left 0.3s ease-in-out, background 0.15s, color 0.15s, border-color 0.15s;
         }
-        #delivery-app .sidebar-toggle-btn:hover { background: rgba(255,255,255,0.22); }
+        #delivery-app .sidebar-toggle-btn:hover { background: rgba(255,255,255,0.16); }
+        #delivery-app .sidebar-toggle-btn:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
         #delivery-app .sidebar-toggle-btn svg { width: 20px; height: 20px; }
         #delivery-app .admin-shell.sidebar-collapsed .sidebar-toggle-btn {
             left: 1.25rem;
-            background: white;
+            background: var(--admin-surface);
             color: var(--primary);
-            border-color: var(--border);
-            box-shadow: var(--shadow-md);
+            border-color: var(--admin-border);
+            box-shadow: var(--admin-shadow-md);
         }
 
-        /* ---- New: scroll-reactive header (hide on scroll down, show on
-           scroll up). Sticky so the hide/show is visible during scroll;
-           existing header colors/typography are untouched — only
-           position + transform/opacity are added. ---- */
+        /* ---- Main content ---- */
+        #delivery-app .admin-main { padding: 2rem 2.5rem 3rem; max-width: 1400px; }
         #delivery-app .admin-main > header {
-            position: sticky;
-            top: 0;
-            z-index: 40;
-            background: var(--bg-light);
+            position: sticky; top: 0; z-index: 40;
+            background: var(--admin-bg);
+            padding-bottom: 1.5rem; margin-bottom: 0.5rem;
             transition: transform 0.3s ease-in-out, opacity 0.3s ease-in-out;
-            transform: translateY(0);
-            opacity: 1;
+            transform: translateY(0); opacity: 1;
         }
-        #delivery-app .admin-main > header.header-hidden {
-            transform: translateY(-120%);
-            opacity: 0;
+        #delivery-app .admin-main > header.header-hidden { transform: translateY(-120%); opacity: 0; }
+        #delivery-app .admin-welcome-eyebrow {
+            color: var(--admin-text-secondary); font-size: 0.875rem; font-weight: 500;
+            margin-bottom: 0.25rem; text-transform: uppercase; letter-spacing: 0.04em;
+        }
+        #delivery-app .admin-welcome-title {
+            font-size: 1.875rem; font-weight: 700; color: var(--admin-text);
+            letter-spacing: -0.02em; margin-bottom: 0.25rem;
+        }
+        #delivery-app .admin-welcome-role {
+            display: inline-block; color: var(--primary); background: #eef2ff;
+            font-weight: 600; font-size: 0.75rem; letter-spacing: 0.03em; text-transform: uppercase;
+            padding: 0.25rem 0.625rem; border-radius: 9999px;
+        }
+        #delivery-app .admin-section-label {
+            text-align: left; font-size: 0.8125rem; font-weight: 600;
+            color: var(--admin-text-secondary); text-transform: uppercase; letter-spacing: 0.05em;
+            margin: 2rem 0 1rem;
+        }
+
+        /* ---- KPI cards ---- */
+        #delivery-app .stat-card {
+            background: var(--admin-surface);
+            border: 1px solid var(--admin-border);
+            border-radius: var(--admin-radius-lg);
+            box-shadow: var(--admin-shadow-xs);
+            padding: 1.375rem 1.5rem;
+            transition: box-shadow 0.2s ease, transform 0.2s ease;
+        }
+        #delivery-app .stat-card::before { display: none; }
+        #delivery-app .stat-card:hover { transform: translateY(-2px); box-shadow: var(--admin-shadow-md); }
+        #delivery-app .stat-card-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.875rem; }
+        #delivery-app .stat-card h4 {
+            color: var(--admin-text-secondary); font-weight: 500; font-size: 0.8125rem;
+            text-transform: uppercase; letter-spacing: 0.03em; margin: 0;
+        }
+        #delivery-app .stat-icon {
+            width: 2rem; height: 2rem; border-radius: var(--admin-radius-sm);
+            display: flex; align-items: center; justify-content: center;
+            background: #eef2ff; color: var(--primary); flex-shrink: 0;
+        }
+        #delivery-app .stat-icon svg { width: 16px; height: 16px; }
+        #delivery-app .stat-card.success .stat-icon { background: #ecfdf5; color: var(--secondary); }
+        #delivery-app .stat-card.warning .stat-icon { background: #fffbeb; color: var(--accent); }
+        #delivery-app .stat-card.pending .stat-icon { background: #f1f5f9; color: var(--admin-text-secondary); }
+        #delivery-app .stat-card.cancelled .stat-icon { background: #f3f4f6; color: #9ca3af; }
+        #delivery-app .stat-card p {
+            font-size: 2rem; font-weight: 700; color: var(--admin-text); letter-spacing: -0.02em;
+            font-variant-numeric: tabular-nums;
+        }
+        #delivery-app .stat-card.success p { color: var(--secondary); }
+        #delivery-app .stat-card.warning p { color: var(--accent); }
+        #delivery-app .stat-card.pending p { color: var(--admin-text-secondary); }
+        #delivery-app .stat-card.cancelled p { color: #9ca3af; }
+
+        /* ---- Order cards ---- */
+        #delivery-app .section-title { font-size: 1.125rem; font-weight: 600; color: var(--admin-text); }
+        #delivery-app .order-card {
+            background: var(--admin-surface);
+            border: 1px solid var(--admin-border);
+            border-radius: var(--admin-radius-lg);
+            box-shadow: var(--admin-shadow-xs);
+            padding: 1.375rem;
+            transition: box-shadow 0.2s ease, border-color 0.2s ease;
+        }
+        #delivery-app .order-card::before { display: none; }
+        #delivery-app .order-card:hover { transform: none; box-shadow: var(--admin-shadow-sm); border-color: var(--admin-border-strong); }
+        #delivery-app .order-id { color: var(--admin-text-secondary); }
+        #delivery-app .order-detail-label { color: var(--admin-text-tertiary); font-weight: 600; }
+        #delivery-app .order-detail-value { color: var(--admin-text); }
+        #delivery-app .order-actions { border-top-color: var(--admin-border); }
+        #delivery-app .status-badge { display: inline-flex; align-items: center; gap: 0.375rem; }
+        #delivery-app .status-badge::before {
+            content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex-shrink: 0;
+        }
+
+        /* ---- Empty states ---- */
+        #delivery-app .admin-empty-state {
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            gap: 0.75rem; padding: 3rem 1.5rem; width: 100%;
+            color: var(--admin-text-secondary); text-align: center;
+        }
+        #delivery-app .admin-empty-state svg { width: 40px; height: 40px; color: var(--admin-text-tertiary); }
+        #delivery-app .admin-empty-state span { font-size: 0.9375rem; font-weight: 500; }
+
+        /* ---- Loading skeletons ---- */
+        #delivery-app .admin-skeleton {
+            background: linear-gradient(90deg, var(--admin-surface-alt) 25%, #e2e8f0 37%, var(--admin-surface-alt) 63%);
+            background-size: 400% 100%;
+            animation: admin-skeleton-shimmer 1.4s ease infinite;
+            border-radius: var(--admin-radius-md);
+        }
+        @keyframes admin-skeleton-shimmer {
+            0% { background-position: 100% 50%; }
+            100% { background-position: 0 50%; }
+        }
+        #delivery-app .admin-skeleton-card {
+            height: 210px; border: 1px solid var(--admin-border); border-radius: var(--admin-radius-lg);
+            padding: 1.375rem; background-color: var(--admin-surface);
         }
 
         @media (max-width: 960px) {
@@ -442,6 +598,7 @@
 </head>
 <body>
     <div id="connection-status" class="offline" style="display:none;">Connecting…</div>
+    <div id="toast-container"></div>
 
     <!-- ============== AUTH SCREEN (logged out) ============== -->
     <div id="auth-screen">
@@ -610,12 +767,30 @@
                 <div class="admin-section-label">TODAY'S SNAPSHOT</div>
                 <section class="stats-section" style="margin-bottom: 2.5rem;">
                     <div class="stats-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.5rem;">
-                        <div class="stat-card"><h4>Total Orders</h4><p id="total-orders-delivery">0</p></div>
-                        <div class="stat-card"><h4>Total Earnings</h4><p id="total-earnings">$0.00</p></div>
-                        <div class="stat-card success"><h4>Delivered Orders</h4><p id="delivered-orders-delivery">0</p></div>
-                        <div class="stat-card warning"><h4>In Progress</h4><p id="in-progress-orders">0</p></div>
-                        <div class="stat-card pending"><h4>Pending Assignment</h4><p id="pending-orders-delivery">0</p></div>
-                        <div class="stat-card cancelled"><h4>Cancelled</h4><p id="cancelled-orders-delivery">0</p></div>
+                        <div class="stat-card">
+                            <div class="stat-card-top"><h4>Total Orders</h4><div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7h-9m9 5h-9m9 5h-9M4 7h1m-1 5h1m-1 5h1"></path><rect x="3" y="4" width="4" height="16" rx="1"></rect></svg></div></div>
+                            <p id="total-orders-delivery">0</p>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-card-top"><h4>Total Earnings</h4><div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg></div></div>
+                            <p id="total-earnings">$0.00</p>
+                        </div>
+                        <div class="stat-card success">
+                            <div class="stat-card-top"><h4>Delivered Orders</h4><div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg></div></div>
+                            <p id="delivered-orders-delivery">0</p>
+                        </div>
+                        <div class="stat-card warning">
+                            <div class="stat-card-top"><h4>In Progress</h4><div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg></div></div>
+                            <p id="in-progress-orders">0</p>
+                        </div>
+                        <div class="stat-card pending">
+                            <div class="stat-card-top"><h4>Pending Assignment</h4><div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg></div></div>
+                            <p id="pending-orders-delivery">0</p>
+                        </div>
+                        <div class="stat-card cancelled">
+                            <div class="stat-card-top"><h4>Cancelled</h4><div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg></div></div>
+                            <p id="cancelled-orders-delivery">0</p>
+                        </div>
                     </div>
                 </section>
 
@@ -950,6 +1125,26 @@
             }
         }
 
+        // Modern, non-blocking feedback — replaces native alert() calls.
+        // type: 'error' | 'success' | 'info'
+        const TOAST_ICONS = {
+            error: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>',
+            success: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>',
+            info: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>',
+        };
+        function showToast(message, type = 'error', durationMs = 4000) {
+            const container = document.getElementById('toast-container');
+            if (!container) { console.warn('[toast]', message); return; }
+            const toast = document.createElement('div');
+            toast.className = `toast toast-${type}`;
+            toast.innerHTML = `${TOAST_ICONS[type] || TOAST_ICONS.info}<span>${message}</span>`;
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.classList.add('toast-leaving');
+                setTimeout(() => toast.remove(), 200);
+            }, durationMs);
+        }
+
         // ============================================================
         // Admin dashboard: sidebar toggle + scroll-reactive header.
         // Purely additive UI/layout behavior — no existing state,
@@ -1208,10 +1403,40 @@
             document.getElementById('connection-status').style.display = 'none';
         }
 
+        function renderSkeletonCards(container, count = 6) {
+            if (!container) return;
+            const grid = document.createElement('div');
+            grid.className = 'orders-grid';
+            for (let i = 0; i < count; i++) {
+                const card = document.createElement('div');
+                card.className = 'admin-skeleton admin-skeleton-card';
+                grid.appendChild(card);
+            }
+            container.innerHTML = '';
+            container.appendChild(grid);
+        }
+
         async function enterApp() {
             document.getElementById('auth-screen').style.display = 'none';
             connectSocket();
             requestNotificationPermission();
+
+            // Show the right dashboard shell immediately, with skeleton
+            // placeholders while the initial state loads — no blank gap.
+            if (currentUser.role === 'admin') {
+                document.getElementById('home-screen').style.display = 'none';
+                document.getElementById('delivery-app').style.display = 'block';
+                document.getElementById('user-name').textContent = currentUser.businessName || 'Admin';
+                document.getElementById('user-avatar').textContent = (currentUser.businessName || 'A').charAt(0).toUpperCase();
+                renderSkeletonCards(document.getElementById('orders-grouped-delivery'));
+            } else {
+                document.getElementById('delivery-app').style.display = 'none';
+                document.getElementById('home-screen').style.display = 'block';
+                document.getElementById('sender-display-name').textContent = currentUser.businessName;
+                document.getElementById('sender-avatar').textContent = currentUser.businessName.charAt(0).toUpperCase();
+                renderSkeletonCards(document.getElementById('orders-grid'));
+            }
+
             try {
                 const data = await apiFetch('/api/state');
                 orders = (data.orders || []).map(normalizeOrder);
@@ -1219,21 +1444,11 @@
                 setAgents(data.agents || []);
             } catch (err) {
                 console.error('Failed to load initial state', err);
+                showToast('Could not load your data — check your connection and refresh.', 'error');
                 orders = [];
                 expenses = [];
             }
 
-            if (currentUser.role === 'admin') {
-                document.getElementById('home-screen').style.display = 'none';
-                document.getElementById('delivery-app').style.display = 'block';
-                document.getElementById('user-name').textContent = currentUser.businessName || 'Admin';
-                document.getElementById('user-avatar').textContent = (currentUser.businessName || 'A').charAt(0).toUpperCase();
-            } else {
-                document.getElementById('delivery-app').style.display = 'none';
-                document.getElementById('home-screen').style.display = 'block';
-                document.getElementById('sender-display-name').textContent = currentUser.businessName;
-                document.getElementById('sender-avatar').textContent = currentUser.businessName.charAt(0).toUpperCase();
-            }
             refreshAllViews();
         }
 
@@ -1422,7 +1637,7 @@
             });
 
             document.getElementById('delete-selected-btn').addEventListener('click', () => {
-                if (selectedOrderIds.length === 0) { alert('Please select at least one order to delete'); return; }
+                if (selectedOrderIds.length === 0) { showToast('Please select at least one order to delete', 'info'); return; }
                 pendingBulkDeleteIds = [...selectedOrderIds];
                 document.getElementById('bulk-delete-count').textContent = pendingBulkDeleteIds.length;
                 document.getElementById('bulk-delete-password-input').value = '';
@@ -1502,7 +1717,7 @@
                 description: document.getElementById('expense-description-input').value.trim()
             };
             const result = await emitWithAck('expense:create', newExpense);
-            if (!result.ok) { alert(result.error || 'Failed to add expense'); return; }
+            if (!result.ok) { showToast(result.error || 'Failed to add expense', 'error'); return; }
             closeAddExpenseModal();
             sendLocalNotification('Expense Added', { body: `${newExpense.description} — $${newExpense.amount.toFixed(2)}` });
         }
@@ -1581,6 +1796,7 @@
                     return;
                 }
                 closeAgentModal();
+                showToast(editingAgentId ? 'Agent updated' : 'Agent added', 'success');
                 // agent:created / agent:updated broadcast (received by this
                 // tab too) updates the Fleet Directory and every place that
                 // reads the `agents` lookup.
@@ -1890,7 +2106,7 @@
             const selectedAgent = document.getElementById('agent-select').value;
             if (!selectedAgent) return;
             const result = await emitWithAck('order:accept', { id: currentAcceptingOrderId, amount, acceptedBy: selectedAgent });
-            if (!result.ok) { alert(result.error || 'Failed to accept order'); return; }
+            if (!result.ok) { showToast(result.error || 'Failed to accept order', 'error'); return; }
             closeSetAmountModal();
             sendLocalNotification('Order Accepted', { body: `Order ${currentAcceptingOrderId} has been accepted.` });
         }
@@ -2152,11 +2368,20 @@
         }
 
         // ---- Sender: their own orders ----
+        function renderEmptyState(container, message) {
+            container.innerHTML = `
+                <div class="admin-empty-state">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8v13H3V8"></path><path d="M1 3h22v5H1z"></path><line x1="10" y1="12" x2="14" y2="12"></line></svg>
+                    <span>${message}</span>
+                </div>
+            `;
+        }
+
         function renderOrdersHome() {
             const grid = document.getElementById('orders-grid');
             grid.innerHTML = '';
             if (orders.length === 0) {
-                grid.innerHTML = '<p style="text-align: center; color: var(--slate-light); width: 100%;">No orders yet — create your first one above.</p>';
+                renderEmptyState(grid, 'No orders yet — create your first one above.');
                 return;
             }
             orders.forEach(order => grid.appendChild(createOrderCard(order, 'sender')));
@@ -2180,7 +2405,7 @@
         function renderGroupedOrders(container, orderList, emptyMessage) {
             container.innerHTML = '';
             if (orderList.length === 0) {
-                container.innerHTML = `<p style="text-align: center; color: var(--slate-light); width: 100%;">${emptyMessage}</p>`;
+                renderEmptyState(container, emptyMessage);
                 return;
             }
             const groupedOrders = {};
@@ -2274,7 +2499,7 @@
         async function cancelOrder(orderId) {
             if (!confirm('Cancel this order? This cannot be undone.')) return;
             const result = await emitWithAck('order:cancel', { id: orderId });
-            if (!result.ok) { alert(result.error || 'Failed to cancel order'); return; }
+            if (!result.ok) { showToast(result.error || 'Failed to cancel order', 'error'); return; }
             sendLocalNotification('Order Cancelled', { body: `Order ${orderId} was cancelled.` });
             // order:updated broadcast (received by this tab too) updates the views.
         }
@@ -2361,7 +2586,7 @@
                 itemDescription: document.getElementById('item-description').value
             };
             const result = await emitWithAck('order:create', newOrder);
-            if (!result.ok) { alert(result.error || 'Failed to create order'); return; }
+            if (!result.ok) { showToast(result.error || 'Failed to create order', 'error'); return; }
             closeNewOrderModal();
             sendLocalNotification('Order Submitted', { body: 'Your delivery request was sent.' });
         }
@@ -2371,7 +2596,7 @@
             if (newStatus === 'picked-up') fields.pickedUpAt = new Date().toISOString();
             if (newStatus === 'delivered') fields.deliveredAt = new Date().toISOString();
             const result = await emitWithAck('order:update', { id: orderId, fields });
-            if (!result.ok) alert(result.error || 'Failed to update order');
+            if (!result.ok) showToast(result.error || 'Failed to update order', 'error');
         }
 
         function calculateAndRenderStats() {
