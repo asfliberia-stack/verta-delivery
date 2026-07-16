@@ -236,6 +236,7 @@
         .stat-card p { font-size: 2.5rem; font-weight: 800; color: var(--primary); letter-spacing: -0.05em; }
         .stat-card.success p { color: var(--secondary); }
         .stat-card.warning p { color: var(--accent); }
+        .stat-card.pending p { color: var(--slate-light); }
 
         .user-info { display: flex; align-items: center; gap: 1rem; }
         .user-avatar {
@@ -579,12 +580,16 @@
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
                         Add Expense
                     </button>
+                    <button type="button" class="admin-nav-item" id="scroll-to-agents-btn">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                        Fleet Directory
+                    </button>
                 </nav>
                 <div class="admin-sidebar-spacer"></div>
                 <div class="admin-sidebar-footer">
                     <div class="admin-profile">
                         <div class="user-avatar" id="user-avatar">A</div>
-                        <div class="admin-profile-label">Delivery Agent</div>
+                        <div class="admin-profile-label">Admin Account</div>
                     </div>
                     <button type="button" class="admin-nav-item admin-logout" id="admin-logout-btn">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
@@ -600,17 +605,16 @@
                     <p class="admin-welcome-role">Admin</p>
                 </header>
 
-                <div class="admin-section-label">TODAY</div>
+                <div class="admin-section-label">TODAY'S SNAPSHOT</div>
                 <section class="stats-section" style="margin-bottom: 2.5rem;">
                     <div class="stats-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.5rem;">
                         <div class="stat-card"><h4>Total Orders</h4><p id="total-orders-delivery">0</p></div>
                         <div class="stat-card"><h4>Total Earnings</h4><p id="total-earnings">$0.00</p></div>
                         <div class="stat-card success"><h4>Delivered Orders</h4><p id="delivered-orders-delivery">0</p></div>
                         <div class="stat-card warning"><h4>In Progress</h4><p id="in-progress-orders">0</p></div>
+                        <div class="stat-card pending"><h4>Pending Assignment</h4><p id="pending-orders-delivery">0</p></div>
                     </div>
                 </section>
-
-                <div class="admin-section-label">TODAY</div>
 
                 <section class="orders-section">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 1rem;">
@@ -626,6 +630,11 @@
                 </section>
 
                 <section class="orders-section">
+                    <h2 class="section-title">Recent Deliveries</h2>
+                    <div id="recent-deliveries-container"></div>
+                </section>
+
+                <section class="orders-section" id="agent-contacts-section">
                     <h2 class="section-title">Agent Contacts</h2>
                     <div id="agent-contacts-container"></div>
                 </section>
@@ -1105,6 +1114,7 @@
             if (currentUser && currentUser.role === 'sender') renderOrdersHome();
             if (currentUser && currentUser.role === 'admin') {
                 renderOrdersDelivery();
+                renderRecentDeliveries();
                 calculateAndRenderStats();
                 renderOrderHistory();
                 renderAgentContacts();
@@ -1339,7 +1349,7 @@
 
             const selectAllCheckbox = document.getElementById('select-all-orders');
             selectAllCheckbox.addEventListener('change', (e) => {
-                const checkboxes = document.getElementById('orders-grouped-delivery').querySelectorAll('.order-checkbox');
+                const checkboxes = document.querySelectorAll('#orders-grouped-delivery .order-checkbox, #recent-deliveries-container .order-checkbox');
                 checkboxes.forEach(cb => {
                     cb.checked = e.target.checked;
                     const orderId = cb.dataset.id;
@@ -1367,6 +1377,11 @@
             document.getElementById('view-order-history-delivery').addEventListener('click', openOrderHistoryModal);
             document.getElementById('close-order-history').addEventListener('click', closeOrderHistoryModal);
 
+            document.getElementById('scroll-to-agents-btn').addEventListener('click', () => {
+                const section = document.getElementById('agent-contacts-section');
+                if (section) section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            });
+
             document.getElementById('open-monthly-report-btn').addEventListener('click', openMonthlyReportModal);
             document.getElementById('close-monthly-report-modal').addEventListener('click', closeMonthlyReportModal);
             document.getElementById('cancel-monthly-report').addEventListener('click', closeMonthlyReportModal);
@@ -1388,18 +1403,22 @@
             });
 
             document.getElementById('orders-grid').addEventListener('click', handleOrderGridClick);
-            const ordersGroupedDelivery = document.getElementById('orders-grouped-delivery');
-            ordersGroupedDelivery.addEventListener('click', handleOrderGridClick);
-            ordersGroupedDelivery.addEventListener('change', (e) => {
-                if (e.target.classList.contains('order-checkbox')) {
-                    const orderId = e.target.dataset.id;
-                    if (e.target.checked) { if (!selectedOrderIds.includes(orderId)) selectedOrderIds.push(orderId); }
-                    else { selectedOrderIds = selectedOrderIds.filter(id => id !== orderId); }
-                    const allCheckboxes = ordersGroupedDelivery.querySelectorAll('.order-checkbox');
-                    const checkedCount = ordersGroupedDelivery.querySelectorAll('.order-checkbox:checked').length;
-                    document.getElementById('select-all-orders').checked = allCheckboxes.length > 0 && checkedCount === allCheckboxes.length;
-                }
-            });
+
+            function wireOrderContainerDelegation(container) {
+                container.addEventListener('click', handleOrderGridClick);
+                container.addEventListener('change', (e) => {
+                    if (e.target.classList.contains('order-checkbox')) {
+                        const orderId = e.target.dataset.id;
+                        if (e.target.checked) { if (!selectedOrderIds.includes(orderId)) selectedOrderIds.push(orderId); }
+                        else { selectedOrderIds = selectedOrderIds.filter(id => id !== orderId); }
+                        const allCheckboxes = document.querySelectorAll('#orders-grouped-delivery .order-checkbox, #recent-deliveries-container .order-checkbox');
+                        const checkedCount = document.querySelectorAll('#orders-grouped-delivery .order-checkbox:checked, #recent-deliveries-container .order-checkbox:checked').length;
+                        document.getElementById('select-all-orders').checked = allCheckboxes.length > 0 && checkedCount === allCheckboxes.length;
+                    }
+                });
+            }
+            wireOrderContainerDelegation(document.getElementById('orders-grouped-delivery'));
+            wireOrderContainerDelegation(document.getElementById('recent-deliveries-container'));
         }
 
         // ---- Expenses ----
@@ -2031,17 +2050,17 @@
             return orderDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
         }
 
-        // ---- Admin: all orders ----
-        function renderOrdersDelivery() {
-            const container = document.getElementById('orders-grouped-delivery');
-            if (!container) return;
+        // Shared by both admin order feeds below — groups a list of orders
+        // by day (Today/Yesterday/...) and renders them into a container,
+        // exactly as the single unified list used to.
+        function renderGroupedOrders(container, orderList, emptyMessage) {
             container.innerHTML = '';
-            if (orders.length === 0) {
-                container.innerHTML = '<p style="text-align: center; color: var(--slate-light); width: 100%;">No orders found.</p>';
+            if (orderList.length === 0) {
+                container.innerHTML = `<p style="text-align: center; color: var(--slate-light); width: 100%;">${emptyMessage}</p>`;
                 return;
             }
             const groupedOrders = {};
-            orders.forEach(order => {
+            orderList.forEach(order => {
                 const dayLabel = getDayLabel(order.createdAt);
                 if (!groupedOrders[dayLabel]) groupedOrders[dayLabel] = [];
                 groupedOrders[dayLabel].push(order);
@@ -2058,6 +2077,26 @@
                 groupedOrders[dayLabel].forEach(order => ordersGrid.appendChild(createOrderCard(order, 'delivery')));
                 container.appendChild(ordersGrid);
             });
+        }
+
+        // ---- Admin: Available Orders — active/unassigned runs only.
+        // Delivered orders are excluded here (a "delivered" order isn't
+        // "available"); they show up in Recent Deliveries below instead.
+        function renderOrdersDelivery() {
+            const container = document.getElementById('orders-grouped-delivery');
+            if (!container) return;
+            const activeOrders = orders.filter(o => o.status !== 'delivered');
+            renderGroupedOrders(container, activeOrders, 'No available orders right now.');
+        }
+
+        // ---- Admin: Recent Deliveries — completed orders, most recent
+        // first, capped so this stays a quick glance rather than
+        // duplicating the full Order History view/modal.
+        function renderRecentDeliveries() {
+            const container = document.getElementById('recent-deliveries-container');
+            if (!container) return;
+            const delivered = orders.filter(o => o.status === 'delivered').slice(0, 12);
+            renderGroupedOrders(container, delivered, 'No deliveries completed yet.');
         }
 
         function createOrderCard(order, role) {
@@ -2203,15 +2242,22 @@
             const todayDelivered = todayPartnerOrders.filter(o => o.status === 'delivered').length;
             const todayEarnings = todayPartnerOrders.filter(o => o.status === 'delivered').reduce((sum, o) => sum + (o.amount || 0), 0);
             const todayInProgress = todayPartnerOrders.filter(o => o.status === 'accepted' || o.status === 'picked-up').length;
+            // Orders not yet assigned to any agent — previously uncounted
+            // anywhere, which is why Total could look bigger than
+            // Delivered + In Progress. Now every "today" order lands in
+            // exactly one of Delivered / In Progress / Pending.
+            const todayPending = todayAllOrders.filter(o => o.status === 'pending').length;
 
             const totalOrdersDeliveryEl = document.getElementById('total-orders-delivery');
             const totalEarningsEl = document.getElementById('total-earnings');
             const deliveredOrdersDeliveryEl = document.getElementById('delivered-orders-delivery');
             const inProgressOrdersEl = document.getElementById('in-progress-orders');
+            const pendingOrdersDeliveryEl = document.getElementById('pending-orders-delivery');
             if (totalOrdersDeliveryEl) totalOrdersDeliveryEl.textContent = todayAllOrders.length;
             if (totalEarningsEl) totalEarningsEl.textContent = `$${todayEarnings.toFixed(2)}`;
             if (deliveredOrdersDeliveryEl) deliveredOrdersDeliveryEl.textContent = todayDelivered;
             if (inProgressOrdersEl) inProgressOrdersEl.textContent = todayInProgress;
+            if (pendingOrdersDeliveryEl) pendingOrdersDeliveryEl.textContent = todayPending;
         }
 
         function isToday(date) {

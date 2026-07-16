@@ -306,3 +306,39 @@ As before: no state variables, event handlers, or business logic were
 renamed or removed — everything above is new markup/CSS/JS added
 alongside what already existed. Verified the sender view and every modal
 are unaffected, and the backend files are untouched.
+
+## Dashboard UX fixes (from product critique)
+
+Four real, verified issues fixed — all in `public/index.html`, frontend only:
+
+1. **Triple "TODAY"**: reduced to one meaningful label ("TODAY'S SNAPSHOT"
+   above the KPI cards). The redundant static label above "Available
+   Orders" was removed; the dynamic Today/Yesterday/etc. day-group
+   headers inside the order feeds were kept since those are the
+   actionable ones.
+2. **"Available Orders" no longer includes delivered orders.** Delivered
+   orders now live in a new "Recent Deliveries" section (capped at the
+   12 most recent — full history is still in the Order History modal).
+   Both sections share the same day-grouping renderer, and bulk-select
+   / bulk-delete works across both (checked via `document.querySelectorAll`
+   spanning both container IDs, not just one).
+3. **KPI math now reconciles.** Added a "Pending Assignment" stat card.
+   Previously, an order sitting in `pending` status (not yet accepted by
+   an agent) counted toward "Total Orders" but not "Delivered" or "In
+   Progress" — so the numbers never added up. Now every order is in
+   exactly one of Delivered / In Progress / Pending, and they sum to
+   Total. (There's still no "Cancelled" status in the data model — see
+   note below.)
+4. **Sidebar clarity**: the static "Delivery Agent" profile label (next
+   to the avatar) is now "Admin Account". Added a real, working "Fleet
+   Directory" nav item that smooth-scrolls to the existing Agent
+   Contacts section — not a placeholder, an actual working shortcut.
+
+**Not included — flagged as a separate, larger feature:** real-time
+GPS/map tracking of delivery agents. The five agents in this app are a
+static contact list, not logged-in users, so there's no location data to
+plot. Building this for real would mean: agent accounts + login, a
+location-sharing client view (mobile Geolocation API), a DB table +
+Socket.io channel for live positions, and a map library with an API key.
+Ask if you want this scoped and built as its own project — it wasn't
+faked or stubbed in here.
