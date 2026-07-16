@@ -638,7 +638,10 @@
                 </section>
 
                 <section class="orders-section" id="agent-contacts-section">
-                    <h2 class="section-title">Agent Contacts</h2>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 1rem;">
+                        <h2 class="section-title" style="margin: 0;">Agent Contacts</h2>
+                        <button type="button" class="btn-small btn-success" id="add-agent-btn">+ Add Agent</button>
+                    </div>
                     <div id="agent-contacts-container"></div>
                 </section>
             </div>
@@ -844,17 +847,50 @@
         </div>
     </div>
 
+    <!-- Add/Edit Agent Modal (Fleet Directory) -->
+    <div class="modal-overlay" id="agent-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 id="agent-modal-title">Add Agent</h3>
+                <button class="close-btn" id="close-agent-modal">&times;</button>
+            </div>
+            <form id="agent-form">
+                <div class="form-group">
+                    <label class="form-label">Agent Name</label>
+                    <input type="text" class="form-input" id="agent-name-input" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Phone Number</label>
+                    <input type="text" class="form-input" id="agent-phone-input" required>
+                </div>
+                <div id="agent-form-error" style="color: #dc2626; font-size: 0.875rem; margin-bottom: 1rem; display: none;"></div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-small btn-secondary" id="cancel-agent-form">Cancel</button>
+                    <button type="submit" class="btn-small btn-success" id="agent-form-submit-btn">Save Agent</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <script>
         // ============================================================
-        // Agent data (delivery personnel — unrelated to login accounts)
+        // Agent data (delivery personnel — unrelated to login accounts).
+        // `agents` keeps its original shape ({ name: phone }) so every
+        // existing lookup across the app (createOrderCard, PDF reports,
+        // stats) keeps working unchanged. `agentRecords` is the fuller
+        // { id, name, phone } list, used only by the new Fleet Directory
+        // add/edit UI, which needs the id to know what to update.
+        // Both are populated from the server on load and kept in sync
+        // over the socket — no more hardcoded list.
         // ============================================================
-        const agents = {
-            'Titus': '0772558553',
-            'Emmanuel': '0760566696',
-            'Augustine': '0772558559',
-            'Boima': '0778643650',
-            'Arthur': '0772558557'
-        };
+        let agents = {};
+        let agentRecords = [];
+
+        function setAgents(records) {
+            agentRecords = records;
+            agents = {};
+            records.forEach(a => { agents[a.name] = a.phone; });
+        }
 
         function getDateKey(date) {
             const d = new Date(date);
@@ -1076,6 +1112,21 @@
                 renderOrderHistory();
                 renderOrderHistoryToModal();
             });
+
+            socket.on('agent:created', (agent) => {
+                if (!agentRecords.some(a => a.id === agent.id)) {
+                    agentRecords.push(agent);
+                    setAgents(agentRecords);
+                    refreshAllViews();
+                }
+            });
+
+            socket.on('agent:updated', (agent) => {
+                const idx = agentRecords.findIndex(a => a.id === agent.id);
+                if (idx !== -1) agentRecords[idx] = agent; else agentRecords.push(agent);
+                setAgents(agentRecords);
+                refreshAllViews();
+            });
         }
 
         function emitWithAck(event, payload) {
@@ -1165,6 +1216,7 @@
                 const data = await apiFetch('/api/state');
                 orders = (data.orders || []).map(normalizeOrder);
                 expenses = (data.expenses || []).map(normalizeExpense);
+                setAgents(data.agents || []);
             } catch (err) {
                 console.error('Failed to load initial state', err);
                 orders = [];
@@ -1350,6 +1402,14 @@
             document.getElementById('cancel-delete-expense').addEventListener('click', closeDeleteExpenseModal);
             document.getElementById('delete-expense-form').addEventListener('submit', handleDeleteExpenseSubmit);
 
+            document.getElementById('add-agent-btn').addEventListener('click', () => openAgentModal(null));
+            document.getElementById('close-agent-modal').addEventListener('click', closeAgentModal);
+            document.getElementById('cancel-agent-form').addEventListener('click', closeAgentModal);
+            document.getElementById('agent-form').addEventListener('submit', handleAgentFormSubmit);
+            document.getElementById('agent-contacts-container').addEventListener('click', (e) => {
+                if (e.target.classList.contains('edit-agent-btn')) openAgentModal(e.target.dataset.id);
+            });
+
             const selectAllCheckbox = document.getElementById('select-all-orders');
             selectAllCheckbox.addEventListener('change', (e) => {
                 const checkboxes = document.querySelectorAll('#orders-grouped-delivery .order-checkbox, #recent-deliveries-container .order-checkbox');
@@ -1473,6 +1533,60 @@
                 errorEl.style.display = 'block';
                 passwordInput.value = '';
                 passwordInput.focus();
+            }
+        }
+
+        // ---- Fleet Directory: add / edit agent ----
+        let editingAgentId = null; // null = "Add Agent" mode; an id = "Edit Agent" mode
+
+        function openAgentModal(agentId) {
+            editingAgentId = agentId;
+            const errorEl = document.getElementById('agent-form-error');
+            errorEl.style.display = 'none';
+            if (agentId) {
+                const agent = agentRecords.find(a => a.id === agentId);
+                document.getElementById('agent-modal-title').textContent = 'Edit Agent';
+                document.getElementById('agent-name-input').value = agent ? agent.name : '';
+                document.getElementById('agent-phone-input').value = agent ? agent.phone : '';
+            } else {
+                document.getElementById('agent-modal-title').textContent = 'Add Agent';
+                document.getElementById('agent-name-input').value = '';
+                document.getElementById('agent-phone-input').value = '';
+            }
+            document.getElementById('agent-modal').classList.add('active');
+            document.getElementById('agent-name-input').focus();
+        }
+
+        function closeAgentModal() {
+            document.getElementById('agent-modal').classList.remove('active');
+            editingAgentId = null;
+        }
+
+        async function handleAgentFormSubmit(e) {
+            e.preventDefault();
+            const errorEl = document.getElementById('agent-form-error');
+            const submitBtn = document.getElementById('agent-form-submit-btn');
+            const name = document.getElementById('agent-name-input').value.trim();
+            const phone = document.getElementById('agent-phone-input').value.trim();
+            errorEl.style.display = 'none';
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Saving…';
+            try {
+                const result = editingAgentId
+                    ? await emitWithAck('agent:update', { id: editingAgentId, name, phone })
+                    : await emitWithAck('agent:create', { name, phone });
+                if (!result.ok) {
+                    errorEl.textContent = result.error || 'Failed to save agent';
+                    errorEl.style.display = 'block';
+                    return;
+                }
+                closeAgentModal();
+                // agent:created / agent:updated broadcast (received by this
+                // tab too) updates the Fleet Directory and every place that
+                // reads the `agents` lookup.
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Save Agent';
             }
         }
 
@@ -1734,14 +1848,21 @@
         function renderAgentContacts() {
             const container = document.getElementById('agent-contacts-container');
             if (!container) return;
+            if (agentRecords.length === 0) {
+                container.innerHTML = '<p style="text-align: center; color: var(--slate-light);">No agents added yet — click "+ Add Agent" to build your Fleet Directory.</p>';
+                return;
+            }
             let html = '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem;">';
-            Object.entries(agents).forEach(([name, phone]) => {
+            agentRecords.forEach((agent) => {
                 html += `
                     <div style="background: white; padding: 1.25rem; border-radius: 0.75rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
-                        <div style="font-weight: 700; color: var(--slate); font-size: 1.125rem; margin-bottom: 0.5rem;">${name}</div>
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 0.75rem; margin-bottom: 0.5rem;">
+                            <div style="font-weight: 700; color: var(--slate); font-size: 1.125rem;">${agent.name}</div>
+                            <button type="button" class="btn-small btn-secondary edit-agent-btn" data-id="${agent.id}" style="padding: 0.375rem 0.875rem; font-size: 0.8125rem;">Edit</button>
+                        </div>
                         <div style="display: flex; align-items: center; gap: 0.5rem; color: var(--slate-light);">
                             <span style="font-size: 1rem;">📞</span>
-                            <a href="tel:${phone}" style="text-decoration: none; color: var(--primary); font-weight: 600;">${phone}</a>
+                            <a href="tel:${agent.phone}" style="text-decoration: none; color: var(--primary); font-weight: 600;">${agent.phone}</a>
                         </div>
                     </div>
                 `;

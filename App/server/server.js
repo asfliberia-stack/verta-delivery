@@ -204,6 +204,43 @@ io.on('connection', (socket) => {
       ack && ack({ ok: false, error: 'Failed to delete expense' });
     }
   });
+
+  // ---- Fleet Directory (agents) — admin-managed, admin-only --------
+
+  socket.on('agent:create', async ({ name, phone }, ack) => {
+    if (socket.user.role !== 'admin') {
+      return ack && ack({ ok: false, error: 'Only admins can add agents' });
+    }
+    if (!name || !name.trim() || !phone || !phone.trim()) {
+      return ack && ack({ ok: false, error: 'Name and phone are required' });
+    }
+    try {
+      const agent = await db.createAgent({ id: crypto.randomUUID(), name: name.trim(), phone: phone.trim() });
+      io.to('admins').emit('agent:created', agent);
+      ack && ack({ ok: true, agent });
+    } catch (err) {
+      console.error('agent:create failed', err);
+      ack && ack({ ok: false, error: 'Failed to add agent' });
+    }
+  });
+
+  socket.on('agent:update', async ({ id, name, phone }, ack) => {
+    if (socket.user.role !== 'admin') {
+      return ack && ack({ ok: false, error: 'Only admins can edit agents' });
+    }
+    if (!name || !name.trim() || !phone || !phone.trim()) {
+      return ack && ack({ ok: false, error: 'Name and phone are required' });
+    }
+    try {
+      const agent = await db.updateAgent(id, { name: name.trim(), phone: phone.trim() });
+      if (!agent) return ack && ack({ ok: false, error: 'Agent not found' });
+      io.to('admins').emit('agent:updated', agent);
+      ack && ack({ ok: true, agent });
+    } catch (err) {
+      console.error('agent:update failed', err);
+      ack && ack({ ok: false, error: 'Failed to update agent' });
+    }
+  });
 });
 
 // ============================================================
@@ -285,11 +322,11 @@ app.get('/api/me', requireAuth, async (req, res) => {
 app.get('/api/state', requireAuth, async (req, res) => {
   try {
     if (req.user.role === 'admin') {
-      const [orders, expenses] = await Promise.all([db.getAllOrders(), db.getAllExpenses()]);
-      res.json({ orders, expenses });
+      const [orders, expenses, agents] = await Promise.all([db.getAllOrders(), db.getAllExpenses(), db.getAllAgents()]);
+      res.json({ orders, expenses, agents });
     } else {
       const orders = await db.getOrdersBySender(req.user.id);
-      res.json({ orders, expenses: [] });
+      res.json({ orders, expenses: [], agents: [] });
     }
   } catch (err) {
     console.error('GET /api/state failed', err);
@@ -316,8 +353,30 @@ async function seedAdminIfConfigured() {
   console.log(`[seed] Created admin account for ${ADMIN_EMAIL}`);
 }
 
+// The five agents that used to be a hardcoded client-side constant — now
+// real, editable rows. Seeded once so upgrading to this version doesn't
+// change anything an admin currently sees; from then on the Fleet
+// Directory is fully admin-managed (add/edit) via the UI.
+const DEFAULT_AGENTS = [
+  { name: 'Titus', phone: '0772558553' },
+  { name: 'Emmanuel', phone: '0760566696' },
+  { name: 'Augustine', phone: '0772558559' },
+  { name: 'Boima', phone: '0778643650' },
+  { name: 'Arthur', phone: '0772558557' },
+];
+
+async function seedAgentsIfEmpty() {
+  const count = await db.countAgents();
+  if (count > 0) return; // already seeded (or admin has since managed the list)
+  for (const agent of DEFAULT_AGENTS) {
+    await db.createAgent({ id: crypto.randomUUID(), name: agent.name, phone: agent.phone });
+  }
+  console.log(`[seed] Seeded ${DEFAULT_AGENTS.length} default agents`);
+}
+
 db.init()
   .then(seedAdminIfConfigured)
+  .then(seedAgentsIfEmpty)
   .then(() => {
     server.listen(PORT, () => console.log(`Verta Delivery server listening on :${PORT}`));
   })

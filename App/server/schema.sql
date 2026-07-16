@@ -35,6 +35,19 @@ CREATE TABLE IF NOT EXISTS expenses (
     created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- Delivery agents (Fleet Directory). Separate from `users` on purpose —
+-- agents aren't login accounts, just a managed contact/roster list that
+-- admins can add to and edit. `accepted_by` on orders stores the agent's
+-- NAME as free text (not a foreign key), so renaming an agent here won't
+-- retroactively change historical order records — see README for the
+-- tradeoff this implies.
+CREATE TABLE IF NOT EXISTS agents (
+    id         TEXT PRIMARY KEY,
+    name       TEXT NOT NULL,
+    phone      TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 CREATE INDEX IF NOT EXISTS idx_orders_created_at ON orders (created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_orders_sender_id ON orders (sender_id);
 CREATE INDEX IF NOT EXISTS idx_expenses_date ON expenses (date DESC);

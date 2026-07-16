@@ -41,6 +41,15 @@ function rowToExpense(r) {
   };
 }
 
+function rowToAgent(r) {
+  if (!r) return null;
+  return {
+    id: r.id,
+    name: r.name,
+    phone: r.phone,
+  };
+}
+
 function rowToUser(r) {
   if (!r) return null;
   return {
@@ -167,6 +176,34 @@ const db = {
 
   async deleteExpense(id) {
     await pool.query('DELETE FROM expenses WHERE id = $1', [id]);
+  },
+
+  // ---- Agents (Fleet Directory) -------------------------------------
+
+  async getAllAgents() {
+    const { rows } = await pool.query('SELECT * FROM agents ORDER BY created_at ASC');
+    return rows.map(rowToAgent);
+  },
+
+  async countAgents() {
+    const { rows } = await pool.query('SELECT COUNT(*)::int AS count FROM agents');
+    return rows[0].count;
+  },
+
+  async createAgent({ id, name, phone }) {
+    const { rows } = await pool.query(
+      `INSERT INTO agents (id, name, phone) VALUES ($1, $2, $3) RETURNING *`,
+      [id, name, phone]
+    );
+    return rowToAgent(rows[0]);
+  },
+
+  async updateAgent(id, { name, phone }) {
+    const { rows } = await pool.query(
+      `UPDATE agents SET name = $1, phone = $2 WHERE id = $3 RETURNING *`,
+      [name, phone, id]
+    );
+    return rowToAgent(rows[0]);
   },
 };
 

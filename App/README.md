@@ -375,3 +375,40 @@ added one.
   marked "Order Accepted" as complete for anything that wasn't
   `pending` — which would have wrongly shown a checkmark for a
   cancelled-while-pending order. Fixed to exclude cancelled explicitly.
+
+## Fleet Directory: agents are now add/editable (persisted, real-time)
+
+The five delivery agents used to be a hardcoded constant in the
+frontend — no way to add a new agent or fix a wrong phone number without
+editing code and redeploying. Fixed properly, matching how the rest of
+this app works (Postgres source of truth, live Socket.io sync), not as
+a throwaway client-side hack:
+
+- **New `agents` table** (`server/schema.sql`): `id`, `name`, `phone`.
+  On first boot, the server seeds it with the original five agents
+  (Titus, Emmanuel, Augustine, Boima, Arthur) and their existing phone
+  numbers — upgrading to this version changes nothing an admin currently
+  sees.
+- **"+ Add Agent" button** and an **"Edit"** button on every card in the
+  Agent Contacts / Fleet Directory section. Both open the same modal
+  (Name + Phone), admin-only, enforced server-side in `agent:create` /
+  `agent:update` (`server/server.js`) — not just hidden in the UI.
+- **Live sync**: adding or editing an agent broadcasts to every admin
+  session immediately (`agent:created` / `agent:updated`), the same
+  pattern already used for orders and expenses.
+- **Zero breakage to existing code**: every place that already read
+  agent data (`agents[name]` lookups in order cards, PDF reports, KPI
+  stats) keeps working completely unchanged — `agents` still has the
+  exact same `{ name: phone }` shape, it's just populated from the
+  database now instead of a hardcoded literal.
+
+**One tradeoff worth knowing**: an order's `accepted_by` field stores
+the agent's *name* as plain text, not a reference to the agent's row.
+If you rename an agent after they've already been assigned to past
+orders, those historical orders will still show the old name (and won't
+retroactively show a phone number next to it, since the lookup is by
+name). This matches how the app already worked before this change — it
+just means "rename" isn't retroactive. If you want agent assignment to
+be a real foreign-key reference instead (so renames propagate
+everywhere), that's a bigger, separate migration — say so if you want
+it scoped.
