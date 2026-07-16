@@ -917,7 +917,7 @@
                 <h3>🗓️ Monthly Report</h3>
                 <button class="close-btn" id="close-monthly-report-modal">&times;</button>
             </div>
-            <p style="margin-bottom: 1.5rem; color: var(--slate-light);">Choose a month and year to generate a summary PDF covering every order and expense recorded in that month, with monthly totals.</p>
+            <p style="margin-bottom: 1.5rem; color: var(--slate-light);" id="monthly-report-description">Choose a month and year to generate a summary PDF covering every order and expense recorded in that month, with monthly totals.</p>
             <div class="form-group">
                 <label class="form-label">Year</label>
                 <select class="form-input" id="monthly-report-year-select"></select>
@@ -2271,11 +2271,11 @@
             doc.text(`• Net Amount: $${netAmount.toFixed(2)}`, pageMargin, yPosition);
             doc.setTextColor(0, 0, 0); yPosition += 15;
 
-            // Agent summary — aggregated across the whole month
-            if (yPosition > 260) { doc.addPage(); yPosition = 20; }
+            // Agent summary — aggregated across the whole month, shown as
+            // an aligned table (Agents / Orders / Earned / 30% commission)
+            if (yPosition > 255) { doc.addPage(); yPosition = 20; }
             doc.setFontSize(14); doc.setFont('helvetica', 'bold');
-            doc.text('Agent Summary (Whole Month)', pageMargin, yPosition); yPosition += 10;
-            doc.setFont('helvetica', 'normal'); doc.setFontSize(11);
+            doc.text('Agent Summary (Whole Month)', pageMargin, yPosition); yPosition += 12;
 
             const agentTotals = {};
             monthOrders.forEach(order => {
@@ -2286,23 +2286,37 @@
             });
             const agentNames = Object.keys(agentTotals);
             if (agentNames.length === 0) {
+                doc.setFont('helvetica', 'normal'); doc.setFontSize(11);
                 doc.text('No orders were assigned to an agent this month.', pageMargin, yPosition);
                 yPosition += 7;
             } else {
+                const aCol1 = pageMargin, aCol2 = pageMargin + 95, aCol3 = pageMargin + 125, aCol4 = pageMargin + 160;
+                doc.setFontSize(11); doc.setFont('helvetica', 'bold');
+                doc.text('Agents', aCol1, yPosition);
+                doc.text('Orders', aCol2, yPosition);
+                doc.text('Earned', aCol3, yPosition);
+                doc.text('30% commission', aCol4, yPosition);
+                yPosition += 8;
+                doc.setFont('helvetica', 'normal');
+
                 const COMMISSION_RATE = 0.30;
                 let totalCommission = 0;
                 agentNames.forEach(name => {
                     const t = agentTotals[name];
                     const commission = t.amount * COMMISSION_RATE;
                     totalCommission += commission;
-                    doc.text(`• ${cleanText(name)}${agents[name] ? ` (${cleanText(agents[name])})` : ''}: ${t.count} orders, $${t.amount.toFixed(2)} earned — 30% commission: $${commission.toFixed(2)}`, pageMargin, yPosition);
-                    yPosition += 7;
+                    doc.text(`• ${cleanText(name)}${agents[name] ? ` (${cleanText(agents[name])})` : ''}`, aCol1, yPosition);
+                    doc.text(String(t.count), aCol2, yPosition);
+                    doc.text(`$${t.amount.toFixed(2)}`, aCol3, yPosition);
+                    doc.text(`$${commission.toFixed(2)}`, aCol4, yPosition);
+                    yPosition += 8;
                     if (yPosition > 275) { doc.addPage(); yPosition = 20; }
                 });
                 yPosition += 3;
                 if (yPosition > 275) { doc.addPage(); yPosition = 20; }
                 doc.setFont('helvetica', 'bold');
-                doc.text(`Grand Total Commission Payout (All Agents): $${totalCommission.toFixed(2)}`, pageMargin, yPosition);
+                doc.text(`Grand Total Commission Payout (All Agents):`, pageMargin, yPosition);
+                doc.text(`$${totalCommission.toFixed(2)}`, aCol4, yPosition);
                 doc.setFont('helvetica', 'normal');
                 yPosition += 7;
             }
@@ -2335,18 +2349,27 @@
                     if (yPosition > 265) { doc.addPage(); yPosition = 20; }
                     doc.setFont('helvetica', 'bold');
                     doc.text(`${formattedDay} — Orders: ${dayOrders.length} ($${dayAmount.toFixed(2)})  Expenses: $${dayExpenseTotal.toFixed(2)}`, pageMargin, yPosition);
-                    yPosition += 7;
+                    yPosition += 8;
                     doc.setFont('helvetica', 'normal');
 
+                    const oCol1 = pageMargin, oCol2 = pageMargin + 42, oCol3 = pageMargin + 92, oCol4 = pageMargin + 128, oCol5 = pageMargin + 152, oCol6 = pageMargin + 178;
                     dayOrders.forEach(order => {
                         const statusText = order.status.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-                        const line = `${order.id} — ${cleanText(order.senderName)} — ${cleanText(order.itemDescription)} — ${order.amount !== null ? '$' + order.amount.toFixed(2) : '-'} — ${statusText}${order.acceptedBy ? ' — ' + cleanText(order.acceptedBy) : ''}`;
-                        const wrapped = doc.splitTextToSize(line, maxWidth - 8);
-                        wrapped.forEach(w => {
-                            doc.text(w, pageMargin + 4, yPosition);
+                        const senderLines = doc.splitTextToSize(cleanText(order.senderName), 48);
+                        const itemLines = doc.splitTextToSize(cleanText(order.itemDescription), 34);
+                        const maxLines = Math.max(1, senderLines.length, itemLines.length);
+                        for (let i = 0; i < maxLines; i++) {
+                            if (i === 0) doc.text(order.id, oCol1, yPosition);
+                            if (i < senderLines.length) doc.text(senderLines[i], oCol2, yPosition);
+                            if (i < itemLines.length) doc.text(itemLines[i], oCol3, yPosition);
+                            if (i === 0) {
+                                doc.text(order.amount !== null ? `$${order.amount.toFixed(2)}` : '-', oCol4, yPosition);
+                                doc.text(statusText, oCol5, yPosition);
+                                if (order.acceptedBy) doc.text(cleanText(order.acceptedBy), oCol6, yPosition);
+                            }
                             yPosition += 5;
                             if (yPosition > 275) { doc.addPage(); yPosition = 20; }
-                        });
+                        }
                     });
 
                     dayExpenses.forEach(expense => {

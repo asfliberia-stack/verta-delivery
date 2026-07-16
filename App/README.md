@@ -479,3 +479,14 @@ strictly-scoped, namespaced CSS custom properties instead
 this stack. If you do move to a bundled frontend (Vite + React/Vue) down
 the line, these tokens map directly onto a Tailwind config's `theme.extend.colors`
 almost 1:1 — happy to do that migration as its own project.
+
+## Monthly PDF upgrade
+
+The admin Monthly Report's "Agent Summary" and "Daily Breakdown"
+sections now render as properly aligned tables (columns: Agents /
+Orders / Earned / 30% commission; and Order ID / Sender / Item / Amount
+/ Status / Agent) instead of run-on bullet sentences, matching the
+requested layout.
+
+A customer-facing (sender-side) Monthly Report was added and then
+removed at your request — Monthly Report stays an admin-only feature.
