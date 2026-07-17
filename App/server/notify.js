@@ -55,10 +55,22 @@ async function notifyNewOrder(order) {
     `Dropoff: ${order.dropoffAddress}\n` +
     `Item: ${order.itemDescription}`;
 
+  await sendMessage(TO_NUMBER, message);
+}
+
+// Generic send, usable for anything that needs to reach an arbitrary
+// phone number — currently just password reset codes (server.js), sent
+// to whatever number that specific user registered with, as opposed to
+// notifyNewOrder above which always goes to the fixed business owner
+// number (NOTIFY_TO_NUMBER).
+async function sendMessage(toNumber, message) {
+  if (!isConfigured) return false;
+  if (!toNumber) return false;
+
   const url = `https://api.twilio.com/2010-04-01/Accounts/${ACCOUNT_SID}/Messages.json`;
   const body = new URLSearchParams({
     From: formatNumber(FROM_NUMBER),
-    To: formatNumber(TO_NUMBER),
+    To: formatNumber(toNumber),
     Body: message,
   });
 
@@ -74,13 +86,14 @@ async function notifyNewOrder(order) {
     if (!res.ok) {
       const errText = await res.text();
       console.error(`[notify] Twilio send failed (${res.status}):`, errText);
-    } else {
-      console.log(`[notify] Sent ${CHANNEL} notification for order ${order.id}`);
+      return false;
     }
+    console.log(`[notify] Sent ${CHANNEL} message to ${toNumber}`);
+    return true;
   } catch (err) {
-    // Notification failures must never break order creation itself.
-    console.error('[notify] Failed to send order notification', err);
+    console.error('[notify] Failed to send message', err);
+    return false;
   }
 }
 
-module.exports = { notifyNewOrder };
+module.exports = { notifyNewOrder, sendMessage, isConfigured };

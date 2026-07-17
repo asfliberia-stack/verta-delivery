@@ -56,6 +56,7 @@ function rowToUser(r) {
     id: r.id,
     businessName: r.business_name,
     email: r.email,
+    phone: r.phone,
     role: r.role,
     passwordHash: r.password_hash, // only used internally for login checks
   };
@@ -71,13 +72,17 @@ const db = {
 
   // ---- Users -------------------------------------------------------
 
-  async createUser({ id, businessName, email, passwordHash, role }) {
+  async createUser({ id, businessName, email, phone, passwordHash, role }) {
     const { rows } = await pool.query(
-      `INSERT INTO users (id, business_name, email, password_hash, role)
-       VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-      [id, businessName, email.toLowerCase(), passwordHash, role]
+      `INSERT INTO users (id, business_name, email, phone, password_hash, role)
+       VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+      [id, businessName, email.toLowerCase(), phone || null, passwordHash, role]
     );
     return rowToUser(rows[0]);
+  },
+
+  async updateUserPassword(userId, passwordHash) {
+    await pool.query('UPDATE users SET password_hash = $1 WHERE id = $2', [passwordHash, userId]);
   },
 
   async getUserByEmail(email) {
@@ -204,6 +209,31 @@ const db = {
       [name, phone, id]
     );
     return rowToAgent(rows[0]);
+  },
+
+  // ---- Password resets -----------------------------------------------
+
+  async createPasswordReset({ id, userId, codeHash, expiresAt }) {
+    await pool.query(
+      `INSERT INTO password_resets (id, user_id, code_hash, expires_at) VALUES ($1, $2, $3, $4)`,
+      [id, userId, codeHash, expiresAt]
+    );
+  },
+
+  // Most recent unused, unexpired reset row for this user — a user may
+  // have requested a code more than once; only the latest one counts.
+  async getActivePasswordReset(userId) {
+    const { rows } = await pool.query(
+      `SELECT * FROM password_resets
+       WHERE user_id = $1 AND used = false AND expires_at > now()
+       ORDER BY created_at DESC LIMIT 1`,
+      [userId]
+    );
+    return rows[0] || null;
+  },
+
+  async markPasswordResetUsed(id) {
+    await pool.query('UPDATE password_resets SET used = true WHERE id = $1', [id]);
   },
 };
 

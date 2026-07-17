@@ -504,3 +504,79 @@ Senders themselves have no access to this — there's no button for it
 anywhere in the sender view, and the underlying function only runs from
 the admin dashboard, where `orders` is populated with every customer's
 data (a sender's own session never has that).
+
+## My own addition: rate limiting on login/register (brute-force protection)
+
+Looking through the full app for what's still missing before calling
+this production-ready, one real security gap stood out: **nothing
+stopped repeated password guessing** against `/api/auth/login`,
+`/api/auth/register`, or `/api/auth/admin-login`. A script could throw
+thousands of attempts at any of these with no pushback.
+
+Fixed in `server/server.js` (backend only, no frontend changes):
+
+- Each IP gets **10 attempts per 15 minutes** across those three
+  endpoints combined — generous for a real person who mistypes a
+  password a couple of times, tight enough to make scripted guessing
+  impractical.
+- Added `app.set('trust proxy', 1)` — required for this to work
+  correctly on Railway (or any host behind a reverse proxy). Without
+  it, the rate limiter would either see every visitor as the same IP
+  (the proxy's) and lock everyone out together, or refuse to start
+  in strict mode. This setting tells Express to trust exactly one
+  proxy hop, which is what Railway's edge is.
+- New dependency: `express-rate-limit` (small, no native bindings,
+  works everywhere `npm install` already works for this project).
+
+Nothing else changed — no new UI, no new database tables. If someone
+does hit the limit, they see a plain `429` response with a friendly
+message; legitimate users essentially never notice this exists.
+
+## Password reset (SMS/WhatsApp) + phone number at signup
+
+Fixed the gap flagged earlier: senders now provide a phone number when
+they register, and can recover a forgotten password via a code sent to
+that number over SMS/WhatsApp — reusing the same Twilio setup that
+already powers new-order notifications.
+
+### What changed
+
+- **Signup** now requires a phone number alongside business name, email,
+  and password (`server/server.js`, `public/index.html`).
+- **`users` table** gained a `phone` column (`server/schema.sql`) — with
+  an explicit `ALTER TABLE ... ADD COLUMN IF NOT EXISTS` migration, since
+  your database already exists and `CREATE TABLE IF NOT EXISTS` alone
+  would silently skip adding it to an existing table. Existing senders
+  (registered before this update) will have `phone = NULL` until they're
+  given one — see "Known limitation" below.
+- **New `password_resets` table**: each requested code is hashed (bcrypt,
+  same as passwords — never stored in plain text), single-use, and
+  expires after 10 minutes.
+- **Two new endpoints**, both rate-limited like every other auth
+  endpoint:
+  - `POST /api/auth/forgot-password` — takes an email, and if a matching
+    account has a phone on file, texts it a 6-digit code. **Always**
+    returns the same generic success message regardless of whether the
+    email exists, so this can't be used to discover who has an account.
+  - `POST /api/auth/reset-password` — takes email + code + new password;
+    verifies the code, updates the password, and logs the user in.
+- **`server/notify.js`** gained a generic `sendMessage(toNumber, message)`
+  function (the original `notifyNewOrder` always sent to the fixed
+  business-owner number; reset codes need to go to the requesting
+  user's own number instead).
+- **Frontend**: a "Forgot password?" link under the login form leads to
+  a two-step flow (request code → enter code + new password), reusing
+  the same auth card styling as login/register.
+
+### Known limitation
+
+This only works if Twilio is actually configured (`TWILIO_ACCOUNT_SID`,
+`TWILIO_AUTH_TOKEN`, `TWILIO_FROM_NUMBER` in `server/.env` — see the
+"Setting up WhatsApp/SMS notifications" section above). If it isn't,
+`forgot-password` still responds successfully (to avoid leaking whether
+an email exists) but no code is actually sent — check the server logs
+for a `[forgot-password] Could not deliver...` warning if a real user
+reports never receiving one. Likewise, senders who registered *before*
+this update have no phone on file and can't use this until an admin (or
+they, once you build a "my account" settings page — not present yet)
+adds one.

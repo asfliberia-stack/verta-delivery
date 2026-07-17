@@ -612,7 +612,7 @@
 
         <!-- Sender login/register card -->
         <div class="auth-card" id="sender-auth-card">
-            <div class="auth-tabs">
+            <div class="auth-tabs" id="sender-auth-tabs">
                 <button type="button" class="auth-tab active" id="tab-login">Login</button>
                 <button type="button" class="auth-tab" id="tab-register">Create Account</button>
             </div>
@@ -628,6 +628,7 @@
                 </div>
                 <div class="auth-error" id="login-error"></div>
                 <button type="submit" class="btn-primary" style="width:100%;" id="login-submit-btn">Login</button>
+                <div class="auth-switch-link"><a id="forgot-password-link">Forgot password?</a></div>
             </form>
 
             <form id="sender-register-form" style="display:none;">
@@ -660,11 +661,44 @@
                     <input type="email" class="form-input" id="register-email" required>
                 </div>
                 <div class="form-group">
+                    <label class="form-label">Phone Number</label>
+                    <input type="tel" class="form-input" id="register-phone" placeholder="e.g. 0881405696" required>
+                </div>
+                <div class="form-group">
                     <label class="form-label">Password</label>
                     <input type="password" class="form-input" id="register-password" placeholder="At least 8 characters" required minlength="8">
                 </div>
                 <div class="auth-error" id="register-error"></div>
                 <button type="submit" class="btn-primary" style="width:100%;" id="register-submit-btn">Create Account</button>
+            </form>
+
+            <!-- Forgot password: step 1 (request a code via SMS/WhatsApp) -->
+            <form id="forgot-password-request-form" style="display:none;">
+                <p style="margin-bottom: 1.25rem; color: var(--slate-light);">Enter the email on your account — if it has a phone number on file, we'll text a reset code to it.</p>
+                <div class="form-group">
+                    <label class="form-label">Email</label>
+                    <input type="email" class="form-input" id="forgot-password-email" required>
+                </div>
+                <div class="auth-error" id="forgot-password-error"></div>
+                <button type="submit" class="btn-primary" style="width:100%;" id="forgot-password-submit-btn">Send Reset Code</button>
+                <div class="auth-switch-link"><a id="back-to-login-link-1">Back to login</a></div>
+            </form>
+
+            <!-- Forgot password: step 2 (enter code + new password) -->
+            <form id="reset-password-form" style="display:none;">
+                <p style="margin-bottom: 1.25rem; color: var(--slate-light);">Enter the 6-digit code we sent, and choose a new password.</p>
+                <input type="hidden" id="reset-password-email-value">
+                <div class="form-group">
+                    <label class="form-label">Reset Code</label>
+                    <input type="text" class="form-input" id="reset-password-code" placeholder="123456" required inputmode="numeric" maxlength="6">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">New Password</label>
+                    <input type="password" class="form-input" id="reset-password-new" placeholder="At least 8 characters" required minlength="8">
+                </div>
+                <div class="auth-error" id="reset-password-error"></div>
+                <button type="submit" class="btn-primary" style="width:100%;" id="reset-password-submit-btn">Reset Password</button>
+                <div class="auth-switch-link"><a id="back-to-login-link-2">Back to login</a></div>
             </form>
         </div>
 
@@ -1498,6 +1532,90 @@
                 loginForm.style.display = 'none';
             });
 
+            // Forgot/reset password panels share the sender auth card but
+            // replace the tabs + login/register forms entirely while active.
+            function showAuthPanel(panel) {
+                const tabs = document.getElementById('sender-auth-tabs');
+                const panels = {
+                    login: loginForm,
+                    register: registerForm,
+                    forgotRequest: document.getElementById('forgot-password-request-form'),
+                    resetPassword: document.getElementById('reset-password-form'),
+                };
+                Object.values(panels).forEach(el => { el.style.display = 'none'; });
+                panels[panel].style.display = 'block';
+                tabs.style.display = (panel === 'login' || panel === 'register') ? 'flex' : 'none';
+            }
+
+            document.getElementById('forgot-password-link').addEventListener('click', () => {
+                document.getElementById('forgot-password-error').style.display = 'none';
+                document.getElementById('forgot-password-email').value = document.getElementById('login-email').value || '';
+                showAuthPanel('forgotRequest');
+            });
+            document.getElementById('back-to-login-link-1').addEventListener('click', () => {
+                tabLogin.classList.add('active'); tabRegister.classList.remove('active');
+                showAuthPanel('login');
+            });
+            document.getElementById('back-to-login-link-2').addEventListener('click', () => {
+                tabLogin.classList.add('active'); tabRegister.classList.remove('active');
+                showAuthPanel('login');
+            });
+
+            document.getElementById('forgot-password-request-form').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const errorEl = document.getElementById('forgot-password-error');
+                const btn = document.getElementById('forgot-password-submit-btn');
+                const email = document.getElementById('forgot-password-email').value;
+                errorEl.style.display = 'none';
+                btn.disabled = true;
+                btn.textContent = 'Sending…';
+                try {
+                    await apiFetch('/api/auth/forgot-password', {
+                        method: 'POST',
+                        body: JSON.stringify({ email })
+                    });
+                    document.getElementById('reset-password-code').value = '';
+                    document.getElementById('reset-password-new').value = '';
+                    document.getElementById('reset-password-email-value').value = email;
+                    showToast('If that email has a phone on file, a reset code was sent to it.', 'info', 6000);
+                    showAuthPanel('resetPassword');
+                } catch (err) {
+                    errorEl.textContent = err.message;
+                    errorEl.style.display = 'block';
+                } finally {
+                    btn.disabled = false;
+                    btn.textContent = 'Send Reset Code';
+                }
+            });
+
+            document.getElementById('reset-password-form').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const errorEl = document.getElementById('reset-password-error');
+                const btn = document.getElementById('reset-password-submit-btn');
+                errorEl.style.display = 'none';
+                btn.disabled = true;
+                btn.textContent = 'Resetting…';
+                try {
+                    const data = await apiFetch('/api/auth/reset-password', {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            email: document.getElementById('reset-password-email-value').value,
+                            code: document.getElementById('reset-password-code').value.trim(),
+                            newPassword: document.getElementById('reset-password-new').value
+                        })
+                    });
+                    saveAuth(data.token, data.user);
+                    showToast('Password reset — you\'re logged in.', 'success');
+                    await enterApp();
+                } catch (err) {
+                    errorEl.textContent = err.message;
+                    errorEl.style.display = 'block';
+                } finally {
+                    btn.disabled = false;
+                    btn.textContent = 'Reset Password';
+                }
+            });
+
             document.getElementById('register-business-name').addEventListener('change', (e) => {
                 const group = document.getElementById('register-custom-name-group');
                 group.style.display = e.target.value === 'Others' ? 'block' : 'none';
@@ -1554,6 +1672,7 @@
                         body: JSON.stringify({
                             businessName,
                             email: document.getElementById('register-email').value,
+                            phone: document.getElementById('register-phone').value.trim(),
                             password: document.getElementById('register-password').value
                         })
                     });

@@ -4,11 +4,12 @@ require('dotenv').config();
 const path = require('path');
 const crypto = require('crypto');
 const express = require('express');
+const rateLimit = require('express-rate-limit');
 const http = require('http');
 const cors = require('cors');
 const { Server } = require('socket.io');
 const db = require('./db');
-const { notifyNewOrder } = require('./notify');
+const { notifyNewOrder, sendMessage } = require('./notify');
 const {
   hashPassword,
   comparePassword,
@@ -34,9 +35,29 @@ const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '1Nigeria@';
 const DELETE_PASSWORD = process.env.DELETE_PASSWORD || 'SKY';
 
 const app = express();
+
+// Railway (and most hosts) put the app behind a reverse proxy — without
+// this, express-rate-limit below would see every request as coming from
+// the same proxy IP and either rate-limit all users together or refuse
+// to start in strict mode. `1` trusts exactly one hop (Railway's edge).
+app.set('trust proxy', 1);
+
 app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '..', 'public')));
+
+// Brute-force protection on the three password-checking endpoints
+// (sender login, sender registration, admin login). Generous enough
+// for a real person mistyping a password a few times, tight enough to
+// blunt scripted guessing — each IP gets 10 attempts per 15 minutes
+// across these endpoints combined.
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many attempts. Please wait a few minutes and try again.' },
+});
 
 const server = http.createServer(app);
 
@@ -247,10 +268,10 @@ io.on('connection', (socket) => {
 // REST: auth + one-time initial state load
 // ============================================================
 
-app.post('/api/auth/register', async (req, res) => {
-  const { businessName, email, password } = req.body || {};
-  if (!businessName || !email || !password) {
-    return res.status(400).json({ error: 'businessName, email, and password are required' });
+app.post('/api/auth/register', authLimiter, async (req, res) => {
+  const { businessName, email, password, phone } = req.body || {};
+  if (!businessName || !email || !password || !phone) {
+    return res.status(400).json({ error: 'businessName, email, phone, and password are required' });
   }
   if (password.length < 8) {
     return res.status(400).json({ error: 'Password must be at least 8 characters' });
@@ -264,6 +285,7 @@ app.post('/api/auth/register', async (req, res) => {
       id: crypto.randomUUID(),
       businessName,
       email,
+      phone,
       passwordHash,
       role: 'sender', // public registration always creates senders; admins are seeded (see below)
     });
@@ -275,7 +297,7 @@ app.post('/api/auth/register', async (req, res) => {
   }
 });
 
-app.post('/api/auth/login', async (req, res) => {
+app.post('/api/auth/login', authLimiter, async (req, res) => {
   const { email, password } = req.body || {};
   if (!email || !password) return res.status(400).json({ error: 'Email and password are required' });
   try {
@@ -291,11 +313,86 @@ app.post('/api/auth/login', async (req, res) => {
   }
 });
 
+// Forgot password, step 1: request a code. Always responds with the same
+// generic message regardless of whether the email exists — this
+// prevents an attacker from using this endpoint to discover which
+// emails are registered. The code itself only actually gets sent if a
+// matching account with a phone number exists and Twilio is configured.
+const GENERIC_FORGOT_PASSWORD_RESPONSE = {
+  ok: true,
+  message: 'If an account exists for that email with a phone number on file, a reset code has been sent to it.',
+};
+
+app.post('/api/auth/forgot-password', authLimiter, async (req, res) => {
+  const { email } = req.body || {};
+  if (!email) return res.status(400).json({ error: 'Email is required' });
+  try {
+    const user = await db.getUserByEmail(email);
+    if (user && user.phone) {
+      const code = crypto.randomInt(100000, 1000000).toString(); // 6 digits
+      const codeHash = await hashPassword(code);
+      const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+      await db.createPasswordReset({ id: crypto.randomUUID(), userId: user.id, codeHash, expiresAt });
+
+      const sent = await sendMessage(
+        user.phone,
+        `Your Verta Delivery Service password reset code is: ${code}\nIt expires in 10 minutes. If you didn't request this, ignore this message.`
+      );
+      if (!sent) {
+        console.warn(`[forgot-password] Could not deliver reset code to ${user.phone} — is Twilio configured? (see server/notify.js)`);
+      }
+    } else if (user && !user.phone) {
+      console.warn(`[forgot-password] ${email} has no phone on file — cannot send a reset code`);
+    }
+    // Same response either way — see comment above.
+    res.json(GENERIC_FORGOT_PASSWORD_RESPONSE);
+  } catch (err) {
+    console.error('forgot-password failed', err);
+    // Still don't leak anything specific on error.
+    res.json(GENERIC_FORGOT_PASSWORD_RESPONSE);
+  }
+});
+
+// Forgot password, step 2: verify the code and set a new password.
+app.post('/api/auth/reset-password', authLimiter, async (req, res) => {
+  const { email, code, newPassword } = req.body || {};
+  if (!email || !code || !newPassword) {
+    return res.status(400).json({ error: 'Email, code, and new password are required' });
+  }
+  if (newPassword.length < 8) {
+    return res.status(400).json({ error: 'Password must be at least 8 characters' });
+  }
+  try {
+    const user = await db.getUserByEmail(email);
+    if (!user) return res.status(400).json({ error: 'Invalid or expired code' });
+
+    const reset = await db.getActivePasswordReset(user.id);
+    if (!reset) return res.status(400).json({ error: 'Invalid or expired code' });
+
+    const match = await comparePassword(code, reset.code_hash);
+    if (!match) return res.status(400).json({ error: 'Invalid or expired code' });
+
+    const passwordHash = await hashPassword(newPassword);
+    await db.updateUserPassword(user.id, passwordHash);
+    await db.markPasswordResetUsed(reset.id);
+
+    // Log the user in immediately as a convenience — they just proved
+    // phone ownership via the code, which is a stronger check than a
+    // typed password alone.
+    const freshUser = await db.getUserById(user.id);
+    const token = signToken(freshUser);
+    res.json({ ok: true, token, user: { id: freshUser.id, businessName: freshUser.businessName, email: freshUser.email, role: freshUser.role } });
+  } catch (err) {
+    console.error('reset-password failed', err);
+    res.status(500).json({ error: 'Failed to reset password' });
+  }
+});
+
 // Admin login: a single shared password (matches the original app's UX),
 // checked against the seeded admin account server-side. Returns a real JWT
 // so the rest of the app (REST + sockets) treats admins exactly like any
 // other authenticated role.
-app.post('/api/auth/admin-login', async (req, res) => {
+app.post('/api/auth/admin-login', authLimiter, async (req, res) => {
   const { password } = req.body || {};
   if (!password) return res.status(400).json({ error: 'Password is required' });
   try {
