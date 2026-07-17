@@ -480,13 +480,27 @@ this stack. If you do move to a bundled frontend (Vite + React/Vue) down
 the line, these tokens map directly onto a Tailwind config's `theme.extend.colors`
 almost 1:1 — happy to do that migration as its own project.
 
-## Monthly PDF upgrade
+## Monthly PDF upgrade + admin-only customer statements
 
 The admin Monthly Report's "Agent Summary" and "Daily Breakdown"
-sections now render as properly aligned tables (columns: Agents /
-Orders / Earned / 30% commission; and Order ID / Sender / Item / Amount
-/ Status / Agent) instead of run-on bullet sentences, matching the
-requested layout.
+sections render as properly aligned tables (columns: Agents / Orders /
+Earned / 30% commission; and Order ID / Sender / Item / Amount / Status
+/ Agent) instead of run-on bullet sentences.
 
-A customer-facing (sender-side) Monthly Report was added and then
-removed at your request — Monthly Report stays an admin-only feature.
+**Customer statements are admin-only** — folded into the same Monthly
+Report modal (opened from the admin sidebar) rather than a second
+button cluttering the dashboard. A new "Report For" dropdown lets an
+admin pick either:
+- **Business (All Customers)** — the existing whole-business report
+  (agent commissions, expenses, everything), or
+- **a specific customer** — pulled from the distinct senders seen
+  across all orders — which generates that one customer's statement
+  (`generateCustomerStatementPDF`): their order count, delivered/
+  cancelled counts, total spent, and an itemized table for that month.
+  No agent names, commissions, or business expenses in it — that's
+  internal data, not something to hand to a customer.
+
+Senders themselves have no access to this — there's no button for it
+anywhere in the sender view, and the underlying function only runs from
+the admin dashboard, where `orders` is populated with every customer's
+data (a sender's own session never has that).
