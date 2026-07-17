@@ -580,3 +580,11 @@ reports never receiving one. Likewise, senders who registered *before*
 this update have no phone on file and can't use this until an admin (or
 they, once you build a "my account" settings page — not present yet)
 adds one.
+
+## Settings page scaffold (admin-only)
+
+Added a "Settings" nav item to the admin sidebar (gear icon), opening a
+modal that's currently just a placeholder — "Settings options will go
+here." Wired up (open/close) and ready for real content whenever you
+decide what should live in it. Frontend-only for now; no backend changes
+until there's something that needs persisting.

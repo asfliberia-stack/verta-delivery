@@ -777,6 +777,10 @@
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
                         Fleet Directory
                     </button>
+                    <button type="button" class="admin-nav-item" id="open-settings-btn">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                        Settings
+                    </button>
                 </nav>
                 <div class="admin-sidebar-spacer"></div>
                 <div class="admin-sidebar-footer">
@@ -1084,6 +1088,24 @@
                     <button type="submit" class="btn-small btn-success" id="agent-form-submit-btn">Save Agent</button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- Settings Modal (admin-only) — scaffold, content to be added later -->
+    <div class="modal-overlay" id="settings-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>⚙️ Settings</h3>
+                <button class="close-btn" id="close-settings-modal">&times;</button>
+            </div>
+            <div id="settings-modal-content">
+                <p style="color: var(--slate-light); text-align: center; padding: 2rem 0;">
+                    Settings options will go here.
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-small btn-secondary" id="close-settings-modal-btn">Close</button>
+            </div>
         </div>
     </div>
 
@@ -1783,6 +1805,16 @@
             document.getElementById('scroll-to-agents-btn').addEventListener('click', () => {
                 const section = document.getElementById('agent-contacts-section');
                 if (section) section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            });
+
+            document.getElementById('open-settings-btn').addEventListener('click', () => {
+                document.getElementById('settings-modal').classList.add('active');
+            });
+            document.getElementById('close-settings-modal').addEventListener('click', () => {
+                document.getElementById('settings-modal').classList.remove('active');
+            });
+            document.getElementById('close-settings-modal-btn').addEventListener('click', () => {
+                document.getElementById('settings-modal').classList.remove('active');
             });
 
             document.getElementById('open-monthly-report-btn').addEventListener('click', openMonthlyReportModal);
