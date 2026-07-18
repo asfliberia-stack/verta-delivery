@@ -61,6 +61,39 @@ const authLimiter = rateLimit({
 
 const server = http.createServer(app);
 
+// Small, honest User-Agent parser for login history — covers the common
+// cases (not a full device-detection library) rather than pretending to
+// be exhaustive. Falls back to "Unknown" instead of guessing.
+function parseUserAgent(ua) {
+  if (!ua) return { device: 'Unknown', browser: 'Unknown' };
+  let device = 'Desktop';
+  if (/iPhone/i.test(ua)) device = 'iPhone';
+  else if (/iPad/i.test(ua)) device = 'iPad';
+  else if (/Android/i.test(ua)) device = 'Android';
+  else if (/Macintosh/i.test(ua)) device = 'Mac';
+  else if (/Windows/i.test(ua)) device = 'Windows';
+  else if (/Linux/i.test(ua)) device = 'Linux';
+
+  let browser = 'Unknown';
+  if (/Edg\//i.test(ua)) browser = 'Edge';
+  else if (/Chrome\//i.test(ua) && !/Chromium/i.test(ua)) browser = 'Chrome';
+  else if (/CriOS/i.test(ua)) browser = 'Chrome';
+  else if (/Firefox\//i.test(ua)) browser = 'Firefox';
+  else if (/Safari\//i.test(ua) && !/Chrome/i.test(ua)) browser = 'Safari';
+
+  return { device, browser };
+}
+
+async function recordLoginHistory(req, userId) {
+  try {
+    const { device, browser } = parseUserAgent(req.headers['user-agent']);
+    await db.recordLogin({ id: crypto.randomUUID(), userId, ipAddress: req.ip, device, browser });
+  } catch (err) {
+    // Login history is a convenience, never a reason to fail a login.
+    console.error('recordLoginHistory failed', err);
+  }
+}
+
 // Socket.io on the same HTTP server/port — Railway only exposes one port
 // per service, so frontend and websocket traffic share it. The frontend
 // connects with `io({ auth: { token } })` (no URL) which resolves to
@@ -290,6 +323,7 @@ app.post('/api/auth/register', authLimiter, async (req, res) => {
       role: 'sender', // public registration always creates senders; admins are seeded (see below)
     });
     const token = signToken(user);
+    await recordLoginHistory(req, user.id);
     res.json({ token, user: { id: user.id, businessName: user.businessName, email: user.email, role: user.role } });
   } catch (err) {
     console.error('register failed', err);
@@ -306,6 +340,7 @@ app.post('/api/auth/login', authLimiter, async (req, res) => {
     const match = await comparePassword(password, user.passwordHash);
     if (!match) return res.status(401).json({ error: 'Invalid email or password' });
     const token = signToken(user);
+    await recordLoginHistory(req, user.id);
     res.json({ token, user: { id: user.id, businessName: user.businessName, email: user.email, role: user.role } });
   } catch (err) {
     console.error('login failed', err);
@@ -381,6 +416,7 @@ app.post('/api/auth/reset-password', authLimiter, async (req, res) => {
     // typed password alone.
     const freshUser = await db.getUserById(user.id);
     const token = signToken(freshUser);
+    await recordLoginHistory(req, freshUser.id);
     res.json({ ok: true, token, user: { id: freshUser.id, businessName: freshUser.businessName, email: freshUser.email, role: freshUser.role } });
   } catch (err) {
     console.error('reset-password failed', err);
@@ -401,6 +437,7 @@ app.post('/api/auth/admin-login', authLimiter, async (req, res) => {
     const match = await comparePassword(password, admin.passwordHash);
     if (!match) return res.status(401).json({ error: 'Incorrect password' });
     const token = signToken(admin);
+    await recordLoginHistory(req, admin.id);
     res.json({ token, user: { id: admin.id, businessName: admin.businessName, email: admin.email, role: admin.role } });
   } catch (err) {
     console.error('admin-login failed', err);
@@ -418,16 +455,127 @@ app.get('/api/me', requireAuth, async (req, res) => {
 // everything. Every update after this arrives over the socket in realtime.
 app.get('/api/state', requireAuth, async (req, res) => {
   try {
+    const settings = await db.getSettings();
     if (req.user.role === 'admin') {
       const [orders, expenses, agents] = await Promise.all([db.getAllOrders(), db.getAllExpenses(), db.getAllAgents()]);
-      res.json({ orders, expenses, agents });
+      res.json({ orders, expenses, agents, settings });
     } else {
       const orders = await db.getOrdersBySender(req.user.id);
-      res.json({ orders, expenses: [], agents: [] });
+      res.json({ orders, expenses: [], agents: [], settings });
     }
   } catch (err) {
     console.error('GET /api/state failed', err);
     res.status(500).json({ error: 'Failed to load state' });
+  }
+});
+
+// ============================================================
+// Admin Settings page — Business Profile, Security, Backup & Restore.
+// Every route below requires both requireAuth AND requireAdmin: senders
+// can't reach any of this even with a valid token.
+// ============================================================
+
+const MAX_LOGO_BYTES = 700 * 1024; // ~700KB — logo lives as a data URL in
+// Postgres (see schema.sql), so this keeps row size sane. A data URL is
+// ~33% larger than the raw file, so this allows roughly a 500KB image.
+
+app.put('/api/admin/settings', requireAuth, requireAdmin, async (req, res) => {
+  const fields = req.body || {};
+  if (fields.logoDataUrl && fields.logoDataUrl.length > MAX_LOGO_BYTES) {
+    return res.status(400).json({ error: 'Logo image is too large — please use an image under ~500KB.' });
+  }
+  if (fields.openDays && !Array.isArray(fields.openDays)) {
+    return res.status(400).json({ error: 'openDays must be a list of day names' });
+  }
+  try {
+    const settings = await db.upsertSettings(fields);
+    io.to('admins').emit('settings:updated', settings); // live-sync to any other open admin sessions
+    res.json({ ok: true, settings });
+  } catch (err) {
+    console.error('PUT /api/admin/settings failed', err);
+    res.status(500).json({ error: 'Failed to save settings' });
+  }
+});
+
+app.post('/api/admin/change-email', requireAuth, requireAdmin, authLimiter, async (req, res) => {
+  const { newEmail, currentPassword } = req.body || {};
+  if (!newEmail || !currentPassword) {
+    return res.status(400).json({ error: 'New email and current password are required' });
+  }
+  try {
+    const admin = await db.getUserById(req.user.id);
+    const match = await comparePassword(currentPassword, admin.passwordHash);
+    if (!match) return res.status(401).json({ error: 'Current password is incorrect' });
+
+    const existing = await db.getUserByEmail(newEmail);
+    if (existing && existing.id !== admin.id) {
+      return res.status(409).json({ error: 'That email is already in use' });
+    }
+    const updated = await db.updateUserEmail(admin.id, newEmail);
+    const token = signToken(updated); // token embeds email, so it must be reissued
+    res.json({ ok: true, token, user: { id: updated.id, businessName: updated.businessName, email: updated.email, role: updated.role } });
+  } catch (err) {
+    console.error('change-email failed', err);
+    res.status(500).json({ error: 'Failed to change email' });
+  }
+});
+
+app.post('/api/admin/change-password', requireAuth, requireAdmin, authLimiter, async (req, res) => {
+  const { currentPassword, newPassword } = req.body || {};
+  if (!currentPassword || !newPassword) {
+    return res.status(400).json({ error: 'Current and new password are required' });
+  }
+  if (newPassword.length < 8) {
+    return res.status(400).json({ error: 'New password must be at least 8 characters' });
+  }
+  try {
+    const admin = await db.getUserById(req.user.id);
+    const match = await comparePassword(currentPassword, admin.passwordHash);
+    if (!match) return res.status(401).json({ error: 'Current password is incorrect' });
+    const passwordHash = await hashPassword(newPassword);
+    await db.updateUserPassword(admin.id, passwordHash);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('change-password failed', err);
+    res.status(500).json({ error: 'Failed to change password' });
+  }
+});
+
+app.get('/api/admin/login-history', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const history = await db.getLoginHistory(req.user.id, 20);
+    res.json({ history });
+  } catch (err) {
+    console.error('GET /api/admin/login-history failed', err);
+    res.status(500).json({ error: 'Failed to load login history' });
+  }
+});
+
+// "Logout All Devices" — bumps token_version, which invalidates every
+// JWT issued before this call (see checkTokenVersion in auth.js). Then
+// immediately re-issues a fresh token for THIS request, so the admin
+// doing this isn't accidentally logged out of their own current session.
+app.post('/api/admin/logout-all-devices', requireAuth, requireAdmin, authLimiter, async (req, res) => {
+  try {
+    const updated = await db.bumpTokenVersion(req.user.id);
+    const token = signToken(updated);
+    res.json({ ok: true, token });
+  } catch (err) {
+    console.error('logout-all-devices failed', err);
+    res.status(500).json({ error: 'Failed to log out other devices' });
+  }
+});
+
+app.get('/api/admin/export', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const data = await db.exportAllData();
+    const filename = `verta-delivery-export-${new Date().toISOString().slice(0, 10)}.json`;
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('Content-Type', 'application/json');
+    res.send(JSON.stringify(data, null, 2));
+  } catch (err) {
+    console.error('GET /api/admin/export failed', err);
+    res.status(500).json({ error: 'Failed to export data' });
   }
 });
 

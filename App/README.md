@@ -588,3 +588,81 @@ modal that's currently just a placeholder — "Settings options will go
 here." Wired up (open/close) and ready for real content whenever you
 decide what should live in it. Frontend-only for now; no backend changes
 until there's something that needs persisting.
+
+## Full Settings page (5 sections) + Weekly Revenue
+
+Built the complete Settings page as specified, organized into five tabs
+inside one modal (Business Profile / Security / Appearance / Backup &
+Restore / About), plus the Weekly Revenue card on the Overview dashboard
+exactly where recommended rather than inside Settings.
+
+### Real, working features (backend included)
+
+- **Business Profile**: name, email, phone, address, description,
+  hours, open days, currency, timezone — all persisted in a new
+  `settings` table, editable, live-synced to any other open admin
+  session via `settings:updated`.
+- **Business logo**: stored as the image itself (base64) directly in
+  Postgres, not a file path — Railway wipes its filesystem on every
+  redeploy, so a path-based upload would silently break the first time
+  you deploy again. Capped at ~500KB.
+- **Change Email / Change Password**: real, require your current
+  password, admin-only, rate-limited.
+- **Login History**: a real log — every successful login (any account)
+  now records device and browser (parsed from the request), plus IP
+  address. No fabricated "Location/city" column — that needs a paid
+  IP-geolocation service this app doesn't have.
+- **Logout All Devices**: real. Added a `token_version` column to
+  `users` — every JWT embeds the version current when it was issued,
+  and `requireAuth`/`socketAuth` now check it on every request. Bumping
+  it instantly invalidates every previously-issued token. Your current
+  device gets a fresh token immediately after, so triggering this
+  doesn't log *you* out.
+- **Dark Mode**: real toggle for the admin dashboard shell (sidebar,
+  cards, main content), persisted in `localStorage`, with an
+  "automatically follow system theme" option. Doesn't yet cover modals
+  (see limitation below).
+- **Export Database**: real — downloads a JSON file with every order,
+  expense, agent, and customer record (password hashes excluded).
+- **Weekly Revenue** (Overview, not Settings, per your own
+  recommendation): a new card showing this week's delivered-order
+  revenue with a week-over-week trend arrow, computed entirely from
+  data already loaded — no new endpoint needed. Clicking it opens a
+  breakdown by day (Mon–Sun), plus Total Deliveries, Average Delivery
+  Value, and Highest/Lowest Revenue Day for the week.
+
+### Scaffolded as "Coming soon" — not faked
+
+These show real UI, clearly marked, with disabled controls rather than
+controls that pretend to work:
+- **Two-Factor Authentication** — needs email/SMS OTP or TOTP
+  authenticator support, neither built yet.
+- **Active Sessions list** — "Logout All Devices" is real (above), but
+  a true per-device session list needs a session table this stateless
+  JWT setup doesn't have. "Logout This Device" just does what your
+  existing Logout already does.
+- **Restore Database** — deliberately left disabled. Accepting an
+  upload that overwrites live production data needs a much more
+  careful flow (preview, confirmation, auto-backup-before-restore)
+  before it's safe to ship.
+- **Auto Backup** (scheduled/cloud) — needs a job scheduler and cloud
+  storage credentials, neither present in this deployment.
+- **Privacy Policy / Terms of Service links** — no such pages exist
+  yet, so these show as "Not published yet" rather than linking
+  nowhere.
+
+### Known limitation
+
+Dark mode currently only covers the dashboard shell — modals (Order
+History, Monthly Report, Add Expense, Settings itself, etc.) stay
+light-themed even when dark mode is on, since modals live outside
+`#delivery-app` in the DOM and are shared with the sender view. Fully
+theming them is a bit more work and was left out of this pass rather
+than risk destabilizing shared modal styling.
+
+### New database migrations
+
+Three additions to `server/schema.sql`, all with explicit
+`ALTER TABLE ... IF NOT EXISTS` migrations so your existing database
+picks them up on next boot (not just fresh installs): `token_version`
+on `users`, a new `settings` table, and a new `login_history` table.

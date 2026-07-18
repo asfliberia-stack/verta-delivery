@@ -19,6 +19,51 @@ CREATE TABLE IF NOT EXISTS users (
 -- reset simply won't be available to them until then (see README).
 ALTER TABLE users ADD COLUMN IF NOT EXISTS phone TEXT;
 
+-- Bumped whenever an admin uses "Logout All Devices" (Settings > Security).
+-- Every JWT embeds the token_version that was current when it was issued;
+-- requireAuth/socketAuth reject a token whose version doesn't match the
+-- user's current value, which is what makes "logout everywhere" possible
+-- without a full session-table rewrite of the stateless JWT auth this app
+-- already uses.
+ALTER TABLE users ADD COLUMN IF NOT EXISTS token_version INTEGER NOT NULL DEFAULT 0;
+
+-- Single-row table: one business, one set of settings. Logo is stored as
+-- a data URL (base64) directly in the row rather than a file path —
+-- Railway's filesystem is wiped on every redeploy, so a path-based
+-- upload would silently break; a small logo image living in Postgres
+-- doesn't have that problem. Kept deliberately small (see server.js for
+-- the upload size limit enforced on save).
+CREATE TABLE IF NOT EXISTS settings (
+    id                 TEXT PRIMARY KEY DEFAULT 'business',
+    business_name      TEXT,
+    business_email     TEXT,
+    business_phone     TEXT,
+    business_address   TEXT,
+    business_description TEXT,
+    logo_data_url      TEXT,
+    opening_time       TEXT,
+    closing_time       TEXT,
+    open_days          TEXT[],
+    currency           TEXT NOT NULL DEFAULT 'USD',
+    timezone           TEXT NOT NULL DEFAULT 'Africa/Monrovia',
+    updated_at         TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- Real login history — logged on every successful login (sender or
+-- admin). Device/browser are parsed from the request's User-Agent
+-- header; there's no city/location field because that needs a paid
+-- IP-geolocation service this app doesn't have — showing a fabricated
+-- "Monrovia" for every row would be worse than not showing one.
+CREATE TABLE IF NOT EXISTS login_history (
+    id         TEXT PRIMARY KEY,
+    user_id    TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    ip_address TEXT,
+    device     TEXT,
+    browser    TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_login_history_user_id ON login_history (user_id, created_at DESC);
+
 -- Password reset codes, sent via SMS/WhatsApp (server/notify.js) to the
 -- phone number a sender registered with. Each code is single-use and
 -- expires — old/used rows are harmless to keep around (no cleanup job

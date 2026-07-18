@@ -339,6 +339,73 @@
         }
         .mode-toggle button.active { border-color: var(--primary); color: var(--primary); background: #eef2ff; }
 
+        /* Settings modal */
+        .settings-layout { display: flex; align-items: stretch; }
+        .settings-nav {
+            width: 220px; flex-shrink: 0; padding: 1.5rem 1rem;
+            border-right: 1px solid var(--border); display: flex; flex-direction: column; gap: 0.25rem;
+        }
+        .settings-tab-btn {
+            display: flex; align-items: center; gap: 0.5rem; text-align: left;
+            padding: 0.75rem 0.875rem; min-height: 44px; border: none; border-radius: 0.625rem;
+            background: transparent; color: var(--slate-light); font-weight: 600; font-size: 0.9375rem;
+            cursor: pointer; transition: background 0.15s, color 0.15s;
+        }
+        .settings-tab-btn:hover { background: var(--bg-light); color: var(--slate); }
+        .settings-tab-btn.active { background: #eef2ff; color: var(--primary); }
+        .settings-content { flex: 1; padding: 1.75rem 2rem 2rem; min-width: 0; }
+        .settings-panel { max-width: 640px; }
+        .settings-section-title {
+            font-size: 1rem; font-weight: 700; color: var(--slate);
+            margin: 1.75rem 0 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border);
+            display: flex; align-items: center; gap: 0.625rem;
+        }
+        .settings-section-title:first-child { margin-top: 0; }
+        .settings-badge-soon {
+            font-size: 0.6875rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em;
+            background: #f1f5f9; color: var(--slate-light); padding: 0.1875rem 0.5rem; border-radius: 9999px;
+        }
+        .settings-hint { color: var(--slate-light); font-size: 0.875rem; margin-bottom: 0.875rem; line-height: 1.5; }
+        .settings-day-picker { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+        .settings-day-picker label {
+            display: flex; align-items: center; gap: 0.375rem; padding: 0.5rem 0.75rem; min-height: 44px;
+            border: 2px solid var(--border); border-radius: 0.625rem; cursor: pointer; font-size: 0.875rem; font-weight: 600;
+        }
+        .settings-toggle-row {
+            display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+            padding: 0.875rem 1rem; background: var(--bg-light); border-radius: 0.75rem;
+            font-weight: 600; font-size: 0.9375rem; cursor: pointer; min-height: 44px;
+        }
+        .settings-toggle-row input[type="checkbox"] { width: 2.5rem; height: 1.5rem; accent-color: var(--primary); cursor: pointer; }
+        .settings-toggle-disabled { opacity: 0.6; cursor: not-allowed; }
+        .settings-toggle-disabled input { cursor: not-allowed; }
+        .settings-theme-option {
+            flex: 1; min-width: 160px; padding: 1.25rem; min-height: 44px;
+            border: 2px solid var(--border); border-radius: 0.875rem; background: white;
+            font-weight: 700; font-size: 1rem; cursor: pointer; transition: all 0.15s;
+        }
+        .settings-theme-option.active { border-color: var(--primary); background: #eef2ff; color: var(--primary); }
+        .settings-table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+        .settings-table th {
+            text-align: left; padding: 0.625rem 0.75rem; color: var(--slate-light);
+            font-weight: 700; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.03em;
+            border-bottom: 2px solid var(--border);
+        }
+        .settings-table td { padding: 0.625rem 0.75rem; border-bottom: 1px solid var(--border); color: var(--slate); }
+        .settings-status-success { color: var(--secondary); font-weight: 700; }
+        .settings-about-row {
+            display: flex; justify-content: space-between; align-items: center; gap: 1rem;
+            padding: 0.875rem 0; border-bottom: 1px solid var(--border); font-size: 0.9375rem;
+        }
+        .settings-about-row span:first-child { color: var(--slate-light); }
+        .settings-about-row strong { color: var(--slate); text-align: right; font-weight: 700; }
+        .settings-link-pending { color: var(--slate-light); font-size: 0.8125rem; font-style: italic; }
+
+        @media (max-width: 720px) {
+            .settings-layout { flex-direction: column; }
+            .settings-nav { width: 100%; flex-direction: row; overflow-x: auto; border-right: none; border-bottom: 1px solid var(--border); }
+        }
+
         /* ============================================================
            Admin Dashboard — 2026 modernization pass. SCOPED ENTIRELY
            under #delivery-app (or explicitly admin-* prefixed classes).
@@ -386,6 +453,34 @@
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
             letter-spacing: -0.01em;
         }
+
+        /* Dark mode — covers the dashboard shell (sidebar, main content,
+           KPI/order cards, section headers). Modals stay light-themed for
+           now (they're rendered outside #delivery-app in the DOM, shared
+           with the sender view, so re-theming them safely is a separate,
+           slightly bigger change — see README). Toggled via
+           #delivery-app[data-theme="dark"], set by Settings > Appearance,
+           persisted in localStorage. */
+        #delivery-app[data-theme="dark"] {
+            --admin-bg: #0f172a;
+            --admin-surface: #1e293b;
+            --admin-surface-alt: #273449;
+            --admin-border: #334155;
+            --admin-border-strong: #475569;
+            --admin-text: #f1f5f9;
+            --admin-text-secondary: #94a3b8;
+            --admin-text-tertiary: #64748b;
+        }
+        #delivery-app[data-theme="dark"] .order-card,
+        #delivery-app[data-theme="dark"] .stat-card { background: var(--admin-surface); }
+        #delivery-app[data-theme="dark"] .order-detail-value,
+        #delivery-app[data-theme="dark"] .order-id,
+        #delivery-app[data-theme="dark"] .section-title { color: var(--admin-text); }
+        #delivery-app[data-theme="dark"] .order-detail-label,
+        #delivery-app[data-theme="dark"] .order-date-label,
+        #delivery-app[data-theme="dark"] .order-timestamp { color: var(--admin-text-tertiary); }
+        #delivery-app[data-theme="dark"] .order-actions { border-top-color: var(--admin-border); }
+        #delivery-app[data-theme="dark"] .admin-welcome-role { background: #1e2547; }
         #delivery-app .admin-shell {
             display: grid;
             grid-template-columns: 272px 1fr;
@@ -540,6 +635,13 @@
         #delivery-app .stat-card.warning p { color: var(--accent); }
         #delivery-app .stat-card.pending p { color: var(--admin-text-secondary); }
         #delivery-app .stat-card.cancelled p { color: #9ca3af; }
+        #delivery-app .weekly-revenue-card { cursor: pointer; }
+        #delivery-app .weekly-revenue-card:hover { transform: translateY(-2px); box-shadow: var(--admin-shadow-md); border-color: var(--primary); }
+        #delivery-app .weekly-revenue-card:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+        #delivery-app .weekly-revenue-trend { font-size: 0.875rem; font-weight: 700; margin-top: 0.25rem; }
+        #delivery-app .weekly-revenue-trend.up { color: var(--secondary); }
+        #delivery-app .weekly-revenue-trend.down { color: #dc2626; }
+        #delivery-app .weekly-revenue-trend.flat { color: var(--admin-text-secondary); }
 
         /* ---- Order cards ---- */
         #delivery-app .section-title { font-size: 1.125rem; font-weight: 600; color: var(--admin-text); }
@@ -832,6 +934,20 @@
                     </div>
                 </section>
 
+                <div class="admin-section-label">THIS WEEK</div>
+                <section class="stats-section" style="margin-bottom: 2.5rem;">
+                    <div class="stats-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem;">
+                        <div class="stat-card weekly-revenue-card" id="weekly-revenue-card" role="button" tabindex="0">
+                            <div class="stat-card-top">
+                                <h4>Weekly Revenue</h4>
+                                <div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg></div>
+                            </div>
+                            <p id="weekly-revenue-amount">$0.00</p>
+                            <div id="weekly-revenue-trend" class="weekly-revenue-trend">—</div>
+                        </div>
+                    </div>
+                </section>
+
                 <section class="orders-section">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 1rem;">
                         <h2 class="section-title" style="margin: 0;">Available Orders</h2>
@@ -1093,18 +1209,237 @@
 
     <!-- Settings Modal (admin-only) — scaffold, content to be added later -->
     <div class="modal-overlay" id="settings-modal">
-        <div class="modal">
-            <div class="modal-header">
+        <div class="modal" style="max-width: 1100px; width: 95%; max-height: 90vh; overflow-y: auto; padding: 0;">
+            <div class="modal-header" style="padding: 1.5rem 2rem; position: sticky; top: 0; background: white; z-index: 5; margin-bottom: 0;">
                 <h3>⚙️ Settings</h3>
                 <button class="close-btn" id="close-settings-modal">&times;</button>
             </div>
-            <div id="settings-modal-content">
-                <p style="color: var(--slate-light); text-align: center; padding: 2rem 0;">
-                    Settings options will go here.
-                </p>
+            <div class="settings-layout">
+                <nav class="settings-nav">
+                    <button type="button" class="settings-tab-btn active" data-settings-tab="profile">🏢 Business Profile</button>
+                    <button type="button" class="settings-tab-btn" data-settings-tab="security">🔒 Security</button>
+                    <button type="button" class="settings-tab-btn" data-settings-tab="appearance">🎨 Appearance</button>
+                    <button type="button" class="settings-tab-btn" data-settings-tab="backup">💾 Backup &amp; Restore</button>
+                    <button type="button" class="settings-tab-btn" data-settings-tab="about">ℹ️ About</button>
+                </nav>
+
+                <div class="settings-content">
+                    <!-- 1. Business Profile -->
+                    <div class="settings-panel" id="settings-panel-profile">
+                        <h4 class="settings-section-title">Company Information</h4>
+                        <div class="form-group">
+                            <label class="form-label">Business Name</label>
+                            <input type="text" class="form-input" id="settings-business-name">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Business Logo</label>
+                            <div style="display: flex; align-items: center; gap: 1rem;">
+                                <img id="settings-logo-preview" src="assets/logo.png" alt="Logo preview" style="height: 56px; width: 56px; object-fit: contain; border: 1px solid var(--border); border-radius: 0.5rem; padding: 0.25rem; background: var(--bg-light);">
+                                <input type="file" accept="image/*" id="settings-logo-input" style="display:none;">
+                                <button type="button" class="btn-small btn-secondary" id="settings-logo-upload-btn">Upload or Replace Logo</button>
+                            </div>
+                            <div id="settings-logo-error" style="color: #dc2626; font-size: 0.8125rem; margin-top: 0.5rem; display: none;"></div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Business Email</label>
+                            <input type="email" class="form-input" id="settings-business-email">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Business Phone</label>
+                            <input type="text" class="form-input" id="settings-business-phone">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Business Address</label>
+                            <input type="text" class="form-input" id="settings-business-address">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Business Description</label>
+                            <textarea class="form-input" id="settings-business-description" rows="3"></textarea>
+                        </div>
+
+                        <h4 class="settings-section-title">Business Hours</h4>
+                        <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+                            <div class="form-group" style="flex: 1; min-width: 160px;">
+                                <label class="form-label">Opening Time</label>
+                                <input type="time" class="form-input" id="settings-opening-time">
+                            </div>
+                            <div class="form-group" style="flex: 1; min-width: 160px;">
+                                <label class="form-label">Closing Time</label>
+                                <input type="time" class="form-input" id="settings-closing-time">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Open Days</label>
+                            <div class="settings-day-picker" id="settings-open-days">
+                                <label><input type="checkbox" value="Mon"> Mon</label>
+                                <label><input type="checkbox" value="Tue"> Tue</label>
+                                <label><input type="checkbox" value="Wed"> Wed</label>
+                                <label><input type="checkbox" value="Thu"> Thu</label>
+                                <label><input type="checkbox" value="Fri"> Fri</label>
+                                <label><input type="checkbox" value="Sat"> Sat</label>
+                                <label><input type="checkbox" value="Sun"> Sun</label>
+                            </div>
+                        </div>
+
+                        <h4 class="settings-section-title">Regional Settings</h4>
+                        <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+                            <div class="form-group" style="flex: 1; min-width: 160px;">
+                                <label class="form-label">Currency</label>
+                                <select class="form-input" id="settings-currency">
+                                    <option value="USD">USD</option>
+                                    <option value="LRD">LRD</option>
+                                </select>
+                            </div>
+                            <div class="form-group" style="flex: 1; min-width: 200px;">
+                                <label class="form-label">Time Zone</label>
+                                <select class="form-input" id="settings-timezone">
+                                    <option value="Africa/Monrovia">Africa/Monrovia (GMT+0)</option>
+                                    <option value="UTC">UTC (GMT+0)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div id="settings-profile-error" style="color: #dc2626; font-size: 0.875rem; margin-top: 0.5rem; display: none;"></div>
+                        <div style="display: flex; gap: 1rem; margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--border);">
+                            <button type="button" class="btn-small btn-success" id="settings-save-profile-btn">Save Changes</button>
+                            <button type="button" class="btn-small btn-secondary" id="settings-cancel-profile-btn">Cancel</button>
+                        </div>
+                    </div>
+
+                    <!-- 2. Security -->
+                    <div class="settings-panel" id="settings-panel-security" style="display:none;">
+                        <h4 class="settings-section-title">Account</h4>
+                        <div style="display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 0.5rem;">
+                            <button type="button" class="btn-small btn-secondary" id="toggle-change-email-btn">Change Email</button>
+                            <button type="button" class="btn-small btn-secondary" id="toggle-change-password-btn">Change Password</button>
+                        </div>
+
+                        <form id="change-email-form" style="display:none; background: var(--bg-light); padding: 1.25rem; border-radius: 0.875rem; margin-top: 1rem;">
+                            <div class="form-group">
+                                <label class="form-label">New Email</label>
+                                <input type="email" class="form-input" id="change-email-new" required>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Current Password</label>
+                                <input type="password" class="form-input" id="change-email-current-password" required>
+                            </div>
+                            <div class="auth-error" id="change-email-error"></div>
+                            <button type="submit" class="btn-small btn-success">Update Email</button>
+                        </form>
+
+                        <form id="change-password-form" style="display:none; background: var(--bg-light); padding: 1.25rem; border-radius: 0.875rem; margin-top: 1rem;">
+                            <div class="form-group">
+                                <label class="form-label">Current Password</label>
+                                <input type="password" class="form-input" id="change-password-current" required>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">New Password</label>
+                                <input type="password" class="form-input" id="change-password-new" placeholder="At least 8 characters" required minlength="8">
+                            </div>
+                            <div class="auth-error" id="change-password-error"></div>
+                            <button type="submit" class="btn-small btn-success">Update Password</button>
+                        </form>
+
+                        <h4 class="settings-section-title">Two-Factor Authentication <span class="settings-badge-soon">Coming soon</span></h4>
+                        <p class="settings-hint">Adds a verification step (email code or authenticator app) beyond your password. Not built yet — the toggle below is disabled rather than pretending to protect your account.</p>
+                        <label class="settings-toggle-row settings-toggle-disabled">
+                            <span>Enable Two-Factor Authentication</span>
+                            <input type="checkbox" disabled>
+                        </label>
+
+                        <h4 class="settings-section-title">Login History</h4>
+                        <div style="overflow-x: auto;">
+                            <table class="settings-table" id="login-history-table">
+                                <thead>
+                                    <tr><th>Date</th><th>Device</th><th>Browser</th><th>IP Address</th><th>Status</th></tr>
+                                </thead>
+                                <tbody id="login-history-tbody">
+                                    <tr><td colspan="5" style="text-align:center; color: var(--slate-light);">Loading…</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <h4 class="settings-section-title">Active Sessions <span class="settings-badge-soon">Partial</span></h4>
+                        <p class="settings-hint">A full per-device session list isn't built yet, but you can immediately invalidate every login token below — useful if you think your account is logged in somewhere it shouldn't be.</p>
+                        <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+                            <button type="button" class="btn-small btn-secondary" id="logout-this-device-btn">Logout This Device</button>
+                            <button type="button" class="btn-small btn-danger" id="logout-all-devices-btn">Logout All Devices</button>
+                        </div>
+                    </div>
+
+                    <!-- 3. Appearance -->
+                    <div class="settings-panel" id="settings-panel-appearance" style="display:none;">
+                        <h4 class="settings-section-title">Theme</h4>
+                        <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+                            <button type="button" class="settings-theme-option active" id="theme-option-light" data-theme="light">☀️ Light Mode</button>
+                            <button type="button" class="settings-theme-option" id="theme-option-dark" data-theme="dark">🌙 Dark Mode</button>
+                        </div>
+                        <label class="settings-toggle-row" style="margin-top: 1.25rem;">
+                            <span>Automatically follow system theme</span>
+                            <input type="checkbox" id="theme-follow-system">
+                        </label>
+                        <div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--border);">
+                            <button type="button" class="btn-small btn-success" id="save-theme-btn">Save Theme</button>
+                        </div>
+                    </div>
+
+                    <!-- 4. Backup & Restore -->
+                    <div class="settings-panel" id="settings-panel-backup" style="display:none;">
+                        <h4 class="settings-section-title">Export Database</h4>
+                        <p class="settings-hint">Downloads a JSON file with every order, expense, agent, and customer record.</p>
+                        <button type="button" class="btn-small btn-success" id="export-database-btn">⬇ Export Database</button>
+
+                        <h4 class="settings-section-title">Restore Database <span class="settings-badge-soon">Coming soon</span></h4>
+                        <p class="settings-hint">Restoring from a backup can overwrite live data — this needs a safer, more careful flow (preview, confirmation, auto-backup-first) before it's safe to turn on. The upload control below is disabled intentionally.</p>
+                        <div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
+                            <input type="file" class="form-input" style="max-width: 280px;" disabled accept=".sql,.zip,.json">
+                            <button type="button" class="btn-small btn-secondary" disabled>Restore Backup</button>
+                        </div>
+
+                        <h4 class="settings-section-title">Auto Backup <span class="settings-badge-soon">Coming soon</span></h4>
+                        <p class="settings-hint">Needs a scheduled job runner and cloud storage credentials, neither of which exist in this deployment yet.</p>
+                        <label class="settings-toggle-row settings-toggle-disabled">
+                            <span>Enable Automatic Backup</span>
+                            <input type="checkbox" disabled>
+                        </label>
+                        <div style="display: flex; gap: 1rem; flex-wrap: wrap; margin-top: 1rem;">
+                            <div class="form-group" style="flex: 1; min-width: 160px;">
+                                <label class="form-label">Schedule</label>
+                                <select class="form-input" disabled><option>Daily</option><option>Weekly</option><option>Monthly</option></select>
+                            </div>
+                            <div class="form-group" style="flex: 1; min-width: 160px;">
+                                <label class="form-label">Backup Location</label>
+                                <select class="form-input" disabled><option>Local Server</option><option>Cloud Storage</option></select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 5. About -->
+                    <div class="settings-panel" id="settings-panel-about" style="display:none;">
+                        <h4 class="settings-section-title">Application Information</h4>
+                        <div class="settings-about-row"><span>App Name</span><strong>Verta Delivery Services</strong></div>
+                        <div class="settings-about-row"><span>Current Version</span><strong>v1.0.0</strong></div>
+                        <div class="settings-about-row"><span>Last Update</span><strong>July 18, 2026</strong></div>
+                        <div class="settings-about-row"><span>Support Contact</span><strong>support@verta.com<br>+231-886-165-524</strong></div>
+                        <h4 class="settings-section-title">Links</h4>
+                        <div class="settings-about-row"><span>Privacy Policy</span><span class="settings-link-pending">Not published yet</span></div>
+                        <div class="settings-about-row"><span>Terms of Service</span><span class="settings-link-pending">Not published yet</span></div>
+                    </div>
+                </div>
             </div>
+        </div>
+    </div>
+
+    <!-- Weekly Revenue detail modal -->
+    <div class="modal-overlay" id="weekly-revenue-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>📊 Weekly Revenue</h3>
+                <button class="close-btn" id="close-weekly-revenue-modal">&times;</button>
+            </div>
+            <div id="weekly-revenue-modal-content"></div>
             <div class="modal-footer">
-                <button type="button" class="btn-small btn-secondary" id="close-settings-modal-btn">Close</button>
+                <button type="button" class="btn-small btn-secondary" id="close-weekly-revenue-modal-btn">Close</button>
             </div>
         </div>
     </div>
@@ -1122,6 +1457,7 @@
         // ============================================================
         let agents = {};
         let agentRecords = [];
+        let settings = {}; // business profile / regional settings, from Settings > Business Profile
 
         function setAgents(records) {
             agentRecords = records;
@@ -1384,6 +1720,15 @@
                 setAgents(agentRecords);
                 refreshAllViews();
             });
+
+            socket.on('settings:updated', (updated) => {
+                settings = updated;
+                // Only refresh the visible form if the Settings modal is
+                // actually open, so we don't clobber someone mid-edit.
+                if (document.getElementById('settings-modal').classList.contains('active')) {
+                    populateSettingsProfileForm();
+                }
+            });
         }
 
         function emitWithAck(event, payload) {
@@ -1427,6 +1772,7 @@
                 renderOrdersDelivery();
                 renderRecentDeliveries();
                 calculateAndRenderStats();
+                renderWeeklyRevenueCard();
                 renderOrderHistory();
                 renderAgentContacts();
             }
@@ -1440,6 +1786,7 @@
             wireAppEvents();
             wireSidebarToggle();
             setupScrollReactiveHeader();
+            wireSettingsEvents();
 
             const stored = loadStoredAuth();
             if (stored && stored.token) {
@@ -1491,6 +1838,7 @@
                 document.getElementById('user-name').textContent = currentUser.businessName || 'Admin';
                 document.getElementById('user-avatar').textContent = (currentUser.businessName || 'A').charAt(0).toUpperCase();
                 renderSkeletonCards(document.getElementById('orders-grouped-delivery'));
+                applySavedTheme();
             } else {
                 document.getElementById('delivery-app').style.display = 'none';
                 document.getElementById('home-screen').style.display = 'block';
@@ -1504,6 +1852,7 @@
                 orders = (data.orders || []).map(normalizeOrder);
                 expenses = (data.expenses || []).map(normalizeExpense);
                 setAgents(data.agents || []);
+                settings = data.settings || {};
             } catch (err) {
                 console.error('Failed to load initial state', err);
                 showToast('Could not load your data — check your connection and refresh.', 'error');
@@ -1809,12 +2158,20 @@
 
             document.getElementById('open-settings-btn').addEventListener('click', () => {
                 document.getElementById('settings-modal').classList.add('active');
+                populateSettingsProfileForm();
+                loadLoginHistory();
             });
             document.getElementById('close-settings-modal').addEventListener('click', () => {
                 document.getElementById('settings-modal').classList.remove('active');
             });
-            document.getElementById('close-settings-modal-btn').addEventListener('click', () => {
-                document.getElementById('settings-modal').classList.remove('active');
+
+            document.querySelectorAll('.settings-tab-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.settings-tab-btn').forEach(b => b.classList.remove('active'));
+                    document.querySelectorAll('.settings-panel').forEach(p => p.style.display = 'none');
+                    btn.classList.add('active');
+                    document.getElementById(`settings-panel-${btn.dataset.settingsTab}`).style.display = 'block';
+                });
             });
 
             document.getElementById('open-monthly-report-btn').addEventListener('click', openMonthlyReportModal);
@@ -1967,6 +2324,256 @@
             } finally {
                 submitBtn.disabled = false;
                 submitBtn.textContent = 'Save Agent';
+            }
+        }
+
+        // ============================================================
+        // Settings — Business Profile
+        // ============================================================
+        function populateSettingsProfileForm() {
+            document.getElementById('settings-business-name').value = settings.businessName || '';
+            document.getElementById('settings-business-email').value = settings.businessEmail || '';
+            document.getElementById('settings-business-phone').value = settings.businessPhone || '';
+            document.getElementById('settings-business-address').value = settings.businessAddress || '';
+            document.getElementById('settings-business-description').value = settings.businessDescription || '';
+            document.getElementById('settings-opening-time').value = settings.openingTime || '';
+            document.getElementById('settings-closing-time').value = settings.closingTime || '';
+            document.getElementById('settings-currency').value = settings.currency || 'USD';
+            document.getElementById('settings-timezone').value = settings.timezone || 'Africa/Monrovia';
+            document.getElementById('settings-logo-preview').src = settings.logoDataUrl || 'assets/logo.png';
+            const openDays = settings.openDays || [];
+            document.querySelectorAll('#settings-open-days input[type="checkbox"]').forEach(cb => {
+                cb.checked = openDays.includes(cb.value);
+            });
+            document.getElementById('settings-profile-error').style.display = 'none';
+        }
+
+        let pendingLogoDataUrl = null;
+
+        function wireSettingsEvents() {
+            document.getElementById('settings-logo-upload-btn').addEventListener('click', () => {
+                document.getElementById('settings-logo-input').click();
+            });
+            document.getElementById('settings-logo-input').addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                const errorEl = document.getElementById('settings-logo-error');
+                errorEl.style.display = 'none';
+                if (!file) return;
+                if (file.size > 500 * 1024) {
+                    errorEl.textContent = 'Please choose an image under 500KB.';
+                    errorEl.style.display = 'block';
+                    return;
+                }
+                const reader = new FileReader();
+                reader.onload = () => {
+                    pendingLogoDataUrl = reader.result;
+                    document.getElementById('settings-logo-preview').src = pendingLogoDataUrl;
+                };
+                reader.readAsDataURL(file);
+            });
+
+            document.getElementById('settings-cancel-profile-btn').addEventListener('click', () => {
+                pendingLogoDataUrl = null;
+                populateSettingsProfileForm();
+            });
+
+            document.getElementById('settings-save-profile-btn').addEventListener('click', async () => {
+                const errorEl = document.getElementById('settings-profile-error');
+                const btn = document.getElementById('settings-save-profile-btn');
+                errorEl.style.display = 'none';
+                const openDays = Array.from(document.querySelectorAll('#settings-open-days input:checked')).map(cb => cb.value);
+                const payload = {
+                    businessName: document.getElementById('settings-business-name').value.trim(),
+                    businessEmail: document.getElementById('settings-business-email').value.trim(),
+                    businessPhone: document.getElementById('settings-business-phone').value.trim(),
+                    businessAddress: document.getElementById('settings-business-address').value.trim(),
+                    businessDescription: document.getElementById('settings-business-description').value.trim(),
+                    openingTime: document.getElementById('settings-opening-time').value,
+                    closingTime: document.getElementById('settings-closing-time').value,
+                    openDays,
+                    currency: document.getElementById('settings-currency').value,
+                    timezone: document.getElementById('settings-timezone').value,
+                };
+                if (pendingLogoDataUrl) payload.logoDataUrl = pendingLogoDataUrl;
+                btn.disabled = true;
+                btn.textContent = 'Saving…';
+                try {
+                    const data = await apiFetch('/api/admin/settings', { method: 'PUT', body: JSON.stringify(payload) });
+                    settings = data.settings;
+                    pendingLogoDataUrl = null;
+                    showToast('Settings saved', 'success');
+                } catch (err) {
+                    errorEl.textContent = err.message;
+                    errorEl.style.display = 'block';
+                } finally {
+                    btn.disabled = false;
+                    btn.textContent = 'Save Changes';
+                }
+            });
+
+            // ---- Security: change email / change password ----
+            document.getElementById('toggle-change-email-btn').addEventListener('click', () => {
+                const form = document.getElementById('change-email-form');
+                form.style.display = form.style.display === 'none' ? 'block' : 'none';
+            });
+            document.getElementById('toggle-change-password-btn').addEventListener('click', () => {
+                const form = document.getElementById('change-password-form');
+                form.style.display = form.style.display === 'none' ? 'block' : 'none';
+            });
+
+            document.getElementById('change-email-form').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const errorEl = document.getElementById('change-email-error');
+                errorEl.style.display = 'none';
+                try {
+                    const data = await apiFetch('/api/admin/change-email', {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            newEmail: document.getElementById('change-email-new').value,
+                            currentPassword: document.getElementById('change-email-current-password').value,
+                        }),
+                    });
+                    saveAuth(data.token, data.user); // token embeds email — must refresh the stored one
+                    document.getElementById('change-email-form').style.display = 'none';
+                    document.getElementById('change-email-form').reset();
+                    showToast('Email updated', 'success');
+                } catch (err) {
+                    errorEl.textContent = err.message;
+                    errorEl.style.display = 'block';
+                }
+            });
+
+            document.getElementById('change-password-form').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const errorEl = document.getElementById('change-password-error');
+                errorEl.style.display = 'none';
+                try {
+                    await apiFetch('/api/admin/change-password', {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            currentPassword: document.getElementById('change-password-current').value,
+                            newPassword: document.getElementById('change-password-new').value,
+                        }),
+                    });
+                    document.getElementById('change-password-form').style.display = 'none';
+                    document.getElementById('change-password-form').reset();
+                    showToast('Password updated', 'success');
+                } catch (err) {
+                    errorEl.textContent = err.message;
+                    errorEl.style.display = 'block';
+                }
+            });
+
+            document.getElementById('logout-this-device-btn').addEventListener('click', () => {
+                clearAuth();
+                showAuthScreen();
+            });
+
+            document.getElementById('logout-all-devices-btn').addEventListener('click', async () => {
+                if (!confirm('This logs out every device currently signed in, including this one\'s stored session elsewhere — you\'ll stay logged in here, but any other open browser will need to log in again. Continue?')) return;
+                try {
+                    const data = await apiFetch('/api/admin/logout-all-devices', { method: 'POST' });
+                    saveAuth(data.token, currentUser); // fresh token for THIS device only
+                    showToast('All other devices have been logged out', 'success');
+                } catch (err) {
+                    showToast(err.message, 'error');
+                }
+            });
+
+            // ---- Appearance ----
+            document.getElementById('theme-option-light').addEventListener('click', () => setThemeChoice('light'));
+            document.getElementById('theme-option-dark').addEventListener('click', () => setThemeChoice('dark'));
+            document.getElementById('theme-follow-system').addEventListener('change', (e) => {
+                if (e.target.checked) applySavedTheme();
+            });
+            document.getElementById('save-theme-btn').addEventListener('click', () => {
+                const followSystem = document.getElementById('theme-follow-system').checked;
+                localStorage.setItem('verta_theme_follow_system', followSystem ? 'true' : 'false');
+                if (!followSystem) {
+                    const active = document.querySelector('.settings-theme-option.active');
+                    localStorage.setItem('verta_theme', active ? active.dataset.theme : 'light');
+                } else {
+                    localStorage.removeItem('verta_theme');
+                }
+                showToast('Theme saved', 'success');
+            });
+
+            // ---- Backup & Restore ----
+            document.getElementById('export-database-btn').addEventListener('click', exportDatabase);
+
+            // ---- Weekly Revenue card (Overview) ----
+            document.getElementById('weekly-revenue-card').addEventListener('click', openWeeklyRevenueModal);
+            document.getElementById('weekly-revenue-card').addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openWeeklyRevenueModal(); }
+            });
+            document.getElementById('close-weekly-revenue-modal').addEventListener('click', () => {
+                document.getElementById('weekly-revenue-modal').classList.remove('active');
+            });
+            document.getElementById('close-weekly-revenue-modal-btn').addEventListener('click', () => {
+                document.getElementById('weekly-revenue-modal').classList.remove('active');
+            });
+        }
+
+        function setThemeChoice(theme) {
+            document.getElementById('delivery-app').setAttribute('data-theme', theme);
+            document.getElementById('theme-option-light').classList.toggle('active', theme === 'light');
+            document.getElementById('theme-option-dark').classList.toggle('active', theme === 'dark');
+        }
+
+        function applySavedTheme() {
+            const followSystem = localStorage.getItem('verta_theme_follow_system') === 'true';
+            document.getElementById('theme-follow-system').checked = followSystem;
+            let theme = localStorage.getItem('verta_theme') || 'light';
+            if (followSystem) {
+                theme = (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
+            }
+            setThemeChoice(theme);
+        }
+
+        async function loadLoginHistory() {
+            const tbody = document.getElementById('login-history-tbody');
+            try {
+                const data = await apiFetch('/api/admin/login-history');
+                if (!data.history || data.history.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color: var(--slate-light);">No login history yet.</td></tr>';
+                    return;
+                }
+                tbody.innerHTML = data.history.map(row => `
+                    <tr>
+                        <td>${new Date(row.createdAt).toLocaleString('en-US', { month: 'long', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })}</td>
+                        <td>${row.device || 'Unknown'}</td>
+                        <td>${row.browser || 'Unknown'}</td>
+                        <td>${row.ipAddress || '—'}</td>
+                        <td class="settings-status-success">Success</td>
+                    </tr>
+                `).join('');
+            } catch (err) {
+                tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color: #dc2626;">${err.message}</td></tr>`;
+            }
+        }
+
+        async function exportDatabase() {
+            const btn = document.getElementById('export-database-btn');
+            btn.disabled = true;
+            btn.textContent = 'Exporting…';
+            try {
+                const res = await fetch('/api/admin/export', { headers: { Authorization: `Bearer ${authToken}` } });
+                if (!res.ok) throw new Error('Export failed');
+                const blob = await res.blob();
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `verta-delivery-export-${new Date().toISOString().slice(0, 10)}.json`;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                URL.revokeObjectURL(url);
+                showToast('Export downloaded', 'success');
+            } catch (err) {
+                showToast('Failed to export data', 'error');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '⬇ Export Database';
             }
         }
 
@@ -2928,6 +3535,100 @@
             const today = new Date();
             const d = new Date(date);
             return today.getFullYear() === d.getFullYear() && today.getMonth() === d.getMonth() && today.getDate() === d.getDate();
+        }
+
+        // ============================================================
+        // Weekly Revenue (Overview) — computed entirely from orders
+        // already loaded client-side, no new backend endpoint needed.
+        // Week runs Monday-Sunday. "Revenue" = delivered orders' amounts,
+        // consistent with how Total Earnings is defined elsewhere.
+        // ============================================================
+        function getWeekRange(offsetWeeks) {
+            const now = new Date();
+            const day = now.getDay(); // 0 = Sunday .. 6 = Saturday
+            const diffToMonday = (day === 0 ? -6 : 1 - day);
+            const monday = new Date(now.getFullYear(), now.getMonth(), now.getDate() + diffToMonday + offsetWeeks * 7);
+            monday.setHours(0, 0, 0, 0);
+            const sunday = new Date(monday);
+            sunday.setDate(monday.getDate() + 6);
+            sunday.setHours(23, 59, 59, 999);
+            return { start: monday, end: sunday };
+        }
+
+        function computeWeeklyRevenue(offsetWeeks) {
+            const { start, end } = getWeekRange(offsetWeeks);
+            const weekOrders = orders.filter(o => {
+                if (o.status !== 'delivered') return false;
+                const d = new Date(o.createdAt);
+                return d >= start && d <= end;
+            });
+            const byDay = [0, 0, 0, 0, 0, 0, 0]; // Mon..Sun
+            weekOrders.forEach(o => {
+                const jsDay = new Date(o.createdAt).getDay(); // 0 = Sun
+                const idx = jsDay === 0 ? 6 : jsDay - 1;
+                byDay[idx] += (o.amount || 0);
+            });
+            const total = byDay.reduce((sum, v) => sum + v, 0);
+            return { start, end, byDay, total, count: weekOrders.length };
+        }
+
+        function renderWeeklyRevenueCard() {
+            const amountEl = document.getElementById('weekly-revenue-amount');
+            const trendEl = document.getElementById('weekly-revenue-trend');
+            if (!amountEl) return;
+            const thisWeek = computeWeeklyRevenue(0);
+            const lastWeek = computeWeeklyRevenue(-1);
+            amountEl.textContent = `$${thisWeek.total.toFixed(2)}`;
+
+            if (lastWeek.total === 0 && thisWeek.total === 0) {
+                trendEl.textContent = 'No revenue yet this week';
+                trendEl.className = 'weekly-revenue-trend flat';
+            } else if (lastWeek.total === 0) {
+                trendEl.textContent = '▲ New this week';
+                trendEl.className = 'weekly-revenue-trend up';
+            } else {
+                const pctChange = ((thisWeek.total - lastWeek.total) / lastWeek.total) * 100;
+                const arrow = pctChange > 0 ? '▲' : pctChange < 0 ? '▼' : '—';
+                const cls = pctChange > 0 ? 'up' : pctChange < 0 ? 'down' : 'flat';
+                trendEl.textContent = `${arrow} ${Math.abs(pctChange).toFixed(0)}% from last week`;
+                trendEl.className = `weekly-revenue-trend ${cls}`;
+            }
+        }
+
+        function openWeeklyRevenueModal() {
+            const thisWeek = computeWeeklyRevenue(0);
+            const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+            const avgValue = thisWeek.count > 0 ? thisWeek.total / thisWeek.count : 0;
+            let highestIdx = 0, lowestIdx = 0;
+            thisWeek.byDay.forEach((v, i) => {
+                if (v > thisWeek.byDay[highestIdx]) highestIdx = i;
+                if (v < thisWeek.byDay[lowestIdx]) lowestIdx = i;
+            });
+            const hasAnyRevenue = thisWeek.total > 0;
+
+            const rangeLabel = `${thisWeek.start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – ${thisWeek.end.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
+
+            let html = `<p style="color: var(--slate-light); margin-bottom: 1.5rem;">${rangeLabel}</p>`;
+            html += `<div style="display: grid; gap: 0.625rem; margin-bottom: 1.5rem;">`;
+            dayNames.forEach((name, i) => {
+                html += `
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 1rem; background: var(--bg-light); border-radius: 0.625rem;">
+                        <span style="font-weight: 600; color: var(--slate);">${name}</span>
+                        <span style="font-weight: 700; color: var(--primary);">$${thisWeek.byDay[i].toFixed(2)}</span>
+                    </div>
+                `;
+            });
+            html += `</div>`;
+
+            html += `<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; padding-top: 1rem; border-top: 1px solid var(--border);">
+                <div><div style="font-size: 0.8125rem; color: var(--slate-light);">Total Deliveries</div><div style="font-weight: 700; font-size: 1.125rem;">${thisWeek.count}</div></div>
+                <div><div style="font-size: 0.8125rem; color: var(--slate-light);">Average Delivery Value</div><div style="font-weight: 700; font-size: 1.125rem;">$${avgValue.toFixed(2)}</div></div>
+                <div><div style="font-size: 0.8125rem; color: var(--slate-light);">Highest Revenue Day</div><div style="font-weight: 700; font-size: 1.125rem;">${hasAnyRevenue ? dayNames[highestIdx] : '—'}</div></div>
+                <div><div style="font-size: 0.8125rem; color: var(--slate-light);">Lowest Revenue Day</div><div style="font-weight: 700; font-size: 1.125rem;">${hasAnyRevenue ? dayNames[lowestIdx] : '—'}</div></div>
+            </div>`;
+
+            document.getElementById('weekly-revenue-modal-content').innerHTML = html;
+            document.getElementById('weekly-revenue-modal').classList.add('active');
         }
     </script>
 </body>

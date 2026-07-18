@@ -50,6 +50,35 @@ function rowToAgent(r) {
   };
 }
 
+function rowToSettings(r) {
+  if (!r) return null;
+  return {
+    businessName: r.business_name,
+    businessEmail: r.business_email,
+    businessPhone: r.business_phone,
+    businessAddress: r.business_address,
+    businessDescription: r.business_description,
+    logoDataUrl: r.logo_data_url,
+    openingTime: r.opening_time,
+    closingTime: r.closing_time,
+    openDays: r.open_days || [],
+    currency: r.currency,
+    timezone: r.timezone,
+    updatedAt: r.updated_at,
+  };
+}
+
+function rowToLoginHistory(r) {
+  if (!r) return null;
+  return {
+    id: r.id,
+    ipAddress: r.ip_address,
+    device: r.device,
+    browser: r.browser,
+    createdAt: r.created_at,
+  };
+}
+
 function rowToUser(r) {
   if (!r) return null;
   return {
@@ -59,6 +88,7 @@ function rowToUser(r) {
     phone: r.phone,
     role: r.role,
     passwordHash: r.password_hash, // only used internally for login checks
+    tokenVersion: r.token_version,
   };
 }
 
@@ -83,6 +113,24 @@ const db = {
 
   async updateUserPassword(userId, passwordHash) {
     await pool.query('UPDATE users SET password_hash = $1 WHERE id = $2', [passwordHash, userId]);
+  },
+
+  async updateUserEmail(userId, email) {
+    const { rows } = await pool.query(
+      'UPDATE users SET email = $1 WHERE id = $2 RETURNING *',
+      [email.toLowerCase(), userId]
+    );
+    return rowToUser(rows[0]);
+  },
+
+  // Invalidates every JWT issued before this call for this user — used by
+  // "Logout All Devices". See the token_version comment in schema.sql.
+  async bumpTokenVersion(userId) {
+    const { rows } = await pool.query(
+      'UPDATE users SET token_version = token_version + 1 WHERE id = $1 RETURNING *',
+      [userId]
+    );
+    return rowToUser(rows[0]);
   },
 
   async getUserByEmail(email) {
@@ -234,6 +282,91 @@ const db = {
 
   async markPasswordResetUsed(id) {
     await pool.query('UPDATE password_resets SET used = true WHERE id = $1', [id]);
+  },
+
+  // ---- Settings (Business Profile / Regional) -------------------------
+  // Single row, id = 'business' always. Upsert on save.
+
+  async getSettings() {
+    const { rows } = await pool.query("SELECT * FROM settings WHERE id = 'business'");
+    return rowToSettings(rows[0]);
+  },
+
+  async upsertSettings(fields) {
+    const existing = await pool.query("SELECT id FROM settings WHERE id = 'business'");
+    if (existing.rows.length === 0) {
+      await pool.query("INSERT INTO settings (id) VALUES ('business')");
+    }
+    const colMap = {
+      businessName: 'business_name',
+      businessEmail: 'business_email',
+      businessPhone: 'business_phone',
+      businessAddress: 'business_address',
+      businessDescription: 'business_description',
+      logoDataUrl: 'logo_data_url',
+      openingTime: 'opening_time',
+      closingTime: 'closing_time',
+      openDays: 'open_days',
+      currency: 'currency',
+      timezone: 'timezone',
+    };
+    const sets = [];
+    const values = [];
+    let i = 1;
+    for (const [key, col] of Object.entries(colMap)) {
+      if (Object.prototype.hasOwnProperty.call(fields, key)) {
+        sets.push(`${col} = $${i}`);
+        values.push(fields[key]);
+        i += 1;
+      }
+    }
+    sets.push('updated_at = now()');
+    if (sets.length > 1) {
+      await pool.query(`UPDATE settings SET ${sets.join(', ')} WHERE id = 'business'`, values);
+    }
+    return this.getSettings();
+  },
+
+  // ---- Login history ---------------------------------------------------
+
+  async recordLogin({ id, userId, ipAddress, device, browser }) {
+    await pool.query(
+      `INSERT INTO login_history (id, user_id, ip_address, device, browser) VALUES ($1, $2, $3, $4, $5)`,
+      [id, userId, ipAddress, device, browser]
+    );
+  },
+
+  async getLoginHistory(userId, limit = 20) {
+    const { rows } = await pool.query(
+      'SELECT * FROM login_history WHERE user_id = $1 ORDER BY created_at DESC LIMIT $2',
+      [userId, limit]
+    );
+    return rows.map(rowToLoginHistory);
+  },
+
+  // ---- Full data export (Backup & Restore > Export Database) ----------
+
+  async exportAllData() {
+    const [orders, expenses, agents, users] = await Promise.all([
+      this.getAllOrders(),
+      this.getAllExpenses(),
+      this.getAllAgents(),
+      pool.query('SELECT id, business_name, email, phone, role, created_at FROM users'),
+    ]);
+    return {
+      exportedAt: new Date().toISOString(),
+      orders,
+      expenses,
+      agents,
+      customers: users.rows.map(u => ({
+        id: u.id,
+        businessName: u.business_name,
+        email: u.email,
+        phone: u.phone,
+        role: u.role,
+        createdAt: u.created_at,
+      })), // password hashes deliberately excluded
+    };
   },
 };
 
