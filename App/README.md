@@ -666,3 +666,42 @@ Three additions to `server/schema.sql`, all with explicit
 `ALTER TABLE ... IF NOT EXISTS` migrations so your existing database
 picks them up on next boot (not just fresh installs): `token_version`
 on `users`, a new `settings` table, and a new `login_history` table.
+
+## Admin dashboard redesign (matching provided mockup)
+
+A large visual/UX pass on the Admin Dashboard. Everything below is real
+and backed by actual data — nothing here is decorative fake content.
+
+- **Top bar**: live greeting ("Good morning/afternoon/evening") and
+  clock, business name + role, and a real **notification center** — the
+  bell's unread badge counts actual events that already trigger
+  `sendLocalNotification()` (new orders, status changes, etc.), not a
+  fake number. Click the bell to see the log; "Clear all" empties it.
+- **Two-column layout**: Available Orders + charts on the left, Recent
+  Deliveries + Agent Contacts on the right, matching the mockup's
+  structure (collapses to one column on narrow screens).
+- **Search/filter/sort bar** for Available Orders: search by order ID,
+  sender, item, or address; filter by status or agent; sort by newest/
+  oldest/amount — all client-side, all real, no backend changes needed.
+- **Revenue Overview** (bar chart) and **Order Status** (donut chart)
+  for the current week, via Chart.js (new CDN script), computed from
+  real order data — reusing the same week-boundary logic as the
+  existing Weekly Revenue card.
+
+### Deliberately not built (would require faking data or new backend work)
+
+- **"Online Agents" count / per-agent online-offline badges** — agents
+  aren't logged-in accounts in this app, just a managed contact list
+  (Fleet Directory). There's no real presence signal to show; a badge
+  here would be pure decoration pretending to be live.
+- **Payment method pills ("Cash"/"Mobile Money") on order rows** —
+  orders don't track a payment method today. Worth adding as a real
+  field in a focused follow-up, not stapled on as fake display data.
+- **Admin "+ New Order" (on behalf of a customer), a Customers page, a
+  Pricing page, a Help & Support page** — each is a genuine new feature
+  needing its own design/backend work (e.g. admin-initiated orders
+  currently aren't allowed by `order:create`'s server-side role check),
+  not something to half-build as part of a layout pass.
+
+If you want any of the deferred items built next, they're each
+reasonably scoped as their own task — just say which one.

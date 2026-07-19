@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Verta Delivery Service</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
     <!-- Socket.io client is served by our own Node/Socket.io backend (same origin,
          no CDN needed) — this is what replaces Firebase's realtime database. -->
     <script src="/socket.io/socket.io.js"></script>
@@ -595,10 +596,89 @@
             font-weight: 600; font-size: 0.75rem; letter-spacing: 0.03em; text-transform: uppercase;
             padding: 0.25rem 0.625rem; border-radius: 9999px;
         }
+
+        /* Top bar: greeting/title on the left, date/time + notifications +
+           profile on the right */
+        #delivery-app .admin-topbar-row {
+            display: flex; align-items: flex-start; justify-content: space-between;
+            gap: 1.5rem; flex-wrap: wrap; position: relative;
+        }
+        #delivery-app .admin-topbar-right { display: flex; align-items: center; gap: 1.25rem; flex-wrap: wrap; }
+        #delivery-app .admin-topbar-datetime { text-align: right; }
+        #delivery-app .admin-topbar-date { font-size: 0.8125rem; font-weight: 600; color: var(--admin-text); }
+        #delivery-app .admin-topbar-time { font-size: 0.75rem; color: var(--admin-text-secondary); }
+        #delivery-app .admin-notification-bell {
+            position: relative; width: 44px; height: 44px; border-radius: 50%;
+            border: 1px solid var(--admin-border); background: var(--admin-surface); color: var(--admin-text-secondary);
+            display: flex; align-items: center; justify-content: center; cursor: pointer;
+        }
+        #delivery-app .admin-notification-bell:hover { background: var(--admin-surface-alt); color: var(--admin-text); }
+        #delivery-app .admin-notification-bell:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+        #delivery-app .admin-notification-bell svg { width: 19px; height: 19px; }
+        #delivery-app .admin-notification-badge {
+            position: absolute; top: -2px; right: -2px; background: #dc2626; color: white;
+            font-size: 0.6875rem; font-weight: 700; min-width: 18px; height: 18px; border-radius: 9999px;
+            display: flex; align-items: center; justify-content: center; padding: 0 4px; border: 2px solid var(--admin-bg);
+        }
+        #delivery-app .admin-topbar-profile { display: flex; align-items: center; gap: 0.625rem; }
+        #delivery-app .admin-topbar-profile .user-avatar {
+            width: 2.5rem; height: 2.5rem; border-radius: 50%; background: var(--primary); color: white;
+            display: flex; align-items: center; justify-content: center; font-weight: 700; flex-shrink: 0;
+        }
+        #delivery-app .admin-topbar-profile-name { font-size: 0.875rem; font-weight: 700; color: var(--admin-text); }
+        #delivery-app .admin-topbar-profile-role { font-size: 0.75rem; color: var(--admin-text-secondary); }
+        #delivery-app .admin-notification-panel {
+            display: none; position: absolute; top: 56px; right: 0; width: 340px; max-height: 420px; overflow-y: auto;
+            background: var(--admin-surface); border: 1px solid var(--admin-border); border-radius: var(--admin-radius-md);
+            box-shadow: var(--admin-shadow-lg); z-index: 80;
+        }
+        #delivery-app .admin-notification-panel.open { display: block; }
+        #delivery-app .admin-notification-panel-header {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 0.875rem 1.125rem; border-bottom: 1px solid var(--admin-border); font-size: 0.9375rem;
+        }
+        #delivery-app .admin-notification-panel-header a { color: var(--primary); font-weight: 600; font-size: 0.8125rem; cursor: pointer; }
+        #delivery-app .admin-notification-item {
+            padding: 0.875rem 1.125rem; border-bottom: 1px solid var(--admin-border); font-size: 0.8125rem;
+        }
+        #delivery-app .admin-notification-item:last-child { border-bottom: none; }
+        #delivery-app .admin-notification-item-title { font-weight: 700; color: var(--admin-text); margin-bottom: 0.1875rem; }
+        #delivery-app .admin-notification-item-body { color: var(--admin-text-secondary); margin-bottom: 0.25rem; }
+        #delivery-app .admin-notification-item-time { color: var(--admin-text-tertiary); font-size: 0.75rem; }
+        #delivery-app .admin-notification-empty { padding: 2rem 1.125rem; text-align: center; color: var(--admin-text-secondary); font-size: 0.875rem; }
+
         #delivery-app .admin-section-label {
             text-align: left; font-size: 0.8125rem; font-weight: 600;
             color: var(--admin-text-secondary); text-transform: uppercase; letter-spacing: 0.05em;
             margin: 2rem 0 1rem;
+        }
+        #delivery-app .order-filter-bar {
+            display: flex; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 1.5rem;
+        }
+        #delivery-app .order-filter-search {
+            flex: 2; min-width: 220px; position: relative; display: flex; align-items: center;
+        }
+        #delivery-app .order-filter-search svg {
+            position: absolute; left: 0.875rem; width: 16px; height: 16px; color: var(--admin-text-tertiary); pointer-events: none;
+        }
+        #delivery-app .order-filter-search input {
+            width: 100%; padding: 0.75rem 1rem 0.75rem 2.5rem; min-height: 44px;
+            border: 2px solid var(--admin-border); border-radius: 0.75rem; font-size: 0.9375rem;
+            background: var(--admin-surface); color: var(--admin-text);
+        }
+        #delivery-app .order-filter-search input:focus { outline: none; border-color: var(--primary); }
+        #delivery-app .order-filter-select { flex: 1; min-width: 150px; min-height: 44px; }
+
+        #delivery-app .admin-two-col { display: grid; grid-template-columns: 1fr 380px; gap: 1.75rem; align-items: start; }
+        #delivery-app .admin-two-col-main, #delivery-app .admin-two-col-side { min-width: 0; }
+        #delivery-app .admin-charts-row { display: flex; gap: 1.5rem; flex-wrap: wrap; margin-top: 1.75rem; }
+        #delivery-app .admin-chart-card { flex: 1; min-width: 260px; }
+        #delivery-app .order-status-legend { display: flex; flex-direction: column; gap: 0.5rem; margin-top: 1rem; }
+        #delivery-app .order-status-legend-item { display: flex; align-items: center; justify-content: space-between; font-size: 0.8125rem; }
+        #delivery-app .order-status-legend-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 0.5rem; }
+
+        @media (max-width: 1100px) {
+            #delivery-app .admin-two-col { grid-template-columns: 1fr; }
         }
 
         /* ---- KPI cards ---- */
@@ -899,9 +979,39 @@
 
             <div class="admin-main">
                 <header id="admin-topbar">
-                    <p class="admin-welcome-eyebrow">Welcome back,</p>
-                    <h1 class="admin-welcome-title" id="user-name">Agent Dashboard</h1>
-                    <p class="admin-welcome-role">Agent Dashboard</p>
+                    <div class="admin-topbar-row">
+                        <div>
+                            <p class="admin-welcome-eyebrow" id="admin-greeting">Good morning,</p>
+                            <h1 class="admin-welcome-title" id="user-name">Agent Dashboard</h1>
+                            <p class="admin-welcome-role">Agent Dashboard</p>
+                        </div>
+                        <div class="admin-topbar-right">
+                            <div class="admin-topbar-datetime">
+                                <div class="admin-topbar-date" id="admin-topbar-date">—</div>
+                                <div class="admin-topbar-time" id="admin-topbar-time">—</div>
+                            </div>
+                            <button type="button" class="admin-notification-bell" id="notification-bell-btn" aria-label="Notifications">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+                                <span class="admin-notification-badge" id="notification-badge" style="display:none;">0</span>
+                            </button>
+                            <div class="admin-topbar-profile">
+                                <div class="user-avatar" id="topbar-user-avatar">A</div>
+                                <div>
+                                    <div class="admin-topbar-profile-name" id="topbar-user-name">Admin</div>
+                                    <div class="admin-topbar-profile-role">Super Admin</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Notification center dropdown -->
+                    <div class="admin-notification-panel" id="notification-panel">
+                        <div class="admin-notification-panel-header">
+                            <strong>Notifications</strong>
+                            <a id="clear-notifications-link">Clear all</a>
+                        </div>
+                        <div id="notification-list"></div>
+                    </div>
                 </header>
 
                 <div class="admin-section-label">TODAY'S SNAPSHOT</div>
@@ -948,31 +1058,72 @@
                     </div>
                 </section>
 
-                <section class="orders-section">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 1rem;">
-                        <h2 class="section-title" style="margin: 0;">Available Orders</h2>
-                        <div style="display: flex; gap: 1rem; align-items: center;">
-                            <label style="display: flex; align-items: center; gap: 0.5rem; font-weight: 500;">
-                                <input type="checkbox" id="select-all-orders"> Select All
-                            </label>
-                            <button class="btn-small btn-danger" id="delete-selected-btn">🗑️ Delete Selected</button>
+                <div class="admin-two-col">
+                    <div class="admin-two-col-main">
+                        <section class="orders-section">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 1rem;">
+                                <h2 class="section-title" style="margin: 0;">Available Orders</h2>
+                                <div style="display: flex; gap: 1rem; align-items: center;">
+                                    <label style="display: flex; align-items: center; gap: 0.5rem; font-weight: 500;">
+                                        <input type="checkbox" id="select-all-orders"> Select All
+                                    </label>
+                                    <button class="btn-small btn-danger" id="delete-selected-btn">🗑️ Delete Selected</button>
+                                </div>
+                            </div>
+                            <div class="order-filter-bar">
+                                <div class="order-filter-search">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                                    <input type="text" id="order-search-input" placeholder="Search orders…">
+                                </div>
+                                <select class="form-input order-filter-select" id="order-status-filter">
+                                    <option value="">All Status</option>
+                                    <option value="pending">Pending</option>
+                                    <option value="accepted">Accepted</option>
+                                    <option value="picked-up">Picked Up</option>
+                                </select>
+                                <select class="form-input order-filter-select" id="order-agent-filter">
+                                    <option value="">All Agents</option>
+                                </select>
+                                <select class="form-input order-filter-select" id="order-sort-select">
+                                    <option value="newest">Newest First</option>
+                                    <option value="oldest">Oldest First</option>
+                                    <option value="amount-high">Amount: High to Low</option>
+                                    <option value="amount-low">Amount: Low to High</option>
+                                </select>
+                            </div>
+                            <div id="orders-grouped-delivery"></div>
+                        </section>
+
+                        <div class="admin-charts-row">
+                            <section class="orders-section admin-chart-card">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                                    <h2 class="section-title" style="margin: 0; font-size: 1rem;">Revenue Overview (This Week)</h2>
+                                </div>
+                                <canvas id="revenue-chart" height="200"></canvas>
+                            </section>
+                            <section class="orders-section admin-chart-card" style="max-width: 320px;">
+                                <h2 class="section-title" style="margin: 0 0 1rem; font-size: 1rem;">Order Status (This Week)</h2>
+                                <canvas id="order-status-chart" height="200"></canvas>
+                                <div id="order-status-legend" class="order-status-legend"></div>
+                            </section>
                         </div>
                     </div>
-                    <div id="orders-grouped-delivery"></div>
-                </section>
 
-                <section class="orders-section">
-                    <h2 class="section-title">Recent Deliveries</h2>
-                    <div id="recent-deliveries-container"></div>
-                </section>
+                    <div class="admin-two-col-side">
+                        <section class="orders-section">
+                            <h2 class="section-title">Recent Deliveries</h2>
+                            <div id="recent-deliveries-container"></div>
+                        </section>
 
-                <section class="orders-section" id="agent-contacts-section">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 1rem;">
-                        <h2 class="section-title" style="margin: 0;">Agent Contacts</h2>
-                        <button type="button" class="btn-small btn-success" id="add-agent-btn">+ Add Agent</button>
+                        <section class="orders-section" id="agent-contacts-section">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 1rem;">
+                                <h2 class="section-title" style="margin: 0;">Agent Contacts</h2>
+                                <button type="button" class="btn-small btn-success" id="add-agent-btn">+ Add Agent</button>
+                            </div>
+                            <div id="agent-contacts-container"></div>
+                        </section>
                     </div>
-                    <div id="agent-contacts-container"></div>
-                </section>
+                </div>
             </div>
         </div>
 
@@ -1509,6 +1660,7 @@
         }
 
         function sendLocalNotification(title, options = {}) {
+            recordInAppNotification(title, options.body || '');
             if (!('Notification' in window)) return;
             if (Notification.permission !== 'granted') return;
             try {
@@ -1521,6 +1673,39 @@
                 // Never let a notification failure break app flow.
                 console.error('[notify] Failed to show local notification', err);
             }
+        }
+
+        // In-app notification center (the bell icon in the admin top bar).
+        // Separate from the browser Notification API above — this always
+        // works regardless of browser permission, and is what actually
+        // drives the unread badge count. Session-only (not persisted),
+        // capped at the most recent 30 so it can't grow unbounded.
+        let notificationLog = [];
+        function recordInAppNotification(title, body) {
+            notificationLog.unshift({ title, body, time: new Date(), unread: true });
+            if (notificationLog.length > 30) notificationLog.length = 30;
+            renderNotificationCenter();
+        }
+
+        function renderNotificationCenter() {
+            const badge = document.getElementById('notification-badge');
+            const list = document.getElementById('notification-list');
+            if (!badge || !list) return; // sender view has no bell
+            const unreadCount = notificationLog.filter(n => n.unread).length;
+            badge.style.display = unreadCount > 0 ? 'flex' : 'none';
+            badge.textContent = unreadCount > 9 ? '9+' : String(unreadCount);
+
+            if (notificationLog.length === 0) {
+                list.innerHTML = '<div class="admin-notification-empty">No notifications yet.</div>';
+                return;
+            }
+            list.innerHTML = notificationLog.map(n => `
+                <div class="admin-notification-item">
+                    <div class="admin-notification-item-title">${n.title}</div>
+                    ${n.body ? `<div class="admin-notification-item-body">${n.body.replace(/\n/g, ' · ')}</div>` : ''}
+                    <div class="admin-notification-item-time">${n.time.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}</div>
+                </div>
+            `).join('');
         }
 
         // Modern, non-blocking feedback — replaces native alert() calls.
@@ -1787,6 +1972,7 @@
             wireSidebarToggle();
             setupScrollReactiveHeader();
             wireSettingsEvents();
+            wireTopbarEvents();
 
             const stored = loadStoredAuth();
             if (stored && stored.token) {
@@ -1837,6 +2023,10 @@
                 document.getElementById('delivery-app').style.display = 'block';
                 document.getElementById('user-name').textContent = currentUser.businessName || 'Admin';
                 document.getElementById('user-avatar').textContent = (currentUser.businessName || 'A').charAt(0).toUpperCase();
+                document.getElementById('topbar-user-name').textContent = currentUser.businessName || 'Admin';
+                document.getElementById('topbar-user-avatar').textContent = (currentUser.businessName || 'A').charAt(0).toUpperCase();
+                startAdminClock();
+                renderNotificationCenter();
                 renderSkeletonCards(document.getElementById('orders-grouped-delivery'));
                 applySavedTheme();
             } else {
@@ -2103,6 +2293,11 @@
             document.getElementById('cancel-new-order').addEventListener('click', closeNewOrderModal);
             document.getElementById('close-order-details').addEventListener('click', closeOrderDetailsModal);
             document.getElementById('new-order-form').addEventListener('submit', handleNewOrder);
+
+            document.getElementById('order-search-input').addEventListener('input', debounce(renderOrdersDelivery, 200));
+            document.getElementById('order-status-filter').addEventListener('change', renderOrdersDelivery);
+            document.getElementById('order-agent-filter').addEventListener('change', renderOrdersDelivery);
+            document.getElementById('order-sort-select').addEventListener('change', renderOrdersDelivery);
 
             document.getElementById('add-expense-btn').addEventListener('click', openAddExpenseModal);
             document.getElementById('close-add-expense-modal').addEventListener('click', closeAddExpenseModal);
@@ -2528,6 +2723,50 @@
                 theme = (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
             }
             setThemeChoice(theme);
+        }
+
+        // ============================================================
+        // Top bar: live greeting + clock, notification bell
+        // ============================================================
+        let adminClockInterval = null;
+        function startAdminClock() {
+            if (adminClockInterval) return; // already running
+            const update = () => {
+                const now = new Date();
+                const hour = now.getHours();
+                const greeting = hour < 12 ? 'Good morning,' : hour < 18 ? 'Good afternoon,' : 'Good evening,';
+                const greetingEl = document.getElementById('admin-greeting');
+                if (greetingEl) greetingEl.textContent = greeting;
+                const dateEl = document.getElementById('admin-topbar-date');
+                if (dateEl) dateEl.textContent = now.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+                const timeEl = document.getElementById('admin-topbar-time');
+                if (timeEl) timeEl.textContent = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+            };
+            update();
+            adminClockInterval = setInterval(update, 30000); // no need for per-second updates
+        }
+
+        function wireTopbarEvents() {
+            const bell = document.getElementById('notification-bell-btn');
+            const panel = document.getElementById('notification-panel');
+            if (!bell || !panel) return;
+            bell.addEventListener('click', (e) => {
+                e.stopPropagation();
+                panel.classList.toggle('open');
+                if (panel.classList.contains('open')) {
+                    notificationLog.forEach(n => { n.unread = false; });
+                    renderNotificationCenter();
+                }
+            });
+            document.addEventListener('click', (e) => {
+                if (panel.classList.contains('open') && !panel.contains(e.target) && e.target !== bell) {
+                    panel.classList.remove('open');
+                }
+            });
+            document.getElementById('clear-notifications-link').addEventListener('click', () => {
+                notificationLog = [];
+                renderNotificationCenter();
+            });
         }
 
         async function loadLoginHistory() {
@@ -3334,11 +3573,58 @@
         // Delivered and cancelled orders are excluded here (neither is
         // "available"); delivered ones show up in Recent Deliveries below,
         // cancelled ones remain visible in Order History for the record.
+        function getOrderFilterState() {
+            const searchInput = document.getElementById('order-search-input');
+            const statusSelect = document.getElementById('order-status-filter');
+            const agentSelect = document.getElementById('order-agent-filter');
+            const sortSelect = document.getElementById('order-sort-select');
+            return {
+                search: searchInput ? searchInput.value.trim().toLowerCase() : '',
+                status: statusSelect ? statusSelect.value : '',
+                agent: agentSelect ? agentSelect.value : '',
+                sort: sortSelect ? sortSelect.value : 'newest',
+            };
+        }
+
+        function applyOrderFilters(list) {
+            const { search, status, agent, sort } = getOrderFilterState();
+            let filtered = list.filter(o => {
+                if (status && o.status !== status) return false;
+                if (agent && o.acceptedBy !== agent) return false;
+                if (search) {
+                    const haystack = `${o.id} ${o.senderName} ${o.itemDescription} ${o.pickupAddress} ${o.dropoffAddress}`.toLowerCase();
+                    if (!haystack.includes(search)) return false;
+                }
+                return true;
+            });
+            filtered = [...filtered].sort((a, b) => {
+                if (sort === 'oldest') return new Date(a.createdAt) - new Date(b.createdAt);
+                if (sort === 'amount-high') return (b.amount || 0) - (a.amount || 0);
+                if (sort === 'amount-low') return (a.amount || 0) - (b.amount || 0);
+                return new Date(b.createdAt) - new Date(a.createdAt); // newest first (default)
+            });
+            return filtered;
+        }
+
+        function populateOrderAgentFilter() {
+            const select = document.getElementById('order-agent-filter');
+            if (!select) return;
+            const current = select.value;
+            select.innerHTML = '<option value="">All Agents</option>' +
+                Object.keys(agents).map(name => `<option value="${name}">${name}</option>`).join('');
+            if (Object.keys(agents).includes(current)) select.value = current;
+        }
+
         function renderOrdersDelivery() {
             const container = document.getElementById('orders-grouped-delivery');
             if (!container) return;
+            populateOrderAgentFilter();
             const activeOrders = orders.filter(o => o.status !== 'delivered' && o.status !== 'cancelled');
-            renderGroupedOrders(container, activeOrders, 'No available orders right now.');
+            const filtered = applyOrderFilters(activeOrders);
+            const emptyMessage = activeOrders.length === 0
+                ? 'No available orders right now.'
+                : 'No orders match your search/filters.';
+            renderGroupedOrders(container, filtered, emptyMessage);
         }
 
         // ---- Admin: Recent Deliveries — completed orders, most recent
@@ -3593,7 +3879,98 @@
                 trendEl.textContent = `${arrow} ${Math.abs(pctChange).toFixed(0)}% from last week`;
                 trendEl.className = `weekly-revenue-trend ${cls}`;
             }
+
+            renderRevenueChart(thisWeek);
+            renderOrderStatusChart();
         }
+
+        let revenueChartInstance = null;
+        function renderRevenueChart(thisWeek) {
+            const canvas = document.getElementById('revenue-chart');
+            if (!canvas || typeof Chart === 'undefined') return;
+            const dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+            if (revenueChartInstance) revenueChartInstance.destroy();
+            revenueChartInstance = new Chart(canvas.getContext('2d'), {
+                type: 'bar',
+                data: {
+                    labels: dayLabels,
+                    datasets: [{
+                        data: thisWeek.byDay,
+                        backgroundColor: '#6366f1',
+                        borderRadius: 6,
+                        maxBarThickness: 36,
+                    }],
+                },
+                options: {
+                    responsive: true,
+                    plugins: { legend: { display: false }, tooltip: { callbacks: { label: (ctx) => `$${ctx.parsed.y.toFixed(2)}` } } },
+                    scales: {
+                        y: { beginAtZero: true, ticks: { callback: (v) => `$${v}` } },
+                        x: { grid: { display: false } },
+                    },
+                },
+            });
+        }
+
+        let orderStatusChartInstance = null;
+        function renderOrderStatusChart() {
+            const canvas = document.getElementById('order-status-chart');
+            if (!canvas || typeof Chart === 'undefined') return;
+            const { start, end } = getWeekRange(0);
+            const weekOrders = orders.filter(o => {
+                const d = new Date(o.createdAt);
+                return d >= start && d <= end;
+            });
+            const counts = {
+                delivered: weekOrders.filter(o => o.status === 'delivered').length,
+                'in-progress': weekOrders.filter(o => o.status === 'accepted' || o.status === 'picked-up').length,
+                pending: weekOrders.filter(o => o.status === 'pending').length,
+                cancelled: weekOrders.filter(o => o.status === 'cancelled').length,
+            };
+            const total = weekOrders.length;
+            const colors = { delivered: '#10b981', 'in-progress': '#f59e0b', pending: '#94a3b8', cancelled: '#ef4444' };
+            const labels = { delivered: 'Delivered', 'in-progress': 'In Progress', pending: 'Pending', cancelled: 'Cancelled' };
+
+            if (orderStatusChartInstance) orderStatusChartInstance.destroy();
+            orderStatusChartInstance = new Chart(canvas.getContext('2d'), {
+                type: 'doughnut',
+                data: {
+                    labels: Object.keys(counts).map(k => labels[k]),
+                    datasets: [{ data: Object.values(counts), backgroundColor: Object.keys(counts).map(k => colors[k]), borderWidth: 0 }],
+                },
+                options: {
+                    responsive: true,
+                    cutout: '70%',
+                    plugins: { legend: { display: false } },
+                },
+                plugins: [{
+                    id: 'centerText',
+                    afterDraw(chart) {
+                        const { ctx, chartArea } = chart;
+                        const x = (chartArea.left + chartArea.right) / 2;
+                        const y = (chartArea.top + chartArea.bottom) / 2;
+                        ctx.save();
+                        ctx.textAlign = 'center';
+                        ctx.font = '700 22px Inter, sans-serif';
+                        ctx.fillStyle = '#0f172a';
+                        ctx.fillText(String(total), x, y - 4);
+                        ctx.font = '600 11px Inter, sans-serif';
+                        ctx.fillStyle = '#64748b';
+                        ctx.fillText('Total', x, y + 14);
+                        ctx.restore();
+                    },
+                }],
+            });
+
+            const legend = document.getElementById('order-status-legend');
+            if (legend) {
+                legend.innerHTML = Object.keys(counts).map(k => {
+                    const pct = total > 0 ? Math.round((counts[k] / total) * 100) : 0;
+                    return `<div class="order-status-legend-item"><span><span class="order-status-legend-dot" style="background:${colors[k]}"></span>${labels[k]}</span><span>${counts[k]} (${pct}%)</span></div>`;
+                }).join('');
+            }
+        }
+
 
         function openWeeklyRevenueModal() {
             const thisWeek = computeWeeklyRevenue(0);
