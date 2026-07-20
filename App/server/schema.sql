@@ -95,6 +95,14 @@ CREATE TABLE IF NOT EXISTS orders (
     delivered_at     TIMESTAMPTZ
 );
 
+-- Real payment method, set when an order is accepted (not fabricated
+-- display data). NULL until then, same pattern as `amount`.
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS payment_method TEXT;
+
+-- True when an admin placed this order on a customer's behalf (phone/
+-- walk-in order) rather than the customer placing it themselves.
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS placed_by_admin BOOLEAN NOT NULL DEFAULT false;
+
 CREATE TABLE IF NOT EXISTS expenses (
     id          TEXT PRIMARY KEY,
     date        TIMESTAMPTZ NOT NULL,
@@ -113,6 +121,27 @@ CREATE TABLE IF NOT EXISTS agents (
     id         TEXT PRIMARY KEY,
     name       TEXT NOT NULL,
     phone      TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- "On Duty / Off Duty" — explicitly set by an admin in the Fleet
+-- Directory, NOT automatic connection/GPS presence (agents don't have
+-- logins or devices reporting to this app). Named "duty_status" rather
+-- than reusing the word "online" to keep that distinction honest in the
+-- data model itself, even though the UI may still show it as an
+-- Online/Offline-style badge.
+ALTER TABLE agents ADD COLUMN IF NOT EXISTS duty_status TEXT NOT NULL DEFAULT 'off_duty' CHECK (duty_status IN ('on_duty', 'off_duty'));
+
+-- Pricing presets (Settings > Pricing) — named, reusable delivery price
+-- points an admin defines once (e.g. "Standard - $2.50"), offered as
+-- quick-select options when accepting an order. Not an automatic
+-- distance/zone pricing engine — this app has no mapping/geocoding data
+-- to base that on, so this is real, admin-defined reference pricing
+-- rather than a calculator pretending to know actual distances.
+CREATE TABLE IF NOT EXISTS price_presets (
+    id         TEXT PRIMARY KEY,
+    label      TEXT NOT NULL,
+    amount     NUMERIC(10, 2) NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 

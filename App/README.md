@@ -705,3 +705,50 @@ and backed by actual data — nothing here is decorative fake content.
 
 If you want any of the deferred items built next, they're each
 reasonably scoped as their own task — just say which one.
+
+## The six deferred items — all built
+
+Every item flagged as "deferred, not faked" in the last round is now
+real and working. Backend: `server/schema.sql`, `server/db.js`,
+`server/server.js`. Frontend: `public/index.html`.
+
+1. **Agent duty status** ("On Duty" / "Off Duty" badge, toggle in Fleet
+   Directory, and a real "On Duty Agents" KPI card). This is explicitly
+   an **admin-set flag**, not automatic presence — agents still don't
+   have logins or devices reporting to this app, so the toggle and its
+   tooltip say so plainly rather than implying live tracking.
+2. **Payment method**: a real field, set when an order is accepted
+   (Cash / Mobile Money / Card), shown as a pill on order cards and
+   Recent Deliveries. (Also fixed a real pre-existing bug while in
+   here: the agent dropdown in "Accept Order" was a hardcoded list of
+   5 names — adding a 6th agent via Fleet Directory would never have
+   shown up there. Now populated dynamically.)
+3. **Admin-created orders**: a "+ New Order" button on the dashboard
+   opens a modal with a Customer picker (for phone/walk-in orders).
+   Server-side, `order:create` now accepts either role, but for admin
+   it requires a real `senderId` and looks up the authoritative
+   business name from the database — never trusts a client-supplied
+   name.
+4. **Customers page**: real aggregated data — order count, total
+   spent, last order date — via a new `GET /api/admin/customers`
+   endpoint (a join across `users` and `orders`), not derived
+   client-side from partial data.
+5. **Pricing**: added as a 6th tab inside Settings rather than a
+   separate sidebar item — it's business configuration, same as
+   Business Profile, so this avoids sidebar bloat. Admins define named
+   price presets (e.g. "Standard Delivery — $2.50"); they show up as
+   quick-select buttons in Accept Order. Still no distance/zone
+   calculator — there's no mapping data in this app to base one on,
+   and I'm not going to fake one.
+6. **Help & Support**: real static FAQ content (not a stub) covering
+   the features actually in this app, plus support contact pulled from
+   Business Profile settings when set.
+
+### A note on scope decisions made along the way
+
+- Pricing lives in Settings, not its own sidebar item — a deliberate
+  restructuring for coherence, flagged here in case you'd rather it be
+  separate.
+- The "On Duty/Off Duty" wording (vs. literal "Online/Offline") was a
+  deliberate choice to keep the manual-flag-vs-live-presence distinction
+  honest at the UI level, not just in a tooltip.

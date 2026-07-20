@@ -127,19 +127,39 @@ io.on('connection', (socket) => {
   // ---- Orders (create = sender only; everything else = admin only) ----
 
   socket.on('order:create', async (payload, ack) => {
-    if (socket.user.role !== 'sender') {
-      return ack && ack({ ok: false, error: 'Only senders can create orders' });
+    const isSender = socket.user.role === 'sender';
+    const isAdmin = socket.user.role === 'admin';
+    if (!isSender && !isAdmin) {
+      return ack && ack({ ok: false, error: 'Not allowed to create orders' });
     }
     try {
+      let senderId = socket.user.id;
+      let senderName = socket.user.businessName;
+      if (isAdmin) {
+        // Admin is placing this on a customer's behalf (phone/walk-in
+        // order) — look up the real customer record rather than trusting
+        // any name the client might send, same principle as everywhere
+        // else in this app.
+        if (!payload.senderId) {
+          return ack && ack({ ok: false, error: 'Please choose which customer this order is for' });
+        }
+        const customer = await db.getUserById(payload.senderId);
+        if (!customer || customer.role !== 'sender') {
+          return ack && ack({ ok: false, error: 'Customer not found' });
+        }
+        senderId = customer.id;
+        senderName = customer.businessName;
+      }
       const order = await db.createOrder({
         id: `ORD-${Date.now().toString(36).toUpperCase()}`,
-        senderId: socket.user.id,
-        senderName: socket.user.businessName,
+        senderId,
+        senderName,
         pickupAddress: payload.pickupAddress,
         dropoffAddress: payload.dropoffAddress,
         itemDescription: payload.itemDescription,
         amount: null,
         status: 'pending',
+        placedByAdmin: isAdmin,
       });
       orderRooms(order.senderId).forEach((r) => io.to(r).emit('order:created', order));
       ack && ack({ ok: true, order });
@@ -186,7 +206,7 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on('order:accept', async ({ id, amount, acceptedBy }, ack) => {
+  socket.on('order:accept', async ({ id, amount, acceptedBy, paymentMethod }, ack) => {
     if (socket.user.role !== 'admin') {
       return ack && ack({ ok: false, error: 'Only admins can accept orders' });
     }
@@ -194,6 +214,7 @@ io.on('connection', (socket) => {
       const order = await db.updateOrder(id, {
         amount,
         acceptedBy,
+        paymentMethod: paymentMethod || null,
         status: 'accepted',
         acceptedAt: new Date().toISOString(),
       });
@@ -293,6 +314,26 @@ io.on('connection', (socket) => {
     } catch (err) {
       console.error('agent:update failed', err);
       ack && ack({ ok: false, error: 'Failed to update agent' });
+    }
+  });
+
+  // "On Duty / Off Duty" — explicitly admin-set, not automatic presence
+  // (see the duty_status comment in schema.sql for why).
+  socket.on('agent:set-duty-status', async ({ id, dutyStatus }, ack) => {
+    if (socket.user.role !== 'admin') {
+      return ack && ack({ ok: false, error: 'Only admins can change agent duty status' });
+    }
+    if (dutyStatus !== 'on_duty' && dutyStatus !== 'off_duty') {
+      return ack && ack({ ok: false, error: 'Invalid duty status' });
+    }
+    try {
+      const agent = await db.updateAgentDutyStatus(id, dutyStatus);
+      if (!agent) return ack && ack({ ok: false, error: 'Agent not found' });
+      io.to('admins').emit('agent:updated', agent);
+      ack && ack({ ok: true, agent });
+    } catch (err) {
+      console.error('agent:set-duty-status failed', err);
+      ack && ack({ ok: false, error: 'Failed to update duty status' });
     }
   });
 });
@@ -457,11 +498,13 @@ app.get('/api/state', requireAuth, async (req, res) => {
   try {
     const settings = await db.getSettings();
     if (req.user.role === 'admin') {
-      const [orders, expenses, agents] = await Promise.all([db.getAllOrders(), db.getAllExpenses(), db.getAllAgents()]);
-      res.json({ orders, expenses, agents, settings });
+      const [orders, expenses, agents, pricePresets] = await Promise.all([
+        db.getAllOrders(), db.getAllExpenses(), db.getAllAgents(), db.getAllPricePresets(),
+      ]);
+      res.json({ orders, expenses, agents, settings, pricePresets });
     } else {
       const orders = await db.getOrdersBySender(req.user.id);
-      res.json({ orders, expenses: [], agents: [], settings });
+      res.json({ orders, expenses: [], agents: [], settings, pricePresets: [] });
     }
   } catch (err) {
     console.error('GET /api/state failed', err);
@@ -576,6 +619,51 @@ app.get('/api/admin/export', requireAuth, requireAdmin, async (req, res) => {
   } catch (err) {
     console.error('GET /api/admin/export failed', err);
     res.status(500).json({ error: 'Failed to export data' });
+  }
+});
+
+// ============================================================
+// Customers page — real aggregated data (order counts, total spent)
+// per customer, joined from users + orders. Read-only.
+// ============================================================
+app.get('/api/admin/customers', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const customers = await db.getCustomers();
+    res.json({ customers });
+  } catch (err) {
+    console.error('GET /api/admin/customers failed', err);
+    res.status(500).json({ error: 'Failed to load customers' });
+  }
+});
+
+// ============================================================
+// Pricing presets — admin-defined reference price points, offered as
+// quick-select options in the Accept Order flow. Not an automatic
+// distance/zone calculator (no mapping data backs this app).
+// ============================================================
+app.post('/api/admin/price-presets', requireAuth, requireAdmin, async (req, res) => {
+  const { label, amount } = req.body || {};
+  if (!label || !label.trim() || amount === undefined || amount === null || isNaN(Number(amount)) || Number(amount) < 0) {
+    return res.status(400).json({ error: 'A label and a valid non-negative amount are required' });
+  }
+  try {
+    const preset = await db.createPricePreset({ id: crypto.randomUUID(), label: label.trim(), amount: Number(amount) });
+    io.to('admins').emit('price-preset:created', preset);
+    res.json({ ok: true, preset });
+  } catch (err) {
+    console.error('POST /api/admin/price-presets failed', err);
+    res.status(500).json({ error: 'Failed to save price preset' });
+  }
+});
+
+app.delete('/api/admin/price-presets/:id', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    await db.deletePricePreset(req.params.id);
+    io.to('admins').emit('price-preset:deleted', { id: req.params.id });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('DELETE /api/admin/price-presets failed', err);
+    res.status(500).json({ error: 'Failed to delete price preset' });
   }
 });
 

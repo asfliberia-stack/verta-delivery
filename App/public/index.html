@@ -677,6 +677,27 @@
         #delivery-app .order-status-legend-item { display: flex; align-items: center; justify-content: space-between; font-size: 0.8125rem; }
         #delivery-app .order-status-legend-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 0.5rem; }
 
+        #delivery-app .agent-duty-toggle {
+            display: inline-flex; align-items: center; gap: 0.375rem;
+            padding: 0.25rem 0.625rem; min-height: 28px; border-radius: 9999px; border: 1px solid transparent;
+            font-size: 0.75rem; font-weight: 700; cursor: pointer; transition: all 0.15s;
+        }
+        #delivery-app .agent-duty-toggle.on-duty { background: #ecfdf5; color: #065f46; border-color: #6ee7b7; }
+        #delivery-app .agent-duty-toggle.off-duty { background: #f3f4f6; color: #6b7280; border-color: #d1d5db; }
+        #delivery-app .agent-duty-toggle:hover { filter: brightness(0.96); }
+        #delivery-app .agent-duty-dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+
+        .price-preset-row { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+        .price-preset-btn {
+            padding: 0.5rem 0.875rem; min-height: 40px; border: 2px solid var(--border); border-radius: 0.625rem;
+            background: white; color: var(--slate); font-weight: 600; font-size: 0.8125rem; cursor: pointer; transition: all 0.15s;
+        }
+        .price-preset-btn:hover { border-color: var(--primary); color: var(--primary); background: #eef2ff; }
+        .payment-method-pill {
+            display: inline-block; padding: 0.1875rem 0.625rem; border-radius: 9999px;
+            font-size: 0.75rem; font-weight: 700; background: #ede9fe; color: #5b21b6;
+        }
+
         @media (max-width: 1100px) {
             #delivery-app .admin-two-col { grid-template-columns: 1fr; }
         }
@@ -715,6 +736,7 @@
         #delivery-app .stat-card.warning p { color: var(--accent); }
         #delivery-app .stat-card.pending p { color: var(--admin-text-secondary); }
         #delivery-app .stat-card.cancelled p { color: #9ca3af; }
+        #delivery-app .stat-card.on-duty p { color: #0284c7; }
         #delivery-app .weekly-revenue-card { cursor: pointer; }
         #delivery-app .weekly-revenue-card:hover { transform: translateY(-2px); box-shadow: var(--admin-shadow-md); border-color: var(--primary); }
         #delivery-app .weekly-revenue-card:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
@@ -959,9 +981,17 @@
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
                         Fleet Directory
                     </button>
+                    <button type="button" class="admin-nav-item" id="open-customers-btn">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><path d="M20 8v6M23 11h-6"></path></svg>
+                        Customers
+                    </button>
                     <button type="button" class="admin-nav-item" id="open-settings-btn">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
                         Settings
+                    </button>
+                    <button type="button" class="admin-nav-item" id="open-help-support-btn">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+                        Help &amp; Support
                     </button>
                 </nav>
                 <div class="admin-sidebar-spacer"></div>
@@ -1041,6 +1071,10 @@
                             <div class="stat-card-top"><h4>Cancelled</h4><div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg></div></div>
                             <p id="cancelled-orders-delivery">0</p>
                         </div>
+                        <div class="stat-card on-duty" title="Manually set by admin in Fleet Directory — not automatic presence tracking">
+                            <div class="stat-card-top"><h4>On Duty Agents</h4><div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg></div></div>
+                            <p id="on-duty-agents-count">0</p>
+                        </div>
                     </div>
                 </section>
 
@@ -1064,6 +1098,7 @@
                             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 1rem;">
                                 <h2 class="section-title" style="margin: 0;">Available Orders</h2>
                                 <div style="display: flex; gap: 1rem; align-items: center;">
+                                    <button class="btn-small btn-success" id="open-admin-new-order-btn">+ New Order</button>
                                     <label style="display: flex; align-items: center; gap: 0.5rem; font-weight: 500;">
                                         <input type="checkbox" id="select-all-orders"> Select All
                                     </label>
@@ -1185,16 +1220,24 @@
                     <label class="form-label">Select Agent</label>
                     <select class="form-input" id="agent-select" required>
                         <option value="">-- Choose an Agent --</option>
-                        <option value="Titus">Titus</option>
-                        <option value="Emmanuel">Emmanuel</option>
-                        <option value="Augustine">Augustine</option>
-                        <option value="Boima">Boima</option>
-                        <option value="Arthur">Arthur</option>
                     </select>
+                </div>
+                <div class="form-group" id="price-preset-group" style="display:none;">
+                    <label class="form-label">Quick Price</label>
+                    <div class="price-preset-row" id="price-preset-row"></div>
                 </div>
                 <div class="form-group">
                     <label class="form-label">Delivery Amount ($)</label>
                     <input type="number" class="form-input" id="delivery-amount-input" min="0" step="0.01" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Payment Method</label>
+                    <select class="form-input" id="payment-method-select">
+                        <option value="">-- Not specified --</option>
+                        <option value="Cash">Cash</option>
+                        <option value="Mobile Money">Mobile Money</option>
+                        <option value="Card">Card</option>
+                    </select>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn-small btn-secondary" id="cancel-set-amount">Cancel</button>
@@ -1370,6 +1413,7 @@
                     <button type="button" class="settings-tab-btn active" data-settings-tab="profile">🏢 Business Profile</button>
                     <button type="button" class="settings-tab-btn" data-settings-tab="security">🔒 Security</button>
                     <button type="button" class="settings-tab-btn" data-settings-tab="appearance">🎨 Appearance</button>
+                    <button type="button" class="settings-tab-btn" data-settings-tab="pricing">💵 Pricing</button>
                     <button type="button" class="settings-tab-btn" data-settings-tab="backup">💾 Backup &amp; Restore</button>
                     <button type="button" class="settings-tab-btn" data-settings-tab="about">ℹ️ About</button>
                 </nav>
@@ -1535,6 +1579,25 @@
                     </div>
 
                     <!-- 4. Backup & Restore -->
+                    <!-- Pricing -->
+                    <div class="settings-panel" id="settings-panel-pricing" style="display:none;">
+                        <h4 class="settings-section-title">Price Presets</h4>
+                        <p class="settings-hint">Named, reusable price points that show up as quick-select buttons when accepting an order — not an automatic distance/zone calculator (this app has no mapping data to base one on).</p>
+                        <div id="price-presets-list" style="margin-bottom: 1.5rem;"></div>
+                        <form id="add-price-preset-form" style="display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: flex-end;">
+                            <div class="form-group" style="flex: 2; min-width: 160px; margin-bottom: 0;">
+                                <label class="form-label">Label</label>
+                                <input type="text" class="form-input" id="new-preset-label" placeholder="e.g. Standard Delivery" required>
+                            </div>
+                            <div class="form-group" style="flex: 1; min-width: 120px; margin-bottom: 0;">
+                                <label class="form-label">Amount ($)</label>
+                                <input type="number" class="form-input" id="new-preset-amount" min="0" step="0.01" required>
+                            </div>
+                            <button type="submit" class="btn-small btn-success">Add Preset</button>
+                        </form>
+                        <div class="auth-error" id="price-preset-error" style="margin-top: 1rem;"></div>
+                    </div>
+
                     <div class="settings-panel" id="settings-panel-backup" style="display:none;">
                         <h4 class="settings-section-title">Export Database</h4>
                         <p class="settings-hint">Downloads a JSON file with every order, expense, agent, and customer record.</p>
@@ -1595,6 +1658,66 @@
         </div>
     </div>
 
+    <!-- Customers -->
+    <div class="modal-overlay" id="customers-modal">
+        <div class="modal" style="max-width: 1000px; width: 95%; max-height: 85vh; overflow-y: auto;">
+            <div class="modal-header">
+                <h3>👥 Customers</h3>
+                <button class="close-btn" id="close-customers-modal">&times;</button>
+            </div>
+            <div id="customers-modal-content">
+                <p style="text-align: center; color: var(--slate-light); padding: 2rem 0;">Loading…</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Help & Support -->
+    <div class="modal-overlay" id="help-support-modal">
+        <div class="modal" style="max-width: 700px;">
+            <div class="modal-header">
+                <h3>❓ Help &amp; Support</h3>
+                <button class="close-btn" id="close-help-support-modal">&times;</button>
+            </div>
+            <div id="help-support-content"></div>
+        </div>
+    </div>
+
+    <!-- Admin: New Order on behalf of a customer -->
+    <div class="modal-overlay" id="admin-new-order-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>+ New Order</h3>
+                <button class="close-btn" id="close-admin-new-order-modal">&times;</button>
+            </div>
+            <form id="admin-new-order-form">
+                <p style="margin-bottom: 1.25rem; color: var(--slate-light);">Placing this order on a customer's behalf (e.g. a phone or walk-in order).</p>
+                <div class="form-group">
+                    <label class="form-label">Customer</label>
+                    <select class="form-input" id="admin-order-customer-select" required>
+                        <option value="">-- Select Customer --</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Pickup Address</label>
+                    <input type="text" class="form-input" id="admin-order-pickup" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Dropoff Address</label>
+                    <input type="text" class="form-input" id="admin-order-dropoff" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Item Description</label>
+                    <textarea class="form-input" id="admin-order-item" rows="3" required></textarea>
+                </div>
+                <div class="auth-error" id="admin-new-order-error"></div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-small btn-secondary" id="cancel-admin-new-order">Cancel</button>
+                    <button type="submit" class="btn-small btn-success">Create Order</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <script>
         // ============================================================
         // Agent data (delivery personnel — unrelated to login accounts).
@@ -1609,6 +1732,8 @@
         let agents = {};
         let agentRecords = [];
         let settings = {}; // business profile / regional settings, from Settings > Business Profile
+        let pricePresets = []; // admin-defined reference prices, from Settings > Pricing
+        let customersCache = []; // loaded on demand when the Customers page opens
 
         function setAgents(records) {
             agentRecords = records;
@@ -1914,6 +2039,17 @@
                     populateSettingsProfileForm();
                 }
             });
+
+            socket.on('price-preset:created', (preset) => {
+                if (!pricePresets.some(p => p.id === preset.id)) {
+                    pricePresets.push(preset);
+                    renderPricePresetsList();
+                }
+            });
+            socket.on('price-preset:deleted', ({ id }) => {
+                pricePresets = pricePresets.filter(p => p.id !== id);
+                renderPricePresetsList();
+            });
         }
 
         function emitWithAck(event, payload) {
@@ -2043,6 +2179,7 @@
                 expenses = (data.expenses || []).map(normalizeExpense);
                 setAgents(data.agents || []);
                 settings = data.settings || {};
+                pricePresets = data.pricePresets || [];
             } catch (err) {
                 console.error('Failed to load initial state', err);
                 showToast('Could not load your data — check your connection and refresh.', 'error');
@@ -2314,6 +2451,8 @@
             document.getElementById('agent-form').addEventListener('submit', handleAgentFormSubmit);
             document.getElementById('agent-contacts-container').addEventListener('click', (e) => {
                 if (e.target.classList.contains('edit-agent-btn')) openAgentModal(e.target.dataset.id);
+                const dutyBtn = e.target.closest('.agent-duty-toggle');
+                if (dutyBtn) toggleAgentDutyStatus(dutyBtn.dataset.id, dutyBtn.dataset.current);
             });
 
             const selectAllCheckbox = document.getElementById('select-all-orders');
@@ -2342,6 +2481,11 @@
             document.getElementById('close-set-amount-modal').addEventListener('click', closeSetAmountModal);
             document.getElementById('cancel-set-amount').addEventListener('click', closeSetAmountModal);
             document.getElementById('set-amount-form').addEventListener('submit', handleSetAmountSubmit);
+            document.getElementById('price-preset-row').addEventListener('click', (e) => {
+                if (e.target.classList.contains('price-preset-btn')) {
+                    document.getElementById('delivery-amount-input').value = e.target.dataset.amount;
+                }
+            });
 
             document.getElementById('view-order-history-delivery').addEventListener('click', openOrderHistoryModal);
             document.getElementById('close-order-history').addEventListener('click', closeOrderHistoryModal);
@@ -2355,6 +2499,7 @@
                 document.getElementById('settings-modal').classList.add('active');
                 populateSettingsProfileForm();
                 loadLoginHistory();
+                renderPricePresetsList();
             });
             document.getElementById('close-settings-modal').addEventListener('click', () => {
                 document.getElementById('settings-modal').classList.remove('active');
@@ -2522,6 +2667,15 @@
             }
         }
 
+        // "On Duty / Off Duty" — an explicit admin action, not automatic
+        // presence. See the duty_status comment in schema.sql.
+        async function toggleAgentDutyStatus(agentId, currentStatus) {
+            const next = currentStatus === 'on_duty' ? 'off_duty' : 'on_duty';
+            const result = await emitWithAck('agent:set-duty-status', { id: agentId, dutyStatus: next });
+            if (!result.ok) showToast(result.error || 'Failed to update duty status', 'error');
+            // agent:updated broadcast updates the UI either way.
+        }
+
         // ============================================================
         // Settings — Business Profile
         // ============================================================
@@ -2541,6 +2695,21 @@
                 cb.checked = openDays.includes(cb.value);
             });
             document.getElementById('settings-profile-error').style.display = 'none';
+        }
+
+        function renderPricePresetsList() {
+            const container = document.getElementById('price-presets-list');
+            if (!container) return;
+            if (pricePresets.length === 0) {
+                container.innerHTML = '<p style="color: var(--slate-light); font-size: 0.875rem;">No price presets yet — add one below.</p>';
+                return;
+            }
+            container.innerHTML = pricePresets.map(p => `
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 1rem; background: var(--bg-light); border-radius: 0.625rem; margin-bottom: 0.5rem;">
+                    <span style="font-weight: 600;">${p.label} — <span style="color: var(--primary); font-weight: 700;">$${p.amount.toFixed(2)}</span></span>
+                    <button type="button" class="btn-small delete-preset-btn" data-id="${p.id}" style="background-color: #dc2626; color: white; padding: 0.375rem 0.75rem; font-size: 0.75rem;">Remove</button>
+                </div>
+            `).join('');
         }
 
         let pendingLogoDataUrl = null;
@@ -2693,6 +2862,37 @@
                 showToast('Theme saved', 'success');
             });
 
+            // ---- Pricing ----
+            document.getElementById('add-price-preset-form').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const errorEl = document.getElementById('price-preset-error');
+                errorEl.style.display = 'none';
+                const label = document.getElementById('new-preset-label').value.trim();
+                const amount = parseFloat(document.getElementById('new-preset-amount').value);
+                try {
+                    const data = await apiFetch('/api/admin/price-presets', { method: 'POST', body: JSON.stringify({ label, amount }) });
+                    if (!pricePresets.some(p => p.id === data.preset.id)) pricePresets.push(data.preset);
+                    renderPricePresetsList();
+                    document.getElementById('add-price-preset-form').reset();
+                    showToast('Price preset added', 'success');
+                } catch (err) {
+                    errorEl.textContent = err.message;
+                    errorEl.style.display = 'block';
+                }
+            });
+            document.getElementById('price-presets-list').addEventListener('click', async (e) => {
+                if (!e.target.classList.contains('delete-preset-btn')) return;
+                const id = e.target.dataset.id;
+                if (!confirm('Remove this price preset?')) return;
+                try {
+                    await apiFetch(`/api/admin/price-presets/${id}`, { method: 'DELETE' });
+                    pricePresets = pricePresets.filter(p => p.id !== id);
+                    renderPricePresetsList();
+                } catch (err) {
+                    showToast(err.message, 'error');
+                }
+            });
+
             // ---- Backup & Restore ----
             document.getElementById('export-database-btn').addEventListener('click', exportDatabase);
 
@@ -2767,6 +2967,30 @@
                 notificationLog = [];
                 renderNotificationCenter();
             });
+
+            // ---- Customers ----
+            document.getElementById('open-customers-btn').addEventListener('click', () => {
+                document.getElementById('customers-modal').classList.add('active');
+                loadCustomers();
+            });
+            document.getElementById('close-customers-modal').addEventListener('click', () => {
+                document.getElementById('customers-modal').classList.remove('active');
+            });
+
+            // ---- Help & Support ----
+            document.getElementById('open-help-support-btn').addEventListener('click', () => {
+                renderHelpSupport();
+                document.getElementById('help-support-modal').classList.add('active');
+            });
+            document.getElementById('close-help-support-modal').addEventListener('click', () => {
+                document.getElementById('help-support-modal').classList.remove('active');
+            });
+
+            // ---- Admin: New Order on behalf of a customer ----
+            document.getElementById('open-admin-new-order-btn').addEventListener('click', openAdminNewOrderModal);
+            document.getElementById('close-admin-new-order-modal').addEventListener('click', closeAdminNewOrderModal);
+            document.getElementById('cancel-admin-new-order').addEventListener('click', closeAdminNewOrderModal);
+            document.getElementById('admin-new-order-form').addEventListener('submit', handleAdminNewOrderSubmit);
         }
 
         async function loadLoginHistory() {
@@ -2814,6 +3038,115 @@
                 btn.disabled = false;
                 btn.textContent = '⬇ Export Database';
             }
+        }
+
+        // ============================================================
+        // Customers — real aggregated data (order count, total spent,
+        // last order date) per customer, from GET /api/admin/customers.
+        // ============================================================
+        async function loadCustomers() {
+            const container = document.getElementById('customers-modal-content');
+            try {
+                const data = await apiFetch('/api/admin/customers');
+                customersCache = data.customers || [];
+                if (customersCache.length === 0) {
+                    container.innerHTML = '<p style="text-align: center; color: var(--slate-light); padding: 2rem 0;">No customers yet.</p>';
+                    return;
+                }
+                let html = '<div style="overflow-x: auto;"><table class="settings-table"><thead><tr>' +
+                    '<th>Business</th><th>Email</th><th>Phone</th><th>Orders</th><th>Total Spent</th><th>Last Order</th>' +
+                    '</tr></thead><tbody>';
+                customersCache.forEach(c => {
+                    html += `<tr>
+                        <td style="font-weight:700;">${c.businessName}</td>
+                        <td>${c.email}</td>
+                        <td>${c.phone || '—'}</td>
+                        <td>${c.totalOrders}</td>
+                        <td style="font-weight:700; color: var(--primary);">$${c.totalSpent.toFixed(2)}</td>
+                        <td>${c.lastOrderAt ? new Date(c.lastOrderAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Never'}</td>
+                    </tr>`;
+                });
+                html += '</tbody></table></div>';
+                container.innerHTML = html;
+            } catch (err) {
+                container.innerHTML = `<p style="text-align: center; color: #dc2626; padding: 2rem 0;">${err.message}</p>`;
+            }
+        }
+
+        // ============================================================
+        // Help & Support — real static content (not a stub). Pulls
+        // support contact from Business Profile settings when set,
+        // falling back to the same defaults shown in Settings > About.
+        // ============================================================
+        function renderHelpSupport() {
+            const container = document.getElementById('help-support-content');
+            const email = settings.businessEmail || 'support@verta.com';
+            const phone = settings.businessPhone || '+231-886-165-524';
+            const faqs = [
+                { q: 'How do I accept an order?', a: 'Open the order card in "Available Orders" and click Accept Order, then choose an agent, a delivery amount (or a saved price preset from Settings > Pricing), and optionally a payment method.' },
+                { q: 'How do I add or edit a delivery agent?', a: 'Go to Fleet Directory in the sidebar, then use "+ Add Agent" or the Edit button on any existing agent card.' },
+                { q: 'What does "On Duty / Off Duty" mean for an agent?', a: 'It\'s a status you set manually — this app doesn\'t track agents\' live location or connection, so it\'s a simple flag you toggle, not automatic presence.' },
+                { q: 'How do I cancel an order?', a: 'Senders can cancel their own order while it\'s still Pending (before an agent accepts it) from their dashboard. Admins can delete any order via "Select" + "Delete Selected".' },
+                { q: 'How do I generate a monthly report?', a: 'Open Monthly Report in the sidebar, choose "Business (All Customers)" or a specific customer, then a month and year.' },
+                { q: 'I forgot my password — what do I do?', a: 'Use "Forgot password?" on the login screen. A reset code is sent by SMS/WhatsApp to the phone number on your account.' },
+            ];
+            container.innerHTML = `
+                <div style="margin-bottom: 1.5rem;">
+                    ${faqs.map(f => `
+                        <div style="margin-bottom: 1.25rem; padding-bottom: 1.25rem; border-bottom: 1px solid var(--border);">
+                            <div style="font-weight: 700; color: var(--slate); margin-bottom: 0.375rem;">${f.q}</div>
+                            <div style="color: var(--slate-light); font-size: 0.9375rem; line-height: 1.5;">${f.a}</div>
+                        </div>
+                    `).join('')}
+                </div>
+                <div style="background: var(--bg-light); padding: 1.25rem; border-radius: 0.875rem;">
+                    <div style="font-weight: 700; margin-bottom: 0.5rem;">Still need help?</div>
+                    <div style="color: var(--slate-light);">Email: <a href="mailto:${email}" style="color: var(--primary); font-weight: 600;">${email}</a></div>
+                    <div style="color: var(--slate-light);">Phone: <a href="tel:${phone}" style="color: var(--primary); font-weight: 600;">${phone}</a></div>
+                </div>
+            `;
+        }
+
+        // ============================================================
+        // Admin: place a new order on a customer's behalf
+        // ============================================================
+        function openAdminNewOrderModal() {
+            const select = document.getElementById('admin-order-customer-select');
+            const customers = {};
+            orders.forEach(o => { if (o.senderId && !customers[o.senderId]) customers[o.senderId] = o.senderName; });
+            const options = Object.entries(customers).sort((a, b) => a[1].localeCompare(b[1]))
+                .map(([id, name]) => `<option value="${id}">${name}</option>`).join('');
+            select.innerHTML = '<option value="">-- Select Customer --</option>' + options;
+            document.getElementById('admin-new-order-form').reset();
+            document.getElementById('admin-new-order-error').style.display = 'none';
+            document.getElementById('admin-new-order-modal').classList.add('active');
+        }
+        function closeAdminNewOrderModal() {
+            document.getElementById('admin-new-order-modal').classList.remove('active');
+        }
+        async function handleAdminNewOrderSubmit(e) {
+            e.preventDefault();
+            const errorEl = document.getElementById('admin-new-order-error');
+            errorEl.style.display = 'none';
+            const senderId = document.getElementById('admin-order-customer-select').value;
+            if (!senderId) {
+                errorEl.textContent = 'Please choose a customer.';
+                errorEl.style.display = 'block';
+                return;
+            }
+            const result = await emitWithAck('order:create', {
+                senderId,
+                pickupAddress: document.getElementById('admin-order-pickup').value,
+                dropoffAddress: document.getElementById('admin-order-dropoff').value,
+                itemDescription: document.getElementById('admin-order-item').value,
+            });
+            if (!result.ok) {
+                errorEl.textContent = result.error || 'Failed to create order';
+                errorEl.style.display = 'block';
+                return;
+            }
+            closeAdminNewOrderModal();
+            showToast('Order created', 'success');
         }
 
         // ---- Bulk delete ----
@@ -3093,15 +3426,21 @@
             }
             let html = '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem;">';
             agentRecords.forEach((agent) => {
+                const onDuty = agent.dutyStatus === 'on_duty';
                 html += `
                     <div style="background: white; padding: 1.25rem; border-radius: 0.75rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
                         <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 0.75rem; margin-bottom: 0.5rem;">
                             <div style="font-weight: 700; color: var(--slate); font-size: 1.125rem;">${agent.name}</div>
                             <button type="button" class="btn-small btn-secondary edit-agent-btn" data-id="${agent.id}" style="padding: 0.375rem 0.875rem; font-size: 0.8125rem;">Edit</button>
                         </div>
-                        <div style="display: flex; align-items: center; gap: 0.5rem; color: var(--slate-light);">
-                            <span style="font-size: 1rem;">📞</span>
-                            <a href="tel:${agent.phone}" style="text-decoration: none; color: var(--primary); font-weight: 600;">${agent.phone}</a>
+                        <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;">
+                            <div style="display: flex; align-items: center; gap: 0.5rem; color: var(--slate-light);">
+                                <span style="font-size: 1rem;">📞</span>
+                                <a href="tel:${agent.phone}" style="text-decoration: none; color: var(--primary); font-weight: 600;">${agent.phone}</a>
+                            </div>
+                            <button type="button" class="agent-duty-toggle ${onDuty ? 'on-duty' : 'off-duty'}" data-id="${agent.id}" data-current="${agent.dutyStatus || 'off_duty'}" title="Manually set by admin — not automatic presence">
+                                <span class="agent-duty-dot"></span>${onDuty ? 'On Duty' : 'Off Duty'}
+                            </button>
                         </div>
                     </div>
                 `;
@@ -3115,8 +3454,22 @@
             currentAcceptingOrderId = orderId;
             document.getElementById('set-amount-modal').classList.add('active');
             document.getElementById('delivery-amount-input').value = '';
-            document.getElementById('agent-select').value = '';
-            document.getElementById('agent-select').focus();
+            document.getElementById('payment-method-select').value = '';
+
+            const agentSelect = document.getElementById('agent-select');
+            agentSelect.innerHTML = '<option value="">-- Choose an Agent --</option>' +
+                Object.keys(agents).map(name => `<option value="${name}">${name}</option>`).join('');
+            agentSelect.value = '';
+            agentSelect.focus();
+
+            const presetGroup = document.getElementById('price-preset-group');
+            const presetRow = document.getElementById('price-preset-row');
+            if (pricePresets.length > 0) {
+                presetGroup.style.display = 'block';
+                presetRow.innerHTML = pricePresets.map(p => `<button type="button" class="price-preset-btn" data-amount="${p.amount}">${p.label} — $${p.amount.toFixed(2)}</button>`).join('');
+            } else {
+                presetGroup.style.display = 'none';
+            }
         }
         function closeSetAmountModal() {
             document.getElementById('set-amount-modal').classList.remove('active');
@@ -3127,8 +3480,9 @@
             if (!currentAcceptingOrderId) return;
             const amount = parseFloat(document.getElementById('delivery-amount-input').value);
             const selectedAgent = document.getElementById('agent-select').value;
+            const paymentMethod = document.getElementById('payment-method-select').value;
             if (!selectedAgent) return;
-            const result = await emitWithAck('order:accept', { id: currentAcceptingOrderId, amount, acceptedBy: selectedAgent });
+            const result = await emitWithAck('order:accept', { id: currentAcceptingOrderId, amount, acceptedBy: selectedAgent, paymentMethod });
             if (!result.ok) { showToast(result.error || 'Failed to accept order', 'error'); return; }
             closeSetAmountModal();
             sendLocalNotification('Order Accepted', { body: `Order ${currentAcceptingOrderId} has been accepted.` });
@@ -3657,6 +4011,7 @@
                     <div class="order-detail"><span class="order-detail-label">Dropoff:</span><span class="order-detail-value">${order.dropoffAddress}${order.deliveredAt ? ` <span class="order-timestamp">- ${formatTime(order.deliveredAt)} </span>` : ''}</span></div>
                     <div class="order-detail"><span class="order-detail-label">Item:</span><span class="order-detail-value">${order.itemDescription}</span></div>
                     ${order.amount !== null ? `<div class="order-detail"><span class="order-detail-label">Amount:</span><span class="order-detail-value" style="font-weight: 700; color: var(--primary);">$${order.amount.toFixed(2)}</span></div>` : ''}
+                    ${order.paymentMethod ? `<div class="order-detail"><span class="order-detail-label">Payment:</span><span class="order-detail-value"><span class="payment-method-pill">${order.paymentMethod}</span></span></div>` : ''}
                     ${order.acceptedBy ? `<div class="order-detail"><span class="order-detail-label">Agent:</span><span class="order-detail-value" style="font-weight: 600;">${order.acceptedBy}${agents[order.acceptedBy] ? ` (${agents[order.acceptedBy]})` : ''}</span></div>` : ''}
                 </div>
                 <div class="order-actions">
@@ -3815,6 +4170,9 @@
             if (inProgressOrdersEl) inProgressOrdersEl.textContent = todayInProgress;
             if (pendingOrdersDeliveryEl) pendingOrdersDeliveryEl.textContent = todayPending;
             if (cancelledOrdersDeliveryEl) cancelledOrdersDeliveryEl.textContent = todayCancelled;
+
+            const onDutyEl = document.getElementById('on-duty-agents-count');
+            if (onDutyEl) onDutyEl.textContent = agentRecords.filter(a => a.dutyStatus === 'on_duty').length;
         }
 
         function isToday(date) {

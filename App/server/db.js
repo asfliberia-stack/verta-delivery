@@ -24,6 +24,8 @@ function rowToOrder(r) {
     amount: r.amount === null ? null : Number(r.amount),
     status: r.status,
     acceptedBy: r.accepted_by,
+    paymentMethod: r.payment_method,
+    placedByAdmin: r.placed_by_admin,
     createdAt: r.created_at,
     acceptedAt: r.accepted_at,
     pickedUpAt: r.picked_up_at,
@@ -47,6 +49,16 @@ function rowToAgent(r) {
     id: r.id,
     name: r.name,
     phone: r.phone,
+    dutyStatus: r.duty_status,
+  };
+}
+
+function rowToPricePreset(r) {
+  if (!r) return null;
+  return {
+    id: r.id,
+    label: r.label,
+    amount: Number(r.amount),
   };
 }
 
@@ -165,10 +177,10 @@ const db = {
 
   async createOrder(order) {
     const { rows } = await pool.query(
-      `INSERT INTO orders (id, sender_id, sender_name, pickup_address, dropoff_address, item_description, amount, status)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      `INSERT INTO orders (id, sender_id, sender_name, pickup_address, dropoff_address, item_description, amount, status, placed_by_admin)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
        RETURNING *`,
-      [order.id, order.senderId, order.senderName, order.pickupAddress, order.dropoffAddress, order.itemDescription, order.amount, order.status || 'pending']
+      [order.id, order.senderId, order.senderName, order.pickupAddress, order.dropoffAddress, order.itemDescription, order.amount, order.status || 'pending', !!order.placedByAdmin]
     );
     return rowToOrder(rows[0]);
   },
@@ -182,6 +194,7 @@ const db = {
       acceptedAt: 'accepted_at',
       pickedUpAt: 'picked_up_at',
       deliveredAt: 'delivered_at',
+      paymentMethod: 'payment_method',
     };
     const sets = [];
     const values = [];
@@ -255,6 +268,14 @@ const db = {
     const { rows } = await pool.query(
       `UPDATE agents SET name = $1, phone = $2 WHERE id = $3 RETURNING *`,
       [name, phone, id]
+    );
+    return rowToAgent(rows[0]);
+  },
+
+  async updateAgentDutyStatus(id, dutyStatus) {
+    const { rows } = await pool.query(
+      `UPDATE agents SET duty_status = $1 WHERE id = $2 RETURNING *`,
+      [dutyStatus, id]
     );
     return rowToAgent(rows[0]);
   },
@@ -367,6 +388,52 @@ const db = {
         createdAt: u.created_at,
       })), // password hashes deliberately excluded
     };
+  },
+
+  // ---- Customers (aggregated from users + orders) ---------------------
+
+  async getCustomers() {
+    const { rows } = await pool.query(`
+      SELECT
+        u.id, u.business_name, u.email, u.phone, u.created_at,
+        COUNT(o.id)::int AS total_orders,
+        COALESCE(SUM(o.amount) FILTER (WHERE o.status = 'delivered'), 0)::numeric AS total_spent,
+        MAX(o.created_at) AS last_order_at
+      FROM users u
+      LEFT JOIN orders o ON o.sender_id = u.id
+      WHERE u.role = 'sender'
+      GROUP BY u.id
+      ORDER BY total_orders DESC, u.business_name ASC
+    `);
+    return rows.map(r => ({
+      id: r.id,
+      businessName: r.business_name,
+      email: r.email,
+      phone: r.phone,
+      createdAt: r.created_at,
+      totalOrders: r.total_orders,
+      totalSpent: Number(r.total_spent),
+      lastOrderAt: r.last_order_at,
+    }));
+  },
+
+  // ---- Price presets (Settings > Pricing) ------------------------------
+
+  async getAllPricePresets() {
+    const { rows } = await pool.query('SELECT * FROM price_presets ORDER BY amount ASC');
+    return rows.map(rowToPricePreset);
+  },
+
+  async createPricePreset({ id, label, amount }) {
+    const { rows } = await pool.query(
+      'INSERT INTO price_presets (id, label, amount) VALUES ($1, $2, $3) RETURNING *',
+      [id, label, amount]
+    );
+    return rowToPricePreset(rows[0]);
+  },
+
+  async deletePricePreset(id) {
+    await pool.query('DELETE FROM price_presets WHERE id = $1', [id]);
   },
 };
 
