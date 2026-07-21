@@ -1,0 +1,13 @@
+{
+  "name": "verta-delivery",
+  "private": true,
+  "description": "Verta Delivery Service — run/deploy convenience wrapper. The real app lives in server/ (Express + Socket.io + Postgres) and public/ (frontend).",
+  "scripts": {
+    "postinstall": "npm install --prefix server",
+    "start": "npm start --prefix server",
+    "dev": "npm run dev --prefix server"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
