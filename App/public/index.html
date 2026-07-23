@@ -155,9 +155,9 @@
         .status-badge { padding: 0.375rem 1rem; border-radius: 9999px; font-size: 0.8125rem; font-weight: 700; letter-spacing: 0.025em; text-transform: uppercase; }
         .status-pending { background: #fef3c7; color: #92400e; border: 1px solid #fcd34d; }
         .status-accepted { background: #dbeafe; color: #1e40af; border: 1px solid #93c5fd; }
-        .status-picked-up { background: #ddd6fe; color: #5b21b6; border: 1px solid #a78bfa; }
-        .status-delivered { background: #d1fae5; color: #065f46; border: 1px solid #6ee7b7; }
-        .status-cancelled { background: #f3f4f6; color: #4b5563; border: 1px solid #d1d5db; }
+        .status-picked-up { background: #ede9fe; color: #6d28d9; border: 1px solid #c4b5fd; }
+        .status-delivered { background: #DCFCE7; color: #15803D; border: 1px solid #bbf7d0; }
+        .status-cancelled { background: #fee2e2; color: #b91c1c; border: 1px solid #fecaca; }
 
         .order-details { margin-bottom: 1.25rem; }
         .order-detail { margin-bottom: 0.75rem; display: flex; gap: 0.75rem; align-items: flex-start; }
@@ -426,6 +426,7 @@
            the sender view keeps its original indigo header.
            ============================================================ */
         #delivery-app {
+            --primary: #4F46E5; /* scoped override — only affects the admin dashboard subtree; sender view/modals keep the original #6366f1 */
             --admin-bg: #f8fafc;
             --admin-surface: #ffffff;
             --admin-surface-alt: #f1f5f9;
@@ -434,10 +435,10 @@
             --admin-text: #0f172a;
             --admin-text-secondary: #64748b;
             --admin-text-tertiary: #94a3b8;
-            --admin-sidebar-from: #0f172a;
-            --admin-sidebar-to: #1e293b;
-            --admin-sidebar-text: #94a3b8;
-            --admin-sidebar-text-hover: #e2e8f0;
+            --admin-sidebar-from: #121829;
+            --admin-sidebar-to: #1a2137;
+            --admin-sidebar-text: #cbd5e1;
+            --admin-sidebar-text-hover: #ffffff;
             --admin-shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.04);
             --admin-shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.06), 0 1px 2px rgba(15, 23, 42, 0.04);
             --admin-shadow-md: 0 4px 16px rgba(15, 23, 42, 0.08);
@@ -687,6 +688,22 @@
         #delivery-app .agent-duty-toggle:hover { filter: brightness(0.96); }
         #delivery-app .agent-duty-dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
 
+        #delivery-app .agent-contact-card {
+            background: var(--admin-surface); padding: 1.25rem; border-radius: var(--admin-radius-md);
+            box-shadow: var(--admin-shadow-xs); border: 1px solid var(--admin-border);
+        }
+        #delivery-app .agent-contact-avatar {
+            width: 2.75rem; height: 2.75rem; border-radius: 50%; background: var(--primary); color: white;
+            display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 1.0625rem; flex-shrink: 0;
+        }
+        #delivery-app .agent-call-btn {
+            width: 2.25rem; height: 2.25rem; min-width: 44px; min-height: 44px; border-radius: 50%;
+            background: #eef2ff; color: var(--primary); display: flex; align-items: center; justify-content: center;
+            transition: background 0.15s;
+        }
+        #delivery-app .agent-call-btn:hover { background: #e0e7ff; }
+        #delivery-app .agent-call-btn svg { width: 16px; height: 16px; }
+
         .price-preset-row { display: flex; gap: 0.5rem; flex-wrap: wrap; }
         .price-preset-btn {
             padding: 0.5rem 0.875rem; min-height: 40px; border: 2px solid var(--border); border-radius: 0.625rem;
@@ -697,6 +714,25 @@
             display: inline-block; padding: 0.1875rem 0.625rem; border-radius: 9999px;
             font-size: 0.75rem; font-weight: 700; background: #ede9fe; color: #5b21b6;
         }
+
+        #delivery-app .admin-view-all-link { color: var(--primary); font-weight: 700; font-size: 0.8125rem; cursor: pointer; }
+        #delivery-app .admin-view-all-link:hover { text-decoration: underline; }
+        #delivery-app .recent-delivery-row {
+            display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 0;
+            border-bottom: 1px solid var(--admin-border); cursor: pointer; min-height: 44px;
+        }
+        #delivery-app .recent-delivery-row:last-child { border-bottom: none; }
+        #delivery-app .recent-delivery-row:hover { background: var(--admin-surface-alt); margin: 0 -0.5rem; padding-left: 0.5rem; padding-right: 0.5rem; border-radius: 0.5rem; }
+        #delivery-app .recent-delivery-avatar {
+            width: 2.25rem; height: 2.25rem; border-radius: 50%; background: var(--primary); color: white;
+            display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.875rem; flex-shrink: 0;
+        }
+        #delivery-app .recent-delivery-main { flex: 1; min-width: 0; }
+        #delivery-app .recent-delivery-name { font-weight: 700; font-size: 0.875rem; color: var(--admin-text); }
+        #delivery-app .recent-delivery-sub { font-size: 0.75rem; color: var(--admin-text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        #delivery-app .recent-delivery-time { font-size: 0.75rem; color: var(--admin-text-tertiary); flex-shrink: 0; }
+        #delivery-app .recent-delivery-price { font-weight: 700; font-size: 0.875rem; color: var(--admin-text); flex-shrink: 0; }
+        #delivery-app .recent-deliveries-count { text-align: right; font-size: 0.75rem; color: var(--admin-text-secondary); margin-top: 0.75rem; }
 
         @media (max-width: 1100px) {
             #delivery-app .admin-two-col { grid-template-columns: 1fr; }
@@ -740,10 +776,10 @@
         #delivery-app .weekly-revenue-card { cursor: pointer; }
         #delivery-app .weekly-revenue-card:hover { transform: translateY(-2px); box-shadow: var(--admin-shadow-md); border-color: var(--primary); }
         #delivery-app .weekly-revenue-card:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
-        #delivery-app .weekly-revenue-trend { font-size: 0.875rem; font-weight: 700; margin-top: 0.25rem; }
-        #delivery-app .weekly-revenue-trend.up { color: var(--secondary); }
-        #delivery-app .weekly-revenue-trend.down { color: #dc2626; }
-        #delivery-app .weekly-revenue-trend.flat { color: var(--admin-text-secondary); }
+        #delivery-app .stat-trend { font-size: 0.8125rem; font-weight: 700; margin-top: 0.375rem; }
+        #delivery-app .stat-trend.up { color: var(--secondary); }
+        #delivery-app .stat-trend.down { color: #dc2626; }
+        #delivery-app .stat-trend.flat { color: var(--admin-text-secondary); }
 
         /* ---- Order cards ---- */
         #delivery-app .section-title { font-size: 1.125rem; font-weight: 600; color: var(--admin-text); }
@@ -1045,49 +1081,60 @@
                 </header>
 
                 <div class="admin-section-label">TODAY'S SNAPSHOT</div>
-                <section class="stats-section" style="margin-bottom: 2.5rem;">
+                <section class="stats-section" style="margin-bottom: 1.5rem;">
                     <div class="stats-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.5rem;">
                         <div class="stat-card">
                             <div class="stat-card-top"><h4>Total Orders</h4><div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7h-9m9 5h-9m9 5h-9M4 7h1m-1 5h1m-1 5h1"></path><rect x="3" y="4" width="4" height="16" rx="1"></rect></svg></div></div>
                             <p id="total-orders-delivery">0</p>
+                            <div class="stat-trend" id="total-orders-trend">—</div>
                         </div>
                         <div class="stat-card">
                             <div class="stat-card-top"><h4>Total Earnings</h4><div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg></div></div>
                             <p id="total-earnings">$0.00</p>
+                            <div class="stat-trend" id="total-earnings-trend">—</div>
                         </div>
-                        <div class="stat-card success">
-                            <div class="stat-card-top"><h4>Delivered Orders</h4><div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg></div></div>
-                            <p id="delivered-orders-delivery">0</p>
-                        </div>
-                        <div class="stat-card warning">
-                            <div class="stat-card-top"><h4>In Progress</h4><div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg></div></div>
-                            <p id="in-progress-orders">0</p>
-                        </div>
-                        <div class="stat-card pending">
-                            <div class="stat-card-top"><h4>Pending Assignment</h4><div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg></div></div>
-                            <p id="pending-orders-delivery">0</p>
-                        </div>
-                        <div class="stat-card cancelled">
-                            <div class="stat-card-top"><h4>Cancelled</h4><div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg></div></div>
-                            <p id="cancelled-orders-delivery">0</p>
-                        </div>
-                        <div class="stat-card on-duty" title="Manually set by admin in Fleet Directory — not automatic presence tracking">
-                            <div class="stat-card-top"><h4>On Duty Agents</h4><div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg></div></div>
-                            <p id="on-duty-agents-count">0</p>
-                        </div>
-                    </div>
-                </section>
-
-                <div class="admin-section-label">THIS WEEK</div>
-                <section class="stats-section" style="margin-bottom: 2.5rem;">
-                    <div class="stats-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem;">
                         <div class="stat-card weekly-revenue-card" id="weekly-revenue-card" role="button" tabindex="0">
                             <div class="stat-card-top">
                                 <h4>Weekly Revenue</h4>
                                 <div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg></div>
                             </div>
                             <p id="weekly-revenue-amount">$0.00</p>
-                            <div id="weekly-revenue-trend" class="weekly-revenue-trend">—</div>
+                            <div id="weekly-revenue-trend" class="stat-trend">—</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-card-top"><h4>Today's Revenue</h4><div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg></div></div>
+                            <p id="today-revenue-amount">$0.00</p>
+                            <div class="stat-trend" id="today-revenue-trend">—</div>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="stats-section" style="margin-bottom: 2.5rem;">
+                    <div class="stats-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem;">
+                        <div class="stat-card success">
+                            <div class="stat-card-top"><h4>Delivered Orders</h4><div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg></div></div>
+                            <p id="delivered-orders-delivery">0</p>
+                            <div class="stat-trend" id="delivered-success-rate">—</div>
+                        </div>
+                        <div class="stat-card warning">
+                            <div class="stat-card-top"><h4>In Progress</h4><div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg></div></div>
+                            <p id="in-progress-orders">0</p>
+                            <div class="stat-trend flat">No change</div>
+                        </div>
+                        <div class="stat-card pending">
+                            <div class="stat-card-top"><h4>Pending Assignment</h4><div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg></div></div>
+                            <p id="pending-orders-delivery">0</p>
+                            <div class="stat-trend flat">No change</div>
+                        </div>
+                        <div class="stat-card cancelled">
+                            <div class="stat-card-top"><h4>Cancelled</h4><div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg></div></div>
+                            <p id="cancelled-orders-delivery">0</p>
+                            <div class="stat-trend" id="cancelled-trend">—</div>
+                        </div>
+                        <div class="stat-card on-duty" title="Manually set by admin in Fleet Directory — not automatic presence tracking">
+                            <div class="stat-card-top"><h4>On Duty Agents</h4><div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg></div></div>
+                            <p id="on-duty-agents-count">0</p>
+                            <div class="stat-trend" id="on-duty-fraction">—</div>
                         </div>
                     </div>
                 </section>
@@ -1102,7 +1149,7 @@
                                     <label style="display: flex; align-items: center; gap: 0.5rem; font-weight: 500;">
                                         <input type="checkbox" id="select-all-orders"> Select All
                                     </label>
-                                    <button class="btn-small btn-danger" id="delete-selected-btn">Delete Selected</button>
+                                    <button class="btn-small btn-danger" id="delete-selected-btn">🗑️ Delete Selected</button>
                                 </div>
                             </div>
                             <div class="order-filter-bar">
@@ -1146,8 +1193,12 @@
 
                     <div class="admin-two-col-side">
                         <section class="orders-section">
-                            <h2 class="section-title">Recent Deliveries</h2>
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                                <h2 class="section-title" style="margin:0;">Recent Deliveries</h2>
+                                <a id="view-all-deliveries-link" class="admin-view-all-link">View All</a>
+                            </div>
                             <div id="recent-deliveries-container"></div>
+                            <div id="recent-deliveries-count" class="recent-deliveries-count"></div>
                         </section>
 
                         <section class="orders-section" id="agent-contacts-section">
@@ -1632,7 +1683,7 @@
                     <div class="settings-panel" id="settings-panel-about" style="display:none;">
                         <h4 class="settings-section-title">Application Information</h4>
                         <div class="settings-about-row"><span>App Name</span><strong>Verta Delivery Services</strong></div>
-                        <div class="settings-about-row"><span>Current Version</span><strong>v1.0.0</strong></div>
+                        <div class="settings-about-row"><span>Current Version</span><strong>v26.0.0</strong></div>
                         <div class="settings-about-row"><span>Last Update</span><strong>July 18, 2026</strong></div>
                         <div class="settings-about-row"><span>Support Contact</span><strong>support@verta.com<br>+231-886-165-524</strong></div>
                         <h4 class="settings-section-title">Links</h4>
@@ -2991,6 +3042,13 @@
             document.getElementById('close-admin-new-order-modal').addEventListener('click', closeAdminNewOrderModal);
             document.getElementById('cancel-admin-new-order').addEventListener('click', closeAdminNewOrderModal);
             document.getElementById('admin-new-order-form').addEventListener('submit', handleAdminNewOrderSubmit);
+
+            // ---- Recent Deliveries: View All -> Order History (real, existing feature) ----
+            document.getElementById('view-all-deliveries-link').addEventListener('click', openOrderHistoryModal);
+            document.getElementById('recent-deliveries-container').addEventListener('click', (e) => {
+                const row = e.target.closest('.recent-delivery-row');
+                if (row) openOrderDetails(row.dataset.id, 'delivery');
+            });
         }
 
         async function loadLoginHistory() {
@@ -3427,20 +3485,31 @@
             let html = '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem;">';
             agentRecords.forEach((agent) => {
                 const onDuty = agent.dutyStatus === 'on_duty';
+                const todaysOrders = orders.filter(o => o.acceptedBy === agent.name && isToday(o.createdAt));
+                const todaysDelivered = todaysOrders.filter(o => o.status === 'delivered');
+                const todaysEarned = todaysDelivered.reduce((sum, o) => sum + (o.amount || 0), 0);
                 html += `
-                    <div style="background: white; padding: 1.25rem; border-radius: 0.75rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
-                        <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 0.75rem; margin-bottom: 0.5rem;">
-                            <div style="font-weight: 700; color: var(--slate); font-size: 1.125rem;">${agent.name}</div>
+                    <div class="agent-contact-card">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 0.75rem; margin-bottom: 0.75rem;">
+                            <div style="display: flex; align-items: center; gap: 0.75rem;">
+                                <div class="agent-contact-avatar">${agent.name.charAt(0).toUpperCase()}</div>
+                                <div>
+                                    <div style="font-weight: 700; color: var(--slate); font-size: 1.0625rem;">${agent.name}</div>
+                                    <button type="button" class="agent-duty-toggle ${onDuty ? 'on-duty' : 'off-duty'}" data-id="${agent.id}" data-current="${agent.dutyStatus || 'off_duty'}" title="Manually set by admin — not automatic presence">
+                                        <span class="agent-duty-dot"></span>${onDuty ? 'On Duty' : 'Off Duty'}
+                                    </button>
+                                </div>
+                            </div>
                             <button type="button" class="btn-small btn-secondary edit-agent-btn" data-id="${agent.id}" style="padding: 0.375rem 0.875rem; font-size: 0.8125rem;">Edit</button>
                         </div>
+                        <div style="font-size: 0.8125rem; color: var(--slate-light); margin-bottom: 0.75rem;">
+                            ${todaysDelivered.length} ${todaysDelivered.length === 1 ? 'delivery' : 'deliveries'} today · <strong style="color: var(--slate);">$${todaysEarned.toFixed(2)} earned</strong>
+                        </div>
                         <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;">
-                            <div style="display: flex; align-items: center; gap: 0.5rem; color: var(--slate-light);">
-                                <span style="font-size: 1rem;">📞</span>
-                                <a href="tel:${agent.phone}" style="text-decoration: none; color: var(--primary); font-weight: 600;">${agent.phone}</a>
-                            </div>
-                            <button type="button" class="agent-duty-toggle ${onDuty ? 'on-duty' : 'off-duty'}" data-id="${agent.id}" data-current="${agent.dutyStatus || 'off_duty'}" title="Manually set by admin — not automatic presence">
-                                <span class="agent-duty-dot"></span>${onDuty ? 'On Duty' : 'Off Duty'}
-                            </button>
+                            <a href="tel:${agent.phone}" style="text-decoration: none; color: var(--primary); font-weight: 600; font-size: 0.875rem;">${agent.phone}</a>
+                            <a href="tel:${agent.phone}" class="agent-call-btn" title="Call ${agent.name}">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
+                            </a>
                         </div>
                     </div>
                 `;
@@ -3987,8 +4056,36 @@
         function renderRecentDeliveries() {
             const container = document.getElementById('recent-deliveries-container');
             if (!container) return;
-            const delivered = orders.filter(o => o.status === 'delivered').slice(0, 12);
-            renderGroupedOrders(container, delivered, 'No deliveries completed yet.');
+            const allDelivered = orders.filter(o => o.status === 'delivered').sort((a, b) => new Date(b.deliveredAt || b.createdAt) - new Date(a.deliveredAt || a.createdAt));
+            const shown = allDelivered.slice(0, 5);
+
+            if (allDelivered.length === 0) {
+                renderEmptyState(container, 'No deliveries completed yet.');
+                const countEl = document.getElementById('recent-deliveries-count');
+                if (countEl) countEl.textContent = '';
+                return;
+            }
+
+            container.innerHTML = shown.map(order => {
+                const initial = (order.senderName || '?').charAt(0).toUpperCase();
+                const time = order.deliveredAt ? formatTime(order.deliveredAt) : formatTime(order.createdAt);
+                return `
+                    <div class="recent-delivery-row" data-id="${order.id}">
+                        <div class="recent-delivery-avatar">${initial}</div>
+                        <div class="recent-delivery-main">
+                            <div class="recent-delivery-name">${order.senderName}</div>
+                            <div class="recent-delivery-sub">${order.id} · ${order.dropoffAddress}</div>
+                        </div>
+                        <div class="recent-delivery-time">${time}</div>
+                        ${order.amount !== null ? `<div class="recent-delivery-price">$${order.amount.toFixed(2)}</div>` : ''}
+                        ${order.paymentMethod ? `<span class="payment-method-pill">${order.paymentMethod}</span>` : ''}
+                        <span class="status-badge status-delivered">Delivered</span>
+                    </div>
+                `;
+            }).join('');
+
+            const countEl = document.getElementById('recent-deliveries-count');
+            if (countEl) countEl.textContent = `Showing ${shown.length} of ${allDelivered.length} deliveries`;
         }
 
         function createOrderCard(order, role) {
@@ -4157,6 +4254,17 @@
             // exactly one of Delivered / In Progress / Pending / Cancelled.
             const todayPending = todayAllOrders.filter(o => o.status === 'pending').length;
             const todayCancelled = todayAllOrders.filter(o => o.status === 'cancelled').length;
+            // "Today's Revenue" is every delivered order today regardless of
+            // agent — a slightly different (and always >=) number than
+            // "Total Earnings", which is agent-attributed revenue only.
+            const todayRevenueAll = todayAllOrders.filter(o => o.status === 'delivered').reduce((sum, o) => sum + (o.amount || 0), 0);
+
+            // Yesterday equivalents, purely for real day-over-day trend pills.
+            const yesterdayAllOrders = orders.filter(o => isYesterday(o.createdAt));
+            const yesterdayPartnerOrders = orders.filter(o => validAgents.includes(o.acceptedBy) && isYesterday(o.createdAt));
+            const yesterdayEarnings = yesterdayPartnerOrders.filter(o => o.status === 'delivered').reduce((sum, o) => sum + (o.amount || 0), 0);
+            const yesterdayRevenueAll = yesterdayAllOrders.filter(o => o.status === 'delivered').reduce((sum, o) => sum + (o.amount || 0), 0);
+            const yesterdayCancelled = yesterdayAllOrders.filter(o => o.status === 'cancelled').length;
 
             const totalOrdersDeliveryEl = document.getElementById('total-orders-delivery');
             const totalEarningsEl = document.getElementById('total-earnings');
@@ -4172,13 +4280,62 @@
             if (cancelledOrdersDeliveryEl) cancelledOrdersDeliveryEl.textContent = todayCancelled;
 
             const onDutyEl = document.getElementById('on-duty-agents-count');
-            if (onDutyEl) onDutyEl.textContent = agentRecords.filter(a => a.dutyStatus === 'on_duty').length;
+            const onDutyCount = agentRecords.filter(a => a.dutyStatus === 'on_duty').length;
+            if (onDutyEl) onDutyEl.textContent = onDutyCount;
+
+            // ---- Trend pills (all real day-over-day comparisons) ----
+            setTrendEl('total-orders-trend', formatTrend(todayAllOrders.length, yesterdayAllOrders.length, 'from yesterday'));
+            setTrendEl('total-earnings-trend', formatTrend(todayEarnings, yesterdayEarnings, 'from yesterday'));
+            setTrendEl('cancelled-trend', formatTrend(todayCancelled, yesterdayCancelled, 'from yesterday'));
+
+            const todayRevenueEl = document.getElementById('today-revenue-amount');
+            if (todayRevenueEl) todayRevenueEl.textContent = `$${todayRevenueAll.toFixed(2)}`;
+            setTrendEl('today-revenue-trend', formatTrend(todayRevenueAll, yesterdayRevenueAll, 'from yesterday'));
+
+            const successRateEl = document.getElementById('delivered-success-rate');
+            if (successRateEl) {
+                const rate = todayAllOrders.length > 0 ? (todayDelivered / todayAllOrders.length) * 100 : 0;
+                successRateEl.textContent = todayAllOrders.length > 0 ? `${rate.toFixed(1)}% success rate` : 'No orders yet today';
+                successRateEl.className = 'stat-trend flat';
+            }
+
+            const onDutyFractionEl = document.getElementById('on-duty-fraction');
+            if (onDutyFractionEl) {
+                onDutyFractionEl.textContent = agentRecords.length > 0 ? `${onDutyCount} of ${agentRecords.length} agents` : 'No agents yet';
+                onDutyFractionEl.className = 'stat-trend flat';
+            }
+        }
+
+        function setTrendEl(id, trend) {
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.textContent = trend.text;
+            el.className = `stat-trend ${trend.cls}`;
+        }
+
+        function isYesterday(date) {
+            const y = new Date();
+            y.setDate(y.getDate() - 1);
+            const d = new Date(date);
+            return y.getFullYear() === d.getFullYear() && y.getMonth() === d.getMonth() && y.getDate() === d.getDate();
         }
 
         function isToday(date) {
             const today = new Date();
             const d = new Date(date);
             return today.getFullYear() === d.getFullYear() && today.getMonth() === d.getMonth() && today.getDate() === d.getDate();
+        }
+
+        // Real day-over-day % change, formatted as a trend line. Returns
+        // null (render "No change"/flat) rather than a misleading 0%
+        // when there's nothing to compare against.
+        function formatTrend(current, previous, suffix) {
+            if (previous === 0 && current === 0) return { text: 'No change', cls: 'flat' };
+            if (previous === 0) return { text: `▲ New ${suffix}`, cls: 'up' };
+            const pct = ((current - previous) / previous) * 100;
+            const arrow = pct > 0 ? '▲' : pct < 0 ? '▼' : '—';
+            const cls = pct > 0 ? 'up' : pct < 0 ? 'down' : 'flat';
+            return { text: `${arrow} ${Math.abs(pct).toFixed(0)}% ${suffix}`, cls };
         }
 
         // ============================================================
@@ -4223,20 +4380,9 @@
             const thisWeek = computeWeeklyRevenue(0);
             const lastWeek = computeWeeklyRevenue(-1);
             amountEl.textContent = `$${thisWeek.total.toFixed(2)}`;
-
-            if (lastWeek.total === 0 && thisWeek.total === 0) {
-                trendEl.textContent = 'No revenue yet this week';
-                trendEl.className = 'weekly-revenue-trend flat';
-            } else if (lastWeek.total === 0) {
-                trendEl.textContent = '▲ New this week';
-                trendEl.className = 'weekly-revenue-trend up';
-            } else {
-                const pctChange = ((thisWeek.total - lastWeek.total) / lastWeek.total) * 100;
-                const arrow = pctChange > 0 ? '▲' : pctChange < 0 ? '▼' : '—';
-                const cls = pctChange > 0 ? 'up' : pctChange < 0 ? 'down' : 'flat';
-                trendEl.textContent = `${arrow} ${Math.abs(pctChange).toFixed(0)}% from last week`;
-                trendEl.className = `weekly-revenue-trend ${cls}`;
-            }
+            const trend = formatTrend(thisWeek.total, lastWeek.total, 'from last week');
+            trendEl.textContent = trend.text;
+            trendEl.className = `stat-trend ${trend.cls}`;
 
             renderRevenueChart(thisWeek);
             renderOrderStatusChart();

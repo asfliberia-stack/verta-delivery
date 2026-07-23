@@ -752,3 +752,38 @@ real and working. Backend: `server/schema.sql`, `server/db.js`,
 - The "On Duty/Off Duty" wording (vs. literal "Online/Offline") was a
   deliberate choice to keep the manual-flag-vs-live-presence distinction
   honest at the UI level, not just in a tooltip.
+
+## Exact mockup color/detail matching pass
+
+Closed the remaining gaps between the dashboard and your reference
+screenshot — most of the structure (KPI grid, filters, charts, on-duty
+dots, notification bell) was already built in earlier rounds, so this
+pass focused on exact values and a few real layout/behavior gaps.
+
+- **Colors**: primary accent changed to `#4F46E5` — scoped as a CSS
+  variable override inside `#delivery-app` only, so it recolors every
+  button/badge/focus-ring across the admin dashboard without touching
+  the sender view or any modal (which keep the original `#6366f1`).
+  Status badges (`Delivered`/`Pending`/`Cancelled`) now match your exact
+  hex values.
+- **KPI grid restructured into the requested 2-tier layout**: top row
+  is Total Orders / Total Earnings / Weekly Revenue / Today's Revenue;
+  bottom row is Delivered / In Progress / Pending / Cancelled / On Duty
+  Agents. Every top-row card and the Delivered/Cancelled/On-Duty cards
+  now show a **real trend or context line** (day-over-day % change vs.
+  yesterday, or a real success-rate/fraction) — not decorative filler.
+  "Today's Revenue" is a genuinely distinct metric from "Total
+  Earnings": the former is all delivered revenue today, the latter is
+  revenue attributed specifically to a known agent.
+- **Recent Deliveries** rewritten as the compact single-line list style
+  from the mockup (avatar-initial circle, name, order ID + drop-off
+  location, time, price, payment method chip, status badge) instead of
+  reusing the full order-card component. Added a real "View All" link
+  (opens Order History) and an honest "Showing X of Y deliveries"
+  count.
+- **Agent Contacts cards** now show each agent's real today's delivery
+  count and today's earnings (computed from actual orders, same
+  calculation the KPI cards use), plus a dedicated call button.
+
+No fake data anywhere in this pass — every number shown is computed
+from real orders/agents already in the database.
