@@ -653,6 +653,21 @@
             color: var(--admin-text-secondary); text-transform: uppercase; letter-spacing: 0.05em;
             margin: 2rem 0 1rem;
         }
+        /* Global versions of the filter bar (used by both the admin
+           Available Orders filter and the sender-side Marketplace
+           storefront) — the #delivery-app-scoped rules above still win
+           inside the admin dashboard since ID selectors are more
+           specific, so admin styling is unchanged. */
+        .order-filter-bar { display: flex; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
+        .order-filter-search { flex: 2; min-width: 220px; position: relative; display: flex; align-items: center; }
+        .order-filter-search svg { position: absolute; left: 0.875rem; width: 16px; height: 16px; color: var(--slate-light); pointer-events: none; }
+        .order-filter-search input {
+            width: 100%; padding: 0.75rem 1rem 0.75rem 2.5rem; min-height: 44px;
+            border: 2px solid var(--border); border-radius: 0.75rem; font-size: 0.9375rem;
+        }
+        .order-filter-search input:focus { outline: none; border-color: var(--primary); }
+        .order-filter-select { flex: 1; min-width: 150px; min-height: 44px; }
+
         #delivery-app .order-filter-bar {
             display: flex; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 1.5rem;
         }
@@ -713,6 +728,32 @@
         .payment-method-pill {
             display: inline-block; padding: 0.1875rem 0.625rem; border-radius: 9999px;
             font-size: 0.75rem; font-weight: 700; background: #ede9fe; color: #5b21b6;
+        }
+
+        .product-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 1.25rem; }
+        .product-card {
+            background: white; border: 1px solid var(--border); border-radius: 1rem; overflow: hidden;
+            display: flex; flex-direction: column; box-shadow: var(--shadow-sm);
+        }
+        .product-card-image {
+            width: 100%; height: 140px; object-fit: cover; background: var(--bg-light);
+        }
+        .product-card-body { padding: 1rem; display: flex; flex-direction: column; gap: 0.375rem; flex: 1; }
+        .product-card-name { font-weight: 700; color: var(--slate); font-size: 0.9375rem; }
+        .product-card-vendor { font-size: 0.75rem; color: var(--slate-light); }
+        .product-card-price { font-weight: 800; color: var(--primary); font-size: 1.0625rem; margin-top: auto; }
+        .product-card-stock { font-size: 0.75rem; color: var(--slate-light); }
+        .product-card-actions { padding: 0 1rem 1rem; display: flex; gap: 0.5rem; }
+
+        .cart-line-item {
+            display: flex; align-items: center; justify-content: space-between; gap: 0.75rem;
+            padding: 0.75rem 0; border-bottom: 1px solid var(--border);
+        }
+        .cart-line-item:last-child { border-bottom: none; }
+        .cart-qty-controls { display: flex; align-items: center; gap: 0.5rem; }
+        .cart-qty-btn {
+            width: 28px; height: 28px; min-width: 28px; border-radius: 50%; border: 1px solid var(--border);
+            background: white; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center;
         }
 
         #delivery-app .admin-view-all-link { color: var(--primary); font-weight: 700; font-size: 0.8125rem; cursor: pointer; }
@@ -849,6 +890,7 @@
             <button type="button" id="mode-sender-btn" class="active">Send a Package</button>
             <button type="button" id="mode-admin-btn">Manage Agent</button>
             <button type="button" id="mode-super-admin-btn">Super Admin</button>
+            <button type="button" id="mode-vendor-btn">Vendor</button>
         </div>
 
         <!-- Sender login/register card -->
@@ -974,6 +1016,24 @@
                 <button type="submit" class="btn-primary" style="width:100%;" id="super-admin-login-submit-btn">Login as Super Admin</button>
             </form>
         </div>
+
+        <!-- Vendor login card — real account (e.g. Girlee Fashion),
+             email + password, same pattern as Super Admin. -->
+        <div class="auth-card" id="vendor-auth-card" style="display:none;">
+            <h3 style="margin-bottom: 1.5rem; text-align:center;">Vendor Login</h3>
+            <form id="vendor-login-form">
+                <div class="form-group">
+                    <label class="form-label">Email</label>
+                    <input type="email" class="form-input" id="vendor-email" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Password</label>
+                    <input type="password" class="form-input" id="vendor-password" required>
+                </div>
+                <div class="auth-error" id="vendor-login-error"></div>
+                <button type="submit" class="btn-primary" style="width:100%;" id="vendor-login-submit-btn">Login as Vendor</button>
+            </form>
+        </div>
     </div>
 
     <!-- ============== SENDER HOME (logged in as sender) ============== -->
@@ -997,6 +1057,23 @@
                 <h2>Send a Package Today!</h2>
                 <p>Fast, Secure, and Reliable Delivery Solution You Can Trust</p>
                 <button class="btn-primary" id="btn-new-order">Create New Order</button>
+            </section>
+
+            <section class="orders-section">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 1rem;">
+                    <h2 class="section-title" style="margin:0;">Marketplace</h2>
+                    <button type="button" class="btn-small btn-success" id="open-cart-btn">🛒 Cart (<span id="cart-count">0</span>)</button>
+                </div>
+                <div class="order-filter-bar">
+                    <div class="order-filter-search">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                        <input type="text" id="storefront-search-input" placeholder="Search products…">
+                    </div>
+                    <select class="form-input order-filter-select" id="storefront-category-filter">
+                        <option value="">All Categories</option>
+                    </select>
+                </div>
+                <div id="storefront-products-container"></div>
             </section>
 
             <section class="orders-section">
@@ -1242,6 +1319,145 @@
              Order History section is superseded by the sidebar nav item above,
              which opens the same modal (#order-history-modal) as before. -->
         <div id="order-history-container" style="display:none;"></div>
+    </div>
+
+    <!-- ============== VENDOR DASHBOARD (logged in as vendor) ==============
+         A real, functional first slice of the marketplace vendor
+         experience — sales overview, recent orders, product management.
+         Not full mockup fidelity (no charts/promos/reports yet — see
+         README for what's deferred and why). -->
+    <div id="vendor-app" style="display: none;">
+        <header>
+            <div class="header-content">
+                <div class="logo-container">
+                    <img src="assets/logo.png" alt="Verta Delivery Service" style="height: 60px; max-width: 300px; object-fit: contain;">
+                </div>
+                <div class="quick-access-btns">
+                    <div class="user-info">
+                        <div class="user-avatar" id="vendor-avatar">V</div>
+                        <div class="user-name" id="vendor-display-name">—</div>
+                    </div>
+                    <button class="quick-access-btn secondary" id="vendor-logout-btn">Logout</button>
+                </div>
+            </div>
+        </header>
+        <main>
+            <section class="hero">
+                <h2>Welcome back, <span id="vendor-store-name-hero">Vendor</span></h2>
+                <p>Manage your products and track your marketplace orders</p>
+                <button class="btn-primary" id="vendor-add-product-btn">+ Add Product</button>
+            </section>
+
+            <section class="orders-section">
+                <h2 class="section-title">Sales Overview (Last 30 Days)</h2>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem;">
+                    <div class="stat-card"><h4>Total Sales</h4><p id="vendor-total-sales">$0.00</p></div>
+                    <div class="stat-card"><h4>Total Orders</h4><p id="vendor-total-orders">0</p></div>
+                    <div class="stat-card"><h4>Products Listed</h4><p id="vendor-product-count">0</p></div>
+                </div>
+            </section>
+
+            <section class="orders-section">
+                <h2 class="section-title">Recent Orders</h2>
+                <div id="vendor-orders-container"></div>
+            </section>
+
+            <section class="orders-section">
+                <h2 class="section-title">Your Products</h2>
+                <div id="vendor-products-container"></div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Add/Edit Product Modal -->
+    <div class="modal-overlay" id="product-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 id="product-modal-title">Add Product</h3>
+                <button class="close-btn" id="close-product-modal">&times;</button>
+            </div>
+            <form id="product-form">
+                <div class="form-group">
+                    <label class="form-label">Product Name</label>
+                    <input type="text" class="form-input" id="product-name-input" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Description</label>
+                    <textarea class="form-input" id="product-description-input" rows="2"></textarea>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Category</label>
+                    <input type="text" class="form-input" id="product-category-input" placeholder="e.g. Dresses, Accessories">
+                </div>
+                <div style="display: flex; gap: 1rem;">
+                    <div class="form-group" style="flex: 1;">
+                        <label class="form-label">Price ($)</label>
+                        <input type="number" class="form-input" id="product-price-input" min="0" step="0.01" required>
+                    </div>
+                    <div class="form-group" style="flex: 1;">
+                        <label class="form-label">Stock Quantity</label>
+                        <input type="number" class="form-input" id="product-stock-input" min="0" step="1" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Product Photo</label>
+                    <div style="display: flex; align-items: center; gap: 1rem;">
+                        <img id="product-image-preview" src="assets/logo.png" alt="Product preview" style="height: 56px; width: 56px; object-fit: cover; border: 1px solid var(--border); border-radius: 0.5rem; background: var(--bg-light);">
+                        <input type="file" accept="image/*" id="product-image-input" style="display:none;">
+                        <button type="button" class="btn-small btn-secondary" id="product-image-upload-btn">Upload Photo</button>
+                    </div>
+                </div>
+                <div class="auth-error" id="product-form-error"></div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-small btn-secondary" id="cancel-product-form">Cancel</button>
+                    <button type="submit" class="btn-small btn-success" id="product-form-submit-btn">Save Product</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Cart Modal (sender) -->
+    <div class="modal-overlay" id="cart-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>🛒 Your Cart</h3>
+                <button class="close-btn" id="close-cart-modal">&times;</button>
+            </div>
+            <div id="cart-modal-content"></div>
+            <div class="modal-footer">
+                <button type="button" class="btn-small btn-secondary" id="close-cart-modal-btn">Continue Shopping</button>
+                <button type="button" class="btn-small btn-success" id="open-checkout-btn">Checkout</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Checkout Modal (sender) -->
+    <div class="modal-overlay" id="checkout-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>Checkout</h3>
+                <button class="close-btn" id="close-checkout-modal">&times;</button>
+            </div>
+            <p style="margin-bottom: 1.25rem; color: var(--slate-light);">
+                Pay on delivery. Checking out creates a real delivery order for these items — same tracking as any other order.
+            </p>
+            <form id="checkout-form">
+                <div class="form-group">
+                    <label class="form-label">Pickup Address (vendor/store)</label>
+                    <input type="text" class="form-input" id="checkout-pickup-address" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Dropoff Address (you)</label>
+                    <input type="text" class="form-input" id="checkout-dropoff-address" required>
+                </div>
+                <div id="checkout-summary" style="background: var(--bg-light); padding: 1rem; border-radius: 0.75rem; margin-bottom: 1rem; font-weight: 700;"></div>
+                <div class="auth-error" id="checkout-error"></div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-small btn-secondary" id="cancel-checkout">Back to Cart</button>
+                    <button type="submit" class="btn-small btn-success" id="checkout-submit-btn">Place Order</button>
+                </div>
+            </form>
+        </div>
     </div>
 
     <!-- New Order Modal -->
@@ -1826,6 +2042,11 @@
         let settings = {}; // business profile / regional settings, from Settings > Business Profile
         let pricePresets = []; // admin-defined reference prices, from Settings > Pricing
         let customersCache = []; // loaded on demand when the Customers page opens
+        let vendorProducts = []; // this vendor's own product list
+        let editingProductId = null; // null = "Add Product" mode
+        let pendingProductImageDataUrl = null;
+        let storefrontProducts = []; // all vendors' active products, for the sender-side storefront
+        let cart = []; // client-side only until checkout: [{ productId, name, price, vendorId, vendorName, quantity }]
 
         function setAgents(records) {
             agentRecords = records;
@@ -2201,6 +2422,8 @@
             setupScrollReactiveHeader();
             wireSettingsEvents();
             wireTopbarEvents();
+            wireVendorEvents();
+            wireStorefrontEvents();
 
             const stored = loadStoredAuth();
             if (stored && stored.token) {
@@ -2253,6 +2476,7 @@
                 const isSuperAdmin = currentUser.role === 'super_admin';
                 const roleLabel = isSuperAdmin ? 'Super Admin' : 'Manage Agent';
                 document.getElementById('home-screen').style.display = 'none';
+                document.getElementById('vendor-app').style.display = 'none';
                 document.getElementById('delivery-app').style.display = 'block';
                 document.getElementById('delivery-app').setAttribute('data-role', currentUser.role);
                 document.getElementById('user-name').textContent = currentUser.businessName || roleLabel;
@@ -2271,29 +2495,53 @@
                 renderNotificationCenter();
                 renderSkeletonCards(document.getElementById('orders-grouped-delivery'));
                 applySavedTheme();
+
+                try {
+                    const data = await apiFetch('/api/state');
+                    orders = (data.orders || []).map(normalizeOrder);
+                    expenses = (data.expenses || []).map(normalizeExpense);
+                    setAgents(data.agents || []);
+                    settings = data.settings || {};
+                    pricePresets = data.pricePresets || [];
+                } catch (err) {
+                    console.error('Failed to load initial state', err);
+                    showToast('Could not load your data — check your connection and refresh.', 'error');
+                    orders = [];
+                    expenses = [];
+                }
+                refreshAllViews();
+            } else if (currentUser.role === 'vendor') {
+                document.getElementById('home-screen').style.display = 'none';
+                document.getElementById('delivery-app').style.display = 'none';
+                document.getElementById('vendor-app').style.display = 'block';
+                document.getElementById('vendor-display-name').textContent = currentUser.businessName;
+                document.getElementById('vendor-avatar').textContent = currentUser.businessName.charAt(0).toUpperCase();
+                document.getElementById('vendor-store-name-hero').textContent = currentUser.businessName;
+                await loadVendorDashboard();
             } else {
                 document.getElementById('delivery-app').style.display = 'none';
+                document.getElementById('vendor-app').style.display = 'none';
                 document.getElementById('home-screen').style.display = 'block';
                 document.getElementById('sender-display-name').textContent = currentUser.businessName;
                 document.getElementById('sender-avatar').textContent = currentUser.businessName.charAt(0).toUpperCase();
                 renderSkeletonCards(document.getElementById('orders-grid'));
-            }
 
-            try {
-                const data = await apiFetch('/api/state');
-                orders = (data.orders || []).map(normalizeOrder);
-                expenses = (data.expenses || []).map(normalizeExpense);
-                setAgents(data.agents || []);
-                settings = data.settings || {};
-                pricePresets = data.pricePresets || [];
-            } catch (err) {
-                console.error('Failed to load initial state', err);
-                showToast('Could not load your data — check your connection and refresh.', 'error');
-                orders = [];
-                expenses = [];
+                try {
+                    const data = await apiFetch('/api/state');
+                    orders = (data.orders || []).map(normalizeOrder);
+                    expenses = (data.expenses || []).map(normalizeExpense);
+                    setAgents(data.agents || []);
+                    settings = data.settings || {};
+                    pricePresets = data.pricePresets || [];
+                } catch (err) {
+                    console.error('Failed to load initial state', err);
+                    showToast('Could not load your data — check your connection and refresh.', 'error');
+                    orders = [];
+                    expenses = [];
+                }
+                refreshAllViews();
+                loadStorefront();
             }
-
-            refreshAllViews();
         }
 
         // ============================================================
@@ -2303,21 +2551,26 @@
             const modeSenderBtn = document.getElementById('mode-sender-btn');
             const modeAdminBtn = document.getElementById('mode-admin-btn');
             const modeSuperAdminBtn = document.getElementById('mode-super-admin-btn');
+            const modeVendorBtn = document.getElementById('mode-vendor-btn');
             const senderCard = document.getElementById('sender-auth-card');
             const adminCard = document.getElementById('admin-auth-card');
             const superAdminCard = document.getElementById('super-admin-auth-card');
+            const vendorCard = document.getElementById('vendor-auth-card');
 
             function showAuthMode(mode) {
                 modeSenderBtn.classList.toggle('active', mode === 'sender');
                 modeAdminBtn.classList.toggle('active', mode === 'admin');
                 modeSuperAdminBtn.classList.toggle('active', mode === 'super-admin');
+                modeVendorBtn.classList.toggle('active', mode === 'vendor');
                 senderCard.style.display = mode === 'sender' ? 'block' : 'none';
                 adminCard.style.display = mode === 'admin' ? 'block' : 'none';
                 superAdminCard.style.display = mode === 'super-admin' ? 'block' : 'none';
+                vendorCard.style.display = mode === 'vendor' ? 'block' : 'none';
             }
             modeSenderBtn.addEventListener('click', () => showAuthMode('sender'));
             modeAdminBtn.addEventListener('click', () => showAuthMode('admin'));
             modeSuperAdminBtn.addEventListener('click', () => showAuthMode('super-admin'));
+            modeVendorBtn.addEventListener('click', () => showAuthMode('vendor'));
 
             const tabLogin = document.getElementById('tab-login');
             const tabRegister = document.getElementById('tab-register');
@@ -2549,6 +2802,38 @@
                 } finally {
                     btn.disabled = false;
                     btn.textContent = 'Login as Super Admin';
+                }
+            });
+
+            document.getElementById('vendor-login-form').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const errorEl = document.getElementById('vendor-login-error');
+                const btn = document.getElementById('vendor-login-submit-btn');
+                errorEl.style.display = 'none';
+                btn.disabled = true;
+                btn.textContent = 'Logging in…';
+                try {
+                    const data = await apiFetch('/api/auth/login', {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            email: document.getElementById('vendor-email').value,
+                            password: document.getElementById('vendor-password').value,
+                        })
+                    });
+                    if (data.user.role !== 'vendor') {
+                        errorEl.textContent = 'This account is not a Vendor account.';
+                        errorEl.style.display = 'block';
+                        return;
+                    }
+                    saveAuth(data.token, data.user);
+                    await enterApp();
+                } catch (err) {
+                    errorEl.textContent = err.message;
+                    errorEl.style.display = 'block';
+                    document.getElementById('vendor-password').value = '';
+                } finally {
+                    btn.disabled = false;
+                    btn.textContent = 'Login as Vendor';
                 }
             });
 
@@ -4661,6 +4946,339 @@
 
             document.getElementById('weekly-revenue-modal-content').innerHTML = html;
             document.getElementById('weekly-revenue-modal').classList.add('active');
+        }
+
+        // ============================================================
+        // Vendor Dashboard (marketplace) — real data throughout: sales
+        // overview and recent orders come from actual purchases, product
+        // management is full CRUD against the real products table.
+        // ============================================================
+        async function loadVendorDashboard() {
+            try {
+                const [overview, productsData, purchasesData] = await Promise.all([
+                    apiFetch('/api/vendor/sales-overview'),
+                    apiFetch('/api/vendor/products'),
+                    apiFetch('/api/vendor/purchases'),
+                ]);
+                document.getElementById('vendor-total-sales').textContent = `$${overview.totalSales.toFixed(2)}`;
+                document.getElementById('vendor-total-orders').textContent = overview.totalOrders;
+                vendorProducts = productsData.products || [];
+                document.getElementById('vendor-product-count').textContent = vendorProducts.length;
+                renderVendorProducts();
+                renderVendorOrders(purchasesData.purchases || []);
+            } catch (err) {
+                console.error('Failed to load vendor dashboard', err);
+                showToast('Could not load your dashboard — check your connection and refresh.', 'error');
+            }
+        }
+
+        function renderVendorProducts() {
+            const container = document.getElementById('vendor-products-container');
+            if (vendorProducts.length === 0) {
+                renderEmptyState(container, 'No products listed yet — click "+ Add Product" to get started.');
+                return;
+            }
+            container.innerHTML = `<div class="product-grid">${vendorProducts.map(p => `
+                <div class="product-card">
+                    <img class="product-card-image" src="${p.imageDataUrl || 'assets/logo.png'}" alt="${p.name}">
+                    <div class="product-card-body">
+                        <div class="product-card-name">${p.name}</div>
+                        ${p.category ? `<div class="product-card-vendor">${p.category}</div>` : ''}
+                        <div class="product-card-price">$${p.price.toFixed(2)}</div>
+                        <div class="product-card-stock">${p.stockQuantity} in stock ${p.isActive ? '' : '· <span style="color:#dc2626;">Hidden</span>'}</div>
+                    </div>
+                    <div class="product-card-actions">
+                        <button type="button" class="btn-small btn-secondary edit-product-btn" data-id="${p.id}" style="flex:1;">Edit</button>
+                        <button type="button" class="btn-small btn-danger delete-product-btn" data-id="${p.id}" style="flex:1;">Delete</button>
+                    </div>
+                </div>
+            `).join('')}</div>`;
+        }
+
+        function renderVendorOrders(purchases) {
+            const container = document.getElementById('vendor-orders-container');
+            if (purchases.length === 0) {
+                renderEmptyState(container, 'No orders yet.');
+                return;
+            }
+            container.innerHTML = purchases.map(p => `
+                <div class="recent-delivery-row">
+                    <div class="recent-delivery-avatar">${(p.customerName || '?').charAt(0).toUpperCase()}</div>
+                    <div class="recent-delivery-main">
+                        <div class="recent-delivery-name">${p.customerName}</div>
+                        <div class="recent-delivery-sub">${p.id}${p.deliveryOrderId ? ' · ' + p.deliveryOrderId : ''}</div>
+                    </div>
+                    <div class="recent-delivery-time">${new Date(p.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</div>
+                    <div class="recent-delivery-price">$${p.totalAmount.toFixed(2)}</div>
+                </div>
+            `).join('');
+        }
+
+        function openProductModal(productId) {
+            editingProductId = productId || null;
+            pendingProductImageDataUrl = null;
+            const errorEl = document.getElementById('product-form-error');
+            errorEl.style.display = 'none';
+            if (productId) {
+                const p = vendorProducts.find(x => x.id === productId);
+                document.getElementById('product-modal-title').textContent = 'Edit Product';
+                document.getElementById('product-name-input').value = p ? p.name : '';
+                document.getElementById('product-description-input').value = p && p.description ? p.description : '';
+                document.getElementById('product-category-input').value = p && p.category ? p.category : '';
+                document.getElementById('product-price-input').value = p ? p.price : '';
+                document.getElementById('product-stock-input').value = p ? p.stockQuantity : '';
+                document.getElementById('product-image-preview').src = (p && p.imageDataUrl) || 'assets/logo.png';
+            } else {
+                document.getElementById('product-modal-title').textContent = 'Add Product';
+                document.getElementById('product-form').reset();
+                document.getElementById('product-image-preview').src = 'assets/logo.png';
+            }
+            document.getElementById('product-modal').classList.add('active');
+        }
+        function closeProductModal() {
+            document.getElementById('product-modal').classList.remove('active');
+            editingProductId = null;
+        }
+
+        async function handleProductFormSubmit(e) {
+            e.preventDefault();
+            const errorEl = document.getElementById('product-form-error');
+            const btn = document.getElementById('product-form-submit-btn');
+            errorEl.style.display = 'none';
+            const payload = {
+                name: document.getElementById('product-name-input').value.trim(),
+                description: document.getElementById('product-description-input').value.trim(),
+                category: document.getElementById('product-category-input').value.trim(),
+                price: parseFloat(document.getElementById('product-price-input').value),
+                stockQuantity: parseInt(document.getElementById('product-stock-input').value, 10),
+            };
+            if (pendingProductImageDataUrl) payload.imageDataUrl = pendingProductImageDataUrl;
+            btn.disabled = true;
+            btn.textContent = 'Saving…';
+            try {
+                if (editingProductId) {
+                    await apiFetch(`/api/vendor/products/${editingProductId}`, { method: 'PUT', body: JSON.stringify(payload) });
+                } else {
+                    await apiFetch('/api/vendor/products', { method: 'POST', body: JSON.stringify(payload) });
+                }
+                closeProductModal();
+                showToast(editingProductId ? 'Product updated' : 'Product added', 'success');
+                await loadVendorDashboard();
+            } catch (err) {
+                errorEl.textContent = err.message;
+                errorEl.style.display = 'block';
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Save Product';
+            }
+        }
+
+        async function deleteProduct(productId) {
+            if (!confirm('Delete this product? This cannot be undone.')) return;
+            try {
+                await apiFetch(`/api/vendor/products/${productId}`, { method: 'DELETE' });
+                showToast('Product deleted', 'success');
+                await loadVendorDashboard();
+            } catch (err) {
+                showToast(err.message, 'error');
+            }
+        }
+
+        function wireVendorEvents() {
+            document.getElementById('vendor-logout-btn').addEventListener('click', () => {
+                clearAuth();
+                showAuthScreen();
+            });
+            document.getElementById('vendor-add-product-btn').addEventListener('click', () => openProductModal(null));
+            document.getElementById('close-product-modal').addEventListener('click', closeProductModal);
+            document.getElementById('cancel-product-form').addEventListener('click', closeProductModal);
+            document.getElementById('product-form').addEventListener('submit', handleProductFormSubmit);
+
+            document.getElementById('product-image-upload-btn').addEventListener('click', () => {
+                document.getElementById('product-image-input').click();
+            });
+            document.getElementById('product-image-input').addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                if (file.size > 500 * 1024) {
+                    showToast('Please choose an image under 500KB.', 'error');
+                    return;
+                }
+                const reader = new FileReader();
+                reader.onload = () => {
+                    pendingProductImageDataUrl = reader.result;
+                    document.getElementById('product-image-preview').src = pendingProductImageDataUrl;
+                };
+                reader.readAsDataURL(file);
+            });
+
+            document.getElementById('vendor-products-container').addEventListener('click', (e) => {
+                if (e.target.classList.contains('edit-product-btn')) openProductModal(e.target.dataset.id);
+                if (e.target.classList.contains('delete-product-btn')) deleteProduct(e.target.dataset.id);
+            });
+        }
+
+        // ============================================================
+        // Storefront (sender-side marketplace browsing) + Cart + Checkout
+        // ============================================================
+        async function loadStorefront() {
+            try {
+                const data = await apiFetch('/api/marketplace/products');
+                storefrontProducts = data.products || [];
+                const categories = [...new Set(storefrontProducts.map(p => p.category).filter(Boolean))];
+                const categorySelect = document.getElementById('storefront-category-filter');
+                categorySelect.innerHTML = '<option value="">All Categories</option>' + categories.map(c => `<option value="${c}">${c}</option>`).join('');
+                renderStorefrontProducts();
+            } catch (err) {
+                console.error('Failed to load storefront', err);
+            }
+        }
+
+        function renderStorefrontProducts() {
+            const container = document.getElementById('storefront-products-container');
+            const search = document.getElementById('storefront-search-input').value.trim().toLowerCase();
+            const category = document.getElementById('storefront-category-filter').value;
+            const filtered = storefrontProducts.filter(p => {
+                if (category && p.category !== category) return false;
+                if (search && !`${p.name} ${p.vendorName}`.toLowerCase().includes(search)) return false;
+                return true;
+            });
+            if (filtered.length === 0) {
+                renderEmptyState(container, 'No products found.');
+                return;
+            }
+            container.innerHTML = `<div class="product-grid">${filtered.map(p => `
+                <div class="product-card">
+                    <img class="product-card-image" src="${p.imageDataUrl || 'assets/logo.png'}" alt="${p.name}">
+                    <div class="product-card-body">
+                        <div class="product-card-name">${p.name}</div>
+                        <div class="product-card-vendor">${p.vendorName}</div>
+                        <div class="product-card-price">$${p.price.toFixed(2)}</div>
+                    </div>
+                    <div class="product-card-actions">
+                        <button type="button" class="btn-small btn-success add-to-cart-btn" data-id="${p.id}" style="flex:1;">Add to Cart</button>
+                    </div>
+                </div>
+            `).join('')}</div>`;
+        }
+
+        function addToCart(productId) {
+            const product = storefrontProducts.find(p => p.id === productId);
+            if (!product) return;
+            const existingVendor = cart.length > 0 ? cart[0].vendorId : null;
+            if (existingVendor && existingVendor !== product.vendorId) {
+                showToast('Your cart can only have items from one vendor at a time — checkout or clear your cart first.', 'error');
+                return;
+            }
+            const existing = cart.find(c => c.productId === productId);
+            if (existing) existing.quantity += 1;
+            else cart.push({ productId: product.id, name: product.name, price: product.price, vendorId: product.vendorId, vendorName: product.vendorName, quantity: 1 });
+            updateCartCount();
+            showToast(`Added ${product.name} to cart`, 'success');
+        }
+
+        function updateCartCount() {
+            const count = cart.reduce((sum, c) => sum + c.quantity, 0);
+            document.getElementById('cart-count').textContent = count;
+        }
+
+        function renderCartModal() {
+            const container = document.getElementById('cart-modal-content');
+            if (cart.length === 0) {
+                container.innerHTML = '<p style="text-align:center; color: var(--slate-light); padding: 2rem 0;">Your cart is empty.</p>';
+                return;
+            }
+            const total = cart.reduce((sum, c) => sum + c.price * c.quantity, 0);
+            container.innerHTML = cart.map(c => `
+                <div class="cart-line-item">
+                    <div>
+                        <div style="font-weight: 700;">${c.name}</div>
+                        <div style="font-size: 0.8125rem; color: var(--slate-light);">${c.vendorName} · $${c.price.toFixed(2)} each</div>
+                    </div>
+                    <div class="cart-qty-controls">
+                        <button type="button" class="cart-qty-btn" data-action="dec" data-id="${c.productId}">−</button>
+                        <span>${c.quantity}</span>
+                        <button type="button" class="cart-qty-btn" data-action="inc" data-id="${c.productId}">+</button>
+                        <button type="button" class="cart-qty-btn" data-action="remove" data-id="${c.productId}" title="Remove">×</button>
+                    </div>
+                </div>
+            `).join('') + `<div style="text-align:right; font-weight: 800; font-size: 1.125rem; margin-top: 1rem;">Total: $${total.toFixed(2)}</div>`;
+        }
+
+        function openCheckoutModal() {
+            if (cart.length === 0) return;
+            document.getElementById('cart-modal').classList.remove('active');
+            document.getElementById('checkout-error').style.display = 'none';
+            const total = cart.reduce((sum, c) => sum + c.price * c.quantity, 0);
+            document.getElementById('checkout-summary').textContent = `${cart.reduce((s, c) => s + c.quantity, 0)} item(s) — Total: $${total.toFixed(2)}`;
+            document.getElementById('checkout-modal').classList.add('active');
+        }
+
+        async function handleCheckoutSubmit(e) {
+            e.preventDefault();
+            const errorEl = document.getElementById('checkout-error');
+            const btn = document.getElementById('checkout-submit-btn');
+            errorEl.style.display = 'none';
+            btn.disabled = true;
+            btn.textContent = 'Placing Order…';
+            try {
+                const result = await apiFetch('/api/marketplace/checkout', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        vendorId: cart[0].vendorId,
+                        items: cart.map(c => ({ productId: c.productId, quantity: c.quantity })),
+                        pickupAddress: document.getElementById('checkout-pickup-address').value,
+                        dropoffAddress: document.getElementById('checkout-dropoff-address').value,
+                    }),
+                });
+                cart = [];
+                updateCartCount();
+                document.getElementById('checkout-modal').classList.remove('active');
+                document.getElementById('checkout-form').reset();
+                showToast(`Order placed! Total: $${result.totalAmount.toFixed(2)}`, 'success');
+                sendLocalNotification('Order Placed', { body: `Your marketplace order (${result.purchaseId}) was placed.` });
+            } catch (err) {
+                errorEl.textContent = err.message;
+                errorEl.style.display = 'block';
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Place Order';
+            }
+        }
+
+        function wireStorefrontEvents() {
+            document.getElementById('storefront-search-input').addEventListener('input', debounce(renderStorefrontProducts, 200));
+            document.getElementById('storefront-category-filter').addEventListener('change', renderStorefrontProducts);
+            document.getElementById('storefront-products-container').addEventListener('click', (e) => {
+                if (e.target.classList.contains('add-to-cart-btn')) addToCart(e.target.dataset.id);
+            });
+
+            document.getElementById('open-cart-btn').addEventListener('click', () => {
+                renderCartModal();
+                document.getElementById('cart-modal').classList.add('active');
+            });
+            document.getElementById('close-cart-modal').addEventListener('click', () => document.getElementById('cart-modal').classList.remove('active'));
+            document.getElementById('close-cart-modal-btn').addEventListener('click', () => document.getElementById('cart-modal').classList.remove('active'));
+            document.getElementById('cart-modal-content').addEventListener('click', (e) => {
+                const btn = e.target.closest('.cart-qty-btn');
+                if (!btn) return;
+                const id = btn.dataset.id;
+                const item = cart.find(c => c.productId === id);
+                if (!item) return;
+                if (btn.dataset.action === 'inc') item.quantity += 1;
+                else if (btn.dataset.action === 'dec') item.quantity = Math.max(1, item.quantity - 1);
+                else if (btn.dataset.action === 'remove') cart = cart.filter(c => c.productId !== id);
+                updateCartCount();
+                renderCartModal();
+            });
+
+            document.getElementById('open-checkout-btn').addEventListener('click', openCheckoutModal);
+            document.getElementById('close-checkout-modal').addEventListener('click', () => document.getElementById('checkout-modal').classList.remove('active'));
+            document.getElementById('cancel-checkout').addEventListener('click', () => {
+                document.getElementById('checkout-modal').classList.remove('active');
+                document.getElementById('cart-modal').classList.add('active');
+            });
+            document.getElementById('checkout-form').addEventListener('submit', handleCheckoutSubmit);
         }
     </script>
 </body>

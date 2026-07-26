@@ -87,6 +87,13 @@ function requireSuperAdmin(req, res, next) {
   next();
 }
 
+function requireVendor(req, res, next) {
+  if (!req.user || req.user.role !== 'vendor') {
+    return res.status(403).json({ error: 'Vendor access required' });
+  }
+  next();
+}
+
 // Socket.io middleware: expects the token at `socket.handshake.auth.token`
 // (set by the client when calling `io({ auth: { token } })`).
 async function socketAuth(socket, next) {
@@ -111,6 +118,7 @@ module.exports = {
   requireAuth,
   requireAdmin,
   requireSuperAdmin,
+  requireVendor,
   isAdminLike,
   socketAuth,
 };

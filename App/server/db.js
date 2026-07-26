@@ -2,6 +2,7 @@
 // Railway injects DATABASE_URL automatically when you attach a Postgres
 // plugin to this service. Locally, put the same variable in server/.env.
 const { Pool } = require('pg');
+const crypto = require('crypto');
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -59,6 +60,34 @@ function rowToPricePreset(r) {
     id: r.id,
     label: r.label,
     amount: Number(r.amount),
+  };
+}
+
+function rowToProduct(r) {
+  if (!r) return null;
+  return {
+    id: r.id,
+    vendorId: r.vendor_id,
+    name: r.name,
+    description: r.description,
+    price: Number(r.price),
+    category: r.category,
+    imageDataUrl: r.image_data_url,
+    stockQuantity: r.stock_quantity,
+    isActive: r.is_active,
+    createdAt: r.created_at,
+  };
+}
+
+function rowToPurchase(r) {
+  if (!r) return null;
+  return {
+    id: r.id,
+    customerId: r.customer_id,
+    vendorId: r.vendor_id,
+    totalAmount: Number(r.total_amount),
+    deliveryOrderId: r.delivery_order_id,
+    createdAt: r.created_at,
   };
 }
 
@@ -453,6 +482,149 @@ const db = {
 
   async deletePricePreset(id) {
     await pool.query('DELETE FROM price_presets WHERE id = $1', [id]);
+  },
+
+  // ---- Marketplace: products -----------------------------------------
+
+  async getProductsByVendor(vendorId) {
+    const { rows } = await pool.query('SELECT * FROM products WHERE vendor_id = $1 ORDER BY created_at DESC', [vendorId]);
+    return rows.map(rowToProduct);
+  },
+
+  // Storefront listing — every active product from every vendor, with
+  // the vendor's business name attached so the storefront can show it.
+  async getActiveProductsForStorefront() {
+    const { rows } = await pool.query(`
+      SELECT p.*, u.business_name AS vendor_name
+      FROM products p
+      JOIN users u ON u.id = p.vendor_id
+      WHERE p.is_active = true AND p.stock_quantity > 0
+      ORDER BY p.created_at DESC
+    `);
+    return rows.map(r => ({ ...rowToProduct(r), vendorName: r.vendor_name }));
+  },
+
+  async getProductById(id) {
+    const { rows } = await pool.query('SELECT * FROM products WHERE id = $1', [id]);
+    return rowToProduct(rows[0]);
+  },
+
+  async createProduct({ id, vendorId, name, description, price, category, imageDataUrl, stockQuantity }) {
+    const { rows } = await pool.query(
+      `INSERT INTO products (id, vendor_id, name, description, price, category, image_data_url, stock_quantity)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
+      [id, vendorId, name, description || null, price, category || null, imageDataUrl || null, stockQuantity || 0]
+    );
+    return rowToProduct(rows[0]);
+  },
+
+  async updateProduct(id, fields) {
+    const colMap = {
+      name: 'name', description: 'description', price: 'price', category: 'category',
+      imageDataUrl: 'image_data_url', stockQuantity: 'stock_quantity', isActive: 'is_active',
+    };
+    const sets = []; const values = []; let i = 1;
+    for (const [key, col] of Object.entries(colMap)) {
+      if (Object.prototype.hasOwnProperty.call(fields, key)) {
+        sets.push(`${col} = $${i}`); values.push(fields[key]); i += 1;
+      }
+    }
+    if (sets.length === 0) return this.getProductById(id);
+    values.push(id);
+    const { rows } = await pool.query(`UPDATE products SET ${sets.join(', ')} WHERE id = $${i} RETURNING *`, values);
+    return rowToProduct(rows[0]);
+  },
+
+  async deleteProduct(id) {
+    await pool.query('DELETE FROM products WHERE id = $1', [id]);
+  },
+
+  // ---- Marketplace: checkout + purchases -------------------------------
+
+  // Runs as a single transaction: validates stock, decrements it,
+  // creates the purchase + line items, and (per the "Shop & Delivery"
+  // default) a linked delivery order in the existing `orders` table for
+  // fulfillment — all-or-nothing, so a failed delivery-order insert
+  // can't leave stock decremented with no purchase recorded.
+  async checkout({ customerId, customerName, vendorId, items, pickupAddress, dropoffAddress, createDeliveryOrder }) {
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+
+      let totalAmount = 0;
+      const lineItems = [];
+      for (const item of items) {
+        const productRes = await client.query('SELECT * FROM products WHERE id = $1 FOR UPDATE', [item.productId]);
+        const product = productRes.rows[0];
+        if (!product) throw new Error(`Product not found: ${item.productId}`);
+        if (product.vendor_id !== vendorId) throw new Error('All items in a checkout must be from the same vendor');
+        if (product.stock_quantity < item.quantity) throw new Error(`Not enough stock for ${product.name}`);
+        await client.query('UPDATE products SET stock_quantity = stock_quantity - $1 WHERE id = $2', [item.quantity, product.id]);
+        const lineTotal = Number(product.price) * item.quantity;
+        totalAmount += lineTotal;
+        lineItems.push({ productId: product.id, productName: product.name, unitPrice: Number(product.price), quantity: item.quantity });
+      }
+
+      const purchaseId = `PUR-${Date.now().toString(36).toUpperCase()}`;
+      let deliveryOrderId = null;
+
+      if (createDeliveryOrder) {
+        deliveryOrderId = `ORD-${Date.now().toString(36).toUpperCase()}M`; // 'M' suffix avoids colliding with a same-millisecond regular order id
+        const itemSummary = lineItems.map(li => `${li.quantity}x ${li.productName}`).join(', ');
+        await client.query(
+          `INSERT INTO orders (id, sender_id, sender_name, pickup_address, dropoff_address, item_description, amount, status, placed_by_admin)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, 'pending', false)`,
+          [deliveryOrderId, customerId, customerName, pickupAddress, dropoffAddress, `Marketplace order: ${itemSummary}`, null]
+        );
+      }
+
+      await client.query(
+        `INSERT INTO purchases (id, customer_id, vendor_id, total_amount, delivery_order_id) VALUES ($1, $2, $3, $4, $5)`,
+        [purchaseId, customerId, vendorId, totalAmount, deliveryOrderId]
+      );
+      for (const li of lineItems) {
+        await client.query(
+          `INSERT INTO purchase_items (id, purchase_id, product_id, product_name, unit_price, quantity) VALUES ($1, $2, $3, $4, $5, $6)`,
+          [crypto.randomUUID(), purchaseId, li.productId, li.productName, li.unitPrice, li.quantity]
+        );
+      }
+
+      await client.query('COMMIT');
+      return { purchaseId, deliveryOrderId, totalAmount };
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
+  },
+
+  async getPurchasesByVendor(vendorId, limit = 50) {
+    const { rows } = await pool.query(`
+      SELECT p.*, u.business_name AS customer_name
+      FROM purchases p
+      JOIN users u ON u.id = p.customer_id
+      WHERE p.vendor_id = $1
+      ORDER BY p.created_at DESC
+      LIMIT $2
+    `, [vendorId, limit]);
+    return rows.map(r => ({ ...rowToPurchase(r), customerName: r.customer_name }));
+  },
+
+  async getPurchaseItems(purchaseId) {
+    const { rows } = await pool.query('SELECT * FROM purchase_items WHERE purchase_id = $1', [purchaseId]);
+    return rows.map(r => ({ id: r.id, productId: r.product_id, productName: r.product_name, unitPrice: Number(r.unit_price), quantity: r.quantity }));
+  },
+
+  // Real sales overview for the vendor dashboard — total revenue and
+  // order count over the last N days, no fabricated trend line.
+  async getVendorSalesOverview(vendorId, days = 30) {
+    const { rows } = await pool.query(`
+      SELECT COALESCE(SUM(total_amount), 0)::numeric AS total_sales, COUNT(*)::int AS total_orders
+      FROM purchases
+      WHERE vendor_id = $1 AND created_at > now() - ($2 || ' days')::interval
+    `, [vendorId, days]);
+    return { totalSales: Number(rows[0].total_sales), totalOrders: rows[0].total_orders };
   },
 };
 

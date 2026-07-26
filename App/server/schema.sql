@@ -8,7 +8,7 @@ CREATE TABLE IF NOT EXISTS users (
     email         TEXT NOT NULL UNIQUE,
     phone         TEXT,
     password_hash TEXT NOT NULL,
-    role          TEXT NOT NULL DEFAULT 'sender' CHECK (role IN ('sender', 'admin', 'super_admin')),
+    role          TEXT NOT NULL DEFAULT 'sender' CHECK (role IN ('sender', 'admin', 'super_admin', 'vendor')),
     created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
@@ -25,7 +25,7 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS phone TEXT;
 -- 'super_admin' (the Postgres-assigned default name for an inline column
 -- CHECK constraint is `<table>_<column>_check`).
 ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check;
-ALTER TABLE users ADD CONSTRAINT users_role_check CHECK (role IN ('sender', 'admin', 'super_admin'));
+ALTER TABLE users ADD CONSTRAINT users_role_check CHECK (role IN ('sender', 'admin', 'super_admin', 'vendor'));
 
 -- Bumped whenever an admin uses "Logout All Devices" (Settings > Security).
 -- Every JWT embeds the token_version that was current when it was issued;
@@ -157,3 +157,58 @@ CREATE INDEX IF NOT EXISTS idx_orders_created_at ON orders (created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_orders_sender_id ON orders (sender_id);
 CREATE INDEX IF NOT EXISTS idx_expenses_date ON expenses (date DESC);
 CREATE INDEX IF NOT EXISTS idx_users_email ON users (email);
+
+-- ============================================================
+-- Marketplace foundation (GoLib) — vendors sell products, customers
+-- (existing sender accounts) buy them. This is the real data model
+-- the marketplace needs; the UI on top of it is a first, functional
+-- slice, not the full mockup (no promos/wishlist/messages/reviews yet).
+--
+-- Two decisions were defaulted rather than asked a third time (flagged
+-- in README): checkout is pay-on-delivery (no payment gateway exists),
+-- and a purchase automatically creates a real delivery order in the
+-- existing `orders` table for fulfillment — matching "Shop & Delivery"
+-- branding and letting this reuse the whole existing agent/delivery
+-- pipeline instead of building a second one.
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS products (
+    id            TEXT PRIMARY KEY,
+    vendor_id     TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    name          TEXT NOT NULL,
+    description   TEXT,
+    price         NUMERIC(10, 2) NOT NULL,
+    category      TEXT,
+    image_data_url TEXT, -- same pattern as the business logo: stored in
+                          -- Postgres directly, not a file path, since
+                          -- Railway's filesystem is wiped on redeploy
+    stock_quantity INTEGER NOT NULL DEFAULT 0,
+    is_active     BOOLEAN NOT NULL DEFAULT true,
+    created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_products_vendor_id ON products (vendor_id);
+
+-- A purchase is a shopping-cart checkout — one customer, one vendor
+-- (carts don't mix vendors, so multi-vendor carts split into separate
+-- purchases at checkout), optionally linked to the delivery order
+-- created to fulfill it.
+CREATE TABLE IF NOT EXISTS purchases (
+    id              TEXT PRIMARY KEY,
+    customer_id     TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    vendor_id       TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    total_amount    NUMERIC(10, 2) NOT NULL,
+    delivery_order_id TEXT REFERENCES orders(id) ON DELETE SET NULL,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_purchases_vendor_id ON purchases (vendor_id);
+CREATE INDEX IF NOT EXISTS idx_purchases_customer_id ON purchases (customer_id);
+
+CREATE TABLE IF NOT EXISTS purchase_items (
+    id            TEXT PRIMARY KEY,
+    purchase_id   TEXT NOT NULL REFERENCES purchases(id) ON DELETE CASCADE,
+    product_id    TEXT REFERENCES products(id) ON DELETE SET NULL,
+    product_name  TEXT NOT NULL, -- snapshot at time of purchase, survives product edits/deletion
+    unit_price    NUMERIC(10, 2) NOT NULL,
+    quantity      INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_purchase_items_purchase_id ON purchase_items (purchase_id);

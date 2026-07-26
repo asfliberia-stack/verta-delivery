@@ -17,6 +17,7 @@ const {
   requireAuth,
   requireAdmin,
   requireSuperAdmin,
+  requireVendor,
   isAdminLike,
   socketAuth,
 } = require('./auth');
@@ -118,7 +119,11 @@ function orderRooms(senderId) {
 }
 
 io.on('connection', (socket) => {
-  const room = isAdminLike(socket.user.role) ? 'admins' : `user:${socket.user.id}`;
+  const room = isAdminLike(socket.user.role)
+    ? 'admins'
+    : socket.user.role === 'vendor'
+      ? `vendor:${socket.user.id}`
+      : `user:${socket.user.id}`;
   socket.join(room);
   console.log(`[socket] ${socket.user.role} connected: ${socket.user.email} (${socket.id})`);
 
@@ -700,6 +705,150 @@ app.delete('/api/admin/price-presets/:id', requireAuth, requireAdmin, async (req
   }
 });
 
+// ============================================================
+// Marketplace (GoLib) — vendor product management
+// ============================================================
+
+app.get('/api/vendor/products', requireAuth, requireVendor, async (req, res) => {
+  try {
+    const products = await db.getProductsByVendor(req.user.id);
+    res.json({ products });
+  } catch (err) {
+    console.error('GET /api/vendor/products failed', err);
+    res.status(500).json({ error: 'Failed to load products' });
+  }
+});
+
+const MAX_PRODUCT_IMAGE_BYTES = 700 * 1024; // same limit/reasoning as the business logo upload
+
+app.post('/api/vendor/products', requireAuth, requireVendor, async (req, res) => {
+  const { name, description, price, category, imageDataUrl, stockQuantity } = req.body || {};
+  if (!name || !name.trim() || price === undefined || isNaN(Number(price)) || Number(price) < 0) {
+    return res.status(400).json({ error: 'A name and a valid non-negative price are required' });
+  }
+  if (imageDataUrl && imageDataUrl.length > MAX_PRODUCT_IMAGE_BYTES) {
+    return res.status(400).json({ error: 'Product image is too large — please use an image under ~500KB.' });
+  }
+  try {
+    const product = await db.createProduct({
+      id: crypto.randomUUID(),
+      vendorId: req.user.id,
+      name: name.trim(),
+      description,
+      price: Number(price),
+      category,
+      imageDataUrl,
+      stockQuantity: Number(stockQuantity) || 0,
+    });
+    res.json({ ok: true, product });
+  } catch (err) {
+    console.error('POST /api/vendor/products failed', err);
+    res.status(500).json({ error: 'Failed to create product' });
+  }
+});
+
+app.put('/api/vendor/products/:id', requireAuth, requireVendor, async (req, res) => {
+  try {
+    const existing = await db.getProductById(req.params.id);
+    if (!existing) return res.status(404).json({ error: 'Product not found' });
+    if (existing.vendorId !== req.user.id) return res.status(403).json({ error: 'Not your product' });
+    if (req.body.imageDataUrl && req.body.imageDataUrl.length > MAX_PRODUCT_IMAGE_BYTES) {
+      return res.status(400).json({ error: 'Product image is too large — please use an image under ~500KB.' });
+    }
+    const product = await db.updateProduct(req.params.id, req.body || {});
+    res.json({ ok: true, product });
+  } catch (err) {
+    console.error('PUT /api/vendor/products failed', err);
+    res.status(500).json({ error: 'Failed to update product' });
+  }
+});
+
+app.delete('/api/vendor/products/:id', requireAuth, requireVendor, async (req, res) => {
+  try {
+    const existing = await db.getProductById(req.params.id);
+    if (!existing) return res.status(404).json({ error: 'Product not found' });
+    if (existing.vendorId !== req.user.id) return res.status(403).json({ error: 'Not your product' });
+    await db.deleteProduct(req.params.id);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('DELETE /api/vendor/products failed', err);
+    res.status(500).json({ error: 'Failed to delete product' });
+  }
+});
+
+app.get('/api/vendor/sales-overview', requireAuth, requireVendor, async (req, res) => {
+  try {
+    const overview = await db.getVendorSalesOverview(req.user.id, 30);
+    res.json(overview);
+  } catch (err) {
+    console.error('GET /api/vendor/sales-overview failed', err);
+    res.status(500).json({ error: 'Failed to load sales overview' });
+  }
+});
+
+app.get('/api/vendor/purchases', requireAuth, requireVendor, async (req, res) => {
+  try {
+    const purchases = await db.getPurchasesByVendor(req.user.id);
+    res.json({ purchases });
+  } catch (err) {
+    console.error('GET /api/vendor/purchases failed', err);
+    res.status(500).json({ error: 'Failed to load orders' });
+  }
+});
+
+// ============================================================
+// Marketplace — customer storefront + checkout
+// ============================================================
+
+app.get('/api/marketplace/products', requireAuth, async (req, res) => {
+  try {
+    const products = await db.getActiveProductsForStorefront();
+    res.json({ products });
+  } catch (err) {
+    console.error('GET /api/marketplace/products failed', err);
+    res.status(500).json({ error: 'Failed to load products' });
+  }
+});
+
+// Checkout — pay-on-delivery (no payment gateway integrated yet) and
+// automatically creates a real delivery order for fulfillment. Both are
+// defaults, not confirmed decisions — see README.
+app.post('/api/marketplace/checkout', requireAuth, async (req, res) => {
+  if (req.user.role !== 'sender') {
+    return res.status(403).json({ error: 'Only customers can check out' });
+  }
+  const { vendorId, items, pickupAddress, dropoffAddress } = req.body || {};
+  if (!vendorId || !Array.isArray(items) || items.length === 0) {
+    return res.status(400).json({ error: 'A vendor and at least one item are required' });
+  }
+  if (!pickupAddress || !dropoffAddress) {
+    return res.status(400).json({ error: 'Pickup and dropoff addresses are required' });
+  }
+  try {
+    const result = await db.checkout({
+      customerId: req.user.id,
+      customerName: req.user.businessName,
+      vendorId,
+      items,
+      pickupAddress,
+      dropoffAddress,
+      createDeliveryOrder: true,
+    });
+    io.to(`vendor:${vendorId}`).emit('purchase:created', result);
+    if (result.deliveryOrderId) {
+      const deliveryOrder = await db.getOrder(result.deliveryOrderId);
+      if (deliveryOrder) {
+        orderRooms(deliveryOrder.senderId).forEach((r) => io.to(r).emit('order:created', deliveryOrder));
+        notifyNewOrder(deliveryOrder);
+      }
+    }
+    res.json({ ok: true, ...result });
+  } catch (err) {
+    console.error('POST /api/marketplace/checkout failed', err);
+    res.status(400).json({ error: err.message || 'Checkout failed' });
+  }
+});
+
 app.get('/health', (req, res) => res.json({ ok: true }));
 
 async function seedAdminIfConfigured() {
@@ -761,9 +910,30 @@ async function seedAgentsIfEmpty() {
   console.log(`[seed] Seeded ${DEFAULT_AGENTS.length} default agents`);
 }
 
+// Marketplace's first real vendor. Defaults to the requested name and a
+// generated login; override via env vars before first boot if you want
+// a different email/password.
+const VENDOR_EMAIL = process.env.VENDOR_EMAIL || 'girleefashion@golib.test';
+const VENDOR_PASSWORD = process.env.VENDOR_PASSWORD || 'GirleeFashion1';
+
+async function seedVendorIfConfigured() {
+  const existing = await db.getUserByEmail(VENDOR_EMAIL);
+  if (existing) return; // already seeded
+  const passwordHash = await hashPassword(VENDOR_PASSWORD);
+  await db.createUser({
+    id: crypto.randomUUID(),
+    businessName: 'Girlee Fashion',
+    email: VENDOR_EMAIL,
+    passwordHash,
+    role: 'vendor',
+  });
+  console.log(`[seed] Created vendor account "Girlee Fashion" for ${VENDOR_EMAIL}`);
+}
+
 db.init()
   .then(seedAdminIfConfigured)
   .then(seedSuperAdminIfConfigured)
+  .then(seedVendorIfConfigured)
   .then(seedAgentsIfEmpty)
   .then(() => {
     server.listen(PORT, () => console.log(`Verta Delivery server listening on :${PORT}`));
