@@ -2,8 +2,15 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Verta Delivery Service</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#16234a">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="GoLib">
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="assets/icon-192.png">
+    <title>GoLib - Shop &amp; Delivery</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
     <!-- Socket.io client is served by our own Node/Socket.io backend (same origin,
@@ -30,6 +37,186 @@
             --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
             --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
         }
+
+        /* GoLib brand — scoped to the marketplace (#home-screen) and
+           vendor dashboard (#vendor-app) only, matching the mockup's
+           navy header + red accent. The admin dashboard, auth modal,
+           and shared modals keep the original indigo palette. */
+        #home-screen, #vendor-app {
+            --golib-navy: #16234a;
+            --golib-navy-light: #1f3163;
+            --golib-red: #dc2626;
+            --golib-red-dark: #b91c1c;
+            --primary: var(--golib-red);
+            --primary-dark: var(--golib-red-dark);
+        }
+        .mobile-app-shell { max-width: 480px; margin: 0 auto; min-height: 100vh; background: var(--bg-light); position: relative; }
+        .mobile-topbar {
+            background: var(--golib-navy); color: white; padding: 0.875rem 1.125rem;
+            padding-top: calc(0.875rem + env(safe-area-inset-top));
+            display: flex; align-items: center; justify-content: space-between; gap: 0.75rem;
+            position: sticky; top: 0; z-index: 50;
+        }
+        .mobile-topbar-logo { display: flex; align-items: center; gap: 0.5rem; }
+        .mobile-topbar-logo img { height: 30px; }
+        .mp-notification-panel {
+            display: none; position: absolute; top: 100%; right: 1rem; width: 280px; max-height: 360px; overflow-y: auto;
+            background: white; color: var(--slate); border-radius: 0.875rem; box-shadow: var(--shadow-lg);
+            z-index: 70; margin-top: 0.5rem;
+        }
+        .mp-notification-panel.open { display: block; }
+        .mp-notification-panel-header {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 0.875rem 1rem; border-bottom: 1px solid var(--border); font-size: 0.9375rem;
+        }
+        .mp-notification-panel-header a { color: var(--golib-red); font-weight: 600; font-size: 0.8125rem; cursor: pointer; }
+        .mp-notification-item { padding: 0.75rem 1rem; border-bottom: 1px solid var(--border); font-size: 0.8125rem; }
+        .mp-notification-item:last-child { border-bottom: none; }
+        .mp-notification-item-title { font-weight: 700; margin-bottom: 0.125rem; }
+        .mp-notification-item-body { color: var(--slate-light); font-size: 0.75rem; }
+        .mp-notification-empty { padding: 1.5rem 1rem; text-align: center; color: var(--slate-light); font-size: 0.8125rem; }
+        .mobile-icon-btn {
+            position: relative; width: 40px; height: 40px; min-width: 44px; min-height: 44px;
+            border-radius: 50%; border: none; background: rgba(255,255,255,0.12); color: white;
+            display: flex; align-items: center; justify-content: center; cursor: pointer;
+        }
+        .mobile-icon-btn svg { width: 19px; height: 19px; }
+        .mobile-icon-badge {
+            position: absolute; top: -2px; right: -2px; background: var(--golib-red); color: white;
+            font-size: 0.625rem; font-weight: 800; min-width: 17px; height: 17px; border-radius: 9999px;
+            display: flex; align-items: center; justify-content: center; padding: 0 3px; border: 2px solid var(--golib-navy);
+        }
+        .mobile-search-bar {
+            display: flex; align-items: center; gap: 0.625rem; background: white; margin: 0.875rem 1.125rem;
+            padding: 0.75rem 1rem; border-radius: 0.875rem; box-shadow: var(--shadow-sm);
+        }
+        .mobile-search-bar input { border: none; outline: none; flex: 1; font-size: 0.9375rem; }
+        .mobile-search-bar svg { width: 18px; height: 18px; color: var(--slate-lighter); flex-shrink: 0; }
+        .mobile-content { padding: 0 1.125rem calc(84px + env(safe-area-inset-bottom)); }
+        .mobile-bottom-nav {
+            position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
+            width: 100%; max-width: 480px; background: white; border-top: 1px solid var(--border);
+            display: flex; z-index: 60; padding-bottom: env(safe-area-inset-bottom);
+        }
+        .mobile-nav-item {
+            flex: 1; display: flex; flex-direction: column; align-items: center; gap: 0.25rem;
+            padding: 0.625rem 0.25rem; min-height: 56px; background: none; border: none; cursor: pointer;
+            color: var(--slate-lighter); font-size: 0.6875rem; font-weight: 700; position: relative;
+        }
+        .mobile-nav-item svg { width: 21px; height: 21px; }
+        .mobile-nav-item.active { color: var(--golib-red); }
+        .mobile-nav-badge {
+            position: absolute; top: 0.25rem; right: 22%; background: var(--golib-red); color: white;
+            font-size: 0.5625rem; font-weight: 800; min-width: 15px; height: 15px; border-radius: 9999px;
+            display: flex; align-items: center; justify-content: center; padding: 0 3px;
+        }
+        .mobile-section { margin-top: 1.5rem; }
+        .mobile-section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.875rem; }
+        .mobile-section-title { font-size: 1.0625rem; font-weight: 800; color: var(--slate); }
+        .mobile-view-all { color: var(--golib-red); font-weight: 700; font-size: 0.8125rem; cursor: pointer; display: flex; align-items: center; gap: 0.25rem; }
+
+        .discovery-banner {
+            background: linear-gradient(135deg, var(--golib-navy) 0%, var(--golib-navy-light) 100%);
+            border-radius: 1.125rem; padding: 1.5rem; color: white; position: relative; overflow: hidden;
+        }
+        .discovery-banner-eyebrow { font-size: 0.8125rem; font-weight: 700; letter-spacing: 0.05em; opacity: 0.85; }
+        .discovery-banner-headline { font-size: 1.375rem; font-weight: 800; color: var(--golib-red); margin: 0.125rem 0 0.5rem; line-height: 1.2; }
+        .discovery-banner-sub { font-size: 0.875rem; opacity: 0.9; margin-bottom: 1rem; max-width: 70%; }
+        .discovery-banner-cta {
+            background: var(--golib-red); color: white; border: none; padding: 0.625rem 1.25rem;
+            border-radius: 0.625rem; font-weight: 700; font-size: 0.875rem; min-height: 44px; cursor: pointer;
+        }
+
+        .category-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.5rem; text-align: center; }
+        .category-item { display: flex; flex-direction: column; align-items: center; gap: 0.375rem; cursor: pointer; background: none; border: none; }
+        .category-icon-box {
+            width: 48px; height: 48px; border-radius: 0.875rem; background: white; border: 1px solid var(--border);
+            display: flex; align-items: center; justify-content: center; box-shadow: var(--shadow-sm);
+        }
+        .category-item.active-category .category-icon-box { background: var(--golib-red); border-color: var(--golib-red); }
+        .category-item.active-category .category-icon-box svg { color: white; }
+        .category-item.active-category .category-label { color: var(--golib-red); }
+        .category-icon-box svg { width: 20px; height: 20px; color: var(--golib-navy); }
+        .category-label { font-size: 0.6875rem; font-weight: 600; color: var(--slate-light); }
+
+        .star-rating { display: flex; align-items: center; gap: 0.25rem; font-size: 0.75rem; }
+        .star-rating svg { width: 12px; height: 12px; color: #f59e0b; }
+        .star-rating-empty { color: var(--slate-lighter); font-size: 0.75rem; }
+
+        .store-card {
+            display: flex; flex-direction: column; align-items: center; gap: 0.375rem;
+            background: white; border-radius: 1rem; padding: 1rem 0.5rem; border: 1px solid var(--border); box-shadow: var(--shadow-sm);
+        }
+        .store-card-avatar {
+            width: 48px; height: 48px; border-radius: 50%; background: var(--golib-navy); color: white;
+            display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 1.125rem;
+        }
+        .store-card-name { font-weight: 700; font-size: 0.8125rem; color: var(--slate); text-align: center; }
+        .store-card-rating { font-size: 0.75rem; color: var(--accent); font-weight: 700; }
+
+        .vendor-welcome-banner {
+            background: var(--golib-navy); color: white; border-radius: 1.125rem; padding: 1.125rem;
+            display: flex; align-items: center; gap: 0.875rem;
+        }
+        .vendor-welcome-icon {
+            width: 44px; height: 44px; border-radius: 0.75rem; background: rgba(255,255,255,0.15);
+            display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+        }
+        .vendor-welcome-icon svg { width: 22px; height: 22px; }
+        .vendor-welcome-eyebrow { font-size: 0.8125rem; opacity: 0.85; }
+        .vendor-welcome-name { font-weight: 800; font-size: 1.125rem; }
+        .vendor-online-pill {
+            background: #22c55e; color: white; font-size: 0.75rem; font-weight: 700;
+            padding: 0.25rem 0.625rem; border-radius: 9999px; white-space: nowrap;
+        }
+        .vendor-sales-card { background: white; border-radius: 1.125rem; padding: 1.125rem; box-shadow: var(--shadow-sm); border: 1px solid var(--border); }
+        .vendor-sales-total { font-size: 1.75rem; font-weight: 800; color: var(--slate); }
+        .vendor-stat-card {
+            background: white; border-radius: 1rem; padding: 1rem; box-shadow: var(--shadow-sm); border: 1px solid var(--border);
+            display: flex; align-items: center; gap: 0.75rem;
+        }
+        .vendor-stat-icon {
+            width: 40px; height: 40px; border-radius: 0.75rem; background: #eef2ff; color: var(--golib-navy);
+            display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+        }
+        .vendor-stat-icon svg { width: 19px; height: 19px; }
+        .vendor-stat-number { font-weight: 800; font-size: 1.25rem; color: var(--slate); line-height: 1.1; }
+        .vendor-stat-label { font-size: 0.75rem; color: var(--slate-light); }
+
+        .vendor-quick-actions { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.75rem; }
+        .vendor-quick-action {
+            background: white; border: 1px solid var(--border); border-radius: 1rem; padding: 1rem 0.75rem;
+            display: flex; flex-direction: column; align-items: center; gap: 0.5rem; cursor: pointer;
+            font-size: 0.8125rem; font-weight: 700; color: var(--slate); min-height: 44px; box-shadow: var(--shadow-sm);
+        }
+        .vendor-quick-action-icon {
+            width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+            font-size: 1.25rem; font-weight: 800;
+        }
+        .vendor-quick-action-icon svg { width: 18px; height: 18px; }
+
+        .vendor-order-row {
+            display: flex; align-items: center; gap: 0.75rem; background: white; border-radius: 1rem;
+            padding: 0.875rem; margin-bottom: 0.625rem; box-shadow: var(--shadow-sm); border: 1px solid var(--border); cursor: pointer;
+        }
+        .vendor-order-icon {
+            width: 38px; height: 38px; border-radius: 0.75rem; background: #fee2e2; color: var(--golib-red);
+            display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+        }
+        .vendor-order-icon svg { width: 17px; height: 17px; }
+        .vendor-order-main { flex: 1; min-width: 0; }
+        .vendor-order-id { font-weight: 700; font-size: 0.875rem; color: var(--slate); }
+        .vendor-order-buyer { font-size: 0.75rem; color: var(--slate-light); }
+        .vendor-order-right { text-align: right; }
+        .vendor-order-status-pill {
+            display: inline-block; font-size: 0.6875rem; font-weight: 700; padding: 0.125rem 0.5rem;
+            border-radius: 9999px; margin-bottom: 0.25rem;
+        }
+        .vendor-order-status-pill.fulfilled { background: #dcfce7; color: #15803d; }
+        .vendor-order-status-pill.processing { background: #dbeafe; color: #1e40af; }
+        .vendor-order-status-pill.cancelled { background: #fee2e2; color: #b91c1c; }
+        .vendor-order-price { font-weight: 800; color: var(--slate); font-size: 0.9375rem; }
+        .vendor-order-chevron { width: 16px; height: 16px; color: var(--slate-lighter); flex-shrink: 0; }
 
         body {
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -1056,56 +1243,144 @@
     <!-- ============== MARKETPLACE / SENDER HOME (default landing page —
          visible to guests, customers, and vendors previewing "as customer") ============== -->
     <div id="home-screen">
-        <header>
-            <div class="header-content">
-                <div class="logo-container">
-                    <img src="assets/logo.png" alt="Verta Delivery Service" style="height: 60px; max-width: 300px; object-fit: contain;">
+      <div class="mobile-app-shell">
+        <header class="mobile-topbar">
+            <div class="mobile-topbar-logo">
+                <img src="assets/logo.png" alt="GoLib">
+            </div>
+            <div style="display:flex; gap:0.5rem;">
+                <button type="button" class="mobile-icon-btn" id="open-cart-btn" aria-label="Cart">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
+                    <span class="mobile-icon-badge" id="cart-count-badge" style="display:none;">0</span>
+                </button>
+                <button type="button" class="mobile-icon-btn" id="mp-notification-btn" aria-label="Notifications">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+                    <span class="mobile-icon-badge" id="mp-notification-badge" style="display:none;">0</span>
+                </button>
+            </div>
+            <div class="mp-notification-panel" id="mp-notification-panel">
+                <div class="mp-notification-panel-header">
+                    <strong>Notifications</strong>
+                    <a id="mp-clear-notifications-link">Clear all</a>
                 </div>
-                <div class="quick-access-btns">
-                    <!-- Guest: not logged in at all -->
-                    <button class="quick-access-btn primary" id="guest-login-btn" style="display:none;">Login / Sign Up</button>
-
-                    <!-- Vendor previewing the marketplace "as customer" -->
-                    <button class="quick-access-btn primary" id="back-to-store-dashboard-btn" style="display:none;">← Manage Store</button>
-
-                    <!-- Logged-in customer (sender) -->
-                    <div class="user-info" id="sender-user-info" style="display:none;">
-                        <div class="user-avatar" id="sender-avatar">V</div>
-                        <div class="user-name" id="sender-display-name">—</div>
-                    </div>
-                    <button class="quick-access-btn secondary" id="sender-logout-btn" style="display:none;">Logout</button>
-                </div>
+                <div id="mp-notification-list"></div>
             </div>
         </header>
-        <main>
-            <section class="hero" id="hero-section" style="display:none;">
-                <h2>Send a Package Today!</h2>
-                <p>Fast, Secure, and Reliable Delivery Solution You Can Trust</p>
-                <button class="btn-primary" id="btn-new-order">Create New Order</button>
-            </section>
 
-            <section class="orders-section">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 1rem;">
-                    <h2 class="section-title" style="margin:0;">Marketplace</h2>
-                    <button type="button" class="btn-small btn-success" id="open-cart-btn">🛒 Cart (<span id="cart-count">0</span>)</button>
+        <div class="mobile-search-bar">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+            <input type="text" id="storefront-search-input" placeholder="Search products, stores…">
+        </div>
+
+        <div class="mobile-content">
+            <!-- Home / Categories (shared feed — Categories just focuses the category picker) -->
+            <div id="mp-view-shop">
+                <div class="discovery-banner">
+                    <div class="discovery-banner-eyebrow">DISCOVER</div>
+                    <div class="discovery-banner-headline">AMAZING PRODUCTS</div>
+                    <div class="discovery-banner-sub">Shop the best, delivered to your door.</div>
+                    <button type="button" class="discovery-banner-cta" id="discovery-shop-now-btn">Shop Now</button>
                 </div>
-                <div class="order-filter-bar">
-                    <div class="order-filter-search">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-                        <input type="text" id="storefront-search-input" placeholder="Search products…">
+
+                <div class="mobile-section" id="mp-category-section">
+                    <div class="mobile-section-header"><div class="mobile-section-title">Categories</div></div>
+                    <div class="category-grid" id="mp-category-grid"></div>
+                </div>
+
+                <div class="mobile-section">
+                    <div class="mobile-section-header">
+                        <div class="mobile-section-title">Featured Products</div>
                     </div>
-                    <select class="form-input order-filter-select" id="storefront-category-filter">
-                        <option value="">All Categories</option>
-                    </select>
+                    <div id="storefront-products-container"></div>
                 </div>
-                <div id="storefront-products-container"></div>
-            </section>
 
-            <section class="orders-section" id="your-orders-section" style="display:none;">
-                <h2 class="section-title">Your Orders</h2>
-                <div class="orders-grid" id="orders-grid"></div>
-            </section>
-        </main>
+                <div class="mobile-section">
+                    <div class="mobile-section-header">
+                        <div class="mobile-section-title">Popular Stores</div>
+                        <a class="mobile-view-all" data-mp-tab="stores">View All ›</a>
+                    </div>
+                    <div id="mp-popular-stores-preview" style="display:grid; grid-template-columns: repeat(4, 1fr); gap: 0.625rem;"></div>
+                </div>
+            </div>
+
+            <!-- Stores -->
+            <div id="mp-view-stores" style="display:none;">
+                <div class="mobile-section" style="margin-top:0;">
+                    <div class="mobile-section-header"><div class="mobile-section-title">All Stores</div></div>
+                    <div id="mp-stores-full-list" style="display:grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem;"></div>
+                </div>
+            </div>
+
+            <!-- Wishlist — no backend for this yet, honestly marked -->
+            <div id="mp-view-wishlist" style="display:none;">
+                <div class="mobile-section" style="margin-top:0; text-align:center; padding: 3rem 1rem; color: var(--slate-light);">
+                    <div style="font-size:2rem; margin-bottom:0.75rem;">♡</div>
+                    <div style="font-weight:700; color:var(--slate); margin-bottom:0.375rem;">Wishlist — Coming Soon</div>
+                    <div style="font-size:0.875rem;">Saving favorite products isn't built yet.</div>
+                </div>
+            </div>
+
+            <!-- Account -->
+            <div id="mp-view-account" style="display:none;">
+                <!-- Guest -->
+                <div id="mp-account-guest" style="display:none; text-align:center; padding: 2.5rem 1rem;">
+                    <p style="color: var(--slate-light); margin-bottom: 1.25rem;">Log in to place orders, track them, and check out.</p>
+                    <button type="button" class="btn-primary" id="guest-login-btn">Login / Sign Up</button>
+                </div>
+
+                <!-- Logged-in customer -->
+                <div id="mp-account-customer" style="display:none;">
+                    <div class="mobile-section" style="margin-top:0; display:flex; align-items:center; gap:0.875rem;">
+                        <div class="user-avatar" id="sender-avatar" style="width:3rem; height:3rem; font-size:1.25rem;">V</div>
+                        <div>
+                            <div style="font-weight:800; font-size:1.0625rem;" id="sender-display-name">—</div>
+                            <div style="font-size:0.8125rem; color:var(--slate-light);">Customer Account</div>
+                        </div>
+                    </div>
+                    <section class="hero" id="hero-section" style="margin-top:1.5rem;">
+                        <h2>Send a Package Today!</h2>
+                        <p>Fast, Secure, and Reliable Delivery Solution You Can Trust</p>
+                        <button class="btn-primary" id="btn-new-order">Create New Order</button>
+                    </section>
+                    <section class="orders-section" id="your-orders-section">
+                        <h2 class="section-title">Your Orders</h2>
+                        <div class="orders-grid" id="orders-grid"></div>
+                    </section>
+                    <button class="quick-access-btn secondary" id="sender-logout-btn" style="width:100%; margin-top:1rem;">Logout</button>
+                </div>
+
+                <!-- Vendor previewing "as customer" -->
+                <div id="mp-account-vendor-preview" style="display:none; text-align:center; padding: 2.5rem 1rem;">
+                    <p style="color: var(--slate-light); margin-bottom: 1.25rem;">You're browsing the marketplace as your store, <strong id="mp-vendor-preview-name"></strong>.</p>
+                    <button type="button" class="btn-primary" id="back-to-store-dashboard-btn">← Manage Store</button>
+                </div>
+            </div>
+        </div>
+
+        <nav class="mobile-bottom-nav">
+            <button type="button" class="mobile-nav-item active" data-mp-tab="home">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+                Home
+            </button>
+            <button type="button" class="mobile-nav-item" data-mp-tab="categories">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+                Categories
+            </button>
+            <button type="button" class="mobile-nav-item" data-mp-tab="stores">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>
+                Stores
+            </button>
+            <button type="button" class="mobile-nav-item" data-mp-tab="wishlist">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
+                Wishlist
+                <span class="mobile-nav-badge" style="display:none;">0</span>
+            </button>
+            <button type="button" class="mobile-nav-item" data-mp-tab="account">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                Account
+            </button>
+        </nav>
+      </div>
     </div>
 
     <!-- ============== ADMIN DASHBOARD (logged in as admin) ============== -->
@@ -1352,47 +1627,158 @@
          Not full mockup fidelity (no charts/promos/reports yet — see
          README for what's deferred and why). -->
     <div id="vendor-app" style="display: none;">
-        <header>
-            <div class="header-content">
-                <div class="logo-container">
-                    <img src="assets/logo.png" alt="Verta Delivery Service" style="height: 60px; max-width: 300px; object-fit: contain;">
+      <div class="mobile-app-shell">
+        <header class="mobile-topbar">
+            <div class="mobile-topbar-logo">
+                <img src="assets/logo.png" alt="GoLib">
+            </div>
+            <button type="button" class="mobile-icon-btn" id="vendor-notification-btn" aria-label="Notifications">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+                <span class="mobile-icon-badge" id="vendor-notification-badge" style="display:none;">0</span>
+            </button>
+            <div class="mp-notification-panel" id="vendor-notification-panel" style="right: auto; left: 1rem;">
+                <div class="mp-notification-panel-header">
+                    <strong>Notifications</strong>
+                    <a id="vendor-clear-notifications-link">Clear all</a>
                 </div>
-                <div class="quick-access-btns">
-                    <button class="quick-access-btn primary" id="switch-to-marketplace-btn">Switch to Marketplace</button>
-                    <div class="user-info">
-                        <div class="user-avatar" id="vendor-avatar">V</div>
-                        <div class="user-name" id="vendor-display-name">—</div>
-                    </div>
-                    <button class="quick-access-btn secondary" id="vendor-logout-btn">Logout</button>
-                </div>
+                <div id="vendor-notification-list"></div>
             </div>
         </header>
-        <main>
-            <section class="hero">
-                <h2>Welcome back, <span id="vendor-store-name-hero">Vendor</span></h2>
-                <p>Manage your products and track your marketplace orders</p>
-                <button class="btn-primary" id="vendor-add-product-btn">+ Add Product</button>
-            </section>
 
-            <section class="orders-section">
-                <h2 class="section-title">Sales Overview (Last 30 Days)</h2>
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem;">
-                    <div class="stat-card"><h4>Total Sales</h4><p id="vendor-total-sales">$0.00</p></div>
-                    <div class="stat-card"><h4>Total Orders</h4><p id="vendor-total-orders">0</p></div>
-                    <div class="stat-card"><h4>Products Listed</h4><p id="vendor-product-count">0</p></div>
+        <div class="mobile-content" style="padding-top: 1rem;">
+            <!-- Home -->
+            <div id="vendor-view-home">
+                <div class="vendor-welcome-banner">
+                    <div class="vendor-welcome-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l1-5h16l1 5"></path><path d="M3 9v10a1 1 0 0 0 1 1h16a1 1 0 0 0 1-1V9"></path><path d="M9 21V13h6v8"></path></svg>
+                    </div>
+                    <div style="flex:1;">
+                        <div class="vendor-welcome-eyebrow">Welcome back,</div>
+                        <div class="vendor-welcome-name" id="vendor-store-name-hero">Vendor</div>
+                    </div>
+                    <span class="vendor-online-pill">✓ Online</span>
                 </div>
-            </section>
 
-            <section class="orders-section">
-                <h2 class="section-title">Recent Orders</h2>
-                <div id="vendor-orders-container"></div>
-            </section>
+                <div class="mobile-section" style="margin-top:1.25rem;">
+                    <div class="vendor-sales-card">
+                        <div class="mobile-section-header" style="margin-bottom:0.375rem;">
+                            <div class="mobile-section-title" style="font-size:0.9375rem;">Sales Overview (Last 30 Days)</div>
+                        </div>
+                        <div style="display:flex; align-items:baseline; gap:0.625rem;">
+                            <span class="vendor-sales-total" id="vendor-total-sales">$0.00</span>
+                            <span class="stat-trend" id="vendor-sales-trend">—</span>
+                        </div>
+                        <canvas id="vendor-sales-chart" height="140" style="margin-top:0.75rem;"></canvas>
+                    </div>
+                </div>
 
-            <section class="orders-section">
-                <h2 class="section-title">Your Products</h2>
+                <div class="mobile-section" style="display:grid; grid-template-columns: 1fr 1fr; gap:0.75rem;">
+                    <div class="vendor-stat-card">
+                        <div class="vendor-stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7h-9m9 5h-9m9 5h-9M4 7h1m-1 5h1m-1 5h1"></path><rect x="3" y="4" width="4" height="16" rx="1"></rect></svg></div>
+                        <div><div class="vendor-stat-number" id="vendor-total-orders">0</div><div class="vendor-stat-label">Total Orders</div></div>
+                    </div>
+                    <div class="vendor-stat-card">
+                        <div class="vendor-stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle></svg></div>
+                        <div><div class="vendor-stat-number" id="vendor-unique-customers">0</div><div class="vendor-stat-label">Customers</div></div>
+                    </div>
+                </div>
+
+                <div class="mobile-section">
+                    <div class="mobile-section-header">
+                        <div class="mobile-section-title">Recent Orders</div>
+                        <a class="mobile-view-all" data-vendor-tab="orders">View All ›</a>
+                    </div>
+                    <div id="vendor-orders-preview"></div>
+                </div>
+
+                <div class="mobile-section">
+                    <div class="mobile-section-header"><div class="mobile-section-title">Quick Actions</div></div>
+                    <div class="vendor-quick-actions">
+                        <button type="button" class="vendor-quick-action" id="vendor-add-product-btn">
+                            <div class="vendor-quick-action-icon" style="background:#eef2ff; color:var(--golib-red);">+</div>
+                            Add Product
+                        </button>
+                        <button type="button" class="vendor-quick-action" data-vendor-tab="products">
+                            <div class="vendor-quick-action-icon" style="background:#fef3c7; color:#92400e;">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11H5a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h4m0-11v11m0-11h6m-6 11h6m0-11h4a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2h-4m0-11v11"></path></svg>
+                            </div>
+                            Check Inventory
+                        </button>
+                        <button type="button" class="vendor-quick-action" id="vendor-manage-promos-btn">
+                            <div class="vendor-quick-action-icon" style="background:#ede9fe; color:#5b21b6;">%</div>
+                            Manage Promos
+                        </button>
+                        <button type="button" class="vendor-quick-action" id="vendor-view-reports-btn">
+                            <div class="vendor-quick-action-icon" style="background:#fee2e2; color:#b91c1c;">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+                            </div>
+                            View Reports
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Products -->
+            <div id="vendor-view-products" style="display:none;">
+                <div class="mobile-section-header" style="margin-top:0;">
+                    <div class="mobile-section-title">Your Products</div>
+                    <button type="button" class="btn-small btn-success" id="vendor-add-product-btn-2">+ Add</button>
+                </div>
                 <div id="vendor-products-container"></div>
-            </section>
-        </main>
+            </div>
+
+            <!-- Orders -->
+            <div id="vendor-view-orders" style="display:none;">
+                <div class="mobile-section-header" style="margin-top:0;"><div class="mobile-section-title">All Orders</div></div>
+                <div id="vendor-orders-container"></div>
+            </div>
+
+            <!-- Messages — no backend for this yet, honestly marked -->
+            <div id="vendor-view-messages" style="display:none;">
+                <div class="mobile-section" style="margin-top:0; text-align:center; padding: 3rem 1rem; color: var(--slate-light);">
+                    <div style="font-size:2rem; margin-bottom:0.75rem;">✉</div>
+                    <div style="font-weight:700; color:var(--slate); margin-bottom:0.375rem;">Messages — Coming Soon</div>
+                    <div style="font-size:0.875rem;">In-app messaging with customers isn't built yet.</div>
+                </div>
+            </div>
+
+            <!-- Account -->
+            <div id="vendor-view-account" style="display:none;">
+                <div class="mobile-section" style="margin-top:0; display:flex; align-items:center; gap:0.875rem;">
+                    <div class="user-avatar" id="vendor-avatar" style="width:3rem; height:3rem; font-size:1.25rem;">V</div>
+                    <div>
+                        <div style="font-weight:800; font-size:1.0625rem;" id="vendor-display-name">—</div>
+                        <div style="font-size:0.8125rem; color:var(--slate-light);">Vendor Account</div>
+                    </div>
+                </div>
+                <button type="button" class="btn-primary" id="switch-to-marketplace-btn" style="width:100%; margin-top:1.5rem;">Switch to Marketplace</button>
+                <button type="button" class="quick-access-btn secondary" id="vendor-logout-btn" style="width:100%; margin-top:0.75rem;">Logout</button>
+            </div>
+        </div>
+
+        <nav class="mobile-bottom-nav">
+            <button type="button" class="mobile-nav-item active" data-vendor-tab="home">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+                Home
+            </button>
+            <button type="button" class="mobile-nav-item" data-vendor-tab="products">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.38 3.46 16 2a4 4 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.47a1 1 0 0 0 .99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 0 0 2-2V10h2.15a1 1 0 0 0 .99-.84l.58-3.47a2 2 0 0 0-1.34-2.23z"></path></svg>
+                Products
+            </button>
+            <button type="button" class="mobile-nav-item" data-vendor-tab="orders">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+                Orders
+            </button>
+            <button type="button" class="mobile-nav-item" data-vendor-tab="messages">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+                Messages
+            </button>
+            <button type="button" class="mobile-nav-item" data-vendor-tab="account">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                Account
+            </button>
+        </nav>
+      </div>
     </div>
 
     <!-- Add/Edit Product Modal -->
@@ -2152,24 +2538,38 @@
         }
 
         function renderNotificationCenter() {
+            const unreadCount = notificationLog.filter(n => n.unread).length;
+
             const badge = document.getElementById('notification-badge');
             const list = document.getElementById('notification-list');
-            if (!badge || !list) return; // sender view has no bell
-            const unreadCount = notificationLog.filter(n => n.unread).length;
-            badge.style.display = unreadCount > 0 ? 'flex' : 'none';
-            badge.textContent = unreadCount > 9 ? '9+' : String(unreadCount);
-
-            if (notificationLog.length === 0) {
-                list.innerHTML = '<div class="admin-notification-empty">No notifications yet.</div>';
-                return;
+            if (badge && list) {
+                badge.style.display = unreadCount > 0 ? 'flex' : 'none';
+                badge.textContent = unreadCount > 9 ? '9+' : String(unreadCount);
+                list.innerHTML = notificationLog.length === 0
+                    ? '<div class="admin-notification-empty">No notifications yet.</div>'
+                    : notificationLog.map(n => `
+                        <div class="admin-notification-item">
+                            <div class="admin-notification-item-title">${n.title}</div>
+                            ${n.body ? `<div class="admin-notification-item-body">${n.body.replace(/\n/g, ' · ')}</div>` : ''}
+                            <div class="admin-notification-item-time">${n.time.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}</div>
+                        </div>
+                    `).join('');
             }
-            list.innerHTML = notificationLog.map(n => `
-                <div class="admin-notification-item">
-                    <div class="admin-notification-item-title">${n.title}</div>
-                    ${n.body ? `<div class="admin-notification-item-body">${n.body.replace(/\n/g, ' · ')}</div>` : ''}
-                    <div class="admin-notification-item-time">${n.time.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}</div>
-                </div>
-            `).join('');
+
+            const mpBadge = document.getElementById('mp-notification-badge');
+            const mpList = document.getElementById('mp-notification-list');
+            if (mpBadge && mpList) {
+                mpBadge.style.display = unreadCount > 0 ? 'flex' : 'none';
+                mpBadge.textContent = unreadCount > 9 ? '9+' : String(unreadCount);
+                mpList.innerHTML = notificationLog.length === 0
+                    ? '<div class="mp-notification-empty">No notifications yet.</div>'
+                    : notificationLog.map(n => `
+                        <div class="mp-notification-item">
+                            <div class="mp-notification-item-title">${n.title}</div>
+                            ${n.body ? `<div class="mp-notification-item-body">${n.body.replace(/\n/g, ' · ')}</div>` : ''}
+                        </div>
+                    `).join('');
+            }
         }
 
         // Modern, non-blocking feedback — replaces native alert() calls.
@@ -2488,18 +2888,37 @@
             document.getElementById('auth-screen').classList.remove('active');
         }
 
-        // Which header/sections the marketplace shows depends on who's
+        // Which Account-tab state the marketplace shows depends on who's
         // looking at it — a guest, a logged-in customer, or a vendor
         // previewing their own storefront "as a customer" (2.3: vendors
         // previewing still don't get store-management controls here —
         // that's what the Store Dashboard is for).
+        let marketplaceAccountMode = 'guest';
         function setMarketplaceHeaderState(mode) {
-            document.getElementById('guest-login-btn').style.display = mode === 'guest' ? 'flex' : 'none';
-            document.getElementById('back-to-store-dashboard-btn').style.display = mode === 'vendor-preview' ? 'flex' : 'none';
-            document.getElementById('sender-user-info').style.display = mode === 'customer' ? 'flex' : 'none';
-            document.getElementById('sender-logout-btn').style.display = mode === 'customer' ? 'flex' : 'none';
-            document.getElementById('hero-section').style.display = mode === 'customer' ? 'block' : 'none';
-            document.getElementById('your-orders-section').style.display = mode === 'customer' ? 'block' : 'none';
+            marketplaceAccountMode = mode;
+            document.getElementById('mp-account-guest').style.display = mode === 'guest' ? 'block' : 'none';
+            document.getElementById('mp-account-customer').style.display = mode === 'customer' ? 'block' : 'none';
+            document.getElementById('mp-account-vendor-preview').style.display = mode === 'vendor-preview' ? 'block' : 'none';
+            if (mode === 'vendor-preview' && currentUser) {
+                document.getElementById('mp-vendor-preview-name').textContent = currentUser.businessName;
+            }
+        }
+
+        // Bottom nav tab switching — Home and Categories share the same
+        // underlying feed (Categories just focuses the category picker),
+        // Stores/Wishlist/Account are their own views.
+        function setMarketplaceTab(tab) {
+            document.querySelectorAll('.mobile-nav-item').forEach(btn => btn.classList.toggle('active', btn.dataset.mpTab === tab));
+            document.getElementById('mp-view-shop').style.display = (tab === 'home' || tab === 'categories') ? 'block' : 'none';
+            document.getElementById('mp-view-stores').style.display = tab === 'stores' ? 'block' : 'none';
+            document.getElementById('mp-view-wishlist').style.display = tab === 'wishlist' ? 'block' : 'none';
+            document.getElementById('mp-view-account').style.display = tab === 'account' ? 'block' : 'none';
+            document.querySelector('.mobile-content').scrollTop = 0;
+            if (tab === 'categories') {
+                document.getElementById('mp-category-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
+            } else if (tab === 'stores') {
+                loadStoresDirectory();
+            }
         }
 
         async function showMarketplaceGuest() {
@@ -2507,6 +2926,8 @@
             document.getElementById('vendor-app').style.display = 'none';
             document.getElementById('home-screen').style.display = 'block';
             setMarketplaceHeaderState('guest');
+            setMarketplaceTab('home');
+            renderNotificationCenter();
             renderSkeletonCards(document.getElementById('storefront-products-container'));
             await loadStorefront();
         }
@@ -2516,6 +2937,8 @@
             document.getElementById('vendor-app').style.display = 'none';
             document.getElementById('home-screen').style.display = 'block';
             setMarketplaceHeaderState('vendor-preview');
+            setMarketplaceTab('home');
+            renderNotificationCenter();
             loadStorefront();
         }
 
@@ -2530,6 +2953,36 @@
             document.getElementById('close-auth-screen-btn').addEventListener('click', closeAuthScreen);
             document.getElementById('switch-to-marketplace-btn').addEventListener('click', showMarketplaceAsVendorPreview);
             document.getElementById('back-to-store-dashboard-btn').addEventListener('click', showVendorDashboardView);
+
+            document.querySelectorAll('.mobile-nav-item').forEach(btn => {
+                btn.addEventListener('click', () => setMarketplaceTab(btn.dataset.mpTab));
+            });
+            document.querySelectorAll('.mobile-view-all[data-mp-tab]').forEach(link => {
+                link.addEventListener('click', () => setMarketplaceTab(link.dataset.mpTab));
+            });
+            document.getElementById('discovery-shop-now-btn').addEventListener('click', () => {
+                document.getElementById('mp-category-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
+            });
+
+            const mpBell = document.getElementById('mp-notification-btn');
+            const mpPanel = document.getElementById('mp-notification-panel');
+            mpBell.addEventListener('click', (e) => {
+                e.stopPropagation();
+                mpPanel.classList.toggle('open');
+                if (mpPanel.classList.contains('open')) {
+                    notificationLog.forEach(n => { n.unread = false; });
+                    renderNotificationCenter();
+                }
+            });
+            document.addEventListener('click', (e) => {
+                if (mpPanel.classList.contains('open') && !mpPanel.contains(e.target) && e.target !== mpBell) {
+                    mpPanel.classList.remove('open');
+                }
+            });
+            document.getElementById('mp-clear-notifications-link').addEventListener('click', () => {
+                notificationLog = [];
+                renderNotificationCenter();
+            });
         }
 
         async function enterApp() {
@@ -2588,6 +3041,7 @@
                 document.getElementById('vendor-avatar').textContent = currentUser.businessName.charAt(0).toUpperCase();
                 document.getElementById('vendor-store-name-hero').textContent = currentUser.businessName;
                 showVendorDashboardView();
+                setVendorTab('home');
                 await loadVendorDashboard();
             } else {
                 // Regular customer login — stays on the marketplace
@@ -2596,6 +3050,8 @@
                 document.getElementById('vendor-app').style.display = 'none';
                 document.getElementById('home-screen').style.display = 'block';
                 setMarketplaceHeaderState('customer');
+                setMarketplaceTab('home');
+                renderNotificationCenter();
                 document.getElementById('sender-display-name').textContent = currentUser.businessName;
                 document.getElementById('sender-avatar').textContent = currentUser.businessName.charAt(0).toUpperCase();
                 renderSkeletonCards(document.getElementById('orders-grid'));
@@ -5041,23 +5497,70 @@
         // overview and recent orders come from actual purchases, product
         // management is full CRUD against the real products table.
         // ============================================================
+        let vendorSalesChartInstance = null;
+
         async function loadVendorDashboard() {
             try {
-                const [overview, productsData, purchasesData] = await Promise.all([
+                const [overview, dailySalesData, productsData, purchasesData] = await Promise.all([
                     apiFetch('/api/vendor/sales-overview'),
+                    apiFetch('/api/vendor/daily-sales'),
                     apiFetch('/api/vendor/products'),
                     apiFetch('/api/vendor/purchases'),
                 ]);
                 document.getElementById('vendor-total-sales').textContent = `$${overview.totalSales.toFixed(2)}`;
                 document.getElementById('vendor-total-orders').textContent = overview.totalOrders;
+
+                const purchases = purchasesData.purchases || [];
+                const uniqueCustomers = new Set(purchases.map(p => p.customerId)).size;
+                document.getElementById('vendor-unique-customers').textContent = uniqueCustomers;
+
                 vendorProducts = productsData.products || [];
-                document.getElementById('vendor-product-count').textContent = vendorProducts.length;
                 renderVendorProducts();
-                renderVendorOrders(purchasesData.purchases || []);
+                renderVendorOrders(purchases);
+
+                renderVendorSalesChart(dailySalesData.days || []);
+                renderNotificationCenter();
             } catch (err) {
                 console.error('Failed to load vendor dashboard', err);
                 showToast('Could not load your dashboard — check your connection and refresh.', 'error');
             }
+        }
+
+        // Real day-by-day totals from the server, plotted as-is — no
+        // fabricated curve. The trend % compares the first half of this
+        // 30-day window against the second half (a coarser but still
+        // genuine comparison; a true "vs previous 30 days" figure would
+        // need a second backend query this pass didn't add).
+        function renderVendorSalesChart(days) {
+            const canvas = document.getElementById('vendor-sales-chart');
+            if (!canvas || typeof Chart === 'undefined') return;
+            const labels = days.map(d => new Date(d.day).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+            const totals = days.map(d => d.total);
+
+            const mid = Math.ceil(totals.length / 2);
+            const firstHalf = totals.slice(0, mid).reduce((s, v) => s + v, 0);
+            const secondHalf = totals.slice(mid).reduce((s, v) => s + v, 0);
+            const trend = formatTrend(secondHalf, firstHalf, 'vs. earlier this period');
+            const trendEl = document.getElementById('vendor-sales-trend');
+            trendEl.textContent = totals.length === 0 ? '' : trend.text;
+            trendEl.className = `stat-trend ${trend.cls}`;
+
+            if (vendorSalesChartInstance) vendorSalesChartInstance.destroy();
+            vendorSalesChartInstance = new Chart(canvas.getContext('2d'), {
+                type: 'line',
+                data: {
+                    labels,
+                    datasets: [{
+                        data: totals, borderColor: '#16234a', backgroundColor: 'rgba(22,35,74,0.08)',
+                        fill: true, tension: 0.35, pointRadius: 0, borderWidth: 2,
+                    }],
+                },
+                options: {
+                    responsive: true,
+                    plugins: { legend: { display: false }, tooltip: { callbacks: { label: (ctx) => `$${ctx.parsed.y.toFixed(2)}` } } },
+                    scales: { y: { display: false }, x: { display: totals.length > 0, grid: { display: false } } },
+                },
+            });
         }
 
         function renderVendorProducts() {
@@ -5083,23 +5586,40 @@
             `).join('')}</div>`;
         }
 
+        function vendorOrderRowHtml(p) {
+            // Status pill reflects the linked delivery order's real status
+            // when one exists; a purchase with no delivery order (shouldn't
+            // normally happen, since checkout always creates one) falls
+            // back to a neutral "Placed" label rather than a fabricated one.
+            const status = p.deliveryStatus || 'placed';
+            const statusLabel = { pending: 'Processing', accepted: 'Processing', 'picked-up': 'Processing', delivered: 'Fulfilled', cancelled: 'Cancelled', placed: 'Placed' }[status] || 'Placed';
+            const statusClass = { delivered: 'fulfilled', cancelled: 'cancelled' }[status] || 'processing';
+            return `
+                <div class="vendor-order-row" data-id="${p.id}">
+                    <div class="vendor-order-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path><line x1="3" y1="6" x2="21" y2="6"></line><path d="M16 10a4 4 0 0 1-8 0"></path></svg></div>
+                    <div class="vendor-order-main">
+                        <div class="vendor-order-id">${p.id}</div>
+                        <div class="vendor-order-buyer">Buyer: ${p.customerName}</div>
+                    </div>
+                    <div class="vendor-order-right">
+                        <span class="vendor-order-status-pill ${statusClass}">${statusLabel}</span>
+                        <div class="vendor-order-price">$${p.totalAmount.toFixed(2)}</div>
+                    </div>
+                    <svg class="vendor-order-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                </div>
+            `;
+        }
+
         function renderVendorOrders(purchases) {
-            const container = document.getElementById('vendor-orders-container');
+            const preview = document.getElementById('vendor-orders-preview');
+            const full = document.getElementById('vendor-orders-container');
             if (purchases.length === 0) {
-                renderEmptyState(container, 'No orders yet.');
+                renderEmptyState(preview, 'No orders yet.');
+                renderEmptyState(full, 'No orders yet.');
                 return;
             }
-            container.innerHTML = purchases.map(p => `
-                <div class="recent-delivery-row">
-                    <div class="recent-delivery-avatar">${(p.customerName || '?').charAt(0).toUpperCase()}</div>
-                    <div class="recent-delivery-main">
-                        <div class="recent-delivery-name">${p.customerName}</div>
-                        <div class="recent-delivery-sub">${p.id}${p.deliveryOrderId ? ' · ' + p.deliveryOrderId : ''}</div>
-                    </div>
-                    <div class="recent-delivery-time">${new Date(p.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</div>
-                    <div class="recent-delivery-price">$${p.totalAmount.toFixed(2)}</div>
-                </div>
-            `).join('');
+            preview.innerHTML = purchases.slice(0, 3).map(vendorOrderRowHtml).join('');
+            full.innerHTML = purchases.map(vendorOrderRowHtml).join('');
         }
 
         function openProductModal(productId) {
@@ -5172,6 +5692,17 @@
             }
         }
 
+        function setVendorTab(tab) {
+            document.querySelectorAll('#vendor-app .mobile-nav-item').forEach(btn => btn.classList.toggle('active', btn.dataset.vendorTab === tab));
+            document.getElementById('vendor-view-home').style.display = tab === 'home' ? 'block' : 'none';
+            document.getElementById('vendor-view-products').style.display = tab === 'products' ? 'block' : 'none';
+            document.getElementById('vendor-view-orders').style.display = tab === 'orders' ? 'block' : 'none';
+            document.getElementById('vendor-view-messages').style.display = tab === 'messages' ? 'block' : 'none';
+            document.getElementById('vendor-view-account').style.display = tab === 'account' ? 'block' : 'none';
+            const shell = document.querySelector('#vendor-app .mobile-content');
+            if (shell) shell.scrollTop = 0;
+        }
+
         function wireVendorEvents() {
             document.getElementById('vendor-logout-btn').addEventListener('click', async () => {
                 clearAuth();
@@ -5179,6 +5710,7 @@
                 await showMarketplaceGuest();
             });
             document.getElementById('vendor-add-product-btn').addEventListener('click', () => openProductModal(null));
+            document.getElementById('vendor-add-product-btn-2').addEventListener('click', () => openProductModal(null));
             document.getElementById('close-product-modal').addEventListener('click', closeProductModal);
             document.getElementById('cancel-product-form').addEventListener('click', closeProductModal);
             document.getElementById('product-form').addEventListener('submit', handleProductFormSubmit);
@@ -5205,30 +5737,134 @@
                 if (e.target.classList.contains('edit-product-btn')) openProductModal(e.target.dataset.id);
                 if (e.target.classList.contains('delete-product-btn')) deleteProduct(e.target.dataset.id);
             });
+
+            // Bottom nav + "View All" / quick-action shortcuts that jump tabs
+            document.querySelectorAll('#vendor-app .mobile-nav-item').forEach(btn => {
+                btn.addEventListener('click', () => setVendorTab(btn.dataset.vendorTab));
+            });
+            document.querySelectorAll('#vendor-app [data-vendor-tab]').forEach(el => {
+                if (el.classList.contains('mobile-nav-item')) return; // already wired above
+                el.addEventListener('click', () => setVendorTab(el.dataset.vendorTab));
+            });
+
+            // Honestly-scoped placeholders — no backend exists for either yet.
+            document.getElementById('vendor-manage-promos-btn').addEventListener('click', () => {
+                showToast('Promos aren\'t built yet — coming soon.', 'info');
+            });
+            document.getElementById('vendor-view-reports-btn').addEventListener('click', () => {
+                setVendorTab('home'); // the Sales Overview chart above *is* the real report today
+                showToast('Deeper reports aren\'t built yet — this is everything real we track so far.', 'info');
+            });
+
+            // Notification bell — same real notification log as everywhere else.
+            const bell = document.getElementById('vendor-notification-btn');
+            const panel = document.getElementById('vendor-notification-panel');
+            bell.addEventListener('click', (e) => {
+                e.stopPropagation();
+                panel.classList.toggle('open');
+                if (panel.classList.contains('open')) {
+                    notificationLog.forEach(n => { n.unread = false; });
+                    renderNotificationCenter();
+                }
+            });
+            document.addEventListener('click', (e) => {
+                if (panel.classList.contains('open') && !panel.contains(e.target) && e.target !== bell) {
+                    panel.classList.remove('open');
+                }
+            });
+            document.getElementById('vendor-clear-notifications-link').addEventListener('click', () => {
+                notificationLog = [];
+                renderNotificationCenter();
+            });
         }
 
         // ============================================================
         // Storefront (sender-side marketplace browsing) + Cart + Checkout
         // ============================================================
+        let selectedStorefrontCategory = '';
+
+        // A handful of recognizable icons for common category names, with
+        // a generic fallback grid icon for anything else — since
+        // categories are free-text (vendor-entered), not a fixed enum.
+        const CATEGORY_ICON_SVGS = {
+            electronics: '<path d="M20 4H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z"></path><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line>',
+            fashion: '<path d="M20.38 3.46 16 2a4 4 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.47a1 1 0 0 0 .99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 0 0 2-2V10h2.15a1 1 0 0 0 .99-.84l.58-3.47a2 2 0 0 0-1.34-2.23z"></path>',
+            beauty: '<path d="M12 2v6M8 8h8l2 12H6L8 8z"></path>',
+            home: '<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>',
+            default: '<rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect>',
+        };
+        function categoryIconSvg(category) {
+            const key = (category || '').toLowerCase();
+            const match = Object.keys(CATEGORY_ICON_SVGS).find(k => k !== 'default' && key.includes(k));
+            return CATEGORY_ICON_SVGS[match || 'default'];
+        }
+
+        function renderStars(avgRating, reviewCount) {
+            if (!reviewCount) return '<span class="star-rating-empty">No ratings yet</span>';
+            const full = Math.round(avgRating);
+            const starSvg = '<svg viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>';
+            return `<span class="star-rating">${starSvg.repeat(Math.min(5, Math.max(1, full)))} <span style="color:var(--slate-light); font-weight:600;">${avgRating.toFixed(1)} (${reviewCount})</span></span>`;
+        }
+
         async function loadStorefront() {
             try {
                 const data = await apiFetch('/api/marketplace/products');
                 storefrontProducts = data.products || [];
                 const categories = [...new Set(storefrontProducts.map(p => p.category).filter(Boolean))];
-                const categorySelect = document.getElementById('storefront-category-filter');
-                categorySelect.innerHTML = '<option value="">All Categories</option>' + categories.map(c => `<option value="${c}">${c}</option>`).join('');
+                const grid = document.getElementById('mp-category-grid');
+                grid.innerHTML = [`<button type="button" class="category-item" data-category="">
+                        <div class="category-icon-box"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${CATEGORY_ICON_SVGS.default}</svg></div>
+                        <div class="category-label">All</div>
+                    </button>`, ...categories.map(c => `
+                    <button type="button" class="category-item" data-category="${c}">
+                        <div class="category-icon-box"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${categoryIconSvg(c)}</svg></div>
+                        <div class="category-label">${c}</div>
+                    </button>
+                `)].join('');
                 renderStorefrontProducts();
+
+                // Popular Stores preview on the Home tab — real data,
+                // capped to a handful for a compact preview row.
+                const storesData = await apiFetch('/api/marketplace/stores').catch(() => ({ stores: [] }));
+                renderStoreCards(document.getElementById('mp-popular-stores-preview'), (storesData.stores || []).slice(0, 4));
             } catch (err) {
                 console.error('Failed to load storefront', err);
+            }
+        }
+
+        function renderStoreCards(container, stores) {
+            if (!container) return;
+            if (stores.length === 0) {
+                container.innerHTML = '<p style="grid-column: 1 / -1; text-align:center; color:var(--slate-light); font-size:0.875rem;">No stores yet.</p>';
+                return;
+            }
+            container.innerHTML = stores.map(s => `
+                <div class="store-card">
+                    <div class="store-card-avatar">${s.businessName.charAt(0).toUpperCase()}</div>
+                    <div class="store-card-name">${s.businessName}</div>
+                    <div class="store-card-rating">${s.reviewCount > 0 ? '★ ' + s.avgRating.toFixed(1) : 'New'}</div>
+                </div>
+            `).join('');
+        }
+
+        async function loadStoresDirectory() {
+            const container = document.getElementById('mp-stores-full-list');
+            try {
+                const data = await apiFetch('/api/marketplace/stores');
+                renderStoreCards(container, data.stores || []);
+            } catch (err) {
+                container.innerHTML = `<p style="grid-column: 1 / -1; text-align:center; color:#dc2626;">${err.message}</p>`;
             }
         }
 
         function renderStorefrontProducts() {
             const container = document.getElementById('storefront-products-container');
             const search = document.getElementById('storefront-search-input').value.trim().toLowerCase();
-            const category = document.getElementById('storefront-category-filter').value;
+            document.querySelectorAll('#mp-category-grid .category-item').forEach(btn => {
+                btn.classList.toggle('active-category', btn.dataset.category === selectedStorefrontCategory);
+            });
             const filtered = storefrontProducts.filter(p => {
-                if (category && p.category !== category) return false;
+                if (selectedStorefrontCategory && p.category !== selectedStorefrontCategory) return false;
                 if (search && !`${p.name} ${p.vendorName}`.toLowerCase().includes(search)) return false;
                 return true;
             });
@@ -5242,6 +5878,7 @@
                     <div class="product-card-body">
                         <div class="product-card-name">${p.name}</div>
                         <div class="product-card-vendor">${p.vendorName}</div>
+                        ${renderStars(p.avgRating, p.reviewCount)}
                         <div class="product-card-price">$${p.price.toFixed(2)}</div>
                     </div>
                     <div class="product-card-actions">
@@ -5268,7 +5905,9 @@
 
         function updateCartCount() {
             const count = cart.reduce((sum, c) => sum + c.quantity, 0);
-            document.getElementById('cart-count').textContent = count;
+            const badge = document.getElementById('cart-count-badge');
+            badge.textContent = count;
+            badge.style.display = count > 0 ? 'flex' : 'none';
         }
 
         function renderCartModal() {
@@ -5343,7 +5982,12 @@
 
         function wireStorefrontEvents() {
             document.getElementById('storefront-search-input').addEventListener('input', debounce(renderStorefrontProducts, 200));
-            document.getElementById('storefront-category-filter').addEventListener('change', renderStorefrontProducts);
+            document.getElementById('mp-category-grid').addEventListener('click', (e) => {
+                const btn = e.target.closest('.category-item');
+                if (!btn) return;
+                selectedStorefrontCategory = btn.dataset.category;
+                renderStorefrontProducts();
+            });
             document.getElementById('storefront-products-container').addEventListener('click', (e) => {
                 if (e.target.classList.contains('add-to-cart-btn')) addToCart(e.target.dataset.id);
             });
@@ -5374,6 +6018,13 @@
                 document.getElementById('cart-modal').classList.add('active');
             });
             document.getElementById('checkout-form').addEventListener('submit', handleCheckoutSubmit);
+        }
+
+        // PWA install support — safe no-op in browsers that don't support it.
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js').catch((err) => console.warn('Service worker registration failed', err));
+            });
         }
     </script>
 </body>

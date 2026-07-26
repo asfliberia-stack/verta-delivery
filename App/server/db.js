@@ -495,13 +495,22 @@ const db = {
   // the vendor's business name attached so the storefront can show it.
   async getActiveProductsForStorefront() {
     const { rows } = await pool.query(`
-      SELECT p.*, u.business_name AS vendor_name
+      SELECT p.*, u.business_name AS vendor_name,
+        COALESCE(AVG(r.rating), 0)::numeric AS avg_rating,
+        COUNT(r.id)::int AS review_count
       FROM products p
       JOIN users u ON u.id = p.vendor_id
+      LEFT JOIN product_reviews r ON r.product_id = p.id
       WHERE p.is_active = true AND p.stock_quantity > 0
+      GROUP BY p.id, u.business_name
       ORDER BY p.created_at DESC
     `);
-    return rows.map(r => ({ ...rowToProduct(r), vendorName: r.vendor_name }));
+    return rows.map(r => ({
+      ...rowToProduct(r),
+      vendorName: r.vendor_name,
+      avgRating: Number(r.avg_rating),
+      reviewCount: r.review_count,
+    }));
   },
 
   async getProductById(id) {
@@ -601,14 +610,15 @@ const db = {
 
   async getPurchasesByVendor(vendorId, limit = 50) {
     const { rows } = await pool.query(`
-      SELECT p.*, u.business_name AS customer_name
+      SELECT p.*, u.business_name AS customer_name, o.status AS delivery_status
       FROM purchases p
       JOIN users u ON u.id = p.customer_id
+      LEFT JOIN orders o ON o.id = p.delivery_order_id
       WHERE p.vendor_id = $1
       ORDER BY p.created_at DESC
       LIMIT $2
     `, [vendorId, limit]);
-    return rows.map(r => ({ ...rowToPurchase(r), customerName: r.customer_name }));
+    return rows.map(r => ({ ...rowToPurchase(r), customerName: r.customer_name, deliveryStatus: r.delivery_status }));
   },
 
   async getPurchaseItems(purchaseId) {
@@ -625,6 +635,83 @@ const db = {
       WHERE vendor_id = $1 AND created_at > now() - ($2 || ' days')::interval
     `, [vendorId, days]);
     return { totalSales: Number(rows[0].total_sales), totalOrders: rows[0].total_orders };
+  },
+
+  // Real day-by-day revenue for the Sales Overview line chart — no
+  // fabricated curve, actual sums grouped by day.
+  async getVendorDailySales(vendorId, days = 30) {
+    const { rows } = await pool.query(`
+      SELECT date_trunc('day', created_at) AS day, COALESCE(SUM(total_amount), 0)::numeric AS total
+      FROM purchases
+      WHERE vendor_id = $1 AND created_at > now() - ($2 || ' days')::interval
+      GROUP BY day
+      ORDER BY day ASC
+    `, [vendorId, days]);
+    return rows.map(r => ({ day: r.day, total: Number(r.total) }));
+  },
+
+  // ---- Product reviews (real ratings, not fabricated) ------------------
+
+  // A customer can only review a product they actually bought — checked
+  // via purchase_items/purchases joined to this customer, matching the
+  // rest of this app's "don't trust the client, verify against real
+  // records" pattern.
+  async hasCustomerPurchasedProduct(customerId, productId) {
+    const { rows } = await pool.query(`
+      SELECT 1 FROM purchase_items pi
+      JOIN purchases p ON p.id = pi.purchase_id
+      WHERE p.customer_id = $1 AND pi.product_id = $2
+      LIMIT 1
+    `, [customerId, productId]);
+    return rows.length > 0;
+  },
+
+  async upsertProductReview({ id, productId, customerId, rating, comment }) {
+    const { rows } = await pool.query(`
+      INSERT INTO product_reviews (id, product_id, customer_id, rating, comment)
+      VALUES ($1, $2, $3, $4, $5)
+      ON CONFLICT (product_id, customer_id) DO UPDATE SET rating = $4, comment = $5
+      RETURNING *
+    `, [id, productId, customerId, rating, comment || null]);
+    return rows[0];
+  },
+
+  async getProductReviews(productId) {
+    const { rows } = await pool.query(`
+      SELECT r.*, u.business_name AS customer_name
+      FROM product_reviews r
+      JOIN users u ON u.id = r.customer_id
+      WHERE r.product_id = $1
+      ORDER BY r.created_at DESC
+    `, [productId]);
+    return rows.map(r => ({
+      id: r.id, rating: r.rating, comment: r.comment, customerName: r.customer_name, createdAt: r.created_at,
+    }));
+  },
+
+  // ---- Stores directory (public — Marketplace "Stores" tab) -----------
+  // Real vendor list with real product counts and real average rating
+  // aggregated across all of that vendor's products' reviews.
+  async getStorefrontVendors() {
+    const { rows } = await pool.query(`
+      SELECT u.id, u.business_name,
+        COUNT(DISTINCT p.id)::int AS product_count,
+        COALESCE(AVG(r.rating), 0)::numeric AS avg_rating,
+        COUNT(r.id)::int AS review_count
+      FROM users u
+      LEFT JOIN products p ON p.vendor_id = u.id AND p.is_active = true
+      LEFT JOIN product_reviews r ON r.product_id = p.id
+      WHERE u.role = 'vendor'
+      GROUP BY u.id
+      ORDER BY u.business_name ASC
+    `);
+    return rows.map(r => ({
+      id: r.id,
+      businessName: r.business_name,
+      productCount: r.product_count,
+      avgRating: Number(r.avg_rating),
+      reviewCount: r.review_count,
+    }));
   },
 };
 

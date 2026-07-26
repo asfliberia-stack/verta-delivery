@@ -212,3 +212,18 @@ CREATE TABLE IF NOT EXISTS purchase_items (
     quantity      INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_purchase_items_purchase_id ON purchase_items (purchase_id);
+
+-- Real product ratings (mobile mockup shows star ratings on every
+-- product card — this makes them genuine rather than fabricated
+-- numbers). A customer can only review a product they actually bought
+-- (checked in server.js), one review per product per customer.
+CREATE TABLE IF NOT EXISTS product_reviews (
+    id          TEXT PRIMARY KEY,
+    product_id  TEXT NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+    customer_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    rating      INTEGER NOT NULL CHECK (rating BETWEEN 1 AND 5),
+    comment     TEXT,
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+    UNIQUE (product_id, customer_id)
+);
+CREATE INDEX IF NOT EXISTS idx_product_reviews_product_id ON product_reviews (product_id);
