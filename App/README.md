@@ -787,3 +787,60 @@ pass focused on exact values and a few real layout/behavior gaps.
 
 No fake data anywhere in this pass — every number shown is computed
 from real orders/agents already in the database.
+
+## Two dashboards: Manage Agent + Super Admin
+
+Added a real, distinct **Super Admin** role, on top of the existing
+admin account (now labeled "Manage Agent" in the UI — same login,
+completely unchanged, per your request).
+
+### Login
+
+- **Manage Agent**: exactly as before — shared password (`1Nigeria@`
+  by default), no changes to how it works.
+- **Super Admin**: a real, separate account — `asfliberia@gmail.com` /
+  `1Liberia` by default (override with `SUPER_ADMIN_EMAIL` /
+  `SUPER_ADMIN_PASSWORD` in Railway's Variables tab), seeded
+  automatically on first boot. Third option on the login screen, with
+  its own email+password form — reuses the same `/api/auth/login`
+  endpoint sender login already used (it was always role-agnostic
+  server-side), but refuses to proceed client-side if the account that
+  authenticates isn't actually `super_admin`.
+
+### What Super Admin can do
+
+Everywhere the code checked "is this an admin?", it now checks "is this
+an admin OR a super admin?" via a shared `isAdminLike()` helper — so
+Super Admin has every capability Manage Agent has (accept orders,
+manage the Fleet Directory, Settings, everything), plus one exclusive
+addition:
+
+- **Vendors panel** (sidebar nav item only Super Admin sees): lists
+  every Manage Agent account, plus platform totals (orders, revenue,
+  agent count). New endpoint: `GET /api/super-admin/vendors`, gated by
+  a dedicated `requireSuperAdmin` check — Manage Agent can't reach it
+  even by guessing the URL.
+
+### The honest limitation
+
+**This app is still single-tenant.** Orders, expenses, and the Fleet
+Directory are one shared dataset — they aren't scoped to a specific
+Manage Agent account. So today, the Vendors panel shows one vendor
+(the one seeded Manage Agent account) and "platform totals" are really
+just that one business's totals. This is stated plainly in the Vendors
+modal itself, not hidden.
+
+This is intentionally the right foundation for the marketplace: once
+the vendor/store data model exists (still pending — see the earlier
+conversation about checkout/payout model and vendor onboarding), each
+new vendor becomes a new `admin`-role account, the Vendors panel
+becomes genuinely multi-row with separate real numbers per vendor, and
+Super Admin's oversight becomes meaningful oversight rather than a
+view of the same single dataset from a different login.
+
+### Database migration note
+
+Existing databases get an explicit `ALTER TABLE` migration (schema.sql)
+to widen the `role` column's CHECK constraint to allow `super_admin` —
+`CREATE TABLE IF NOT EXISTS` alone wouldn't have touched an
+already-existing table's constraint.

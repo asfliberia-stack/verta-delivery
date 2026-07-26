@@ -66,9 +66,23 @@ async function requireAuth(req, res, next) {
   }
 }
 
+// True for both roles that can operate the dashboard — a plain "admin"
+// (Manage Agent, one business) and "super_admin" (oversees everything,
+// including the Vendors panel that only super_admin can reach).
+function isAdminLike(role) {
+  return role === 'admin' || role === 'super_admin';
+}
+
 function requireAdmin(req, res, next) {
-  if (!req.user || req.user.role !== 'admin') {
+  if (!req.user || !isAdminLike(req.user.role)) {
     return res.status(403).json({ error: 'Admin access required' });
+  }
+  next();
+}
+
+function requireSuperAdmin(req, res, next) {
+  if (!req.user || req.user.role !== 'super_admin') {
+    return res.status(403).json({ error: 'Super Admin access required' });
   }
   next();
 }
@@ -96,5 +110,7 @@ module.exports = {
   verifyToken,
   requireAuth,
   requireAdmin,
+  requireSuperAdmin,
+  isAdminLike,
   socketAuth,
 };

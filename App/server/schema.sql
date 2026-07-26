@@ -8,7 +8,7 @@ CREATE TABLE IF NOT EXISTS users (
     email         TEXT NOT NULL UNIQUE,
     phone         TEXT,
     password_hash TEXT NOT NULL,
-    role          TEXT NOT NULL DEFAULT 'sender' CHECK (role IN ('sender', 'admin')),
+    role          TEXT NOT NULL DEFAULT 'sender' CHECK (role IN ('sender', 'admin', 'super_admin')),
     created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
@@ -18,6 +18,14 @@ CREATE TABLE IF NOT EXISTS users (
 -- Existing senders will have phone = NULL until they add one; password
 -- reset simply won't be available to them until then (see README).
 ALTER TABLE users ADD COLUMN IF NOT EXISTS phone TEXT;
+
+-- Existing databases already have a `role` CHECK constraint that only
+-- allows 'sender'/'admin' — CREATE TABLE IF NOT EXISTS above won't touch
+-- it on an already-existing table, so this widens it explicitly to add
+-- 'super_admin' (the Postgres-assigned default name for an inline column
+-- CHECK constraint is `<table>_<column>_check`).
+ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check;
+ALTER TABLE users ADD CONSTRAINT users_role_check CHECK (role IN ('sender', 'admin', 'super_admin'));
 
 -- Bumped whenever an admin uses "Logout All Devices" (Settings > Security).
 -- Every JWT embeds the token_version that was current when it was issued;

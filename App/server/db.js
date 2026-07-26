@@ -417,6 +417,25 @@ const db = {
     }));
   },
 
+  // ---- Vendors (Manage Agent accounts — Super Admin oversight) --------
+  // NOTE: this app is still single-tenant today. There is no per-vendor
+  // data isolation yet — orders/agents/expenses aren't scoped to a
+  // specific "admin" account, they're one shared dataset. This just
+  // lists the Manage Agent accounts themselves; the platform totals
+  // shown alongside them (in server.js) are GLOBAL, not per-vendor,
+  // until the marketplace/vendor schema exists.
+  async getVendors() {
+    const { rows } = await pool.query(
+      "SELECT id, business_name, email, created_at FROM users WHERE role = 'admin' ORDER BY created_at ASC"
+    );
+    return rows.map(r => ({
+      id: r.id,
+      businessName: r.business_name,
+      email: r.email,
+      createdAt: r.created_at,
+    }));
+  },
+
   // ---- Price presets (Settings > Pricing) ------------------------------
 
   async getAllPricePresets() {

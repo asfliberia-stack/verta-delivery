@@ -16,6 +16,8 @@ const {
   signToken,
   requireAuth,
   requireAdmin,
+  requireSuperAdmin,
+  isAdminLike,
   socketAuth,
 } = require('./auth');
 
@@ -116,7 +118,7 @@ function orderRooms(senderId) {
 }
 
 io.on('connection', (socket) => {
-  const room = socket.user.role === 'admin' ? 'admins' : `user:${socket.user.id}`;
+  const room = isAdminLike(socket.user.role) ? 'admins' : `user:${socket.user.id}`;
   socket.join(room);
   console.log(`[socket] ${socket.user.role} connected: ${socket.user.email} (${socket.id})`);
 
@@ -128,7 +130,7 @@ io.on('connection', (socket) => {
 
   socket.on('order:create', async (payload, ack) => {
     const isSender = socket.user.role === 'sender';
-    const isAdmin = socket.user.role === 'admin';
+    const isAdmin = isAdminLike(socket.user.role);
     if (!isSender && !isAdmin) {
       return ack && ack({ ok: false, error: 'Not allowed to create orders' });
     }
@@ -193,7 +195,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('order:update', async ({ id, fields }, ack) => {
-    if (socket.user.role !== 'admin') {
+    if (!isAdminLike(socket.user.role)) {
       return ack && ack({ ok: false, error: 'Only admins can update orders' });
     }
     try {
@@ -207,7 +209,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('order:accept', async ({ id, amount, acceptedBy, paymentMethod }, ack) => {
-    if (socket.user.role !== 'admin') {
+    if (!isAdminLike(socket.user.role)) {
       return ack && ack({ ok: false, error: 'Only admins can accept orders' });
     }
     try {
@@ -227,7 +229,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('order:delete-bulk', async ({ ids, password }, ack) => {
-    if (socket.user.role !== 'admin') {
+    if (!isAdminLike(socket.user.role)) {
       return ack && ack({ ok: false, error: 'Only admins can delete orders' });
     }
     if (!password || password !== DELETE_PASSWORD) {
@@ -250,7 +252,7 @@ io.on('connection', (socket) => {
   // ---- Expenses (admin only, not tied to a sender) ----
 
   socket.on('expense:create', async (payload, ack) => {
-    if (socket.user.role !== 'admin') {
+    if (!isAdminLike(socket.user.role)) {
       return ack && ack({ ok: false, error: 'Only admins can add expenses' });
     }
     try {
@@ -264,7 +266,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('expense:delete', async ({ id, password }, ack) => {
-    if (socket.user.role !== 'admin') {
+    if (!isAdminLike(socket.user.role)) {
       return ack && ack({ ok: false, error: 'Only admins can delete expenses' });
     }
     if (!password || password !== DELETE_PASSWORD) {
@@ -283,7 +285,7 @@ io.on('connection', (socket) => {
   // ---- Fleet Directory (agents) — admin-managed, admin-only --------
 
   socket.on('agent:create', async ({ name, phone }, ack) => {
-    if (socket.user.role !== 'admin') {
+    if (!isAdminLike(socket.user.role)) {
       return ack && ack({ ok: false, error: 'Only admins can add agents' });
     }
     if (!name || !name.trim() || !phone || !phone.trim()) {
@@ -300,7 +302,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('agent:update', async ({ id, name, phone }, ack) => {
-    if (socket.user.role !== 'admin') {
+    if (!isAdminLike(socket.user.role)) {
       return ack && ack({ ok: false, error: 'Only admins can edit agents' });
     }
     if (!name || !name.trim() || !phone || !phone.trim()) {
@@ -320,7 +322,7 @@ io.on('connection', (socket) => {
   // "On Duty / Off Duty" — explicitly admin-set, not automatic presence
   // (see the duty_status comment in schema.sql for why).
   socket.on('agent:set-duty-status', async ({ id, dutyStatus }, ack) => {
-    if (socket.user.role !== 'admin') {
+    if (!isAdminLike(socket.user.role)) {
       return ack && ack({ ok: false, error: 'Only admins can change agent duty status' });
     }
     if (dutyStatus !== 'on_duty' && dutyStatus !== 'off_duty') {
@@ -497,7 +499,7 @@ app.get('/api/me', requireAuth, async (req, res) => {
 app.get('/api/state', requireAuth, async (req, res) => {
   try {
     const settings = await db.getSettings();
-    if (req.user.role === 'admin') {
+    if (isAdminLike(req.user.role)) {
       const [orders, expenses, agents, pricePresets] = await Promise.all([
         db.getAllOrders(), db.getAllExpenses(), db.getAllAgents(), db.getAllPricePresets(),
       ]);
@@ -637,6 +639,37 @@ app.get('/api/admin/customers', requireAuth, requireAdmin, async (req, res) => {
 });
 
 // ============================================================
+// Super Admin only — Vendors oversight panel. Lists every Manage
+// Agent (admin) account plus platform-wide totals.
+//
+// IMPORTANT LIMITATION (see db.js getVendors comment too): this app is
+// still single-tenant — orders/agents/expenses are one shared dataset,
+// not partitioned per vendor. So "platform totals" below really means
+// "the one shared business's totals" until a real vendor/store schema
+// exists. Once the marketplace data model is built, this becomes the
+// place to show genuinely separate per-vendor numbers.
+// ============================================================
+app.get('/api/super-admin/vendors', requireAuth, requireSuperAdmin, async (req, res) => {
+  try {
+    const [vendors, orders, agents] = await Promise.all([
+      db.getVendors(), db.getAllOrders(), db.getAllAgents(),
+    ]);
+    const totalRevenue = orders.filter(o => o.status === 'delivered').reduce((sum, o) => sum + (o.amount || 0), 0);
+    res.json({
+      vendors,
+      platformTotals: {
+        totalOrders: orders.length,
+        totalRevenue,
+        totalAgents: agents.length,
+      },
+    });
+  } catch (err) {
+    console.error('GET /api/super-admin/vendors failed', err);
+    res.status(500).json({ error: 'Failed to load vendors' });
+  }
+});
+
+// ============================================================
 // Pricing presets — admin-defined reference price points, offered as
 // quick-select options in the Accept Order flow. Not an automatic
 // distance/zone calculator (no mapping data backs this app).
@@ -686,6 +719,27 @@ async function seedAdminIfConfigured() {
   console.log(`[seed] Created admin account for ${ADMIN_EMAIL}`);
 }
 
+// Super Admin — a distinct role that oversees every Manage Agent
+// (admin) account. Defaults to the requested credentials; override via
+// env vars in Railway if you want to change them without redeploying
+// code.
+const SUPER_ADMIN_EMAIL = process.env.SUPER_ADMIN_EMAIL || 'asfliberia@gmail.com';
+const SUPER_ADMIN_PASSWORD = process.env.SUPER_ADMIN_PASSWORD || '1Liberia';
+
+async function seedSuperAdminIfConfigured() {
+  const existing = await db.getUserByEmail(SUPER_ADMIN_EMAIL);
+  if (existing) return; // already seeded
+  const passwordHash = await hashPassword(SUPER_ADMIN_PASSWORD);
+  await db.createUser({
+    id: crypto.randomUUID(),
+    businessName: 'Super Admin',
+    email: SUPER_ADMIN_EMAIL,
+    passwordHash,
+    role: 'super_admin',
+  });
+  console.log(`[seed] Created super admin account for ${SUPER_ADMIN_EMAIL}`);
+}
+
 // The five agents that used to be a hardcoded client-side constant — now
 // real, editable rows. Seeded once so upgrading to this version doesn't
 // change anything an admin currently sees; from then on the Fleet
@@ -709,6 +763,7 @@ async function seedAgentsIfEmpty() {
 
 db.init()
   .then(seedAdminIfConfigured)
+  .then(seedSuperAdminIfConfigured)
   .then(seedAgentsIfEmpty)
   .then(() => {
     server.listen(PORT, () => console.log(`Verta Delivery server listening on :${PORT}`));

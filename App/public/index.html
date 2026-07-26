@@ -847,7 +847,8 @@
         </div>
         <div class="mode-toggle">
             <button type="button" id="mode-sender-btn" class="active">Send a Package</button>
-            <button type="button" id="mode-admin-btn">Admin</button>
+            <button type="button" id="mode-admin-btn">Manage Agent</button>
+            <button type="button" id="mode-super-admin-btn">Super Admin</button>
         </div>
 
         <!-- Sender login/register card -->
@@ -943,15 +944,34 @@
         </div>
 
         <!-- Admin login card -->
+        <!-- Admin login card -->
         <div class="auth-card" id="admin-auth-card" style="display:none;">
-            <h3 style="margin-bottom: 1.5rem; text-align:center;">Admin Login</h3>
+            <h3 style="margin-bottom: 1.5rem; text-align:center;">Manage Agent Login</h3>
             <form id="admin-login-form">
                 <div class="form-group">
                     <label class="form-label">Admin Password</label>
                     <input type="password" class="form-input" id="admin-password" placeholder="••••••••" required>
                 </div>
                 <div class="auth-error" id="admin-login-error"></div>
-                <button type="submit" class="btn-primary" style="width:100%;" id="admin-login-submit-btn">Login as Admin</button>
+                <button type="submit" class="btn-primary" style="width:100%;" id="admin-login-submit-btn">Login as Manage Agent</button>
+            </form>
+        </div>
+
+        <!-- Super Admin login card — a real, distinct account (email +
+             password), not the shared Manage Agent password. -->
+        <div class="auth-card" id="super-admin-auth-card" style="display:none;">
+            <h3 style="margin-bottom: 1.5rem; text-align:center;">Super Admin Login</h3>
+            <form id="super-admin-login-form">
+                <div class="form-group">
+                    <label class="form-label">Email</label>
+                    <input type="email" class="form-input" id="super-admin-email" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Password</label>
+                    <input type="password" class="form-input" id="super-admin-password" required>
+                </div>
+                <div class="auth-error" id="super-admin-login-error"></div>
+                <button type="submit" class="btn-primary" style="width:100%;" id="super-admin-login-submit-btn">Login as Super Admin</button>
             </form>
         </div>
     </div>
@@ -1021,6 +1041,10 @@
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><path d="M20 8v6M23 11h-6"></path></svg>
                         Customers
                     </button>
+                    <button type="button" class="admin-nav-item" id="open-vendors-btn" style="display:none;">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+                        Vendors
+                    </button>
                     <button type="button" class="admin-nav-item" id="open-settings-btn">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
                         Settings
@@ -1034,7 +1058,7 @@
                 <div class="admin-sidebar-footer">
                     <div class="admin-profile">
                         <div class="user-avatar" id="user-avatar">A</div>
-                        <div class="admin-profile-label">Manage Agents</div>
+                        <div class="admin-profile-label" id="sidebar-role-label">Manage Agent</div>
                     </div>
                     <button type="button" class="admin-nav-item admin-logout" id="admin-logout-btn">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
@@ -1064,7 +1088,7 @@
                                 <div class="user-avatar" id="topbar-user-avatar">A</div>
                                 <div>
                                     <div class="admin-topbar-profile-name" id="topbar-user-name">Admin</div>
-                                    <div class="admin-topbar-profile-role">Super Admin</div>
+                                    <div class="admin-topbar-profile-role" id="topbar-user-role">Manage Agent</div>
                                 </div>
                             </div>
                         </div>
@@ -1683,7 +1707,7 @@
                     <div class="settings-panel" id="settings-panel-about" style="display:none;">
                         <h4 class="settings-section-title">Application Information</h4>
                         <div class="settings-about-row"><span>App Name</span><strong>Verta Delivery Services</strong></div>
-                        <div class="settings-about-row"><span>Current Version</span><strong>v26.0.0</strong></div>
+                        <div class="settings-about-row"><span>Current Version</span><strong>v1.0.0</strong></div>
                         <div class="settings-about-row"><span>Last Update</span><strong>July 18, 2026</strong></div>
                         <div class="settings-about-row"><span>Support Contact</span><strong>support@verta.com<br>+231-886-165-524</strong></div>
                         <h4 class="settings-section-title">Links</h4>
@@ -1717,6 +1741,23 @@
                 <button class="close-btn" id="close-customers-modal">&times;</button>
             </div>
             <div id="customers-modal-content">
+                <p style="text-align: center; color: var(--slate-light); padding: 2rem 0;">Loading…</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Vendors (Super Admin only) -->
+    <div class="modal-overlay" id="vendors-modal">
+        <div class="modal" style="max-width: 900px; width: 95%; max-height: 85vh; overflow-y: auto;">
+            <div class="modal-header">
+                <h3>🏬 Vendors</h3>
+                <button class="close-btn" id="close-vendors-modal">&times;</button>
+            </div>
+            <p style="color: var(--slate-light); margin-bottom: 1.5rem; font-size: 0.875rem;">
+                This app is still single-tenant — every vendor below shares the same order/agent/expense data today.
+                Once the marketplace's own vendor data model exists, this becomes real per-vendor separation.
+            </p>
+            <div id="vendors-modal-content">
                 <p style="text-align: center; color: var(--slate-light); padding: 2rem 0;">Loading…</p>
             </div>
         </div>
@@ -2205,13 +2246,27 @@
 
             // Show the right dashboard shell immediately, with skeleton
             // placeholders while the initial state loads — no blank gap.
-            if (currentUser.role === 'admin') {
+            // Super Admin reuses the same operational dashboard as Manage
+            // Agent (this app is still single-tenant — see README), with
+            // role-aware labels and an extra Vendors panel only they can see.
+            if (currentUser.role === 'admin' || currentUser.role === 'super_admin') {
+                const isSuperAdmin = currentUser.role === 'super_admin';
+                const roleLabel = isSuperAdmin ? 'Super Admin' : 'Manage Agent';
                 document.getElementById('home-screen').style.display = 'none';
                 document.getElementById('delivery-app').style.display = 'block';
-                document.getElementById('user-name').textContent = currentUser.businessName || 'Admin';
-                document.getElementById('user-avatar').textContent = (currentUser.businessName || 'A').charAt(0).toUpperCase();
-                document.getElementById('topbar-user-name').textContent = currentUser.businessName || 'Admin';
-                document.getElementById('topbar-user-avatar').textContent = (currentUser.businessName || 'A').charAt(0).toUpperCase();
+                document.getElementById('delivery-app').setAttribute('data-role', currentUser.role);
+                document.getElementById('user-name').textContent = currentUser.businessName || roleLabel;
+                document.getElementById('user-avatar').textContent = (currentUser.businessName || roleLabel).charAt(0).toUpperCase();
+                document.getElementById('topbar-user-name').textContent = currentUser.businessName || roleLabel;
+                document.getElementById('topbar-user-avatar').textContent = (currentUser.businessName || roleLabel).charAt(0).toUpperCase();
+                const topbarRoleEl = document.getElementById('topbar-user-role');
+                if (topbarRoleEl) topbarRoleEl.textContent = roleLabel;
+                const welcomeRoleEl = document.querySelector('.admin-welcome-role');
+                if (welcomeRoleEl) welcomeRoleEl.textContent = roleLabel;
+                const sidebarLabelEl = document.getElementById('sidebar-role-label');
+                if (sidebarLabelEl) sidebarLabelEl.textContent = roleLabel;
+                const vendorsNavBtn = document.getElementById('open-vendors-btn');
+                if (vendorsNavBtn) vendorsNavBtn.style.display = isSuperAdmin ? 'flex' : 'none';
                 startAdminClock();
                 renderNotificationCenter();
                 renderSkeletonCards(document.getElementById('orders-grouped-delivery'));
@@ -2247,21 +2302,22 @@
         function wireAuthScreenEvents() {
             const modeSenderBtn = document.getElementById('mode-sender-btn');
             const modeAdminBtn = document.getElementById('mode-admin-btn');
+            const modeSuperAdminBtn = document.getElementById('mode-super-admin-btn');
             const senderCard = document.getElementById('sender-auth-card');
             const adminCard = document.getElementById('admin-auth-card');
+            const superAdminCard = document.getElementById('super-admin-auth-card');
 
-            modeSenderBtn.addEventListener('click', () => {
-                modeSenderBtn.classList.add('active');
-                modeAdminBtn.classList.remove('active');
-                senderCard.style.display = 'block';
-                adminCard.style.display = 'none';
-            });
-            modeAdminBtn.addEventListener('click', () => {
-                modeAdminBtn.classList.add('active');
-                modeSenderBtn.classList.remove('active');
-                adminCard.style.display = 'block';
-                senderCard.style.display = 'none';
-            });
+            function showAuthMode(mode) {
+                modeSenderBtn.classList.toggle('active', mode === 'sender');
+                modeAdminBtn.classList.toggle('active', mode === 'admin');
+                modeSuperAdminBtn.classList.toggle('active', mode === 'super-admin');
+                senderCard.style.display = mode === 'sender' ? 'block' : 'none';
+                adminCard.style.display = mode === 'admin' ? 'block' : 'none';
+                superAdminCard.style.display = mode === 'super-admin' ? 'block' : 'none';
+            }
+            modeSenderBtn.addEventListener('click', () => showAuthMode('sender'));
+            modeAdminBtn.addEventListener('click', () => showAuthMode('admin'));
+            modeSuperAdminBtn.addEventListener('click', () => showAuthMode('super-admin'));
 
             const tabLogin = document.getElementById('tab-login');
             const tabRegister = document.getElementById('tab-register');
@@ -2456,7 +2512,43 @@
                     document.getElementById('admin-password').value = '';
                 } finally {
                     btn.disabled = false;
-                    btn.textContent = 'Login as Admin';
+                    btn.textContent = 'Login as Manage Agent';
+                }
+            });
+
+            document.getElementById('super-admin-login-form').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const errorEl = document.getElementById('super-admin-login-error');
+                const btn = document.getElementById('super-admin-login-submit-btn');
+                errorEl.style.display = 'none';
+                btn.disabled = true;
+                btn.textContent = 'Logging in…';
+                try {
+                    // Reuses the same email+password endpoint sender login
+                    // uses — it's role-agnostic server-side. This form just
+                    // refuses to proceed if the account it authenticated
+                    // isn't actually a Super Admin account.
+                    const data = await apiFetch('/api/auth/login', {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            email: document.getElementById('super-admin-email').value,
+                            password: document.getElementById('super-admin-password').value,
+                        })
+                    });
+                    if (data.user.role !== 'super_admin') {
+                        errorEl.textContent = 'This account is not a Super Admin account.';
+                        errorEl.style.display = 'block';
+                        return;
+                    }
+                    saveAuth(data.token, data.user);
+                    await enterApp();
+                } catch (err) {
+                    errorEl.textContent = err.message;
+                    errorEl.style.display = 'block';
+                    document.getElementById('super-admin-password').value = '';
+                } finally {
+                    btn.disabled = false;
+                    btn.textContent = 'Login as Super Admin';
                 }
             });
 
@@ -3028,6 +3120,15 @@
                 document.getElementById('customers-modal').classList.remove('active');
             });
 
+            // ---- Vendors (Super Admin only) ----
+            document.getElementById('open-vendors-btn').addEventListener('click', () => {
+                document.getElementById('vendors-modal').classList.add('active');
+                loadVendors();
+            });
+            document.getElementById('close-vendors-modal').addEventListener('click', () => {
+                document.getElementById('vendors-modal').classList.remove('active');
+            });
+
             // ---- Help & Support ----
             document.getElementById('open-help-support-btn').addEventListener('click', () => {
                 renderHelpSupport();
@@ -3125,6 +3226,56 @@
                     </tr>`;
                 });
                 html += '</tbody></table></div>';
+                container.innerHTML = html;
+            } catch (err) {
+                container.innerHTML = `<p style="text-align: center; color: #dc2626; padding: 2rem 0;">${err.message}</p>`;
+            }
+        }
+
+        // Super Admin only — real Manage Agent account list + real
+        // platform totals. See the vendors-modal HTML for the honest
+        // single-tenant caveat shown to the person using this.
+        async function loadVendors() {
+            const container = document.getElementById('vendors-modal-content');
+            try {
+                const data = await apiFetch('/api/super-admin/vendors');
+                const vendors = data.vendors || [];
+                const totals = data.platformTotals || { totalOrders: 0, totalRevenue: 0, totalAgents: 0 };
+
+                let html = `
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+                        <div style="background: var(--bg-light); padding: 1rem; border-radius: 0.75rem; text-align: center;">
+                            <div style="font-size: 0.75rem; color: var(--slate-light); text-transform: uppercase; letter-spacing: 0.03em;">Total Vendors</div>
+                            <div style="font-size: 1.5rem; font-weight: 800; color: var(--slate);">${vendors.length}</div>
+                        </div>
+                        <div style="background: var(--bg-light); padding: 1rem; border-radius: 0.75rem; text-align: center;">
+                            <div style="font-size: 0.75rem; color: var(--slate-light); text-transform: uppercase; letter-spacing: 0.03em;">Platform Orders</div>
+                            <div style="font-size: 1.5rem; font-weight: 800; color: var(--slate);">${totals.totalOrders}</div>
+                        </div>
+                        <div style="background: var(--bg-light); padding: 1rem; border-radius: 0.75rem; text-align: center;">
+                            <div style="font-size: 0.75rem; color: var(--slate-light); text-transform: uppercase; letter-spacing: 0.03em;">Platform Revenue</div>
+                            <div style="font-size: 1.5rem; font-weight: 800; color: var(--primary);">$${totals.totalRevenue.toFixed(2)}</div>
+                        </div>
+                        <div style="background: var(--bg-light); padding: 1rem; border-radius: 0.75rem; text-align: center;">
+                            <div style="font-size: 0.75rem; color: var(--slate-light); text-transform: uppercase; letter-spacing: 0.03em;">Total Agents</div>
+                            <div style="font-size: 1.5rem; font-weight: 800; color: var(--slate);">${totals.totalAgents}</div>
+                        </div>
+                    </div>
+                `;
+
+                if (vendors.length === 0) {
+                    html += '<p style="text-align: center; color: var(--slate-light); padding: 1rem 0;">No Manage Agent accounts yet.</p>';
+                } else {
+                    html += '<div style="overflow-x: auto;"><table class="settings-table"><thead><tr><th>Business</th><th>Email</th><th>Since</th></tr></thead><tbody>';
+                    vendors.forEach(v => {
+                        html += `<tr>
+                            <td style="font-weight:700;">${v.businessName}</td>
+                            <td>${v.email}</td>
+                            <td>${new Date(v.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</td>
+                        </tr>`;
+                    });
+                    html += '</tbody></table></div>';
+                }
                 container.innerHTML = html;
             } catch (err) {
                 container.innerHTML = `<p style="text-align: center; color: #dc2626; padding: 2rem 0;">${err.message}</p>`;
