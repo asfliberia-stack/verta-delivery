@@ -901,3 +901,46 @@ cart splitting, and the polished mobile-native visual style from the
 mockup (this reuses the existing web app's card/modal design system
 instead). Each of these is a reasonable, separately-scoped follow-up —
 say which one you want next.
+
+## Marketplace-first routing (guest landing, vendor auto-routing)
+
+Reworked the app's launch/login flow to match the required routing
+rules exactly:
+
+1. **Default launch**: the Marketplace homepage is now the true public
+   landing page — no login wall. Guests browse (search, filter by
+   category, add to cart) with zero authentication. `GET
+   /api/marketplace/products` is now a public endpoint (was
+   `requireAuth` before); checkout still requires a real logged-in
+   customer account, enforced server-side same as always.
+2. **Login is a modal now, not a full-page gate.** `#auth-screen`
+   became an overlay (closable ×) triggered by a "Login / Sign Up"
+   button in the marketplace header, instead of blocking the whole app
+   before login.
+3. **Vendor login/session-restore routes straight to the Store
+   Dashboard** — never the marketplace. Confirmed via `enterApp()`'s
+   vendor branch and the boot-time session restore using the same
+   function, so this holds whether they just logged in or reopened the
+   app with a saved session.
+4. **Regular customer login stays on the marketplace**, with their
+   profile and orders now visible in the header/page (previously the
+   marketplace only existed *inside* the logged-in customer view; now
+   it's the same page in two states — guest and customer — controlled
+   by `setMarketplaceHeaderState()`).
+5. **Session-aware navigation**:
+   - Store Dashboard header has a real "Switch to Marketplace" button —
+     lets a vendor browse the marketplace without logging out.
+   - The marketplace header shows "← Manage Store" instead of
+     Login/Sign Up when a vendor is previewing it this way, taking them
+     straight back to their dashboard.
+   - Regular customers never see either of these — the marketplace
+     header only has three states (guest / customer / vendor-preview)
+     and customers only ever get the "customer" one.
+6. **No flash of the wrong UI on boot**: the marketplace container
+   stays hidden (`display:none`) until the stored-session check
+   resolves, so a returning vendor's session restore goes straight to
+   their dashboard instead of flashing the guest marketplace first.
+
+Nothing about the admin (Manage Agent / Super Admin) login or dashboard
+changed in this pass — verified byte-for-byte identical against the
+pre-change snapshot.

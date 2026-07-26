@@ -800,7 +800,10 @@ app.get('/api/vendor/purchases', requireAuth, requireVendor, async (req, res) =>
 // Marketplace — customer storefront + checkout
 // ============================================================
 
-app.get('/api/marketplace/products', requireAuth, async (req, res) => {
+// Public — no requireAuth. The marketplace homepage is the default
+// landing page for guests, so browsing must work with no login at all.
+// Checkout still requires a real sender account (checked below).
+app.get('/api/marketplace/products', async (req, res) => {
   try {
     const products = await db.getActiveProductsForStorefront();
     res.json({ products });
