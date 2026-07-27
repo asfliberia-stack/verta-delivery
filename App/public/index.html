@@ -2,15 +2,8 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, viewport-fit=cover">
-    <meta name="theme-color" content="#16234a">
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="GoLib">
-    <link rel="manifest" href="manifest.json">
-    <link rel="apple-touch-icon" href="assets/icon-192.png">
-    <title>GoLib - Shop &amp; Delivery</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verta Delivery Service</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
     <!-- Socket.io client is served by our own Node/Socket.io backend (same origin,
@@ -37,192 +30,6 @@
             --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
             --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
         }
-
-        /* GoLib brand — scoped to the marketplace (#home-screen) and
-           vendor dashboard (#vendor-app) only, matching the mockup's
-           navy header + red accent. The admin dashboard, auth modal,
-           and shared modals keep the original indigo palette. */
-        #home-screen, #vendor-app {
-            --golib-navy: #16234a;
-            --golib-navy-light: #1f3163;
-            --golib-red: #dc2626;
-            --golib-red-dark: #b91c1c;
-            --golib-blue: #2563eb;
-            --golib-blue-dark: #1d4ed8;
-            --primary: var(--golib-red);
-            --primary-dark: var(--golib-red-dark);
-        }
-        .mobile-app-shell { max-width: 480px; margin: 0 auto; min-height: 100vh; background: var(--bg-light); position: relative; }
-        .mobile-topbar {
-            background: white; color: var(--slate); padding: 0.875rem 1.125rem;
-            padding-top: calc(0.875rem + env(safe-area-inset-top));
-            display: flex; align-items: center; justify-content: space-between; gap: 0.75rem;
-            position: sticky; top: 0; z-index: 50; border-bottom: 1px solid var(--border);
-        }
-        .mobile-topbar-logo { display: flex; align-items: center; gap: 0.5rem; }
-        .mobile-topbar-logo img { height: 34px; }
-        .mp-notification-panel {
-            display: none; position: absolute; top: 100%; right: 1rem; width: 280px; max-height: 360px; overflow-y: auto;
-            background: white; color: var(--slate); border-radius: 0.875rem; box-shadow: var(--shadow-lg);
-            z-index: 70; margin-top: 0.5rem;
-        }
-        .mp-notification-panel.open { display: block; }
-        .mp-notification-panel-header {
-            display: flex; justify-content: space-between; align-items: center;
-            padding: 0.875rem 1rem; border-bottom: 1px solid var(--border); font-size: 0.9375rem;
-        }
-        .mp-notification-panel-header a { color: var(--golib-red); font-weight: 600; font-size: 0.8125rem; cursor: pointer; }
-        .mp-notification-item { padding: 0.75rem 1rem; border-bottom: 1px solid var(--border); font-size: 0.8125rem; }
-        .mp-notification-item:last-child { border-bottom: none; }
-        .mp-notification-item-title { font-weight: 700; margin-bottom: 0.125rem; }
-        .mp-notification-item-body { color: var(--slate-light); font-size: 0.75rem; }
-        .mp-notification-empty { padding: 1.5rem 1rem; text-align: center; color: var(--slate-light); font-size: 0.8125rem; }
-        .mobile-icon-btn {
-            position: relative; width: 40px; height: 40px; min-width: 44px; min-height: 44px;
-            border-radius: 50%; border: 1px solid var(--border); background: var(--bg-light); color: var(--slate);
-            display: flex; align-items: center; justify-content: center; cursor: pointer;
-        }
-        .mobile-icon-btn svg { width: 19px; height: 19px; }
-        .mobile-icon-badge {
-            position: absolute; top: -2px; right: -2px; background: var(--golib-red); color: white;
-            font-size: 0.625rem; font-weight: 800; min-width: 17px; height: 17px; border-radius: 9999px;
-            display: flex; align-items: center; justify-content: center; padding: 0 3px; border: 2px solid white;
-        }
-        .mobile-search-bar {
-            display: flex; align-items: center; gap: 0.625rem; background: white; margin: 0.875rem 1.125rem;
-            padding: 0.75rem 1rem; border-radius: 0.875rem; box-shadow: var(--shadow-sm);
-        }
-        .mobile-search-bar input { border: none; outline: none; flex: 1; font-size: 0.9375rem; }
-        .mobile-search-bar svg { width: 18px; height: 18px; color: var(--slate-lighter); flex-shrink: 0; }
-        .mobile-content { padding: 0 1.125rem calc(84px + env(safe-area-inset-bottom)); }
-        .mobile-bottom-nav {
-            position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
-            width: 100%; max-width: 480px; background: white; border-top: 1px solid var(--border);
-            display: flex; z-index: 60; padding-bottom: env(safe-area-inset-bottom);
-        }
-        .mobile-nav-item {
-            flex: 1; display: flex; flex-direction: column; align-items: center; gap: 0.25rem;
-            padding: 0.625rem 0.25rem; min-height: 56px; background: none; border: none; cursor: pointer;
-            color: var(--slate-lighter); font-size: 0.6875rem; font-weight: 700; position: relative;
-        }
-        .mobile-nav-item svg { width: 21px; height: 21px; }
-        .mobile-nav-item.active { color: var(--golib-red); }
-        .mobile-nav-badge {
-            position: absolute; top: 0.25rem; right: 22%; background: var(--golib-red); color: white;
-            font-size: 0.5625rem; font-weight: 800; min-width: 15px; height: 15px; border-radius: 9999px;
-            display: flex; align-items: center; justify-content: center; padding: 0 3px;
-        }
-        .mobile-section { margin-top: 1.5rem; }
-        .mobile-section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.875rem; }
-        .mobile-section-title { font-size: 1.0625rem; font-weight: 800; color: var(--slate); }
-        .mobile-view-all { color: var(--golib-red); font-weight: 700; font-size: 0.8125rem; cursor: pointer; display: flex; align-items: center; gap: 0.25rem; }
-
-        .discovery-banner {
-            background: linear-gradient(135deg, var(--golib-navy) 0%, var(--golib-navy-light) 100%);
-            border-radius: 1.125rem; padding: 1.5rem; color: white; position: relative; overflow: hidden;
-        }
-        .discovery-banner-eyebrow { font-size: 0.8125rem; font-weight: 700; letter-spacing: 0.05em; opacity: 0.85; }
-        .discovery-banner-headline { font-size: 1.375rem; font-weight: 800; color: var(--golib-red); margin: 0.125rem 0 0.5rem; line-height: 1.2; }
-        .discovery-banner-sub { font-size: 0.875rem; opacity: 0.9; margin-bottom: 1rem; max-width: 70%; }
-        .discovery-banner-cta {
-            background: var(--golib-red); color: white; border: none; padding: 0.625rem 1.25rem;
-            border-radius: 0.625rem; font-weight: 700; font-size: 0.875rem; min-height: 44px; cursor: pointer;
-        }
-        #home-screen .add-to-cart-btn {
-            background: var(--golib-blue); box-shadow: none;
-        }
-        #home-screen .add-to-cart-btn:hover { background: var(--golib-blue-dark); }
-
-        .category-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.5rem; text-align: center; }
-        .category-item { display: flex; flex-direction: column; align-items: center; gap: 0.375rem; cursor: pointer; background: none; border: none; }
-        .category-icon-box {
-            width: 48px; height: 48px; border-radius: 0.875rem; background: white; border: 1px solid var(--border);
-            display: flex; align-items: center; justify-content: center; box-shadow: var(--shadow-sm);
-        }
-        .category-item.active-category .category-icon-box { background: var(--golib-red); border-color: var(--golib-red); }
-        .category-item.active-category .category-icon-box svg { color: white; }
-        .category-item.active-category .category-label { color: var(--golib-red); }
-        .category-icon-box svg { width: 20px; height: 20px; color: var(--golib-navy); }
-        .category-label { font-size: 0.6875rem; font-weight: 600; color: var(--slate-light); }
-
-        .star-rating { display: flex; align-items: center; gap: 0.25rem; font-size: 0.75rem; }
-        .star-rating svg { width: 12px; height: 12px; color: #f59e0b; }
-        .star-rating-empty { color: var(--slate-lighter); font-size: 0.75rem; }
-
-        .store-card {
-            display: flex; flex-direction: column; align-items: center; gap: 0.375rem;
-            background: white; border-radius: 1rem; padding: 1rem 0.5rem; border: 1px solid var(--border); box-shadow: var(--shadow-sm);
-        }
-        .store-card-avatar {
-            width: 48px; height: 48px; border-radius: 50%; background: var(--golib-navy); color: white;
-            display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 1.125rem;
-        }
-        .store-card-name { font-weight: 700; font-size: 0.8125rem; color: var(--slate); text-align: center; }
-        .store-card-rating { font-size: 0.75rem; color: var(--accent); font-weight: 700; }
-
-        .vendor-welcome-banner {
-            background: var(--golib-navy); color: white; border-radius: 1.125rem; padding: 1.125rem;
-            display: flex; align-items: center; gap: 0.875rem;
-        }
-        .vendor-welcome-icon {
-            width: 44px; height: 44px; border-radius: 0.75rem; background: rgba(255,255,255,0.15);
-            display: flex; align-items: center; justify-content: center; flex-shrink: 0;
-        }
-        .vendor-welcome-icon svg { width: 22px; height: 22px; }
-        .vendor-welcome-eyebrow { font-size: 0.8125rem; opacity: 0.85; }
-        .vendor-welcome-name { font-weight: 800; font-size: 1.125rem; }
-        .vendor-online-pill {
-            background: #22c55e; color: white; font-size: 0.75rem; font-weight: 700;
-            padding: 0.25rem 0.625rem; border-radius: 9999px; white-space: nowrap;
-        }
-        .vendor-sales-card { background: white; border-radius: 1.125rem; padding: 1.125rem; box-shadow: var(--shadow-sm); border: 1px solid var(--border); }
-        .vendor-sales-total { font-size: 1.75rem; font-weight: 800; color: var(--slate); }
-        .vendor-stat-card {
-            background: white; border-radius: 1rem; padding: 1rem; box-shadow: var(--shadow-sm); border: 1px solid var(--border);
-            display: flex; align-items: center; gap: 0.75rem;
-        }
-        .vendor-stat-icon {
-            width: 40px; height: 40px; border-radius: 0.75rem; background: #eef2ff; color: var(--golib-navy);
-            display: flex; align-items: center; justify-content: center; flex-shrink: 0;
-        }
-        .vendor-stat-icon svg { width: 19px; height: 19px; }
-        .vendor-stat-number { font-weight: 800; font-size: 1.25rem; color: var(--slate); line-height: 1.1; }
-        .vendor-stat-label { font-size: 0.75rem; color: var(--slate-light); }
-
-        .vendor-quick-actions { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.75rem; }
-        .vendor-quick-action {
-            background: white; border: 1px solid var(--border); border-radius: 1rem; padding: 1rem 0.75rem;
-            display: flex; flex-direction: column; align-items: center; gap: 0.5rem; cursor: pointer;
-            font-size: 0.8125rem; font-weight: 700; color: var(--slate); min-height: 44px; box-shadow: var(--shadow-sm);
-        }
-        .vendor-quick-action-icon {
-            width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
-            font-size: 1.25rem; font-weight: 800;
-        }
-        .vendor-quick-action-icon svg { width: 18px; height: 18px; }
-
-        .vendor-order-row {
-            display: flex; align-items: center; gap: 0.75rem; background: white; border-radius: 1rem;
-            padding: 0.875rem; margin-bottom: 0.625rem; box-shadow: var(--shadow-sm); border: 1px solid var(--border); cursor: pointer;
-        }
-        .vendor-order-icon {
-            width: 38px; height: 38px; border-radius: 0.75rem; background: #fee2e2; color: var(--golib-red);
-            display: flex; align-items: center; justify-content: center; flex-shrink: 0;
-        }
-        .vendor-order-icon svg { width: 17px; height: 17px; }
-        .vendor-order-main { flex: 1; min-width: 0; }
-        .vendor-order-id { font-weight: 700; font-size: 0.875rem; color: var(--slate); }
-        .vendor-order-buyer { font-size: 0.75rem; color: var(--slate-light); }
-        .vendor-order-right { text-align: right; }
-        .vendor-order-status-pill {
-            display: inline-block; font-size: 0.6875rem; font-weight: 700; padding: 0.125rem 0.5rem;
-            border-radius: 9999px; margin-bottom: 0.25rem;
-        }
-        .vendor-order-status-pill.fulfilled { background: #dcfce7; color: #15803d; }
-        .vendor-order-status-pill.processing { background: #dbeafe; color: #1e40af; }
-        .vendor-order-status-pill.cancelled { background: #fee2e2; color: #b91c1c; }
-        .vendor-order-price { font-weight: 800; color: var(--slate); font-size: 0.9375rem; }
-        .vendor-order-chevron { width: 16px; height: 16px; color: var(--slate-lighter); flex-shrink: 0; }
 
         body {
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -515,45 +322,8 @@
         @keyframes toast-out { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(8px); } }
 
         /* Auth screen */
-        #auth-screen {
-            display: none;
-            position: fixed; inset: 0; z-index: 2500;
-            background: rgba(15, 23, 42, 0.55); backdrop-filter: blur(4px);
-            align-items: flex-start; justify-content: center;
-            overflow-y: auto; padding: 3rem 1.5rem;
-        }
-        #auth-screen.active { display: flex; }
-        #auth-screen-inner { max-width: 480px; width: 100%; position: relative; }
-        #close-auth-screen-btn {
-            position: absolute; top: -0.5rem; right: -0.5rem; z-index: 5;
-            width: 2.5rem; height: 2.5rem; border-radius: 50%; border: none;
-            background: white; color: var(--slate); font-size: 1.5rem; cursor: pointer;
-            box-shadow: var(--shadow-md); display: flex; align-items: center; justify-content: center;
-        }
+        #auth-screen { max-width: 480px; margin: 4rem auto; padding: 0 1.5rem; }
         .auth-card { background: white; border-radius: 1.5rem; box-shadow: var(--shadow-lg); border: 1px solid var(--border); padding: 2.5rem; }
-
-        /* App Chooser — Delivery vs Marketplace */
-        #app-chooser-screen { min-height: 100vh; background: var(--bg-light); display: flex; align-items: center; justify-content: center; padding: 1.5rem; }
-        .chooser-shell { max-width: 420px; width: 100%; text-align: center; }
-        .chooser-logo { height: 64px; margin-bottom: 1.5rem; }
-        .chooser-title { font-size: 1.375rem; font-weight: 800; color: var(--slate); margin-bottom: 0.375rem; }
-        .chooser-subtitle { color: var(--slate-light); margin-bottom: 2rem; font-size: 0.9375rem; }
-        .chooser-card {
-            display: flex; align-items: center; gap: 1rem; width: 100%; text-align: left;
-            background: white; border: 2px solid var(--border); border-radius: 1.25rem; padding: 1.25rem;
-            margin-bottom: 1rem; cursor: pointer; transition: all 0.2s; box-shadow: var(--shadow-sm);
-        }
-        .chooser-card:hover { border-color: var(--slate-lighter); transform: translateY(-2px); box-shadow: var(--shadow-md); }
-        .chooser-card-icon {
-            width: 52px; height: 52px; border-radius: 1rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0;
-        }
-        .chooser-card-icon svg { width: 26px; height: 26px; }
-        .chooser-card-delivery .chooser-card-icon { background: #eef2ff; color: #4f46e5; }
-        .chooser-card-marketplace .chooser-card-icon { background: #fee2e2; color: #dc2626; }
-        .chooser-card-text { flex: 1; }
-        .chooser-card-title { font-weight: 800; font-size: 1.0625rem; color: var(--slate); }
-        .chooser-card-desc { font-size: 0.8125rem; color: var(--slate-light); }
-        .chooser-card-arrow { width: 18px; height: 18px; color: var(--slate-lighter); flex-shrink: 0; }
         .auth-tabs { display: flex; gap: 0.5rem; margin-bottom: 2rem; background: var(--bg-light); padding: 0.375rem; border-radius: 0.875rem; }
         .auth-tab {
             flex: 1; padding: 0.75rem; border: none; background: transparent; border-radius: 0.625rem;
@@ -883,21 +653,6 @@
             color: var(--admin-text-secondary); text-transform: uppercase; letter-spacing: 0.05em;
             margin: 2rem 0 1rem;
         }
-        /* Global versions of the filter bar (used by both the admin
-           Available Orders filter and the sender-side Marketplace
-           storefront) — the #delivery-app-scoped rules above still win
-           inside the admin dashboard since ID selectors are more
-           specific, so admin styling is unchanged. */
-        .order-filter-bar { display: flex; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
-        .order-filter-search { flex: 2; min-width: 220px; position: relative; display: flex; align-items: center; }
-        .order-filter-search svg { position: absolute; left: 0.875rem; width: 16px; height: 16px; color: var(--slate-light); pointer-events: none; }
-        .order-filter-search input {
-            width: 100%; padding: 0.75rem 1rem 0.75rem 2.5rem; min-height: 44px;
-            border: 2px solid var(--border); border-radius: 0.75rem; font-size: 0.9375rem;
-        }
-        .order-filter-search input:focus { outline: none; border-color: var(--primary); }
-        .order-filter-select { flex: 1; min-width: 150px; min-height: 44px; }
-
         #delivery-app .order-filter-bar {
             display: flex; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 1.5rem;
         }
@@ -958,32 +713,6 @@
         .payment-method-pill {
             display: inline-block; padding: 0.1875rem 0.625rem; border-radius: 9999px;
             font-size: 0.75rem; font-weight: 700; background: #ede9fe; color: #5b21b6;
-        }
-
-        .product-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 1.25rem; }
-        .product-card {
-            background: white; border: 1px solid var(--border); border-radius: 1rem; overflow: hidden;
-            display: flex; flex-direction: column; box-shadow: var(--shadow-sm);
-        }
-        .product-card-image {
-            width: 100%; height: 140px; object-fit: cover; background: var(--bg-light);
-        }
-        .product-card-body { padding: 1rem; display: flex; flex-direction: column; gap: 0.375rem; flex: 1; }
-        .product-card-name { font-weight: 700; color: var(--slate); font-size: 0.9375rem; }
-        .product-card-vendor { font-size: 0.75rem; color: var(--slate-light); }
-        .product-card-price { font-weight: 800; color: var(--primary); font-size: 1.0625rem; margin-top: auto; }
-        .product-card-stock { font-size: 0.75rem; color: var(--slate-light); }
-        .product-card-actions { padding: 0 1rem 1rem; display: flex; gap: 0.5rem; }
-
-        .cart-line-item {
-            display: flex; align-items: center; justify-content: space-between; gap: 0.75rem;
-            padding: 0.75rem 0; border-bottom: 1px solid var(--border);
-        }
-        .cart-line-item:last-child { border-bottom: none; }
-        .cart-qty-controls { display: flex; align-items: center; gap: 0.5rem; }
-        .cart-qty-btn {
-            width: 28px; height: 28px; min-width: 28px; border-radius: 50%; border: 1px solid var(--border);
-            background: white; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center;
         }
 
         #delivery-app .admin-view-all-link { color: var(--primary); font-weight: 700; font-size: 0.8125rem; cursor: pointer; }
@@ -1113,16 +842,12 @@
 
     <!-- ============== AUTH SCREEN (logged out) ============== -->
     <div id="auth-screen">
-        <div id="auth-screen-inner">
-        <button type="button" id="close-auth-screen-btn" aria-label="Close">&times;</button>
         <div style="text-align:center; margin-bottom: 2rem;">
             <img src="assets/logo.png" alt="Verta Delivery Service" style="height: 70px; max-width: 320px; object-fit: contain;">
         </div>
         <div class="mode-toggle">
-            <button type="button" id="mode-sender-btn" class="active">Customer</button>
-            <button type="button" id="mode-admin-btn">Manage Agent</button>
-            <button type="button" id="mode-super-admin-btn">Super Admin</button>
-            <button type="button" id="mode-vendor-btn">Vendor</button>
+            <button type="button" id="mode-sender-btn" class="active">Send a Package</button>
+            <button type="button" id="mode-admin-btn">Admin</button>
         </div>
 
         <!-- Sender login/register card -->
@@ -1218,255 +943,43 @@
         </div>
 
         <!-- Admin login card -->
-        <!-- Admin login card -->
         <div class="auth-card" id="admin-auth-card" style="display:none;">
-            <h3 style="margin-bottom: 1.5rem; text-align:center;">Manage Agent Login</h3>
+            <h3 style="margin-bottom: 1.5rem; text-align:center;">Admin Login</h3>
             <form id="admin-login-form">
                 <div class="form-group">
                     <label class="form-label">Admin Password</label>
                     <input type="password" class="form-input" id="admin-password" placeholder="••••••••" required>
                 </div>
                 <div class="auth-error" id="admin-login-error"></div>
-                <button type="submit" class="btn-primary" style="width:100%;" id="admin-login-submit-btn">Login as Manage Agent</button>
+                <button type="submit" class="btn-primary" style="width:100%;" id="admin-login-submit-btn">Login as Admin</button>
             </form>
-        </div>
-
-        <!-- Super Admin login card — a real, distinct account (email +
-             password), not the shared Manage Agent password. -->
-        <div class="auth-card" id="super-admin-auth-card" style="display:none;">
-            <h3 style="margin-bottom: 1.5rem; text-align:center;">Super Admin Login</h3>
-            <form id="super-admin-login-form">
-                <div class="form-group">
-                    <label class="form-label">Email</label>
-                    <input type="email" class="form-input" id="super-admin-email" required>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Password</label>
-                    <input type="password" class="form-input" id="super-admin-password" required>
-                </div>
-                <div class="auth-error" id="super-admin-login-error"></div>
-                <button type="submit" class="btn-primary" style="width:100%;" id="super-admin-login-submit-btn">Login as Super Admin</button>
-            </form>
-        </div>
-
-        <!-- Vendor login card — real account (e.g. Girlee Fashion),
-             email + password, same pattern as Super Admin. -->
-        <div class="auth-card" id="vendor-auth-card" style="display:none;">
-            <h3 style="margin-bottom: 1.5rem; text-align:center;">Vendor Login</h3>
-            <form id="vendor-login-form">
-                <div class="form-group">
-                    <label class="form-label">Email</label>
-                    <input type="email" class="form-input" id="vendor-email" required>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Password</label>
-                    <input type="password" class="form-input" id="vendor-password" required>
-                </div>
-                <div class="auth-error" id="vendor-login-error"></div>
-                <button type="submit" class="btn-primary" style="width:100%;" id="vendor-login-submit-btn">Login as Vendor</button>
-            </form>
-        </div>
         </div>
     </div>
 
-    <!-- ============== MARKETPLACE / SENDER HOME (default landing page —
-         visible to guests, customers, and vendors previewing "as customer") ============== -->
-    <div id="home-screen">
-      <div class="mobile-app-shell">
-        <header class="mobile-topbar">
-            <div class="mobile-topbar-logo">
-                <img src="assets/logo.png" alt="GoLib">
-            </div>
-            <div style="display:flex; gap:0.5rem;">
-                <button type="button" class="mobile-icon-btn" id="open-cart-btn" aria-label="Cart">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
-                    <span class="mobile-icon-badge" id="cart-count-badge" style="display:none;">0</span>
-                </button>
-                <button type="button" class="mobile-icon-btn" id="mp-notification-btn" aria-label="Notifications">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
-                    <span class="mobile-icon-badge" id="mp-notification-badge" style="display:none;">0</span>
-                </button>
-            </div>
-            <div class="mp-notification-panel" id="mp-notification-panel">
-                <div class="mp-notification-panel-header">
-                    <strong>Notifications</strong>
-                    <a id="mp-clear-notifications-link">Clear all</a>
-                </div>
-                <div id="mp-notification-list"></div>
-            </div>
-        </header>
-
-        <div class="mobile-search-bar">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-            <input type="text" id="storefront-search-input" placeholder="Search products, stores…">
-        </div>
-
-        <div class="mobile-content">
-            <!-- Home / Categories (shared feed — Categories just focuses the category picker) -->
-            <div id="mp-view-shop">
-                <div class="discovery-banner">
-                    <div class="discovery-banner-eyebrow">DISCOVER</div>
-                    <div class="discovery-banner-headline">AMAZING PRODUCTS</div>
-                    <div class="discovery-banner-sub">Shop the best, delivered to your door.</div>
-                    <button type="button" class="discovery-banner-cta" id="discovery-shop-now-btn">Shop Now</button>
-                </div>
-
-                <div class="mobile-section" id="mp-category-section">
-                    <div class="mobile-section-header"><div class="mobile-section-title">Categories</div></div>
-                    <div class="category-grid" id="mp-category-grid"></div>
-                </div>
-
-                <div class="mobile-section">
-                    <div class="mobile-section-header">
-                        <div class="mobile-section-title">Featured Products</div>
-                    </div>
-                    <div id="storefront-products-container"></div>
-                </div>
-
-                <div class="mobile-section">
-                    <div class="mobile-section-header">
-                        <div class="mobile-section-title">Popular Stores</div>
-                        <a class="mobile-view-all" data-mp-tab="stores">View All ›</a>
-                    </div>
-                    <div id="mp-popular-stores-preview" style="display:grid; grid-template-columns: repeat(4, 1fr); gap: 0.625rem;"></div>
-                </div>
-            </div>
-
-            <!-- Stores -->
-            <div id="mp-view-stores" style="display:none;">
-                <div class="mobile-section" style="margin-top:0;">
-                    <div class="mobile-section-header"><div class="mobile-section-title">All Stores</div></div>
-                    <div id="mp-stores-full-list" style="display:grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem;"></div>
-                </div>
-            </div>
-
-            <!-- Wishlist — no backend for this yet, honestly marked -->
-            <div id="mp-view-wishlist" style="display:none;">
-                <div class="mobile-section" style="margin-top:0; text-align:center; padding: 3rem 1rem; color: var(--slate-light);">
-                    <div style="font-size:2rem; margin-bottom:0.75rem;">♡</div>
-                    <div style="font-weight:700; color:var(--slate); margin-bottom:0.375rem;">Wishlist — Coming Soon</div>
-                    <div style="font-size:0.875rem;">Saving favorite products isn't built yet.</div>
-                </div>
-            </div>
-
-            <!-- Account -->
-            <div id="mp-view-account" style="display:none;">
-                <!-- Guest -->
-                <div id="mp-account-guest" style="display:none; text-align:center; padding: 2.5rem 1rem;">
-                    <p style="color: var(--slate-light); margin-bottom: 1.25rem;">Log in to check out and track your orders.</p>
-                    <button type="button" class="btn-primary" id="guest-login-btn">Login / Sign Up</button>
-                </div>
-
-                <!-- Logged-in customer -->
-                <div id="mp-account-customer" style="display:none;">
-                    <div class="mobile-section" style="margin-top:0; display:flex; align-items:center; gap:0.875rem;">
-                        <div class="user-avatar" id="sender-avatar" style="width:3rem; height:3rem; font-size:1.25rem;">V</div>
-                        <div>
-                            <div style="font-weight:800; font-size:1.0625rem;" id="sender-display-name">—</div>
-                            <div style="font-size:0.8125rem; color:var(--slate-light);">Customer Account</div>
-                        </div>
-                    </div>
-                    <button type="button" class="btn-primary" id="mp-switch-to-delivery-btn" style="width:100%; margin-top:1.5rem;">🚚 Use Verta Delivery</button>
-                    <button class="quick-access-btn secondary" id="sender-logout-btn" style="width:100%; margin-top:0.75rem;">Logout</button>
-                </div>
-
-                <!-- Vendor previewing "as customer" -->
-                <div id="mp-account-vendor-preview" style="display:none; text-align:center; padding: 2.5rem 1rem;">
-                    <p style="color: var(--slate-light); margin-bottom: 1.25rem;">You're browsing the marketplace as your store, <strong id="mp-vendor-preview-name"></strong>.</p>
-                    <button type="button" class="btn-primary" id="back-to-store-dashboard-btn">← Manage Store</button>
-                </div>
-            </div>
-        </div>
-
-        <nav class="mobile-bottom-nav">
-            <button type="button" class="mobile-nav-item active" data-mp-tab="home">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
-                Home
-            </button>
-            <button type="button" class="mobile-nav-item" data-mp-tab="categories">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
-                Categories
-            </button>
-            <button type="button" class="mobile-nav-item" data-mp-tab="stores">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>
-                Stores
-            </button>
-            <button type="button" class="mobile-nav-item" data-mp-tab="wishlist">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
-                Wishlist
-                <span class="mobile-nav-badge" style="display:none;">0</span>
-            </button>
-            <button type="button" class="mobile-nav-item" data-mp-tab="account">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-                Account
-            </button>
-        </nav>
-      </div>
-    </div>
-
-    <!-- ============== APP CHOOSER — default landing for guests. Delivery
-         and Marketplace are two distinct products; this is where a user
-         picks which one they want, rather than the two being blended. ============== -->
-    <div id="app-chooser-screen" style="display:none;">
-        <div class="chooser-shell">
-            <img src="assets/logo.png" alt="Verta" class="chooser-logo">
-            <h1 class="chooser-title">What would you like to do?</h1>
-            <p class="chooser-subtitle">Two separate services, one account.</p>
-            <button type="button" class="chooser-card chooser-card-delivery" id="choose-delivery-btn">
-                <div class="chooser-card-icon">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13"></rect><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon><circle cx="5.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle></svg>
-                </div>
-                <div class="chooser-card-text">
-                    <div class="chooser-card-title">Verta Delivery</div>
-                    <div class="chooser-card-desc">Send a package, on demand</div>
-                </div>
-                <svg class="chooser-card-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
-            </button>
-            <button type="button" class="chooser-card chooser-card-marketplace" id="choose-marketplace-btn">
-                <div class="chooser-card-icon">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path><line x1="3" y1="6" x2="21" y2="6"></line><path d="M16 10a4 4 0 0 1-8 0"></path></svg>
-                </div>
-                <div class="chooser-card-text">
-                    <div class="chooser-card-title">GoLib Marketplace</div>
-                    <div class="chooser-card-desc">Shop products from real vendors</div>
-                </div>
-                <svg class="chooser-card-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
-            </button>
-        </div>
-    </div>
-
-    <!-- ============== VERTA DELIVERY (standalone — original indigo
-         branding, distinct from the GoLib marketplace) ============== -->
-    <div id="delivery-customer-app" style="display:none;">
+    <!-- ============== SENDER HOME (logged in as sender) ============== -->
+    <div id="home-screen" style="display:none;">
         <header>
             <div class="header-content">
                 <div class="logo-container">
                     <img src="assets/logo.png" alt="Verta Delivery Service" style="height: 60px; max-width: 300px; object-fit: contain;">
                 </div>
                 <div class="quick-access-btns">
-                    <button class="quick-access-btn secondary" id="delivery-back-to-chooser-btn" title="Switch app">⇄ Switch</button>
-                    <button class="quick-access-btn primary" id="delivery-guest-login-btn" style="display:none;">Login / Sign Up</button>
-                    <div class="user-info" id="delivery-user-info" style="display:none;">
-                        <div class="user-avatar" id="delivery-sender-avatar">V</div>
-                        <div class="user-name" id="delivery-sender-display-name">—</div>
+                    <div class="user-info">
+                        <div class="user-avatar" id="sender-avatar">V</div>
+                        <div class="user-name" id="sender-display-name">—</div>
                     </div>
-                    <button class="quick-access-btn secondary" id="delivery-sender-logout-btn" style="display:none;">Logout</button>
+                    <button class="quick-access-btn secondary" id="sender-logout-btn">Logout</button>
                 </div>
             </div>
         </header>
         <main>
-            <section class="hero" id="hero-section" style="display:none;">
+            <section class="hero" id="hero-section">
                 <h2>Send a Package Today!</h2>
                 <p>Fast, Secure, and Reliable Delivery Solution You Can Trust</p>
                 <button class="btn-primary" id="btn-new-order">Create New Order</button>
             </section>
 
-            <section class="orders-section" id="delivery-guest-prompt" style="display:none; text-align:center;">
-                <p style="color: var(--slate-light); margin-bottom: 1.25rem;">Log in to send a package and track your orders.</p>
-                <button type="button" class="btn-primary" id="delivery-guest-login-btn-2">Login / Sign Up</button>
-            </section>
-
-            <section class="orders-section" id="your-orders-section" style="display:none;">
+            <section class="orders-section">
                 <h2 class="section-title">Your Orders</h2>
                 <div class="orders-grid" id="orders-grid"></div>
             </section>
@@ -1508,10 +1021,6 @@
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><path d="M20 8v6M23 11h-6"></path></svg>
                         Customers
                     </button>
-                    <button type="button" class="admin-nav-item" id="open-vendors-btn" style="display:none;">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
-                        Vendors
-                    </button>
                     <button type="button" class="admin-nav-item" id="open-settings-btn">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
                         Settings
@@ -1525,7 +1034,7 @@
                 <div class="admin-sidebar-footer">
                     <div class="admin-profile">
                         <div class="user-avatar" id="user-avatar">A</div>
-                        <div class="admin-profile-label" id="sidebar-role-label">Manage Agent</div>
+                        <div class="admin-profile-label">Manage Agents</div>
                     </div>
                     <button type="button" class="admin-nav-item admin-logout" id="admin-logout-btn">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
@@ -1555,7 +1064,7 @@
                                 <div class="user-avatar" id="topbar-user-avatar">A</div>
                                 <div>
                                     <div class="admin-topbar-profile-name" id="topbar-user-name">Admin</div>
-                                    <div class="admin-topbar-profile-role" id="topbar-user-role">Manage Agent</div>
+                                    <div class="admin-topbar-profile-role">Super Admin</div>
                                 </div>
                             </div>
                         </div>
@@ -1709,257 +1218,6 @@
              Order History section is superseded by the sidebar nav item above,
              which opens the same modal (#order-history-modal) as before. -->
         <div id="order-history-container" style="display:none;"></div>
-    </div>
-
-    <!-- ============== VENDOR DASHBOARD (logged in as vendor) ==============
-         A real, functional first slice of the marketplace vendor
-         experience — sales overview, recent orders, product management.
-         Not full mockup fidelity (no charts/promos/reports yet — see
-         README for what's deferred and why). -->
-    <div id="vendor-app" style="display: none;">
-      <div class="mobile-app-shell">
-        <header class="mobile-topbar">
-            <div class="mobile-topbar-logo">
-                <img src="assets/logo.png" alt="GoLib">
-            </div>
-            <button type="button" class="mobile-icon-btn" id="vendor-notification-btn" aria-label="Notifications">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
-                <span class="mobile-icon-badge" id="vendor-notification-badge" style="display:none;">0</span>
-            </button>
-            <div class="mp-notification-panel" id="vendor-notification-panel" style="right: auto; left: 1rem;">
-                <div class="mp-notification-panel-header">
-                    <strong>Notifications</strong>
-                    <a id="vendor-clear-notifications-link">Clear all</a>
-                </div>
-                <div id="vendor-notification-list"></div>
-            </div>
-        </header>
-
-        <div class="mobile-content" style="padding-top: 1rem;">
-            <!-- Home -->
-            <div id="vendor-view-home">
-                <div class="vendor-welcome-banner">
-                    <div class="vendor-welcome-icon">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l1-5h16l1 5"></path><path d="M3 9v10a1 1 0 0 0 1 1h16a1 1 0 0 0 1-1V9"></path><path d="M9 21V13h6v8"></path></svg>
-                    </div>
-                    <div style="flex:1;">
-                        <div class="vendor-welcome-eyebrow">Welcome back,</div>
-                        <div class="vendor-welcome-name" id="vendor-store-name-hero">Vendor</div>
-                    </div>
-                    <span class="vendor-online-pill">✓ Online</span>
-                </div>
-
-                <div class="mobile-section" style="margin-top:1.25rem;">
-                    <div class="vendor-sales-card">
-                        <div class="mobile-section-header" style="margin-bottom:0.375rem;">
-                            <div class="mobile-section-title" style="font-size:0.9375rem;">Sales Overview (Last 30 Days)</div>
-                        </div>
-                        <div style="display:flex; align-items:baseline; gap:0.625rem;">
-                            <span class="vendor-sales-total" id="vendor-total-sales">$0.00</span>
-                            <span class="stat-trend" id="vendor-sales-trend">—</span>
-                        </div>
-                        <canvas id="vendor-sales-chart" height="140" style="margin-top:0.75rem;"></canvas>
-                    </div>
-                </div>
-
-                <div class="mobile-section" style="display:grid; grid-template-columns: 1fr 1fr; gap:0.75rem;">
-                    <div class="vendor-stat-card">
-                        <div class="vendor-stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7h-9m9 5h-9m9 5h-9M4 7h1m-1 5h1m-1 5h1"></path><rect x="3" y="4" width="4" height="16" rx="1"></rect></svg></div>
-                        <div><div class="vendor-stat-number" id="vendor-total-orders">0</div><div class="vendor-stat-label">Total Orders</div></div>
-                    </div>
-                    <div class="vendor-stat-card">
-                        <div class="vendor-stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle></svg></div>
-                        <div><div class="vendor-stat-number" id="vendor-unique-customers">0</div><div class="vendor-stat-label">Customers</div></div>
-                    </div>
-                </div>
-
-                <div class="mobile-section">
-                    <div class="mobile-section-header">
-                        <div class="mobile-section-title">Recent Orders</div>
-                        <a class="mobile-view-all" data-vendor-tab="orders">View All ›</a>
-                    </div>
-                    <div id="vendor-orders-preview"></div>
-                </div>
-
-                <div class="mobile-section">
-                    <div class="mobile-section-header"><div class="mobile-section-title">Quick Actions</div></div>
-                    <div class="vendor-quick-actions">
-                        <button type="button" class="vendor-quick-action" id="vendor-add-product-btn">
-                            <div class="vendor-quick-action-icon" style="background:var(--golib-blue); color:white; font-size:1.5rem;">+</div>
-                            Add Product
-                        </button>
-                        <button type="button" class="vendor-quick-action" data-vendor-tab="products">
-                            <div class="vendor-quick-action-icon" style="background:#fef3c7; color:#92400e;">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11H5a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h4m0-11v11m0-11h6m-6 11h6m0-11h4a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2h-4m0-11v11"></path></svg>
-                            </div>
-                            Check Inventory
-                        </button>
-                        <button type="button" class="vendor-quick-action" id="vendor-manage-promos-btn">
-                            <div class="vendor-quick-action-icon" style="background:#ede9fe; color:#5b21b6;">%</div>
-                            Manage Promos
-                        </button>
-                        <button type="button" class="vendor-quick-action" id="vendor-view-reports-btn">
-                            <div class="vendor-quick-action-icon" style="background:#fee2e2; color:#b91c1c;">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
-                            </div>
-                            View Reports
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Products -->
-            <div id="vendor-view-products" style="display:none;">
-                <div class="mobile-section-header" style="margin-top:0;">
-                    <div class="mobile-section-title">Your Products</div>
-                    <button type="button" class="btn-small btn-success" id="vendor-add-product-btn-2">+ Add</button>
-                </div>
-                <div id="vendor-products-container"></div>
-            </div>
-
-            <!-- Orders -->
-            <div id="vendor-view-orders" style="display:none;">
-                <div class="mobile-section-header" style="margin-top:0;"><div class="mobile-section-title">All Orders</div></div>
-                <div id="vendor-orders-container"></div>
-            </div>
-
-            <!-- Messages — no backend for this yet, honestly marked -->
-            <div id="vendor-view-messages" style="display:none;">
-                <div class="mobile-section" style="margin-top:0; text-align:center; padding: 3rem 1rem; color: var(--slate-light);">
-                    <div style="font-size:2rem; margin-bottom:0.75rem;">✉</div>
-                    <div style="font-weight:700; color:var(--slate); margin-bottom:0.375rem;">Messages — Coming Soon</div>
-                    <div style="font-size:0.875rem;">In-app messaging with customers isn't built yet.</div>
-                </div>
-            </div>
-
-            <!-- Account -->
-            <div id="vendor-view-account" style="display:none;">
-                <div class="mobile-section" style="margin-top:0; display:flex; align-items:center; gap:0.875rem;">
-                    <div class="user-avatar" id="vendor-avatar" style="width:3rem; height:3rem; font-size:1.25rem;">V</div>
-                    <div>
-                        <div style="font-weight:800; font-size:1.0625rem;" id="vendor-display-name">—</div>
-                        <div style="font-size:0.8125rem; color:var(--slate-light);">Vendor Account</div>
-                    </div>
-                </div>
-                <button type="button" class="btn-primary" id="switch-to-marketplace-btn" style="width:100%; margin-top:1.5rem;">Switch to Marketplace</button>
-                <button type="button" class="quick-access-btn secondary" id="vendor-logout-btn" style="width:100%; margin-top:0.75rem;">Logout</button>
-            </div>
-        </div>
-
-        <nav class="mobile-bottom-nav">
-            <button type="button" class="mobile-nav-item active" data-vendor-tab="home">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
-                Home
-            </button>
-            <button type="button" class="mobile-nav-item" data-vendor-tab="products">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.38 3.46 16 2a4 4 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.47a1 1 0 0 0 .99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 0 0 2-2V10h2.15a1 1 0 0 0 .99-.84l.58-3.47a2 2 0 0 0-1.34-2.23z"></path></svg>
-                Products
-            </button>
-            <button type="button" class="mobile-nav-item" data-vendor-tab="orders">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
-                Orders
-            </button>
-            <button type="button" class="mobile-nav-item" data-vendor-tab="messages">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
-                Messages
-            </button>
-            <button type="button" class="mobile-nav-item" data-vendor-tab="account">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-                Account
-            </button>
-        </nav>
-      </div>
-    </div>
-
-    <!-- Add/Edit Product Modal -->
-    <div class="modal-overlay" id="product-modal">
-        <div class="modal">
-            <div class="modal-header">
-                <h3 id="product-modal-title">Add Product</h3>
-                <button class="close-btn" id="close-product-modal">&times;</button>
-            </div>
-            <form id="product-form">
-                <div class="form-group">
-                    <label class="form-label">Product Name</label>
-                    <input type="text" class="form-input" id="product-name-input" required>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Description</label>
-                    <textarea class="form-input" id="product-description-input" rows="2"></textarea>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Category</label>
-                    <input type="text" class="form-input" id="product-category-input" placeholder="e.g. Dresses, Accessories">
-                </div>
-                <div style="display: flex; gap: 1rem;">
-                    <div class="form-group" style="flex: 1;">
-                        <label class="form-label">Price ($)</label>
-                        <input type="number" class="form-input" id="product-price-input" min="0" step="0.01" required>
-                    </div>
-                    <div class="form-group" style="flex: 1;">
-                        <label class="form-label">Stock Quantity</label>
-                        <input type="number" class="form-input" id="product-stock-input" min="0" step="1" required>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Product Photo</label>
-                    <div style="display: flex; align-items: center; gap: 1rem;">
-                        <img id="product-image-preview" src="assets/logo.png" alt="Product preview" style="height: 56px; width: 56px; object-fit: cover; border: 1px solid var(--border); border-radius: 0.5rem; background: var(--bg-light);">
-                        <input type="file" accept="image/*" id="product-image-input" style="display:none;">
-                        <button type="button" class="btn-small btn-secondary" id="product-image-upload-btn">Upload Photo</button>
-                    </div>
-                </div>
-                <div class="auth-error" id="product-form-error"></div>
-                <div class="modal-footer">
-                    <button type="button" class="btn-small btn-secondary" id="cancel-product-form">Cancel</button>
-                    <button type="submit" class="btn-small btn-success" id="product-form-submit-btn">Save Product</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- Cart Modal (sender) -->
-    <div class="modal-overlay" id="cart-modal">
-        <div class="modal">
-            <div class="modal-header">
-                <h3>🛒 Your Cart</h3>
-                <button class="close-btn" id="close-cart-modal">&times;</button>
-            </div>
-            <div id="cart-modal-content"></div>
-            <div class="modal-footer">
-                <button type="button" class="btn-small btn-secondary" id="close-cart-modal-btn">Continue Shopping</button>
-                <button type="button" class="btn-small btn-success" id="open-checkout-btn">Checkout</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Checkout Modal (sender) -->
-    <div class="modal-overlay" id="checkout-modal">
-        <div class="modal">
-            <div class="modal-header">
-                <h3>Checkout</h3>
-                <button class="close-btn" id="close-checkout-modal">&times;</button>
-            </div>
-            <p style="margin-bottom: 1.25rem; color: var(--slate-light);">
-                Pay on delivery. Checking out creates a real delivery order for these items — same tracking as any other order.
-            </p>
-            <form id="checkout-form">
-                <div class="form-group">
-                    <label class="form-label">Pickup Address (vendor/store)</label>
-                    <input type="text" class="form-input" id="checkout-pickup-address" required>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Dropoff Address (you)</label>
-                    <input type="text" class="form-input" id="checkout-dropoff-address" required>
-                </div>
-                <div id="checkout-summary" style="background: var(--bg-light); padding: 1rem; border-radius: 0.75rem; margin-bottom: 1rem; font-weight: 700;"></div>
-                <div class="auth-error" id="checkout-error"></div>
-                <div class="modal-footer">
-                    <button type="button" class="btn-small btn-secondary" id="cancel-checkout">Back to Cart</button>
-                    <button type="submit" class="btn-small btn-success" id="checkout-submit-btn">Place Order</button>
-                </div>
-            </form>
-        </div>
     </div>
 
     <!-- New Order Modal -->
@@ -2464,23 +1722,6 @@
         </div>
     </div>
 
-    <!-- Vendors (Super Admin only) -->
-    <div class="modal-overlay" id="vendors-modal">
-        <div class="modal" style="max-width: 900px; width: 95%; max-height: 85vh; overflow-y: auto;">
-            <div class="modal-header">
-                <h3>🏬 Vendors</h3>
-                <button class="close-btn" id="close-vendors-modal">&times;</button>
-            </div>
-            <p style="color: var(--slate-light); margin-bottom: 1.5rem; font-size: 0.875rem;">
-                This app is still single-tenant — every vendor below shares the same order/agent/expense data today.
-                Once the marketplace's own vendor data model exists, this becomes real per-vendor separation.
-            </p>
-            <div id="vendors-modal-content">
-                <p style="text-align: center; color: var(--slate-light); padding: 2rem 0;">Loading…</p>
-            </div>
-        </div>
-    </div>
-
     <!-- Help & Support -->
     <div class="modal-overlay" id="help-support-modal">
         <div class="modal" style="max-width: 700px;">
@@ -2544,11 +1785,6 @@
         let settings = {}; // business profile / regional settings, from Settings > Business Profile
         let pricePresets = []; // admin-defined reference prices, from Settings > Pricing
         let customersCache = []; // loaded on demand when the Customers page opens
-        let vendorProducts = []; // this vendor's own product list
-        let editingProductId = null; // null = "Add Product" mode
-        let pendingProductImageDataUrl = null;
-        let storefrontProducts = []; // all vendors' active products, for the sender-side storefront
-        let cart = []; // client-side only until checkout: [{ productId, name, price, vendorId, vendorName, quantity }]
 
         function setAgents(records) {
             agentRecords = records;
@@ -2628,38 +1864,24 @@
         }
 
         function renderNotificationCenter() {
-            const unreadCount = notificationLog.filter(n => n.unread).length;
-
             const badge = document.getElementById('notification-badge');
             const list = document.getElementById('notification-list');
-            if (badge && list) {
-                badge.style.display = unreadCount > 0 ? 'flex' : 'none';
-                badge.textContent = unreadCount > 9 ? '9+' : String(unreadCount);
-                list.innerHTML = notificationLog.length === 0
-                    ? '<div class="admin-notification-empty">No notifications yet.</div>'
-                    : notificationLog.map(n => `
-                        <div class="admin-notification-item">
-                            <div class="admin-notification-item-title">${n.title}</div>
-                            ${n.body ? `<div class="admin-notification-item-body">${n.body.replace(/\n/g, ' · ')}</div>` : ''}
-                            <div class="admin-notification-item-time">${n.time.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}</div>
-                        </div>
-                    `).join('');
-            }
+            if (!badge || !list) return; // sender view has no bell
+            const unreadCount = notificationLog.filter(n => n.unread).length;
+            badge.style.display = unreadCount > 0 ? 'flex' : 'none';
+            badge.textContent = unreadCount > 9 ? '9+' : String(unreadCount);
 
-            const mpBadge = document.getElementById('mp-notification-badge');
-            const mpList = document.getElementById('mp-notification-list');
-            if (mpBadge && mpList) {
-                mpBadge.style.display = unreadCount > 0 ? 'flex' : 'none';
-                mpBadge.textContent = unreadCount > 9 ? '9+' : String(unreadCount);
-                mpList.innerHTML = notificationLog.length === 0
-                    ? '<div class="mp-notification-empty">No notifications yet.</div>'
-                    : notificationLog.map(n => `
-                        <div class="mp-notification-item">
-                            <div class="mp-notification-item-title">${n.title}</div>
-                            ${n.body ? `<div class="mp-notification-item-body">${n.body.replace(/\n/g, ' · ')}</div>` : ''}
-                        </div>
-                    `).join('');
+            if (notificationLog.length === 0) {
+                list.innerHTML = '<div class="admin-notification-empty">No notifications yet.</div>';
+                return;
             }
+            list.innerHTML = notificationLog.map(n => `
+                <div class="admin-notification-item">
+                    <div class="admin-notification-item-title">${n.title}</div>
+                    ${n.body ? `<div class="admin-notification-item-body">${n.body.replace(/\n/g, ' · ')}</div>` : ''}
+                    <div class="admin-notification-item-time">${n.time.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}</div>
+                </div>
+            `).join('');
         }
 
         // Modern, non-blocking feedback — replaces native alert() calls.
@@ -2938,14 +2160,6 @@
             setupScrollReactiveHeader();
             wireSettingsEvents();
             wireTopbarEvents();
-            wireVendorEvents();
-            wireStorefrontEvents();
-            wireMarketplaceRoutingEvents();
-
-            // Keep the marketplace hidden until the auth check resolves,
-            // so a returning vendor never sees a flash of the guest
-            // marketplace before landing on their Store Dashboard.
-            document.getElementById('home-screen').style.display = 'none';
 
             const stored = loadStoredAuth();
             if (stored && stored.token) {
@@ -2961,295 +2175,14 @@
                     clearAuth();
                 }
             }
-            // Guest (or an expired/invalid session) — the App Chooser is
-            // the default landing page (Delivery and Marketplace are two
-            // separate products; this is where a guest picks one).
-            currentUser = null;
-            showAppChooser();
+            showAuthScreen();
         });
 
-        // Login/register is now a modal on top of the marketplace, not a
-        // full-page gate — guests browse first, and only see this when
-        // they choose to log in or a vendor/admin/manage-agent mode is
-        // picked from it.
         function showAuthScreen() {
-            document.getElementById('auth-screen').classList.add('active');
-        }
-        function closeAuthScreen() {
-            document.getElementById('auth-screen').classList.remove('active');
-        }
-
-        // Delivery and Marketplace are two separate products sharing one
-        // account — this tracks which one is active and remembers the
-        // choice, so a returning user goes straight back in rather than
-        // re-choosing every visit. Always overridable via the "⇄ Switch"
-        // controls in both apps.
-        let currentAppMode = null; // 'delivery' | 'marketplace'
-        function setAppMode(mode) {
-            currentAppMode = mode;
-            localStorage.setItem('verta_app_mode', mode);
-        }
-
-        function hideAllTopLevelViews() {
-            document.getElementById('app-chooser-screen').style.display = 'none';
+            document.getElementById('auth-screen').style.display = 'block';
             document.getElementById('home-screen').style.display = 'none';
-            document.getElementById('delivery-customer-app').style.display = 'none';
             document.getElementById('delivery-app').style.display = 'none';
-            document.getElementById('vendor-app').style.display = 'none';
-        }
-
-        function showAppChooser() {
-            hideAllTopLevelViews();
-            document.getElementById('app-chooser-screen').style.display = 'flex';
-        }
-
-        // Which Account-tab state the marketplace shows depends on who's
-        // looking at it — a guest, a logged-in customer, or a vendor
-        // previewing their own storefront "as a customer" (2.3: vendors
-        // previewing still don't get store-management controls here —
-        // that's what the Store Dashboard is for).
-        function setMarketplaceHeaderState(mode) {
-            document.getElementById('mp-account-guest').style.display = mode === 'guest' ? 'block' : 'none';
-            document.getElementById('mp-account-customer').style.display = mode === 'customer' ? 'block' : 'none';
-            document.getElementById('mp-account-vendor-preview').style.display = mode === 'vendor-preview' ? 'block' : 'none';
-            if (mode === 'vendor-preview' && currentUser) {
-                document.getElementById('mp-vendor-preview-name').textContent = currentUser.businessName;
-            }
-        }
-
-        // Bottom nav tab switching — Home and Categories share the same
-        // underlying feed (Categories just focuses the category picker),
-        // Stores/Wishlist/Account are their own views.
-        function setMarketplaceTab(tab) {
-            document.querySelectorAll('#home-screen .mobile-nav-item').forEach(btn => btn.classList.toggle('active', btn.dataset.mpTab === tab));
-            document.getElementById('mp-view-shop').style.display = (tab === 'home' || tab === 'categories') ? 'block' : 'none';
-            document.getElementById('mp-view-stores').style.display = tab === 'stores' ? 'block' : 'none';
-            document.getElementById('mp-view-wishlist').style.display = tab === 'wishlist' ? 'block' : 'none';
-            document.getElementById('mp-view-account').style.display = tab === 'account' ? 'block' : 'none';
-            const shell = document.querySelector('#home-screen .mobile-content');
-            if (shell) shell.scrollTop = 0;
-            if (tab === 'categories') {
-                document.getElementById('mp-category-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
-            } else if (tab === 'stores') {
-                loadStoresDirectory();
-            }
-        }
-
-        async function enterMarketplaceMode(headerMode) {
-            setAppMode('marketplace');
-            hideAllTopLevelViews();
-            document.getElementById('home-screen').style.display = 'block';
-            setMarketplaceHeaderState(headerMode);
-            setMarketplaceTab('home');
-            renderNotificationCenter();
-            renderSkeletonCards(document.getElementById('storefront-products-container'));
-            await loadStorefront();
-        }
-
-        function showMarketplaceAsVendorPreview() {
-            hideAllTopLevelViews();
-            document.getElementById('home-screen').style.display = 'block';
-            setMarketplaceHeaderState('vendor-preview');
-            setMarketplaceTab('home');
-            renderNotificationCenter();
-            loadStorefront();
-        }
-
-        function showVendorDashboardView() {
-            hideAllTopLevelViews();
-            document.getElementById('vendor-app').style.display = 'block';
-        }
-
-        // Delivery app header/section visibility — mirrors the
-        // marketplace's guest/customer states, but this is Verta Delivery
-        // (original indigo branding), a separate product from the
-        // GoLib marketplace, not a tab within it.
-        function setDeliveryHeaderState(mode) {
-            document.getElementById('delivery-guest-login-btn').style.display = mode === 'guest' ? 'flex' : 'none';
-            document.getElementById('delivery-guest-prompt').style.display = mode === 'guest' ? 'block' : 'none';
-            document.getElementById('delivery-user-info').style.display = mode === 'customer' ? 'flex' : 'none';
-            document.getElementById('delivery-sender-logout-btn').style.display = mode === 'customer' ? 'flex' : 'none';
-            document.getElementById('hero-section').style.display = mode === 'customer' ? 'block' : 'none';
-            document.getElementById('your-orders-section').style.display = mode === 'customer' ? 'block' : 'none';
-        }
-
-        async function enterDeliveryMode(headerMode) {
-            setAppMode('delivery');
-            hideAllTopLevelViews();
-            document.getElementById('delivery-customer-app').style.display = 'block';
-            setDeliveryHeaderState(headerMode);
-            if (headerMode === 'customer') {
-                document.getElementById('delivery-sender-display-name').textContent = currentUser.businessName;
-                document.getElementById('delivery-sender-avatar').textContent = currentUser.businessName.charAt(0).toUpperCase();
-                renderSkeletonCards(document.getElementById('orders-grid'));
-                try {
-                    const data = await apiFetch('/api/state');
-                    orders = (data.orders || []).map(normalizeOrder);
-                    expenses = (data.expenses || []).map(normalizeExpense);
-                    setAgents(data.agents || []);
-                    settings = data.settings || {};
-                    pricePresets = data.pricePresets || [];
-                } catch (err) {
-                    console.error('Failed to load initial state', err);
-                    showToast('Could not load your data — check your connection and refresh.', 'error');
-                    orders = [];
-                    expenses = [];
-                }
-                refreshAllViews();
-            }
-        }
-
-        // A guest picking a mode from the Chooser (or switching) — no
-        // account yet either way.
-        async function chooseAppMode(mode) {
-            if (mode === 'delivery') await enterDeliveryMode('guest');
-            else await enterMarketplaceMode('guest');
-        }
-
-        function wireMarketplaceRoutingEvents() {
-            document.getElementById('guest-login-btn').addEventListener('click', showAuthScreen);
-            document.getElementById('close-auth-screen-btn').addEventListener('click', closeAuthScreen);
-            document.getElementById('switch-to-marketplace-btn').addEventListener('click', showMarketplaceAsVendorPreview);
-            document.getElementById('back-to-store-dashboard-btn').addEventListener('click', showVendorDashboardView);
-
-            document.getElementById('choose-delivery-btn').addEventListener('click', () => chooseAppMode('delivery'));
-            document.getElementById('choose-marketplace-btn').addEventListener('click', () => chooseAppMode('marketplace'));
-
-            document.getElementById('delivery-back-to-chooser-btn').addEventListener('click', showAppChooser);
-            document.getElementById('delivery-guest-login-btn').addEventListener('click', showAuthScreen);
-            document.getElementById('delivery-guest-login-btn-2').addEventListener('click', showAuthScreen);
-            document.getElementById('delivery-sender-logout-btn').addEventListener('click', async () => {
-                clearAuth();
-                currentUser = null;
-                await chooseAppMode('delivery');
-            });
-            document.getElementById('mp-switch-to-delivery-btn').addEventListener('click', () => enterDeliveryMode('customer'));
-
-            document.querySelectorAll('#home-screen .mobile-nav-item').forEach(btn => {
-                btn.addEventListener('click', () => setMarketplaceTab(btn.dataset.mpTab));
-            });
-            document.querySelectorAll('.mobile-view-all[data-mp-tab]').forEach(link => {
-                link.addEventListener('click', () => setMarketplaceTab(link.dataset.mpTab));
-            });
-            document.getElementById('discovery-shop-now-btn').addEventListener('click', () => {
-                document.getElementById('mp-category-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
-            });
-
-            const mpBell = document.getElementById('mp-notification-btn');
-            const mpPanel = document.getElementById('mp-notification-panel');
-            mpBell.addEventListener('click', (e) => {
-                e.stopPropagation();
-                mpPanel.classList.toggle('open');
-                if (mpPanel.classList.contains('open')) {
-                    notificationLog.forEach(n => { n.unread = false; });
-                    renderNotificationCenter();
-                }
-            });
-            document.addEventListener('click', (e) => {
-                if (mpPanel.classList.contains('open') && !mpPanel.contains(e.target) && e.target !== mpBell) {
-                    mpPanel.classList.remove('open');
-                }
-            });
-            document.getElementById('mp-clear-notifications-link').addEventListener('click', () => {
-                notificationLog = [];
-                renderNotificationCenter();
-            });
-        }
-
-        async function enterApp() {
-            closeAuthScreen();
-            connectSocket();
-            requestNotificationPermission();
-
-            // Show the right dashboard shell immediately, with skeleton
-            // placeholders while the initial state loads — no blank gap.
-            // Super Admin reuses the same operational dashboard as Manage
-            // Agent (this app is still single-tenant — see README), with
-            // role-aware labels and an extra Vendors panel only they can see.
-            if (currentUser.role === 'admin' || currentUser.role === 'super_admin') {
-                const isSuperAdmin = currentUser.role === 'super_admin';
-                const roleLabel = isSuperAdmin ? 'Super Admin' : 'Manage Agent';
-                document.getElementById('home-screen').style.display = 'none';
-                document.getElementById('vendor-app').style.display = 'none';
-                document.getElementById('delivery-app').style.display = 'block';
-                document.getElementById('delivery-app').setAttribute('data-role', currentUser.role);
-                document.getElementById('user-name').textContent = currentUser.businessName || roleLabel;
-                document.getElementById('user-avatar').textContent = (currentUser.businessName || roleLabel).charAt(0).toUpperCase();
-                document.getElementById('topbar-user-name').textContent = currentUser.businessName || roleLabel;
-                document.getElementById('topbar-user-avatar').textContent = (currentUser.businessName || roleLabel).charAt(0).toUpperCase();
-                const topbarRoleEl = document.getElementById('topbar-user-role');
-                if (topbarRoleEl) topbarRoleEl.textContent = roleLabel;
-                const welcomeRoleEl = document.querySelector('.admin-welcome-role');
-                if (welcomeRoleEl) welcomeRoleEl.textContent = roleLabel;
-                const sidebarLabelEl = document.getElementById('sidebar-role-label');
-                if (sidebarLabelEl) sidebarLabelEl.textContent = roleLabel;
-                const vendorsNavBtn = document.getElementById('open-vendors-btn');
-                if (vendorsNavBtn) vendorsNavBtn.style.display = isSuperAdmin ? 'flex' : 'none';
-                startAdminClock();
-                renderNotificationCenter();
-                renderSkeletonCards(document.getElementById('orders-grouped-delivery'));
-                applySavedTheme();
-
-                try {
-                    const data = await apiFetch('/api/state');
-                    orders = (data.orders || []).map(normalizeOrder);
-                    expenses = (data.expenses || []).map(normalizeExpense);
-                    setAgents(data.agents || []);
-                    settings = data.settings || {};
-                    pricePresets = data.pricePresets || [];
-                } catch (err) {
-                    console.error('Failed to load initial state', err);
-                    showToast('Could not load your data — check your connection and refresh.', 'error');
-                    orders = [];
-                    expenses = [];
-                }
-                refreshAllViews();
-            } else if (currentUser.role === 'vendor') {
-                // Vendor login/session restore routes straight to the
-                // Store Dashboard — never the marketplace — per the
-                // routing rules (1.2 and 3).
-                document.getElementById('vendor-display-name').textContent = currentUser.businessName;
-                document.getElementById('vendor-avatar').textContent = currentUser.businessName.charAt(0).toUpperCase();
-                document.getElementById('vendor-store-name-hero').textContent = currentUser.businessName;
-                showVendorDashboardView();
-                setVendorTab('home');
-                await loadVendorDashboard();
-            } else {
-                // Regular customer (sender) login/session restore. This
-                // one account works for both Delivery and Marketplace —
-                // route to whichever the user last chose, or the Chooser
-                // if they've never picked (routing rule 1.3/3, split per
-                // this round's feedback: the two products stay distinct
-                // rather than merged into one screen).
-                document.getElementById('sender-display-name').textContent = currentUser.businessName;
-                document.getElementById('sender-avatar').textContent = currentUser.businessName.charAt(0).toUpperCase();
-                document.getElementById('delivery-sender-display-name').textContent = currentUser.businessName;
-                document.getElementById('delivery-sender-avatar').textContent = currentUser.businessName.charAt(0).toUpperCase();
-
-                try {
-                    const data = await apiFetch('/api/state');
-                    orders = (data.orders || []).map(normalizeOrder);
-                    expenses = (data.expenses || []).map(normalizeExpense);
-                    setAgents(data.agents || []);
-                    settings = data.settings || {};
-                    pricePresets = data.pricePresets || [];
-                } catch (err) {
-                    console.error('Failed to load initial state', err);
-                    showToast('Could not load your data — check your connection and refresh.', 'error');
-                    orders = [];
-                    expenses = [];
-                }
-                refreshAllViews();
-
-                const storedMode = localStorage.getItem('verta_app_mode');
-                if (storedMode === 'delivery') {
-                    await enterDeliveryMode('customer');
-                } else if (storedMode === 'marketplace') {
-                    await enterMarketplaceMode('customer');
-                } else {
-                    showAppChooser();
-                }
-            }
+            document.getElementById('connection-status').style.display = 'none';
         }
 
         function renderSkeletonCards(container, count = 6) {
@@ -3265,33 +2198,70 @@
             container.appendChild(grid);
         }
 
+        async function enterApp() {
+            document.getElementById('auth-screen').style.display = 'none';
+            connectSocket();
+            requestNotificationPermission();
+
+            // Show the right dashboard shell immediately, with skeleton
+            // placeholders while the initial state loads — no blank gap.
+            if (currentUser.role === 'admin') {
+                document.getElementById('home-screen').style.display = 'none';
+                document.getElementById('delivery-app').style.display = 'block';
+                document.getElementById('user-name').textContent = currentUser.businessName || 'Admin';
+                document.getElementById('user-avatar').textContent = (currentUser.businessName || 'A').charAt(0).toUpperCase();
+                document.getElementById('topbar-user-name').textContent = currentUser.businessName || 'Admin';
+                document.getElementById('topbar-user-avatar').textContent = (currentUser.businessName || 'A').charAt(0).toUpperCase();
+                startAdminClock();
+                renderNotificationCenter();
+                renderSkeletonCards(document.getElementById('orders-grouped-delivery'));
+                applySavedTheme();
+            } else {
+                document.getElementById('delivery-app').style.display = 'none';
+                document.getElementById('home-screen').style.display = 'block';
+                document.getElementById('sender-display-name').textContent = currentUser.businessName;
+                document.getElementById('sender-avatar').textContent = currentUser.businessName.charAt(0).toUpperCase();
+                renderSkeletonCards(document.getElementById('orders-grid'));
+            }
+
+            try {
+                const data = await apiFetch('/api/state');
+                orders = (data.orders || []).map(normalizeOrder);
+                expenses = (data.expenses || []).map(normalizeExpense);
+                setAgents(data.agents || []);
+                settings = data.settings || {};
+                pricePresets = data.pricePresets || [];
+            } catch (err) {
+                console.error('Failed to load initial state', err);
+                showToast('Could not load your data — check your connection and refresh.', 'error');
+                orders = [];
+                expenses = [];
+            }
+
+            refreshAllViews();
+        }
+
         // ============================================================
         // Auth screen wiring (login / register / admin login)
         // ============================================================
         function wireAuthScreenEvents() {
             const modeSenderBtn = document.getElementById('mode-sender-btn');
             const modeAdminBtn = document.getElementById('mode-admin-btn');
-            const modeSuperAdminBtn = document.getElementById('mode-super-admin-btn');
-            const modeVendorBtn = document.getElementById('mode-vendor-btn');
             const senderCard = document.getElementById('sender-auth-card');
             const adminCard = document.getElementById('admin-auth-card');
-            const superAdminCard = document.getElementById('super-admin-auth-card');
-            const vendorCard = document.getElementById('vendor-auth-card');
 
-            function showAuthMode(mode) {
-                modeSenderBtn.classList.toggle('active', mode === 'sender');
-                modeAdminBtn.classList.toggle('active', mode === 'admin');
-                modeSuperAdminBtn.classList.toggle('active', mode === 'super-admin');
-                modeVendorBtn.classList.toggle('active', mode === 'vendor');
-                senderCard.style.display = mode === 'sender' ? 'block' : 'none';
-                adminCard.style.display = mode === 'admin' ? 'block' : 'none';
-                superAdminCard.style.display = mode === 'super-admin' ? 'block' : 'none';
-                vendorCard.style.display = mode === 'vendor' ? 'block' : 'none';
-            }
-            modeSenderBtn.addEventListener('click', () => showAuthMode('sender'));
-            modeAdminBtn.addEventListener('click', () => showAuthMode('admin'));
-            modeSuperAdminBtn.addEventListener('click', () => showAuthMode('super-admin'));
-            modeVendorBtn.addEventListener('click', () => showAuthMode('vendor'));
+            modeSenderBtn.addEventListener('click', () => {
+                modeSenderBtn.classList.add('active');
+                modeAdminBtn.classList.remove('active');
+                senderCard.style.display = 'block';
+                adminCard.style.display = 'none';
+            });
+            modeAdminBtn.addEventListener('click', () => {
+                modeAdminBtn.classList.add('active');
+                modeSenderBtn.classList.remove('active');
+                adminCard.style.display = 'block';
+                senderCard.style.display = 'none';
+            });
 
             const tabLogin = document.getElementById('tab-login');
             const tabRegister = document.getElementById('tab-register');
@@ -3486,82 +2456,13 @@
                     document.getElementById('admin-password').value = '';
                 } finally {
                     btn.disabled = false;
-                    btn.textContent = 'Login as Manage Agent';
+                    btn.textContent = 'Login as Admin';
                 }
             });
 
-            document.getElementById('super-admin-login-form').addEventListener('submit', async (e) => {
-                e.preventDefault();
-                const errorEl = document.getElementById('super-admin-login-error');
-                const btn = document.getElementById('super-admin-login-submit-btn');
-                errorEl.style.display = 'none';
-                btn.disabled = true;
-                btn.textContent = 'Logging in…';
-                try {
-                    // Reuses the same email+password endpoint sender login
-                    // uses — it's role-agnostic server-side. This form just
-                    // refuses to proceed if the account it authenticated
-                    // isn't actually a Super Admin account.
-                    const data = await apiFetch('/api/auth/login', {
-                        method: 'POST',
-                        body: JSON.stringify({
-                            email: document.getElementById('super-admin-email').value,
-                            password: document.getElementById('super-admin-password').value,
-                        })
-                    });
-                    if (data.user.role !== 'super_admin') {
-                        errorEl.textContent = 'This account is not a Super Admin account.';
-                        errorEl.style.display = 'block';
-                        return;
-                    }
-                    saveAuth(data.token, data.user);
-                    await enterApp();
-                } catch (err) {
-                    errorEl.textContent = err.message;
-                    errorEl.style.display = 'block';
-                    document.getElementById('super-admin-password').value = '';
-                } finally {
-                    btn.disabled = false;
-                    btn.textContent = 'Login as Super Admin';
-                }
-            });
-
-            document.getElementById('vendor-login-form').addEventListener('submit', async (e) => {
-                e.preventDefault();
-                const errorEl = document.getElementById('vendor-login-error');
-                const btn = document.getElementById('vendor-login-submit-btn');
-                errorEl.style.display = 'none';
-                btn.disabled = true;
-                btn.textContent = 'Logging in…';
-                try {
-                    const data = await apiFetch('/api/auth/login', {
-                        method: 'POST',
-                        body: JSON.stringify({
-                            email: document.getElementById('vendor-email').value,
-                            password: document.getElementById('vendor-password').value,
-                        })
-                    });
-                    if (data.user.role !== 'vendor') {
-                        errorEl.textContent = 'This account is not a Vendor account.';
-                        errorEl.style.display = 'block';
-                        return;
-                    }
-                    saveAuth(data.token, data.user);
-                    await enterApp();
-                } catch (err) {
-                    errorEl.textContent = err.message;
-                    errorEl.style.display = 'block';
-                    document.getElementById('vendor-password').value = '';
-                } finally {
-                    btn.disabled = false;
-                    btn.textContent = 'Login as Vendor';
-                }
-            });
-
-            document.getElementById('sender-logout-btn').addEventListener('click', async () => {
+            document.getElementById('sender-logout-btn').addEventListener('click', () => {
                 clearAuth();
-                currentUser = null;
-                showAppChooser();
+                showAuthScreen();
             });
             document.getElementById('admin-logout-btn').addEventListener('click', () => {
                 clearAuth();
@@ -4127,15 +3028,6 @@
                 document.getElementById('customers-modal').classList.remove('active');
             });
 
-            // ---- Vendors (Super Admin only) ----
-            document.getElementById('open-vendors-btn').addEventListener('click', () => {
-                document.getElementById('vendors-modal').classList.add('active');
-                loadVendors();
-            });
-            document.getElementById('close-vendors-modal').addEventListener('click', () => {
-                document.getElementById('vendors-modal').classList.remove('active');
-            });
-
             // ---- Help & Support ----
             document.getElementById('open-help-support-btn').addEventListener('click', () => {
                 renderHelpSupport();
@@ -4233,56 +3125,6 @@
                     </tr>`;
                 });
                 html += '</tbody></table></div>';
-                container.innerHTML = html;
-            } catch (err) {
-                container.innerHTML = `<p style="text-align: center; color: #dc2626; padding: 2rem 0;">${err.message}</p>`;
-            }
-        }
-
-        // Super Admin only — real Manage Agent account list + real
-        // platform totals. See the vendors-modal HTML for the honest
-        // single-tenant caveat shown to the person using this.
-        async function loadVendors() {
-            const container = document.getElementById('vendors-modal-content');
-            try {
-                const data = await apiFetch('/api/super-admin/vendors');
-                const vendors = data.vendors || [];
-                const totals = data.platformTotals || { totalOrders: 0, totalRevenue: 0, totalAgents: 0 };
-
-                let html = `
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
-                        <div style="background: var(--bg-light); padding: 1rem; border-radius: 0.75rem; text-align: center;">
-                            <div style="font-size: 0.75rem; color: var(--slate-light); text-transform: uppercase; letter-spacing: 0.03em;">Total Vendors</div>
-                            <div style="font-size: 1.5rem; font-weight: 800; color: var(--slate);">${vendors.length}</div>
-                        </div>
-                        <div style="background: var(--bg-light); padding: 1rem; border-radius: 0.75rem; text-align: center;">
-                            <div style="font-size: 0.75rem; color: var(--slate-light); text-transform: uppercase; letter-spacing: 0.03em;">Platform Orders</div>
-                            <div style="font-size: 1.5rem; font-weight: 800; color: var(--slate);">${totals.totalOrders}</div>
-                        </div>
-                        <div style="background: var(--bg-light); padding: 1rem; border-radius: 0.75rem; text-align: center;">
-                            <div style="font-size: 0.75rem; color: var(--slate-light); text-transform: uppercase; letter-spacing: 0.03em;">Platform Revenue</div>
-                            <div style="font-size: 1.5rem; font-weight: 800; color: var(--primary);">$${totals.totalRevenue.toFixed(2)}</div>
-                        </div>
-                        <div style="background: var(--bg-light); padding: 1rem; border-radius: 0.75rem; text-align: center;">
-                            <div style="font-size: 0.75rem; color: var(--slate-light); text-transform: uppercase; letter-spacing: 0.03em;">Total Agents</div>
-                            <div style="font-size: 1.5rem; font-weight: 800; color: var(--slate);">${totals.totalAgents}</div>
-                        </div>
-                    </div>
-                `;
-
-                if (vendors.length === 0) {
-                    html += '<p style="text-align: center; color: var(--slate-light); padding: 1rem 0;">No Manage Agent accounts yet.</p>';
-                } else {
-                    html += '<div style="overflow-x: auto;"><table class="settings-table"><thead><tr><th>Business</th><th>Email</th><th>Since</th></tr></thead><tbody>';
-                    vendors.forEach(v => {
-                        html += `<tr>
-                            <td style="font-weight:700;">${v.businessName}</td>
-                            <td>${v.email}</td>
-                            <td>${new Date(v.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</td>
-                        </tr>`;
-                    });
-                    html += '</tbody></table></div>';
-                }
                 container.innerHTML = html;
             } catch (err) {
                 container.innerHTML = `<p style="text-align: center; color: #dc2626; padding: 2rem 0;">${err.message}</p>`;
@@ -5668,541 +4510,6 @@
 
             document.getElementById('weekly-revenue-modal-content').innerHTML = html;
             document.getElementById('weekly-revenue-modal').classList.add('active');
-        }
-
-        // ============================================================
-        // Vendor Dashboard (marketplace) — real data throughout: sales
-        // overview and recent orders come from actual purchases, product
-        // management is full CRUD against the real products table.
-        // ============================================================
-        let vendorSalesChartInstance = null;
-
-        async function loadVendorDashboard() {
-            try {
-                const [overview, dailySalesData, productsData, purchasesData] = await Promise.all([
-                    apiFetch('/api/vendor/sales-overview'),
-                    apiFetch('/api/vendor/daily-sales'),
-                    apiFetch('/api/vendor/products'),
-                    apiFetch('/api/vendor/purchases'),
-                ]);
-                document.getElementById('vendor-total-sales').textContent = `$${overview.totalSales.toFixed(2)}`;
-                document.getElementById('vendor-total-orders').textContent = overview.totalOrders;
-
-                const purchases = purchasesData.purchases || [];
-                const uniqueCustomers = new Set(purchases.map(p => p.customerId)).size;
-                document.getElementById('vendor-unique-customers').textContent = uniqueCustomers;
-
-                vendorProducts = productsData.products || [];
-                renderVendorProducts();
-                renderVendorOrders(purchases);
-
-                renderVendorSalesChart(dailySalesData.days || []);
-                renderNotificationCenter();
-            } catch (err) {
-                console.error('Failed to load vendor dashboard', err);
-                showToast('Could not load your dashboard — check your connection and refresh.', 'error');
-            }
-        }
-
-        // Real day-by-day totals from the server, plotted as-is — no
-        // fabricated curve. The trend % compares the first half of this
-        // 30-day window against the second half (a coarser but still
-        // genuine comparison; a true "vs previous 30 days" figure would
-        // need a second backend query this pass didn't add).
-        function renderVendorSalesChart(days) {
-            const canvas = document.getElementById('vendor-sales-chart');
-            if (!canvas || typeof Chart === 'undefined') return;
-            const labels = days.map(d => new Date(d.day).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
-            const totals = days.map(d => d.total);
-
-            const mid = Math.ceil(totals.length / 2);
-            const firstHalf = totals.slice(0, mid).reduce((s, v) => s + v, 0);
-            const secondHalf = totals.slice(mid).reduce((s, v) => s + v, 0);
-            const trend = formatTrend(secondHalf, firstHalf, 'vs. earlier this period');
-            const trendEl = document.getElementById('vendor-sales-trend');
-            trendEl.textContent = totals.length === 0 ? '' : trend.text;
-            trendEl.className = `stat-trend ${trend.cls}`;
-
-            if (vendorSalesChartInstance) vendorSalesChartInstance.destroy();
-            vendorSalesChartInstance = new Chart(canvas.getContext('2d'), {
-                type: 'line',
-                data: {
-                    labels,
-                    datasets: [{
-                        data: totals, borderColor: '#16234a', backgroundColor: 'rgba(22,35,74,0.08)',
-                        fill: true, tension: 0.35, pointRadius: 0, borderWidth: 2,
-                    }],
-                },
-                options: {
-                    responsive: true,
-                    plugins: { legend: { display: false }, tooltip: { callbacks: { label: (ctx) => `$${ctx.parsed.y.toFixed(2)}` } } },
-                    scales: { y: { display: false }, x: { display: totals.length > 0, grid: { display: false } } },
-                },
-            });
-        }
-
-        function renderVendorProducts() {
-            const container = document.getElementById('vendor-products-container');
-            if (vendorProducts.length === 0) {
-                renderEmptyState(container, 'No products listed yet — click "+ Add Product" to get started.');
-                return;
-            }
-            container.innerHTML = `<div class="product-grid">${vendorProducts.map(p => `
-                <div class="product-card">
-                    <img class="product-card-image" src="${p.imageDataUrl || 'assets/logo.png'}" alt="${p.name}">
-                    <div class="product-card-body">
-                        <div class="product-card-name">${p.name}</div>
-                        ${p.category ? `<div class="product-card-vendor">${p.category}</div>` : ''}
-                        <div class="product-card-price">$${p.price.toFixed(2)}</div>
-                        <div class="product-card-stock">${p.stockQuantity} in stock ${p.isActive ? '' : '· <span style="color:#dc2626;">Hidden</span>'}</div>
-                    </div>
-                    <div class="product-card-actions">
-                        <button type="button" class="btn-small btn-secondary edit-product-btn" data-id="${p.id}" style="flex:1;">Edit</button>
-                        <button type="button" class="btn-small btn-danger delete-product-btn" data-id="${p.id}" style="flex:1;">Delete</button>
-                    </div>
-                </div>
-            `).join('')}</div>`;
-        }
-
-        function vendorOrderRowHtml(p) {
-            // Status pill reflects the linked delivery order's real status
-            // when one exists; a purchase with no delivery order (shouldn't
-            // normally happen, since checkout always creates one) falls
-            // back to a neutral "Placed" label rather than a fabricated one.
-            const status = p.deliveryStatus || 'placed';
-            const statusLabel = { pending: 'Processing', accepted: 'Processing', 'picked-up': 'Processing', delivered: 'Fulfilled', cancelled: 'Cancelled', placed: 'Placed' }[status] || 'Placed';
-            const statusClass = { delivered: 'fulfilled', cancelled: 'cancelled' }[status] || 'processing';
-            return `
-                <div class="vendor-order-row" data-id="${p.id}">
-                    <div class="vendor-order-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path><line x1="3" y1="6" x2="21" y2="6"></line><path d="M16 10a4 4 0 0 1-8 0"></path></svg></div>
-                    <div class="vendor-order-main">
-                        <div class="vendor-order-id">${p.id}</div>
-                        <div class="vendor-order-buyer">Buyer: ${p.customerName}</div>
-                    </div>
-                    <div class="vendor-order-right">
-                        <span class="vendor-order-status-pill ${statusClass}">${statusLabel}</span>
-                        <div class="vendor-order-price">$${p.totalAmount.toFixed(2)}</div>
-                    </div>
-                    <svg class="vendor-order-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
-                </div>
-            `;
-        }
-
-        function renderVendorOrders(purchases) {
-            const preview = document.getElementById('vendor-orders-preview');
-            const full = document.getElementById('vendor-orders-container');
-            if (purchases.length === 0) {
-                renderEmptyState(preview, 'No orders yet.');
-                renderEmptyState(full, 'No orders yet.');
-                return;
-            }
-            preview.innerHTML = purchases.slice(0, 3).map(vendorOrderRowHtml).join('');
-            full.innerHTML = purchases.map(vendorOrderRowHtml).join('');
-        }
-
-        function openProductModal(productId) {
-            editingProductId = productId || null;
-            pendingProductImageDataUrl = null;
-            const errorEl = document.getElementById('product-form-error');
-            errorEl.style.display = 'none';
-            if (productId) {
-                const p = vendorProducts.find(x => x.id === productId);
-                document.getElementById('product-modal-title').textContent = 'Edit Product';
-                document.getElementById('product-name-input').value = p ? p.name : '';
-                document.getElementById('product-description-input').value = p && p.description ? p.description : '';
-                document.getElementById('product-category-input').value = p && p.category ? p.category : '';
-                document.getElementById('product-price-input').value = p ? p.price : '';
-                document.getElementById('product-stock-input').value = p ? p.stockQuantity : '';
-                document.getElementById('product-image-preview').src = (p && p.imageDataUrl) || 'assets/logo.png';
-            } else {
-                document.getElementById('product-modal-title').textContent = 'Add Product';
-                document.getElementById('product-form').reset();
-                document.getElementById('product-image-preview').src = 'assets/logo.png';
-            }
-            document.getElementById('product-modal').classList.add('active');
-        }
-        function closeProductModal() {
-            document.getElementById('product-modal').classList.remove('active');
-            editingProductId = null;
-        }
-
-        async function handleProductFormSubmit(e) {
-            e.preventDefault();
-            const errorEl = document.getElementById('product-form-error');
-            const btn = document.getElementById('product-form-submit-btn');
-            errorEl.style.display = 'none';
-            const payload = {
-                name: document.getElementById('product-name-input').value.trim(),
-                description: document.getElementById('product-description-input').value.trim(),
-                category: document.getElementById('product-category-input').value.trim(),
-                price: parseFloat(document.getElementById('product-price-input').value),
-                stockQuantity: parseInt(document.getElementById('product-stock-input').value, 10),
-            };
-            if (pendingProductImageDataUrl) payload.imageDataUrl = pendingProductImageDataUrl;
-            btn.disabled = true;
-            btn.textContent = 'Saving…';
-            try {
-                if (editingProductId) {
-                    await apiFetch(`/api/vendor/products/${editingProductId}`, { method: 'PUT', body: JSON.stringify(payload) });
-                } else {
-                    await apiFetch('/api/vendor/products', { method: 'POST', body: JSON.stringify(payload) });
-                }
-                closeProductModal();
-                showToast(editingProductId ? 'Product updated' : 'Product added', 'success');
-                await loadVendorDashboard();
-            } catch (err) {
-                errorEl.textContent = err.message;
-                errorEl.style.display = 'block';
-            } finally {
-                btn.disabled = false;
-                btn.textContent = 'Save Product';
-            }
-        }
-
-        async function deleteProduct(productId) {
-            if (!confirm('Delete this product? This cannot be undone.')) return;
-            try {
-                await apiFetch(`/api/vendor/products/${productId}`, { method: 'DELETE' });
-                showToast('Product deleted', 'success');
-                await loadVendorDashboard();
-            } catch (err) {
-                showToast(err.message, 'error');
-            }
-        }
-
-        function setVendorTab(tab) {
-            document.querySelectorAll('#vendor-app .mobile-nav-item').forEach(btn => btn.classList.toggle('active', btn.dataset.vendorTab === tab));
-            document.getElementById('vendor-view-home').style.display = tab === 'home' ? 'block' : 'none';
-            document.getElementById('vendor-view-products').style.display = tab === 'products' ? 'block' : 'none';
-            document.getElementById('vendor-view-orders').style.display = tab === 'orders' ? 'block' : 'none';
-            document.getElementById('vendor-view-messages').style.display = tab === 'messages' ? 'block' : 'none';
-            document.getElementById('vendor-view-account').style.display = tab === 'account' ? 'block' : 'none';
-            const shell = document.querySelector('#vendor-app .mobile-content');
-            if (shell) shell.scrollTop = 0;
-        }
-
-        function wireVendorEvents() {
-            document.getElementById('vendor-logout-btn').addEventListener('click', async () => {
-                clearAuth();
-                currentUser = null;
-                showAppChooser();
-            });
-            document.getElementById('vendor-add-product-btn').addEventListener('click', () => openProductModal(null));
-            document.getElementById('vendor-add-product-btn-2').addEventListener('click', () => openProductModal(null));
-            document.getElementById('close-product-modal').addEventListener('click', closeProductModal);
-            document.getElementById('cancel-product-form').addEventListener('click', closeProductModal);
-            document.getElementById('product-form').addEventListener('submit', handleProductFormSubmit);
-
-            document.getElementById('product-image-upload-btn').addEventListener('click', () => {
-                document.getElementById('product-image-input').click();
-            });
-            document.getElementById('product-image-input').addEventListener('change', (e) => {
-                const file = e.target.files[0];
-                if (!file) return;
-                if (file.size > 500 * 1024) {
-                    showToast('Please choose an image under 500KB.', 'error');
-                    return;
-                }
-                const reader = new FileReader();
-                reader.onload = () => {
-                    pendingProductImageDataUrl = reader.result;
-                    document.getElementById('product-image-preview').src = pendingProductImageDataUrl;
-                };
-                reader.readAsDataURL(file);
-            });
-
-            document.getElementById('vendor-products-container').addEventListener('click', (e) => {
-                if (e.target.classList.contains('edit-product-btn')) openProductModal(e.target.dataset.id);
-                if (e.target.classList.contains('delete-product-btn')) deleteProduct(e.target.dataset.id);
-            });
-
-            // Bottom nav + "View All" / quick-action shortcuts that jump tabs
-            document.querySelectorAll('#vendor-app .mobile-nav-item').forEach(btn => {
-                btn.addEventListener('click', () => setVendorTab(btn.dataset.vendorTab));
-            });
-            document.querySelectorAll('#vendor-app [data-vendor-tab]').forEach(el => {
-                if (el.classList.contains('mobile-nav-item')) return; // already wired above
-                el.addEventListener('click', () => setVendorTab(el.dataset.vendorTab));
-            });
-
-            // Honestly-scoped placeholders — no backend exists for either yet.
-            document.getElementById('vendor-manage-promos-btn').addEventListener('click', () => {
-                showToast('Promos aren\'t built yet — coming soon.', 'info');
-            });
-            document.getElementById('vendor-view-reports-btn').addEventListener('click', () => {
-                setVendorTab('home'); // the Sales Overview chart above *is* the real report today
-                showToast('Deeper reports aren\'t built yet — this is everything real we track so far.', 'info');
-            });
-
-            // Notification bell — same real notification log as everywhere else.
-            const bell = document.getElementById('vendor-notification-btn');
-            const panel = document.getElementById('vendor-notification-panel');
-            bell.addEventListener('click', (e) => {
-                e.stopPropagation();
-                panel.classList.toggle('open');
-                if (panel.classList.contains('open')) {
-                    notificationLog.forEach(n => { n.unread = false; });
-                    renderNotificationCenter();
-                }
-            });
-            document.addEventListener('click', (e) => {
-                if (panel.classList.contains('open') && !panel.contains(e.target) && e.target !== bell) {
-                    panel.classList.remove('open');
-                }
-            });
-            document.getElementById('vendor-clear-notifications-link').addEventListener('click', () => {
-                notificationLog = [];
-                renderNotificationCenter();
-            });
-        }
-
-        // ============================================================
-        // Storefront (sender-side marketplace browsing) + Cart + Checkout
-        // ============================================================
-        let selectedStorefrontCategory = '';
-
-        // A handful of recognizable icons for common category names, with
-        // a generic fallback grid icon for anything else — since
-        // categories are free-text (vendor-entered), not a fixed enum.
-        const CATEGORY_ICON_SVGS = {
-            electronics: '<path d="M20 4H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z"></path><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line>',
-            fashion: '<path d="M20.38 3.46 16 2a4 4 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.47a1 1 0 0 0 .99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 0 0 2-2V10h2.15a1 1 0 0 0 .99-.84l.58-3.47a2 2 0 0 0-1.34-2.23z"></path>',
-            beauty: '<path d="M12 2v6M8 8h8l2 12H6L8 8z"></path>',
-            home: '<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>',
-            default: '<rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect>',
-        };
-        function categoryIconSvg(category) {
-            const key = (category || '').toLowerCase();
-            const match = Object.keys(CATEGORY_ICON_SVGS).find(k => k !== 'default' && key.includes(k));
-            return CATEGORY_ICON_SVGS[match || 'default'];
-        }
-
-        function renderStars(avgRating, reviewCount) {
-            if (!reviewCount) return '<span class="star-rating-empty">No ratings yet</span>';
-            const full = Math.round(avgRating);
-            const starSvg = '<svg viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>';
-            return `<span class="star-rating">${starSvg.repeat(Math.min(5, Math.max(1, full)))} <span style="color:var(--slate-light); font-weight:600;">${avgRating.toFixed(1)} (${reviewCount})</span></span>`;
-        }
-
-        async function loadStorefront() {
-            try {
-                const data = await apiFetch('/api/marketplace/products');
-                storefrontProducts = data.products || [];
-                const categories = [...new Set(storefrontProducts.map(p => p.category).filter(Boolean))];
-                const grid = document.getElementById('mp-category-grid');
-                grid.innerHTML = [`<button type="button" class="category-item" data-category="">
-                        <div class="category-icon-box"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${CATEGORY_ICON_SVGS.default}</svg></div>
-                        <div class="category-label">All</div>
-                    </button>`, ...categories.map(c => `
-                    <button type="button" class="category-item" data-category="${c}">
-                        <div class="category-icon-box"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${categoryIconSvg(c)}</svg></div>
-                        <div class="category-label">${c}</div>
-                    </button>
-                `)].join('');
-                renderStorefrontProducts();
-
-                // Popular Stores preview on the Home tab — real data,
-                // capped to a handful for a compact preview row.
-                const storesData = await apiFetch('/api/marketplace/stores').catch(() => ({ stores: [] }));
-                renderStoreCards(document.getElementById('mp-popular-stores-preview'), (storesData.stores || []).slice(0, 4));
-            } catch (err) {
-                console.error('Failed to load storefront', err);
-            }
-        }
-
-        function renderStoreCards(container, stores) {
-            if (!container) return;
-            if (stores.length === 0) {
-                container.innerHTML = '<p style="grid-column: 1 / -1; text-align:center; color:var(--slate-light); font-size:0.875rem;">No stores yet.</p>';
-                return;
-            }
-            container.innerHTML = stores.map(s => `
-                <div class="store-card">
-                    <div class="store-card-avatar">${s.businessName.charAt(0).toUpperCase()}</div>
-                    <div class="store-card-name">${s.businessName}</div>
-                    <div class="store-card-rating">${s.reviewCount > 0 ? '★ ' + s.avgRating.toFixed(1) : 'New'}</div>
-                </div>
-            `).join('');
-        }
-
-        async function loadStoresDirectory() {
-            const container = document.getElementById('mp-stores-full-list');
-            try {
-                const data = await apiFetch('/api/marketplace/stores');
-                renderStoreCards(container, data.stores || []);
-            } catch (err) {
-                container.innerHTML = `<p style="grid-column: 1 / -1; text-align:center; color:#dc2626;">${err.message}</p>`;
-            }
-        }
-
-        function renderStorefrontProducts() {
-            const container = document.getElementById('storefront-products-container');
-            const search = document.getElementById('storefront-search-input').value.trim().toLowerCase();
-            document.querySelectorAll('#mp-category-grid .category-item').forEach(btn => {
-                btn.classList.toggle('active-category', btn.dataset.category === selectedStorefrontCategory);
-            });
-            const filtered = storefrontProducts.filter(p => {
-                if (selectedStorefrontCategory && p.category !== selectedStorefrontCategory) return false;
-                if (search && !`${p.name} ${p.vendorName}`.toLowerCase().includes(search)) return false;
-                return true;
-            });
-            if (filtered.length === 0) {
-                renderEmptyState(container, 'No products found.');
-                return;
-            }
-            container.innerHTML = `<div class="product-grid">${filtered.map(p => `
-                <div class="product-card">
-                    <img class="product-card-image" src="${p.imageDataUrl || 'assets/logo.png'}" alt="${p.name}">
-                    <div class="product-card-body">
-                        <div class="product-card-name">${p.name}</div>
-                        <div class="product-card-vendor">${p.vendorName}</div>
-                        ${renderStars(p.avgRating, p.reviewCount)}
-                        <div class="product-card-price">$${p.price.toFixed(2)}</div>
-                    </div>
-                    <div class="product-card-actions">
-                        <button type="button" class="btn-small btn-success add-to-cart-btn" data-id="${p.id}" style="flex:1;">Add to Cart</button>
-                    </div>
-                </div>
-            `).join('')}</div>`;
-        }
-
-        function addToCart(productId) {
-            const product = storefrontProducts.find(p => p.id === productId);
-            if (!product) return;
-            const existingVendor = cart.length > 0 ? cart[0].vendorId : null;
-            if (existingVendor && existingVendor !== product.vendorId) {
-                showToast('Your cart can only have items from one vendor at a time — checkout or clear your cart first.', 'error');
-                return;
-            }
-            const existing = cart.find(c => c.productId === productId);
-            if (existing) existing.quantity += 1;
-            else cart.push({ productId: product.id, name: product.name, price: product.price, vendorId: product.vendorId, vendorName: product.vendorName, quantity: 1 });
-            updateCartCount();
-            showToast(`Added ${product.name} to cart`, 'success');
-        }
-
-        function updateCartCount() {
-            const count = cart.reduce((sum, c) => sum + c.quantity, 0);
-            const badge = document.getElementById('cart-count-badge');
-            badge.textContent = count;
-            badge.style.display = count > 0 ? 'flex' : 'none';
-        }
-
-        function renderCartModal() {
-            const container = document.getElementById('cart-modal-content');
-            if (cart.length === 0) {
-                container.innerHTML = '<p style="text-align:center; color: var(--slate-light); padding: 2rem 0;">Your cart is empty.</p>';
-                return;
-            }
-            const total = cart.reduce((sum, c) => sum + c.price * c.quantity, 0);
-            container.innerHTML = cart.map(c => `
-                <div class="cart-line-item">
-                    <div>
-                        <div style="font-weight: 700;">${c.name}</div>
-                        <div style="font-size: 0.8125rem; color: var(--slate-light);">${c.vendorName} · $${c.price.toFixed(2)} each</div>
-                    </div>
-                    <div class="cart-qty-controls">
-                        <button type="button" class="cart-qty-btn" data-action="dec" data-id="${c.productId}">−</button>
-                        <span>${c.quantity}</span>
-                        <button type="button" class="cart-qty-btn" data-action="inc" data-id="${c.productId}">+</button>
-                        <button type="button" class="cart-qty-btn" data-action="remove" data-id="${c.productId}" title="Remove">×</button>
-                    </div>
-                </div>
-            `).join('') + `<div style="text-align:right; font-weight: 800; font-size: 1.125rem; margin-top: 1rem;">Total: $${total.toFixed(2)}</div>`;
-        }
-
-        function openCheckoutModal() {
-            if (cart.length === 0) return;
-            if (!currentUser || currentUser.role !== 'sender') {
-                document.getElementById('cart-modal').classList.remove('active');
-                showToast('Please log in or create a customer account to check out.', 'info');
-                showAuthScreen();
-                return;
-            }
-            document.getElementById('cart-modal').classList.remove('active');
-            document.getElementById('checkout-error').style.display = 'none';
-            const total = cart.reduce((sum, c) => sum + c.price * c.quantity, 0);
-            document.getElementById('checkout-summary').textContent = `${cart.reduce((s, c) => s + c.quantity, 0)} item(s) — Total: $${total.toFixed(2)}`;
-            document.getElementById('checkout-modal').classList.add('active');
-        }
-
-        async function handleCheckoutSubmit(e) {
-            e.preventDefault();
-            const errorEl = document.getElementById('checkout-error');
-            const btn = document.getElementById('checkout-submit-btn');
-            errorEl.style.display = 'none';
-            btn.disabled = true;
-            btn.textContent = 'Placing Order…';
-            try {
-                const result = await apiFetch('/api/marketplace/checkout', {
-                    method: 'POST',
-                    body: JSON.stringify({
-                        vendorId: cart[0].vendorId,
-                        items: cart.map(c => ({ productId: c.productId, quantity: c.quantity })),
-                        pickupAddress: document.getElementById('checkout-pickup-address').value,
-                        dropoffAddress: document.getElementById('checkout-dropoff-address').value,
-                    }),
-                });
-                cart = [];
-                updateCartCount();
-                document.getElementById('checkout-modal').classList.remove('active');
-                document.getElementById('checkout-form').reset();
-                showToast(`Order placed! Total: $${result.totalAmount.toFixed(2)}`, 'success');
-                sendLocalNotification('Order Placed', { body: `Your marketplace order (${result.purchaseId}) was placed.` });
-            } catch (err) {
-                errorEl.textContent = err.message;
-                errorEl.style.display = 'block';
-            } finally {
-                btn.disabled = false;
-                btn.textContent = 'Place Order';
-            }
-        }
-
-        function wireStorefrontEvents() {
-            document.getElementById('storefront-search-input').addEventListener('input', debounce(renderStorefrontProducts, 200));
-            document.getElementById('mp-category-grid').addEventListener('click', (e) => {
-                const btn = e.target.closest('.category-item');
-                if (!btn) return;
-                selectedStorefrontCategory = btn.dataset.category;
-                renderStorefrontProducts();
-            });
-            document.getElementById('storefront-products-container').addEventListener('click', (e) => {
-                if (e.target.classList.contains('add-to-cart-btn')) addToCart(e.target.dataset.id);
-            });
-
-            document.getElementById('open-cart-btn').addEventListener('click', () => {
-                renderCartModal();
-                document.getElementById('cart-modal').classList.add('active');
-            });
-            document.getElementById('close-cart-modal').addEventListener('click', () => document.getElementById('cart-modal').classList.remove('active'));
-            document.getElementById('close-cart-modal-btn').addEventListener('click', () => document.getElementById('cart-modal').classList.remove('active'));
-            document.getElementById('cart-modal-content').addEventListener('click', (e) => {
-                const btn = e.target.closest('.cart-qty-btn');
-                if (!btn) return;
-                const id = btn.dataset.id;
-                const item = cart.find(c => c.productId === id);
-                if (!item) return;
-                if (btn.dataset.action === 'inc') item.quantity += 1;
-                else if (btn.dataset.action === 'dec') item.quantity = Math.max(1, item.quantity - 1);
-                else if (btn.dataset.action === 'remove') cart = cart.filter(c => c.productId !== id);
-                updateCartCount();
-                renderCartModal();
-            });
-
-            document.getElementById('open-checkout-btn').addEventListener('click', openCheckoutModal);
-            document.getElementById('close-checkout-modal').addEventListener('click', () => document.getElementById('checkout-modal').classList.remove('active'));
-            document.getElementById('cancel-checkout').addEventListener('click', () => {
-                document.getElementById('checkout-modal').classList.remove('active');
-                document.getElementById('cart-modal').classList.add('active');
-            });
-            document.getElementById('checkout-form').addEventListener('submit', handleCheckoutSubmit);
-        }
-
-        // PWA install support — safe no-op in browsers that don't support it.
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/sw.js').catch((err) => console.warn('Service worker registration failed', err));
-            });
         }
     </script>
 </body>

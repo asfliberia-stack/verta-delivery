@@ -16,9 +16,6 @@ const {
   signToken,
   requireAuth,
   requireAdmin,
-  requireSuperAdmin,
-  requireVendor,
-  isAdminLike,
   socketAuth,
 } = require('./auth');
 
@@ -119,11 +116,7 @@ function orderRooms(senderId) {
 }
 
 io.on('connection', (socket) => {
-  const room = isAdminLike(socket.user.role)
-    ? 'admins'
-    : socket.user.role === 'vendor'
-      ? `vendor:${socket.user.id}`
-      : `user:${socket.user.id}`;
+  const room = socket.user.role === 'admin' ? 'admins' : `user:${socket.user.id}`;
   socket.join(room);
   console.log(`[socket] ${socket.user.role} connected: ${socket.user.email} (${socket.id})`);
 
@@ -135,7 +128,7 @@ io.on('connection', (socket) => {
 
   socket.on('order:create', async (payload, ack) => {
     const isSender = socket.user.role === 'sender';
-    const isAdmin = isAdminLike(socket.user.role);
+    const isAdmin = socket.user.role === 'admin';
     if (!isSender && !isAdmin) {
       return ack && ack({ ok: false, error: 'Not allowed to create orders' });
     }
@@ -200,7 +193,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('order:update', async ({ id, fields }, ack) => {
-    if (!isAdminLike(socket.user.role)) {
+    if (socket.user.role !== 'admin') {
       return ack && ack({ ok: false, error: 'Only admins can update orders' });
     }
     try {
@@ -214,7 +207,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('order:accept', async ({ id, amount, acceptedBy, paymentMethod }, ack) => {
-    if (!isAdminLike(socket.user.role)) {
+    if (socket.user.role !== 'admin') {
       return ack && ack({ ok: false, error: 'Only admins can accept orders' });
     }
     try {
@@ -234,7 +227,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('order:delete-bulk', async ({ ids, password }, ack) => {
-    if (!isAdminLike(socket.user.role)) {
+    if (socket.user.role !== 'admin') {
       return ack && ack({ ok: false, error: 'Only admins can delete orders' });
     }
     if (!password || password !== DELETE_PASSWORD) {
@@ -257,7 +250,7 @@ io.on('connection', (socket) => {
   // ---- Expenses (admin only, not tied to a sender) ----
 
   socket.on('expense:create', async (payload, ack) => {
-    if (!isAdminLike(socket.user.role)) {
+    if (socket.user.role !== 'admin') {
       return ack && ack({ ok: false, error: 'Only admins can add expenses' });
     }
     try {
@@ -271,7 +264,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('expense:delete', async ({ id, password }, ack) => {
-    if (!isAdminLike(socket.user.role)) {
+    if (socket.user.role !== 'admin') {
       return ack && ack({ ok: false, error: 'Only admins can delete expenses' });
     }
     if (!password || password !== DELETE_PASSWORD) {
@@ -290,7 +283,7 @@ io.on('connection', (socket) => {
   // ---- Fleet Directory (agents) — admin-managed, admin-only --------
 
   socket.on('agent:create', async ({ name, phone }, ack) => {
-    if (!isAdminLike(socket.user.role)) {
+    if (socket.user.role !== 'admin') {
       return ack && ack({ ok: false, error: 'Only admins can add agents' });
     }
     if (!name || !name.trim() || !phone || !phone.trim()) {
@@ -307,7 +300,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('agent:update', async ({ id, name, phone }, ack) => {
-    if (!isAdminLike(socket.user.role)) {
+    if (socket.user.role !== 'admin') {
       return ack && ack({ ok: false, error: 'Only admins can edit agents' });
     }
     if (!name || !name.trim() || !phone || !phone.trim()) {
@@ -327,7 +320,7 @@ io.on('connection', (socket) => {
   // "On Duty / Off Duty" — explicitly admin-set, not automatic presence
   // (see the duty_status comment in schema.sql for why).
   socket.on('agent:set-duty-status', async ({ id, dutyStatus }, ack) => {
-    if (!isAdminLike(socket.user.role)) {
+    if (socket.user.role !== 'admin') {
       return ack && ack({ ok: false, error: 'Only admins can change agent duty status' });
     }
     if (dutyStatus !== 'on_duty' && dutyStatus !== 'off_duty') {
@@ -504,7 +497,7 @@ app.get('/api/me', requireAuth, async (req, res) => {
 app.get('/api/state', requireAuth, async (req, res) => {
   try {
     const settings = await db.getSettings();
-    if (isAdminLike(req.user.role)) {
+    if (req.user.role === 'admin') {
       const [orders, expenses, agents, pricePresets] = await Promise.all([
         db.getAllOrders(), db.getAllExpenses(), db.getAllAgents(), db.getAllPricePresets(),
       ]);
@@ -644,37 +637,6 @@ app.get('/api/admin/customers', requireAuth, requireAdmin, async (req, res) => {
 });
 
 // ============================================================
-// Super Admin only — Vendors oversight panel. Lists every Manage
-// Agent (admin) account plus platform-wide totals.
-//
-// IMPORTANT LIMITATION (see db.js getVendors comment too): this app is
-// still single-tenant — orders/agents/expenses are one shared dataset,
-// not partitioned per vendor. So "platform totals" below really means
-// "the one shared business's totals" until a real vendor/store schema
-// exists. Once the marketplace data model is built, this becomes the
-// place to show genuinely separate per-vendor numbers.
-// ============================================================
-app.get('/api/super-admin/vendors', requireAuth, requireSuperAdmin, async (req, res) => {
-  try {
-    const [vendors, orders, agents] = await Promise.all([
-      db.getVendors(), db.getAllOrders(), db.getAllAgents(),
-    ]);
-    const totalRevenue = orders.filter(o => o.status === 'delivered').reduce((sum, o) => sum + (o.amount || 0), 0);
-    res.json({
-      vendors,
-      platformTotals: {
-        totalOrders: orders.length,
-        totalRevenue,
-        totalAgents: agents.length,
-      },
-    });
-  } catch (err) {
-    console.error('GET /api/super-admin/vendors failed', err);
-    res.status(500).json({ error: 'Failed to load vendors' });
-  }
-});
-
-// ============================================================
 // Pricing presets — admin-defined reference price points, offered as
 // quick-select options in the Accept Order flow. Not an automatic
 // distance/zone calculator (no mapping data backs this app).
@@ -705,209 +667,6 @@ app.delete('/api/admin/price-presets/:id', requireAuth, requireAdmin, async (req
   }
 });
 
-// ============================================================
-// Marketplace (GoLib) — vendor product management
-// ============================================================
-
-app.get('/api/vendor/products', requireAuth, requireVendor, async (req, res) => {
-  try {
-    const products = await db.getProductsByVendor(req.user.id);
-    res.json({ products });
-  } catch (err) {
-    console.error('GET /api/vendor/products failed', err);
-    res.status(500).json({ error: 'Failed to load products' });
-  }
-});
-
-const MAX_PRODUCT_IMAGE_BYTES = 700 * 1024; // same limit/reasoning as the business logo upload
-
-app.post('/api/vendor/products', requireAuth, requireVendor, async (req, res) => {
-  const { name, description, price, category, imageDataUrl, stockQuantity } = req.body || {};
-  if (!name || !name.trim() || price === undefined || isNaN(Number(price)) || Number(price) < 0) {
-    return res.status(400).json({ error: 'A name and a valid non-negative price are required' });
-  }
-  if (imageDataUrl && imageDataUrl.length > MAX_PRODUCT_IMAGE_BYTES) {
-    return res.status(400).json({ error: 'Product image is too large — please use an image under ~500KB.' });
-  }
-  try {
-    const product = await db.createProduct({
-      id: crypto.randomUUID(),
-      vendorId: req.user.id,
-      name: name.trim(),
-      description,
-      price: Number(price),
-      category,
-      imageDataUrl,
-      stockQuantity: Number(stockQuantity) || 0,
-    });
-    res.json({ ok: true, product });
-  } catch (err) {
-    console.error('POST /api/vendor/products failed', err);
-    res.status(500).json({ error: 'Failed to create product' });
-  }
-});
-
-app.put('/api/vendor/products/:id', requireAuth, requireVendor, async (req, res) => {
-  try {
-    const existing = await db.getProductById(req.params.id);
-    if (!existing) return res.status(404).json({ error: 'Product not found' });
-    if (existing.vendorId !== req.user.id) return res.status(403).json({ error: 'Not your product' });
-    if (req.body.imageDataUrl && req.body.imageDataUrl.length > MAX_PRODUCT_IMAGE_BYTES) {
-      return res.status(400).json({ error: 'Product image is too large — please use an image under ~500KB.' });
-    }
-    const product = await db.updateProduct(req.params.id, req.body || {});
-    res.json({ ok: true, product });
-  } catch (err) {
-    console.error('PUT /api/vendor/products failed', err);
-    res.status(500).json({ error: 'Failed to update product' });
-  }
-});
-
-app.delete('/api/vendor/products/:id', requireAuth, requireVendor, async (req, res) => {
-  try {
-    const existing = await db.getProductById(req.params.id);
-    if (!existing) return res.status(404).json({ error: 'Product not found' });
-    if (existing.vendorId !== req.user.id) return res.status(403).json({ error: 'Not your product' });
-    await db.deleteProduct(req.params.id);
-    res.json({ ok: true });
-  } catch (err) {
-    console.error('DELETE /api/vendor/products failed', err);
-    res.status(500).json({ error: 'Failed to delete product' });
-  }
-});
-
-app.get('/api/vendor/sales-overview', requireAuth, requireVendor, async (req, res) => {
-  try {
-    const overview = await db.getVendorSalesOverview(req.user.id, 30);
-    res.json(overview);
-  } catch (err) {
-    console.error('GET /api/vendor/sales-overview failed', err);
-    res.status(500).json({ error: 'Failed to load sales overview' });
-  }
-});
-
-app.get('/api/vendor/daily-sales', requireAuth, requireVendor, async (req, res) => {
-  try {
-    const days = await db.getVendorDailySales(req.user.id, 30);
-    res.json({ days });
-  } catch (err) {
-    console.error('GET /api/vendor/daily-sales failed', err);
-    res.status(500).json({ error: 'Failed to load sales chart' });
-  }
-});
-
-app.get('/api/vendor/purchases', requireAuth, requireVendor, async (req, res) => {
-  try {
-    const purchases = await db.getPurchasesByVendor(req.user.id);
-    res.json({ purchases });
-  } catch (err) {
-    console.error('GET /api/vendor/purchases failed', err);
-    res.status(500).json({ error: 'Failed to load orders' });
-  }
-});
-
-// ============================================================
-// Marketplace — customer storefront + checkout
-// ============================================================
-
-// Public — no requireAuth. The marketplace homepage is the default
-// landing page for guests, so browsing must work with no login at all.
-// Checkout still requires a real sender account (checked below).
-app.get('/api/marketplace/products', async (req, res) => {
-  try {
-    const products = await db.getActiveProductsForStorefront();
-    res.json({ products });
-  } catch (err) {
-    console.error('GET /api/marketplace/products failed', err);
-    res.status(500).json({ error: 'Failed to load products' });
-  }
-});
-
-// Public — the Stores tab, real vendor list with real aggregate ratings.
-app.get('/api/marketplace/stores', async (req, res) => {
-  try {
-    const stores = await db.getStorefrontVendors();
-    res.json({ stores });
-  } catch (err) {
-    console.error('GET /api/marketplace/stores failed', err);
-    res.status(500).json({ error: 'Failed to load stores' });
-  }
-});
-
-app.get('/api/marketplace/products/:id/reviews', async (req, res) => {
-  try {
-    const reviews = await db.getProductReviews(req.params.id);
-    res.json({ reviews });
-  } catch (err) {
-    console.error('GET /api/marketplace/products/:id/reviews failed', err);
-    res.status(500).json({ error: 'Failed to load reviews' });
-  }
-});
-
-// Only a customer who actually bought this product can review it —
-// verified server-side, not just hidden in the UI.
-app.post('/api/marketplace/products/:id/reviews', requireAuth, async (req, res) => {
-  if (req.user.role !== 'sender') {
-    return res.status(403).json({ error: 'Only customers can leave reviews' });
-  }
-  const { rating, comment } = req.body || {};
-  if (!rating || rating < 1 || rating > 5) {
-    return res.status(400).json({ error: 'A rating from 1 to 5 is required' });
-  }
-  try {
-    const purchased = await db.hasCustomerPurchasedProduct(req.user.id, req.params.id);
-    if (!purchased) {
-      return res.status(403).json({ error: 'You can only review products you have purchased' });
-    }
-    const review = await db.upsertProductReview({
-      id: crypto.randomUUID(), productId: req.params.id, customerId: req.user.id, rating, comment,
-    });
-    res.json({ ok: true, review });
-  } catch (err) {
-    console.error('POST reviews failed', err);
-    res.status(500).json({ error: 'Failed to save review' });
-  }
-});
-
-// Checkout — pay-on-delivery (no payment gateway integrated yet) and
-// automatically creates a real delivery order for fulfillment. Both are
-// defaults, not confirmed decisions — see README.
-app.post('/api/marketplace/checkout', requireAuth, async (req, res) => {
-  if (req.user.role !== 'sender') {
-    return res.status(403).json({ error: 'Only customers can check out' });
-  }
-  const { vendorId, items, pickupAddress, dropoffAddress } = req.body || {};
-  if (!vendorId || !Array.isArray(items) || items.length === 0) {
-    return res.status(400).json({ error: 'A vendor and at least one item are required' });
-  }
-  if (!pickupAddress || !dropoffAddress) {
-    return res.status(400).json({ error: 'Pickup and dropoff addresses are required' });
-  }
-  try {
-    const result = await db.checkout({
-      customerId: req.user.id,
-      customerName: req.user.businessName,
-      vendorId,
-      items,
-      pickupAddress,
-      dropoffAddress,
-      createDeliveryOrder: true,
-    });
-    io.to(`vendor:${vendorId}`).emit('purchase:created', result);
-    if (result.deliveryOrderId) {
-      const deliveryOrder = await db.getOrder(result.deliveryOrderId);
-      if (deliveryOrder) {
-        orderRooms(deliveryOrder.senderId).forEach((r) => io.to(r).emit('order:created', deliveryOrder));
-        notifyNewOrder(deliveryOrder);
-      }
-    }
-    res.json({ ok: true, ...result });
-  } catch (err) {
-    console.error('POST /api/marketplace/checkout failed', err);
-    res.status(400).json({ error: err.message || 'Checkout failed' });
-  }
-});
-
 app.get('/health', (req, res) => res.json({ ok: true }));
 
 async function seedAdminIfConfigured() {
@@ -925,27 +684,6 @@ async function seedAdminIfConfigured() {
     role: 'admin',
   });
   console.log(`[seed] Created admin account for ${ADMIN_EMAIL}`);
-}
-
-// Super Admin — a distinct role that oversees every Manage Agent
-// (admin) account. Defaults to the requested credentials; override via
-// env vars in Railway if you want to change them without redeploying
-// code.
-const SUPER_ADMIN_EMAIL = process.env.SUPER_ADMIN_EMAIL || 'asfliberia@gmail.com';
-const SUPER_ADMIN_PASSWORD = process.env.SUPER_ADMIN_PASSWORD || '1Liberia';
-
-async function seedSuperAdminIfConfigured() {
-  const existing = await db.getUserByEmail(SUPER_ADMIN_EMAIL);
-  if (existing) return; // already seeded
-  const passwordHash = await hashPassword(SUPER_ADMIN_PASSWORD);
-  await db.createUser({
-    id: crypto.randomUUID(),
-    businessName: 'Super Admin',
-    email: SUPER_ADMIN_EMAIL,
-    passwordHash,
-    role: 'super_admin',
-  });
-  console.log(`[seed] Created super admin account for ${SUPER_ADMIN_EMAIL}`);
 }
 
 // The five agents that used to be a hardcoded client-side constant — now
@@ -969,30 +707,8 @@ async function seedAgentsIfEmpty() {
   console.log(`[seed] Seeded ${DEFAULT_AGENTS.length} default agents`);
 }
 
-// Marketplace's first real vendor. Defaults to the requested name and a
-// generated login; override via env vars before first boot if you want
-// a different email/password.
-const VENDOR_EMAIL = process.env.VENDOR_EMAIL || 'girleefashion@golib.test';
-const VENDOR_PASSWORD = process.env.VENDOR_PASSWORD || 'GirleeFashion1';
-
-async function seedVendorIfConfigured() {
-  const existing = await db.getUserByEmail(VENDOR_EMAIL);
-  if (existing) return; // already seeded
-  const passwordHash = await hashPassword(VENDOR_PASSWORD);
-  await db.createUser({
-    id: crypto.randomUUID(),
-    businessName: 'Girlee Fashion',
-    email: VENDOR_EMAIL,
-    passwordHash,
-    role: 'vendor',
-  });
-  console.log(`[seed] Created vendor account "Girlee Fashion" for ${VENDOR_EMAIL}`);
-}
-
 db.init()
   .then(seedAdminIfConfigured)
-  .then(seedSuperAdminIfConfigured)
-  .then(seedVendorIfConfigured)
   .then(seedAgentsIfEmpty)
   .then(() => {
     server.listen(PORT, () => console.log(`Verta Delivery server listening on :${PORT}`));
