@@ -1011,3 +1011,55 @@ conversation for that tradeoff).
 The admin dashboard (Manage Agent / Super Admin) — verified
 byte-for-byte identical against the pre-redesign snapshot. This pass
 was scoped entirely to the marketplace/vendor mobile experience.
+
+## Splitting Delivery and Marketplace into two real, chosen experiences
+
+Fixed the core problem from the last round: Delivery and Marketplace
+had been blended into one screen (delivery order creation buried in the
+marketplace's Account tab). They're two separate products now, and a
+user explicitly chooses between them — not a single merged interface.
+
+### App Chooser (new default landing)
+
+- Guests now land on a Chooser screen first: "Verta Delivery" (indigo,
+  original branding) vs. "GoLib Marketplace" (navy/red). Neither is
+  forced — this is the real "choose between both" entry point.
+- The choice is remembered (`localStorage`), so returning users go
+  straight back into their last-used app rather than re-choosing every
+  visit — but a "⇄ Switch" control is always present in both apps to
+  jump back to the Chooser or the other product at any time.
+- Vendor login is unaffected — still routes straight to the Store
+  Dashboard, since vendors aren't choosing between the two customer
+  experiences.
+
+### Verta Delivery is now its own standalone app
+
+- New `#delivery-customer-app` container with the *original* indigo
+  Verta branding (not GoLib navy/red) — "Send a Package," Create Order,
+  Your Orders. This is exactly what existed before the marketplace was
+  ever added, just properly separated out instead of nested inside the
+  marketplace's Account tab.
+- The Marketplace's Account tab is now just profile + a "🚚 Use Verta
+  Delivery" button + Logout — no delivery-order UI mixed in.
+
+### Marketplace styling corrections (matching the reference image exactly)
+
+- **Top bar background fixed to white** — I had mistakenly made it
+  navy in the last round. In the actual mockup, navy is only used for
+  the "Welcome back" banner and the discovery banner; the top bar
+  (logo, cart, bell) is white/light on both the vendor and marketplace
+  screens.
+- **"Add to Cart" buttons fixed to blue**, distinct from the red "Shop
+  Now" — the mockup uses two accent colors (red for the primary
+  marketing CTA, blue for in-card actions), not one red for everything.
+- Vendor Dashboard's "Add Product" quick action corrected to a solid
+  blue circle with a white plus, matching the reference.
+
+### One honest limitation
+
+Full pixel-for-pixel replication (the exact scooter/shopping-bag
+illustration, real product photography, the exact custom font/icon
+set) isn't achievable without the original design source files — I
+matched the color palette, layout structure, and component styling as
+closely as possible using inline SVG icons and the sampled color
+values, but this is a faithful recreation, not an asset-for-asset copy.
