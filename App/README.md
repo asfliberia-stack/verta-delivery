@@ -787,3 +787,117 @@ pass focused on exact values and a few real layout/behavior gaps.
 
 No fake data anywhere in this pass — every number shown is computed
 from real orders/agents already in the database.
+
+## Two dashboards: Manage Agent + Super Admin
+
+Added a real, distinct **Super Admin** role, on top of the existing
+admin account (now labeled "Manage Agent" in the UI — same login,
+completely unchanged, per your request).
+
+### Login
+
+- **Manage Agent**: exactly as before — shared password (`1Nigeria@`
+  by default), no changes to how it works.
+- **Super Admin**: a real, separate account — `asfliberia@gmail.com` /
+  `1Liberia` by default (override with `SUPER_ADMIN_EMAIL` /
+  `SUPER_ADMIN_PASSWORD` in Railway's Variables tab), seeded
+  automatically on first boot. Third option on the login screen, with
+  its own email+password form — reuses the same `/api/auth/login`
+  endpoint sender login already used (it was always role-agnostic
+  server-side), but refuses to proceed client-side if the account that
+  authenticates isn't actually `super_admin`.
+
+### What Super Admin can do
+
+Everywhere the code checked "is this an admin?", it now checks "is this
+an admin OR a super admin?" via a shared `isAdminLike()` helper — so
+Super Admin has every capability Manage Agent has (accept orders,
+manage the Fleet Directory, Settings, everything), plus one exclusive
+addition:
+
+- **Vendors panel** (sidebar nav item only Super Admin sees): lists
+  every Manage Agent account, plus platform totals (orders, revenue,
+  agent count). New endpoint: `GET /api/super-admin/vendors`, gated by
+  a dedicated `requireSuperAdmin` check — Manage Agent can't reach it
+  even by guessing the URL.
+
+### The honest limitation
+
+**This app is still single-tenant.** Orders, expenses, and the Fleet
+Directory are one shared dataset — they aren't scoped to a specific
+Manage Agent account. So today, the Vendors panel shows one vendor
+(the one seeded Manage Agent account) and "platform totals" are really
+just that one business's totals. This is stated plainly in the Vendors
+modal itself, not hidden.
+
+This is intentionally the right foundation for the marketplace: once
+the vendor/store data model exists (still pending — see the earlier
+conversation about checkout/payout model and vendor onboarding), each
+new vendor becomes a new `admin`-role account, the Vendors panel
+becomes genuinely multi-row with separate real numbers per vendor, and
+Super Admin's oversight becomes meaningful oversight rather than a
+view of the same single dataset from a different login.
+
+### Database migration note
+
+Existing databases get an explicit `ALTER TABLE` migration (schema.sql)
+to widen the `role` column's CHECK constraint to allow `super_admin` —
+`CREATE TABLE IF NOT EXISTS` alone wouldn't have touched an
+already-existing table's constraint.
+
+## Marketplace foundation (GoLib) — Girlee Fashion as first vendor
+
+Built the real data model and a functional first slice of the
+marketplace, since it kept coming up and the underlying blocker
+(vendor/product/purchase schema) needed to exist before any of it could
+be real rather than decorative. **Not** the full polished mobile-app
+mockup (no charts, promos, wishlist, messaging, ratings) — that's
+substantial additional design/engineering, not a styling pass, and
+would risk exactly the "fake half-built feature" problem this whole
+project has been careful to avoid.
+
+### Two defaults, not confirmed decisions (still flagged)
+
+- **Checkout is pay-on-delivery** — no payment gateway exists, and
+  wiring one in is a distinct, security-sensitive integration.
+- **A purchase automatically creates a real delivery order** in the
+  existing `orders` table — matches "GoLib — Shop & Delivery" branding
+  and reuses the whole existing agent/delivery pipeline instead of
+  building a second fulfillment system.
+- **Vendor onboarding is admin-created** for now (new accounts need to
+  be added directly, like the original Fleet Directory before it got a
+  UI) — self-service vendor signup/approval is a separate, larger flow.
+
+### What's real
+
+- **New role**: `vendor`. **Girlee Fashion** seeded automatically as
+  the first one (`girleefashion@golib.test` / `GirleeFashion1` by
+  default — override with `VENDOR_EMAIL`/`VENDOR_PASSWORD`).
+- **`products` table**: full CRUD, ownership-checked (a vendor can only
+  edit/delete their own), photo upload stored the same safe way as the
+  business logo (base64 in Postgres, not a file path Railway would
+  wipe).
+- **`purchases` / `purchase_items`**: checkout runs as a single
+  database transaction — validates stock, decrements it, records the
+  purchase and line items, and creates the linked delivery order,
+  all-or-nothing. A failed step rolls back everything, so you can't end
+  up with stock decremented but no purchase recorded.
+- **Vendor Dashboard**: real sales overview (last 30 days, from actual
+  purchases), real recent orders list, full product management
+  (add/edit/delete with photo upload).
+- **Storefront** (new section on the sender/customer home screen):
+  search + category filter across every vendor's active products, a
+  client-side cart (one vendor per cart — mixed-vendor carts split into
+  separate checkouts, not built yet), and checkout that collects
+  pickup/dropoff addresses and creates the real linked delivery order.
+- **Vendor login**: 4th mode on the auth screen, real email+password,
+  same pattern as Super Admin.
+
+### What's deliberately not built yet
+
+Promos/discounts, a wishlist, in-app messaging, product reviews/ratings,
+sales charts/analytics beyond the two real numbers shown, multi-vendor
+cart splitting, and the polished mobile-native visual style from the
+mockup (this reuses the existing web app's card/modal design system
+instead). Each of these is a reasonable, separately-scoped follow-up —
+say which one you want next.
