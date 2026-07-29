@@ -1524,3 +1524,36 @@ Notifications/Back button, matching your spec's instruction to hide it
 on mobile too. Both buttons already had proper 44px circular touch
 targets on mobile, so they didn't need further layout changes — just
 this visibility fix.
+
+## Home feed converted to horizontal-scroll carousels
+
+Refactored the marketplace Home feed (Categories, Featured Products,
+Popular Stores) to match the reference image's horizontal-swipe
+pattern instead of the previous wrapping grids.
+
+- **Categories**: horizontal-scroll row with scroll-snap, hidden
+  scrollbar, icon-top/label-below pills.
+- **Featured Products**: horizontal-scroll carousel with fixed-width
+  (160px) snap cards. Product images switched from `object-fit: cover`
+  to `object-fit: contain` on a light gray background, per your spec —
+  images now stay proportional instead of being cropped/stretched.
+  Titles clamp to 2 lines, price is bold navy/black (previously red),
+  and "Add to Cart" stays full-width at the card's bottom.
+- **Popular Stores** (Home preview only): horizontal-scroll row of
+  fixed-width (100px) store cards.
+
+**One deliberate exception**: the *full* Stores directory (reached via
+"Stores" in the bottom nav, or "View All" from the Home preview) keeps
+its wrapping grid layout rather than becoming horizontal-scroll too —
+that's a full-catalog browse page, and horizontal-only scrolling would
+make it harder to browse many stores, not easier. Only the Home feed's
+preview row matches the reference image's carousel style.
+
+**One trade-off worth knowing about**: "Featured Products" and the
+Categories/search-filtered results share the same container in this
+app (there's no separate full-catalog grid page yet, distinct from the
+Home feed) — so search and category-filter results now also render as
+a horizontal-scroll strip rather than a wrapping grid. This matches
+what was asked for the Home feed exactly, but if it turns out to be
+awkward for browsing many filtered results, a separate "search
+results" grid view would be a reasonable, cleanly-scoped follow-up.
