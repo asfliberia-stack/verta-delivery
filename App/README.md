@@ -1776,3 +1776,34 @@ CSS repeatedly.
 
 Wishlist stays honestly marked "coming soon" when tapped from the PDP,
 consistent with the rest of the app.
+
+## Fixed: desktop web view was just getting the mobile layout stretched
+
+You were right — the last round only had a mobile layout, and it was
+leaking straight through to desktop unchanged. Two real problems, both
+fixed:
+
+1. **Product grid stayed locked to 2 columns** on wide screens, wasting
+   all the extra width. Desktop now shows `repeat(auto-fill,
+   minmax(190px, 1fr))` — responsively more columns as the viewport
+   gets wider, mobile still gets exactly 2.
+
+2. **The Product Detail Page was `position: fixed; inset: 0`**, which
+   covers the *entire* viewport — including the desktop sidebar. On
+   desktop it now becomes `position: absolute` relative to the
+   content area (sidebar stays visible, PDP only covers where the
+   product grid was), and switches to a real two-column layout: image
+   on the left, title/price/description on the right, with the
+   sticky-on-mobile bottom action bar becoming a normal inline "buy
+   box" underneath the details instead of a bar stretched across the
+   whole screen width.
+
+### A real bug I caught while fixing this
+
+The JS was setting `element.style.display = 'block'` directly to open
+the PDP. Inline styles always win over stylesheet rules regardless of
+media queries — so even after adding the desktop `display: grid` CSS,
+it would have been silently ignored and the PDP would've stayed
+single-column on desktop too. Fixed by switching to a class toggle
+(`.open`) instead of an inline style, so the mobile/desktop CSS rules
+can actually take effect the way they're supposed to.
