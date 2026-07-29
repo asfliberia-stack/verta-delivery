@@ -152,6 +152,7 @@
                 background: white; border-right: 1px solid var(--border); padding: 1.5rem 1rem; min-height: 100vh;
                 position: sticky; top: 0; align-self: flex-start;
             }
+            .desktop-sidebar.mp-sidebar-guest-hidden { display: none; }
             .desktop-sidebar-logo { padding: 0 0.75rem 1.5rem; }
             .desktop-sidebar-logo img { height: 36px; }
             .desktop-sidebar-nav { display: flex; flex-direction: column; gap: 0.125rem; flex: 1; }
@@ -1539,7 +1540,7 @@
         <!-- Desktop sidebar — shown only ≥1024px; mobile keeps the bottom
              tab bar below. Same underlying tabs/actions either way, just
              a different nav chrome for the extra screen space. -->
-        <aside class="desktop-sidebar">
+        <aside class="desktop-sidebar" id="mp-desktop-sidebar">
             <div class="desktop-sidebar-logo"><img src="assets/logo.png" alt="ONLib"></div>
             <nav class="desktop-sidebar-nav">
                 <button type="button" class="desktop-sidebar-item active" data-mp-tab="home">
@@ -3725,6 +3726,14 @@
             // "Login" when logged out, "Logout" when logged in, rather
             // than always saying "Logout" regardless of session state.
             document.getElementById('desktop-logout-btn-label').textContent = currentUser ? 'Logout' : 'Login';
+
+            // Desktop sidebar — only shown once logged in. Guests still
+            // have everything they need without it: they land on Home,
+            // can reach Stores via the "View All" link, and Login lives
+            // in the top bar regardless. A CSS class (not inline style)
+            // so this only affects the desktop layout — the mobile
+            // sidebar stays hidden by default either way.
+            document.getElementById('mp-desktop-sidebar').classList.toggle('mp-sidebar-guest-hidden', mode === 'guest');
 
             // Desktop profile dropdown — customer only (guests get the
             // Login pill; a vendor previewing has their own banner instead).

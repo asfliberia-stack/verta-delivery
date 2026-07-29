@@ -1423,3 +1423,27 @@ about removing the *browsing* gate, not adding the checkout one.
 Also reverted the "skip fetching data for guests" optimization that
 went along with the browsing gate, since there's real content to show
 guests again now.
+
+## Marketplace desktop sidebar hidden for guests
+
+The desktop sidebar (Home/Categories/Stores/Deals/Orders/Wishlist/
+Messages/Addresses/Payment Methods/Settings/Help Center) now only
+shows once someone is logged in — guests browsing the marketplace on
+desktop don't see it at all.
+
+Guests still have everything they need without it: they land on Home
+by default (with categories and Featured Products right there), can
+reach the Stores directory via the "View All" link under Popular
+Stores, and Login/Sign Up is always available in the top bar. Nothing
+about guest browsing itself changed from last round — this was purely
+about hiding the nav rail, not re-gating any content.
+
+Implemented as a CSS class toggle (not an inline style), specifically
+so it only affects the desktop layout — the sidebar was already hidden
+by default on mobile (which uses the bottom tab bar instead), and this
+doesn't touch that.
+
+Scope check: only the marketplace's desktop sidebar changed. The
+Manage Agent/Super Admin dashboard and the Vendor dashboard are
+unaffected — vendors are always logged in by the time they see their
+sidebar, so there was nothing to gate there.
