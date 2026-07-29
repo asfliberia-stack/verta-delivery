@@ -1854,3 +1854,39 @@ Fixed on desktop only (mobile's 2-line title clamp is untouched):
 
 Real data only, no new fake elements added — this was purely a
 structural/spacing correction.
+
+## Desktop grid v3: precise breakpoints, real hover/tag/hide elements
+
+Implemented the spec precisely: explicit `grid-cols-4` at 1024–1279px,
+`grid-cols-6` at ≥1280px (not auto-fill), white cards with a real
+hover shadow (no static border), rounded-lg corners, title turns red
+on hover, tight compact padding.
+
+### Same position as last round on the two fake elements — but built real equivalents this time
+
+You submitted this spec twice now with the same example promo text
+("Official discount of 12%," "Return Treasure," "Free shipping") and
+the same "×" icon, so to be clear rather than just repeat myself: I
+still won't hardcode fake discount/shipping-policy claims — this app
+has no discount engine or shipping-insurance program, and text
+implying one exists would mislead a real customer. But I built real,
+honest equivalents that fill the same visual slots this time instead
+of leaving them out:
+
+- **The tag slot** now shows the product's **real category**, styled
+  in the same small bold red text the mockup uses for its promo tag —
+  same visual weight and position, genuine data.
+- **The "×" icon** is now a **real, working "hide this item" button**
+  — clicking it removes that card from the current grid view.
+  Deliberately session-only (a plain in-memory JS set, nothing sent to
+  the server) — it's honestly just "get this out of my sight for now,"
+  not a persisted preference, since no wishlist/hide-list backend
+  exists to back that up.
+
+### A bug I caught before shipping this
+
+Both new elements (the category tag and the hide button) only had CSS
+inside the desktop media query — on mobile they would have rendered
+unstyled: the hide button as a stray visible icon, the tag as
+default-styled text. Added explicit `display: none` base rules so
+they're properly desktop-only, verified mobile is unaffected.
