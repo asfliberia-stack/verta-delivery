@@ -194,6 +194,18 @@
             .desktop-icon-labeled { border-radius: 50%; padding: 0; width: 44px; }
         }
 
+        .mp-guest-gate {
+            text-align: center; padding: 3.5rem 1.5rem; background: white; border-radius: 1.125rem;
+            box-shadow: var(--shadow-sm); border: 1px solid var(--border);
+        }
+        .mp-guest-gate-icon {
+            width: 56px; height: 56px; border-radius: 50%; background: #eef2ff; color: var(--golib-red);
+            display: flex; align-items: center; justify-content: center; margin: 0 auto 1.25rem;
+        }
+        .mp-guest-gate-icon svg { width: 26px; height: 26px; }
+        .mp-guest-gate-title { font-weight: 800; font-size: 1.125rem; color: var(--slate); margin-bottom: 0.5rem; }
+        .mp-guest-gate-desc { color: var(--slate-light); font-size: 0.9375rem; margin-bottom: 1.5rem; max-width: 320px; margin-left: auto; margin-right: auto; }
+
         .discovery-banner {
             background: linear-gradient(135deg, var(--golib-navy) 0%, var(--golib-navy-light) 100%);
             border-radius: 1.125rem; padding: 1.5rem; color: white; position: relative; overflow: hidden;
@@ -1466,7 +1478,7 @@
                 </button>
                 <button type="button" class="desktop-sidebar-item desktop-sidebar-logout" id="desktop-logout-btn">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
-                    Logout
+                    <span id="desktop-logout-btn-label">Logout</span>
                 </button>
             </div>
         </aside>
@@ -1528,37 +1540,55 @@
         <div class="mobile-content">
             <!-- Home / Categories (shared feed — Categories just focuses the category picker) -->
             <div id="mp-view-shop">
-                <div class="discovery-banner">
-                    <div class="discovery-banner-eyebrow">DISCOVER</div>
-                    <div class="discovery-banner-headline">AMAZING PRODUCTS</div>
-                    <div class="discovery-banner-sub">Shop the best, delivered to your door.</div>
-                    <button type="button" class="discovery-banner-cta" id="discovery-shop-now-btn">Shop Now</button>
-                </div>
-
-                <div class="mobile-section" id="mp-category-section">
-                    <div class="mobile-section-header"><div class="mobile-section-title">Categories</div></div>
-                    <div class="category-grid" id="mp-category-grid"></div>
-                </div>
-
-                <div class="mobile-section">
-                    <div class="mobile-section-header">
-                        <div class="mobile-section-title">Featured Products</div>
+                <div id="mp-shop-guest-gate" class="mp-guest-gate" style="display:none;">
+                    <div class="mp-guest-gate-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
                     </div>
-                    <div id="storefront-products-container"></div>
+                    <div class="mp-guest-gate-title">Log in to start shopping</div>
+                    <div class="mp-guest-gate-desc">Create a free account or log in to browse products and check out.</div>
+                    <button type="button" class="btn-primary" id="mp-shop-gate-login-btn">Login / Sign Up</button>
                 </div>
-
-                <div class="mobile-section">
-                    <div class="mobile-section-header">
-                        <div class="mobile-section-title">Popular Stores</div>
-                        <a class="mobile-view-all" data-mp-tab="stores">View All ›</a>
+                <div id="mp-shop-real-content">
+                    <div class="discovery-banner">
+                        <div class="discovery-banner-eyebrow">DISCOVER</div>
+                        <div class="discovery-banner-headline">AMAZING PRODUCTS</div>
+                        <div class="discovery-banner-sub">Shop the best, delivered to your door.</div>
+                        <button type="button" class="discovery-banner-cta" id="discovery-shop-now-btn">Shop Now</button>
                     </div>
-                    <div id="mp-popular-stores-preview" style="display:grid; grid-template-columns: repeat(4, 1fr); gap: 0.625rem;"></div>
+
+                    <div class="mobile-section" id="mp-category-section">
+                        <div class="mobile-section-header"><div class="mobile-section-title">Categories</div></div>
+                        <div class="category-grid" id="mp-category-grid"></div>
+                    </div>
+
+                    <div class="mobile-section">
+                        <div class="mobile-section-header">
+                            <div class="mobile-section-title">Featured Products</div>
+                        </div>
+                        <div id="storefront-products-container"></div>
+                    </div>
+
+                    <div class="mobile-section">
+                        <div class="mobile-section-header">
+                            <div class="mobile-section-title">Popular Stores</div>
+                            <a class="mobile-view-all" data-mp-tab="stores">View All ›</a>
+                        </div>
+                        <div id="mp-popular-stores-preview" style="display:grid; grid-template-columns: repeat(4, 1fr); gap: 0.625rem;"></div>
+                    </div>
                 </div>
             </div>
 
             <!-- Stores -->
             <div id="mp-view-stores" style="display:none;">
-                <div class="mobile-section" style="margin-top:0;">
+                <div id="mp-stores-guest-gate" class="mp-guest-gate" style="display:none;">
+                    <div class="mp-guest-gate-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                    </div>
+                    <div class="mp-guest-gate-title">Log in to browse stores</div>
+                    <div class="mp-guest-gate-desc">Create a free account or log in to see vendor storefronts.</div>
+                    <button type="button" class="btn-primary" id="mp-stores-gate-login-btn">Login / Sign Up</button>
+                </div>
+                <div id="mp-stores-real-content" class="mobile-section" style="margin-top:0;">
                     <div class="mobile-section-header"><div class="mobile-section-title">All Stores</div></div>
                     <div id="mp-stores-full-list" style="display:grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem;"></div>
                 </div>
@@ -3410,6 +3440,11 @@
             document.getElementById('mp-topbar-login-btn').style.display = mode === 'guest' ? 'inline-flex' : 'none';
             document.getElementById('mp-topbar-logout-btn').style.display = mode === 'customer' ? 'inline-flex' : 'none';
 
+            // Desktop sidebar's auth button — one button that reads
+            // "Login" when logged out, "Logout" when logged in, rather
+            // than always saying "Logout" regardless of session state.
+            document.getElementById('desktop-logout-btn-label').textContent = currentUser ? 'Logout' : 'Login';
+
             // Desktop profile dropdown — customer only (guests get the
             // Login pill; a vendor previewing has their own banner instead).
             const profileDropdown = document.getElementById('desktop-profile-dropdown');
@@ -3418,12 +3453,26 @@
                 document.getElementById('desktop-profile-name').textContent = currentUser.businessName;
                 document.getElementById('desktop-profile-avatar').textContent = currentUser.businessName.charAt(0).toUpperCase();
             }
+
+            // Shopping content (products, stores) requires being logged
+            // in — guests get a "please log in" prompt instead. A vendor
+            // previewing the marketplace still counts as logged in.
+            renderShopGates(!currentUser);
         }
 
         // Bottom nav tab switching — Home and Categories share the same
         // underlying feed (Categories just focuses the category picker),
         // Stores/Wishlist/Account are their own views.
         const MP_TAB_VIEWS = ['shop', 'stores', 'wishlist', 'deals', 'orders', 'messages', 'addresses', 'payment-methods', 'settings', 'account'];
+        // Products and stores require being logged in to view — guests
+        // see a "please log in" prompt instead of real catalog content.
+        function renderShopGates(isGuest) {
+            document.getElementById('mp-shop-guest-gate').style.display = isGuest ? 'block' : 'none';
+            document.getElementById('mp-shop-real-content').style.display = isGuest ? 'none' : 'block';
+            document.getElementById('mp-stores-guest-gate').style.display = isGuest ? 'block' : 'none';
+            document.getElementById('mp-stores-real-content').style.display = isGuest ? 'none' : 'block';
+        }
+
         function setMarketplaceTab(tab) {
             document.querySelectorAll('#home-screen .mobile-nav-item, #home-screen .desktop-sidebar-item[data-mp-tab]').forEach(btn => btn.classList.toggle('active', btn.dataset.mpTab === tab));
             const shownView = (tab === 'home' || tab === 'categories') ? 'shop' : tab;
@@ -3436,7 +3485,7 @@
             if (tab === 'categories') {
                 document.getElementById('mp-category-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
             } else if (tab === 'stores') {
-                loadStoresDirectory();
+                if (currentUser) loadStoresDirectory();
             } else if (tab === 'orders') {
                 renderOrdersHome('mp-orders-grid');
             } else if (tab === 'settings' && currentUser) {
@@ -3452,6 +3501,7 @@
             setMarketplaceHeaderState(headerMode);
             setMarketplaceTab('home');
             renderNotificationCenter();
+            if (headerMode === 'guest') return; // gated — no need to fetch the catalog they can't see
             renderSkeletonCards(document.getElementById('storefront-products-container'));
             await loadStorefront();
         }
@@ -3518,6 +3568,8 @@
 
         function wireMarketplaceRoutingEvents() {
             document.getElementById('mp-topbar-login-btn').addEventListener('click', showAuthScreen);
+            document.getElementById('mp-shop-gate-login-btn').addEventListener('click', showAuthScreen);
+            document.getElementById('mp-stores-gate-login-btn').addEventListener('click', showAuthScreen);
             document.getElementById('close-auth-screen-btn').addEventListener('click', closeAuthScreen);
             document.getElementById('switch-to-marketplace-btn').addEventListener('click', showMarketplaceAsVendorPreview);
             document.getElementById('back-to-store-dashboard-btn').addEventListener('click', showVendorDashboardView);
@@ -3576,9 +3628,13 @@
                 document.getElementById('help-support-modal').classList.add('active');
             });
             document.getElementById('desktop-logout-btn').addEventListener('click', async () => {
-                clearAuth();
-                currentUser = null;
-                showAppChooser();
+                if (currentUser) {
+                    clearAuth();
+                    currentUser = null;
+                    showAppChooser();
+                } else {
+                    showAuthScreen();
+                }
             });
 
             // Desktop profile dropdown

@@ -1262,3 +1262,26 @@ New desktop-only dropdown (name + "Customer" + chevron, matching the
 mockup) with Settings and Logout shortcuts — click-outside-to-close,
 same interaction pattern as the notification bell dropdown already in
 the app.
+
+## Dynamic Login/Logout label + login-gated shopping
+
+Two fixes to the marketplace:
+
+1. **Sidebar auth button now reflects real session state.** It used to
+   always say "Logout" regardless of whether anyone was logged in.
+   Now it reads "Login" (opens the login screen) when logged out, and
+   "Logout" (ends the session) when logged in — same button, same
+   position, correct label and behavior either way.
+
+2. **Browsing products/stores now requires being logged in.** This is
+   a real change from the previous behavior (guests could browse
+   freely before) — Home, Categories, and Stores now show a "Log in to
+   start shopping" prompt with a Login/Sign Up button instead of the
+   product catalog when no one's logged in. Once logged in (as a
+   customer, or a vendor previewing their own storefront), the real
+   discovery banner, categories, featured products, and stores appear
+   exactly as before. The app also skips fetching the product catalog
+   entirely for guests now, since there's nothing to show them.
+
+Nothing else changed — Wishlist/Deals/Messages/Addresses/Payment
+Methods/Orders/Settings behave the same as the previous round.
