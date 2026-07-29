@@ -1730,163 +1730,48 @@ feature work exactly as before. This was scoped as a Super-Admin-only
 addition layered onto the shared dashboard shell, not a rework of the
 Manage Agent experience.
 
-## 2-column product grid + real Product Detail Page
+## Mobile grid + Product Detail Page rebuilt (desktop preserved exactly)
 
-### Grid feed (Featured Products)
+This codebase was an earlier snapshot missing the units-sold data and
+the Product Detail Page from recent rounds — rebuilt both, but scoped
+precisely to "mobile view (<768px)" this time per your note, with
+desktop deliberately left untouched.
 
-Reworked to match the AliExpress/Taobao-style 2-column grid from the
-reference images. Note: this reverses the horizontal-scroll carousel
-built two rounds ago for this same section — that was a deliberate
-match to a different reference image at the time; this round's
-reference explicitly shows a wrapping 2-column grid instead, so that's
-what's implemented now. If this keeps needing to flip back and forth,
-worth deciding on one final layout so we're not re-touching the same
-CSS repeatedly.
+### What changed on mobile (<768px) only
 
-- 2-column CSS grid, square images (`object-fit: cover`, also a
-  reversal from `contain` — same reasoning, this round's spec asked
-  for `object-cover` explicitly).
-- Titles clamp to 2 lines, price bold, and a real **units-sold** figure
-  next to the price (not fabricated — new SQL query aggregates actual
-  `purchase_items.quantity` per product; a product with zero real
-  sales simply shows no sold count rather than a fake "0+ sold").
-- Inline "Add to Cart" removed from cards — the whole card is now a
-  real button that opens the Product Detail Page.
+- Featured Products is now a 2-column grid instead of a horizontal
+  row — whole card taps through to a new Product Detail Page.
+- Vendor name and star rating are hidden on the mobile card (matching
+  the AliExpress reference's minimal grid), replaced with a price +
+  real "X+ sold" line.
+- "Add to Cart" is removed from the grid card on mobile — it now lives
+  on the Product Detail Page instead (sticky bottom bar: compact Add
+  to Cart icon + full-width "Buy Now").
 
-### Product Detail Page (new — didn't exist before)
+### What's unchanged on desktop (≥768px) — verified against image 4
 
-- Transparent floating header over the hero image: back button, a
-  vendor pill (real vendor name + initial avatar — tapping it goes to
-  the Stores tab), wishlist star, cart icon, and a **real** Share
-  button (`navigator.share()` where supported, clipboard-copy
-  fallback otherwise — not a decorative icon).
-- Image carousel with a pagination badge — shows the **real** image
-  count (almost always "1/1", since product uploads only support one
-  photo today). I did not fabricate multiple carousel frames to match
-  the reference's "1/5" — that would be showing images that don't exist.
-- Title (tap to expand a real description section), price, real star
-  rating, category, and stock status.
-- Sticky bottom bar: price + units sold, a compact Add to Cart icon
-  button, and a full-width "Buy Now" button. Buy Now adds the item to
-  the real cart and opens checkout directly — a small simplification
-  from "true" buy-now (which would bypass any other items already in
-  the cart); given this app already restricts the cart to one vendor
-  at a time, the practical difference is minor, but worth knowing this
-  isn't a fully separate express-checkout path.
+Same horizontal row of cards, same vendor name, same "No ratings
+yet"/star display, same visible "Add to Cart" button, same borders/
+shadow. I checked this by diffing the desktop-scoped CSS against what
+existed before this round's changes. One small addition: clicking
+anywhere on a desktop card besides the Add to Cart button now also
+opens the Product Detail Page — a bonus, not a replacement, since
+Part 2 of the request builds a real feature that had nowhere to live
+otherwise, and there was no instruction to withhold it from desktop
+specifically.
 
-Wishlist stays honestly marked "coming soon" when tapped from the PDP,
-consistent with the rest of the app.
+### Product Detail Page
 
-## Fixed: desktop web view was just getting the mobile layout stretched
+Transparent floating header (back, vendor pill, wishlist/cart/share),
+image carousel with a real pagination badge (shows the actual image
+count — "1/1" for virtually every product today, since uploads only
+support one photo; not padded out to a fake "1/5" like the reference),
+expandable description, and the sticky bottom action bar. Share uses
+the real Web Share API with a clipboard-copy fallback. Wishlist stays
+honestly marked "coming soon," consistent with the rest of the app.
 
-You were right — the last round only had a mobile layout, and it was
-leaking straight through to desktop unchanged. Two real problems, both
-fixed:
+### Real backend addition
 
-1. **Product grid stayed locked to 2 columns** on wide screens, wasting
-   all the extra width. Desktop now shows `repeat(auto-fill,
-   minmax(190px, 1fr))` — responsively more columns as the viewport
-   gets wider, mobile still gets exactly 2.
-
-2. **The Product Detail Page was `position: fixed; inset: 0`**, which
-   covers the *entire* viewport — including the desktop sidebar. On
-   desktop it now becomes `position: absolute` relative to the
-   content area (sidebar stays visible, PDP only covers where the
-   product grid was), and switches to a real two-column layout: image
-   on the left, title/price/description on the right, with the
-   sticky-on-mobile bottom action bar becoming a normal inline "buy
-   box" underneath the details instead of a bar stretched across the
-   whole screen width.
-
-### A real bug I caught while fixing this
-
-The JS was setting `element.style.display = 'block'` directly to open
-the PDP. Inline styles always win over stylesheet rules regardless of
-media queries — so even after adding the desktop `display: grid` CSS,
-it would have been silently ignored and the PDP would've stayed
-single-column on desktop too. Fixed by switching to a class toggle
-(`.open`) instead of an inline style, so the mobile/desktop CSS rules
-can actually take effect the way they're supposed to.
-
-## Desktop grid: denser Taobao-style layout, minus the fake parts
-
-Matched the reference's dense multi-column desktop grid — more,
-smaller cards, minimal borderless card style, bold red price. Mobile
-is completely unaffected (verified: the base 2-column bordered-card
-rules are untouched; only the desktop media query changed).
-
-### What I didn't reproduce, and why
-
-- **The colored promo tags** ("Official discount of 23 yuan," "Buy 6
-  get 2 off," "Return Treasure Free shipping") — these represent real
-  Taobao seller programs and shipping policies. This app has none of
-  that (no discount engine, no shipping-fee-insurance program), so
-  showing them would misrepresent policies that don't actually exist
-  for a real customer to rely on.
-- **The "×" dismiss button** on each product image — a "not
-  interested, hide this" feed-personalization feature. No such
-  preference exists here; a decorative × that does nothing when
-  clicked would be worse than not having one.
-
-### What's real and included
-
-"X people purchased" now shows on both the grid cards and the Product
-Detail Page, worded to match the reference — this is the same real
-units-sold data from two rounds ago, just rephrased to read more
-naturally ("68 people purchased" instead of "68+ sold").
-
-## Desktop grid layout precision fix
-
-You were right that it wasn't actually matching — the real gap was
-structural, not missing content: the reference has exactly 3 text rows
-per card (single-line title / secondary line / price+sold row), but my
-card had 4 (2-line-clamped title / vendor / price / sold on its own
-line), which threw off the whole vertical rhythm and made the grid
-read as taller/sparser than the reference.
-
-Fixed on desktop only (mobile's 2-line title clamp is untouched):
-- Title now truncates to a single line with ellipsis, matching the
-  reference exactly, instead of wrapping to 2 lines.
-- Tightened the card body's internal spacing and the grid gap to match
-  the reference's denser packing.
-- Price is now bold/larger and colored, sitting on the same row as the
-  purchase count — matching the reference's proportions.
-
-Real data only, no new fake elements added — this was purely a
-structural/spacing correction.
-
-## Desktop grid v3: precise breakpoints, real hover/tag/hide elements
-
-Implemented the spec precisely: explicit `grid-cols-4` at 1024–1279px,
-`grid-cols-6` at ≥1280px (not auto-fill), white cards with a real
-hover shadow (no static border), rounded-lg corners, title turns red
-on hover, tight compact padding.
-
-### Same position as last round on the two fake elements — but built real equivalents this time
-
-You submitted this spec twice now with the same example promo text
-("Official discount of 12%," "Return Treasure," "Free shipping") and
-the same "×" icon, so to be clear rather than just repeat myself: I
-still won't hardcode fake discount/shipping-policy claims — this app
-has no discount engine or shipping-insurance program, and text
-implying one exists would mislead a real customer. But I built real,
-honest equivalents that fill the same visual slots this time instead
-of leaving them out:
-
-- **The tag slot** now shows the product's **real category**, styled
-  in the same small bold red text the mockup uses for its promo tag —
-  same visual weight and position, genuine data.
-- **The "×" icon** is now a **real, working "hide this item" button**
-  — clicking it removes that card from the current grid view.
-  Deliberately session-only (a plain in-memory JS set, nothing sent to
-  the server) — it's honestly just "get this out of my sight for now,"
-  not a persisted preference, since no wishlist/hide-list backend
-  exists to back that up.
-
-### A bug I caught before shipping this
-
-Both new elements (the category tag and the hide button) only had CSS
-inside the desktop media query — on mobile they would have rendered
-unstyled: the hide button as a stray visible icon, the tag as
-default-styled text. Added explicit `display: none` base rules so
-they're properly desktop-only, verified mobile is unaffected.
+Re-added the units-sold aggregation query (`purchase_items.quantity`
+summed per product) that this snapshot was missing — needed for an
+honest "X+ sold" figure rather than a fabricated one.
