@@ -1407,3 +1407,19 @@ server.
 - **Login/Logout restyled** to a minimal text+icon link (matching the
   screenshot) instead of a filled pill button, with a vertical divider
   separating it from Cart/Notifications.
+
+## Marketplace browsing is open again — login only required to check out
+
+Reverted the login-gate from a couple rounds ago: guests now see the
+full shopping dashboard immediately after choosing Marketplace —
+discovery banner, categories, Featured Products, Popular Stores, and
+the Stores directory — with no login wall in front of any of it.
+
+**Login/Create Account is now asked for at exactly one point: checking
+out.** That gate was already real and already worked correctly
+(`openCheckoutModal()` — unchanged in this pass), so this round was
+about removing the *browsing* gate, not adding the checkout one.
+
+Also reverted the "skip fetching data for guests" optimization that
+went along with the browsing gate, since there's real content to show
+guests again now.

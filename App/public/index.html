@@ -1662,14 +1662,6 @@
         <div class="mobile-content">
             <!-- Home / Categories (shared feed — Categories just focuses the category picker) -->
             <div id="mp-view-shop">
-                <div id="mp-shop-guest-gate" class="mp-guest-gate" style="display:none;">
-                    <div class="mp-guest-gate-icon">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
-                    </div>
-                    <div class="mp-guest-gate-title">Log in to start shopping</div>
-                    <div class="mp-guest-gate-desc">Create a free account or log in to browse products and check out.</div>
-                    <button type="button" class="btn-primary" id="mp-shop-gate-login-btn">Login / Sign Up</button>
-                </div>
                 <div id="mp-shop-real-content">
                     <div class="discovery-banner">
                         <div class="discovery-banner-eyebrow">DISCOVER</div>
@@ -1702,14 +1694,6 @@
 
             <!-- Stores -->
             <div id="mp-view-stores" style="display:none;">
-                <div id="mp-stores-guest-gate" class="mp-guest-gate" style="display:none;">
-                    <div class="mp-guest-gate-icon">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
-                    </div>
-                    <div class="mp-guest-gate-title">Log in to browse stores</div>
-                    <div class="mp-guest-gate-desc">Create a free account or log in to see vendor storefronts.</div>
-                    <button type="button" class="btn-primary" id="mp-stores-gate-login-btn">Login / Sign Up</button>
-                </div>
                 <div id="mp-stores-real-content" class="mobile-section" style="margin-top:0;">
                     <div class="mobile-section-header"><div class="mobile-section-title">All Stores</div></div>
                     <div id="mp-stores-full-list" style="display:grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem;"></div>
@@ -3750,25 +3734,12 @@
                 document.getElementById('desktop-profile-name').textContent = currentUser.businessName;
                 document.getElementById('desktop-profile-avatar').textContent = currentUser.businessName.charAt(0).toUpperCase();
             }
-
-            // Shopping content (products, stores) requires being logged
-            // in — guests get a "please log in" prompt instead. A vendor
-            // previewing the marketplace still counts as logged in.
-            renderShopGates(!currentUser);
         }
 
         // Bottom nav tab switching — Home and Categories share the same
         // underlying feed (Categories just focuses the category picker),
         // Stores/Wishlist/Account are their own views.
         const MP_TAB_VIEWS = ['shop', 'stores', 'wishlist', 'deals', 'orders', 'messages', 'addresses', 'payment-methods', 'settings', 'account'];
-        // Products and stores require being logged in to view — guests
-        // see a "please log in" prompt instead of real catalog content.
-        function renderShopGates(isGuest) {
-            document.getElementById('mp-shop-guest-gate').style.display = isGuest ? 'block' : 'none';
-            document.getElementById('mp-shop-real-content').style.display = isGuest ? 'none' : 'block';
-            document.getElementById('mp-stores-guest-gate').style.display = isGuest ? 'block' : 'none';
-            document.getElementById('mp-stores-real-content').style.display = isGuest ? 'none' : 'block';
-        }
 
         function setMarketplaceTab(tab) {
             document.querySelectorAll('#home-screen .mobile-nav-item, #home-screen .desktop-sidebar-item[data-mp-tab]').forEach(btn => btn.classList.toggle('active', btn.dataset.mpTab === tab));
@@ -3782,7 +3753,7 @@
             if (tab === 'categories') {
                 document.getElementById('mp-category-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
             } else if (tab === 'stores') {
-                if (currentUser) loadStoresDirectory();
+                loadStoresDirectory();
             } else if (tab === 'orders') {
                 renderOrdersHome('mp-orders-grid');
             } else if (tab === 'settings' && currentUser) {
@@ -3798,7 +3769,6 @@
             setMarketplaceHeaderState(headerMode);
             setMarketplaceTab('home');
             renderNotificationCenter();
-            if (headerMode === 'guest') return; // gated — no need to fetch the catalog they can't see
             renderSkeletonCards(document.getElementById('storefront-products-container'));
             await loadStorefront();
         }
@@ -3865,8 +3835,6 @@
 
         function wireMarketplaceRoutingEvents() {
             document.getElementById('mp-topbar-login-btn').addEventListener('click', showAuthScreen);
-            document.getElementById('mp-shop-gate-login-btn').addEventListener('click', showAuthScreen);
-            document.getElementById('mp-stores-gate-login-btn').addEventListener('click', showAuthScreen);
             document.getElementById('close-auth-screen-btn').addEventListener('click', closeAuthScreen);
             document.getElementById('switch-to-marketplace-btn').addEventListener('click', showMarketplaceAsVendorPreview);
             document.getElementById('back-to-store-dashboard-btn').addEventListener('click', showVendorDashboardView);
