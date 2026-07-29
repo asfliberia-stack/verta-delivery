@@ -710,33 +710,57 @@ app.get('/api/admin/customers', requireAuth, requireAdmin, async (req, res) => {
 });
 
 // ============================================================
-// Super Admin only — Vendors oversight panel. Lists every Manage
-// Agent (admin) account plus platform-wide totals.
-//
-// IMPORTANT LIMITATION (see db.js getVendors comment too): this app is
-// still single-tenant — orders/agents/expenses are one shared dataset,
-// not partitioned per vendor. So "platform totals" below really means
-// "the one shared business's totals" until a real vendor/store schema
-// exists. Once the marketplace data model is built, this becomes the
-// place to show genuinely separate per-vendor numbers.
+// Super Admin only — Vendors oversight panel. Lists every real vendor
+// account (role = 'vendor'), their approval status, and real
+// marketplace-wide stats. This previously (incorrectly) listed Manage
+// Agent accounts and unrelated Delivery-service stats — fixed to show
+// actual vendor data now that real vendor accounts exist.
 // ============================================================
 app.get('/api/super-admin/vendors', requireAuth, requireSuperAdmin, async (req, res) => {
   try {
-    const [vendors, orders, agents] = await Promise.all([
-      db.getVendors(), db.getAllOrders(), db.getAllAgents(),
+    const [vendors, platformStats] = await Promise.all([
+      db.getVendors(), db.getMarketplacePlatformStats(),
     ]);
-    const totalRevenue = orders.filter(o => o.status === 'delivered').reduce((sum, o) => sum + (o.amount || 0), 0);
-    res.json({
-      vendors,
-      platformTotals: {
-        totalOrders: orders.length,
-        totalRevenue,
-        totalAgents: agents.length,
-      },
-    });
+    res.json({ vendors, platformTotals: platformStats });
   } catch (err) {
     console.error('GET /api/super-admin/vendors failed', err);
     res.status(500).json({ error: 'Failed to load vendors' });
+  }
+});
+
+// A pending vendor's submitted documents — fetched on demand (not
+// included in the list above) since they're base64 images/PDFs and
+// would bloat that response for every vendor just to review one.
+app.get('/api/super-admin/vendors/:id/documents', requireAuth, requireSuperAdmin, async (req, res) => {
+  try {
+    const docs = await db.getVendorApplicationDocuments(req.params.id);
+    if (!docs) return res.status(404).json({ error: 'Vendor not found' });
+    res.json(docs);
+  } catch (err) {
+    console.error('GET /api/super-admin/vendors/:id/documents failed', err);
+    res.status(500).json({ error: 'Failed to load documents' });
+  }
+});
+
+app.post('/api/super-admin/vendors/:id/approve', requireAuth, requireSuperAdmin, async (req, res) => {
+  try {
+    const vendor = await db.setVendorApprovalStatus(req.params.id, 'approved');
+    if (!vendor) return res.status(404).json({ error: 'Vendor not found' });
+    res.json({ ok: true, vendor: { id: vendor.id, businessName: vendor.businessName, approvalStatus: vendor.approvalStatus } });
+  } catch (err) {
+    console.error('POST vendor approve failed', err);
+    res.status(500).json({ error: 'Failed to approve vendor' });
+  }
+});
+
+app.post('/api/super-admin/vendors/:id/reject', requireAuth, requireSuperAdmin, async (req, res) => {
+  try {
+    const vendor = await db.setVendorApprovalStatus(req.params.id, 'rejected');
+    if (!vendor) return res.status(404).json({ error: 'Vendor not found' });
+    res.json({ ok: true, vendor: { id: vendor.id, businessName: vendor.businessName, approvalStatus: vendor.approvalStatus } });
+  } catch (err) {
+    console.error('POST vendor reject failed', err);
+    res.status(500).json({ error: 'Failed to reject vendor' });
   }
 });
 

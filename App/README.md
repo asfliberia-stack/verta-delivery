@@ -1557,3 +1557,49 @@ a horizontal-scroll strip rather than a wrapping grid. This matches
 what was asked for the Home feed exactly, but if it turns out to be
 awkward for browsing many filtered results, a separate "search
 results" grid view would be a reasonable, cleanly-scoped follow-up.
+
+## Fixed: Vendors panel showed the wrong accounts + built the missing approval workflow
+
+### Bug fix: Vendors panel was listing Manage Agent accounts, not vendors
+
+`getVendors()` was querying `WHERE role = 'admin'` — a leftover from
+before real vendor accounts existed (when this panel was built, "the
+Manage Agent account" was the only vendor-like concept around). Now
+that real vendor accounts exist (role = 'vendor'), that query was
+simply wrong. Fixed to query `WHERE role = 'vendor'`, so Girlee Fashion
+(and any newly self-registered vendor) now shows up correctly instead
+of "Verta Delivery Services."
+
+Also replaced the panel's stats, which had the same problem — "Platform
+Orders"/"Platform Revenue"/"Total Agents" were pulling from the
+unrelated Delivery-service dataset. Now shows real marketplace numbers:
+**Total Vendors**, **Pending Applications**, **Marketplace Orders**,
+**Marketplace Revenue** — all genuinely computed from vendor accounts
+and purchase records.
+
+### Built: the Super Admin approval workflow (previously just flagged as missing)
+
+- Every vendor now shows a real status pill: Approved / Pending /
+  Rejected.
+- Pending vendors get a **Review** button, opening their submitted
+  business registration and ID documents (whatever they uploaded at
+  signup) alongside their email, phone, and application date.
+- **Approve** / **Reject** buttons are real — they update
+  `approval_status` in the database immediately. An approved vendor can
+  now actually operate (list products, etc. — `requireVendor` already
+  checked this status, it just had nothing to set it to before). A
+  rejected one keeps seeing their "wasn't approved" status screen on
+  login.
+- New endpoints: `GET .../documents` (fetched on demand, not bundled
+  into the vendor list, since documents are base64 images/PDFs),
+  `POST .../approve`, `POST .../reject`.
+
+### One caveat corrected while I was in there
+
+The Vendors panel's disclaimer text was also out of date — it used to
+say the whole app was single-tenant, but that's no longer accurate:
+vendor accounts and their marketplace data (products, purchases) are
+already properly separated per vendor via `vendor_id`. The only
+remaining shared-data limitation is on the Delivery side (Fleet
+Directory agents, delivery orders) — updated the panel's copy to say
+that precisely instead of the older, broader claim.

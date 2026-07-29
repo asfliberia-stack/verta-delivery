@@ -3095,11 +3095,36 @@
                 <button class="close-btn" id="close-vendors-modal">&times;</button>
             </div>
             <p style="color: var(--slate-light); margin-bottom: 1.5rem; font-size: 0.875rem;">
-                This app is still single-tenant — every vendor below shares the same order/agent/expense data today.
-                Once the marketplace's own vendor data model exists, this becomes real per-vendor separation.
+                Vendor accounts and their marketplace data (products, purchases) are already properly
+                separated per vendor. The one shared-data limitation left is on the Delivery side —
+                Fleet Directory agents and delivery orders are still one pool shared with the Manage Agent
+                dashboard, not split per vendor.
             </p>
             <div id="vendors-modal-content">
                 <p style="text-align: center; color: var(--slate-light); padding: 2rem 0;">Loading…</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Vendor application review (Super Admin approval workflow) -->
+    <div class="modal-overlay" id="vendor-review-modal">
+        <div class="modal" style="max-width: 640px; max-height: 85vh; overflow-y: auto;">
+            <div class="modal-header">
+                <h3 id="vendor-review-name">Vendor Application</h3>
+                <button class="close-btn" id="close-vendor-review-modal">&times;</button>
+            </div>
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem; font-size: 0.875rem;">
+                <div><div style="color:var(--slate-light); font-size:0.75rem; text-transform:uppercase; font-weight:700;">Email</div><div id="vendor-review-email" style="font-weight:600;">—</div></div>
+                <div><div style="color:var(--slate-light); font-size:0.75rem; text-transform:uppercase; font-weight:700;">Phone</div><div id="vendor-review-phone" style="font-weight:600;">—</div></div>
+                <div><div style="color:var(--slate-light); font-size:0.75rem; text-transform:uppercase; font-weight:700;">Applied</div><div id="vendor-review-applied" style="font-weight:600;">—</div></div>
+            </div>
+            <h4 style="font-weight:700; margin-bottom:0.625rem;">Business Registration Document</h4>
+            <div id="vendor-review-biz-doc" style="margin-bottom:1.5rem;"></div>
+            <h4 style="font-weight:700; margin-bottom:0.625rem;">Identification (<span id="vendor-review-id-label">ID</span>)</h4>
+            <div id="vendor-review-id-doc" style="margin-bottom:1.5rem;"></div>
+            <div style="display:flex; gap:1rem;">
+                <button type="button" class="btn-small" style="flex:1; background-color:#dc2626; color:white;" id="vendor-reject-btn">Reject</button>
+                <button type="button" class="btn-small btn-success" style="flex:1;" id="vendor-approve-btn">Approve</button>
             </div>
         </div>
     </div>
@@ -4927,6 +4952,18 @@
             document.getElementById('close-vendors-modal').addEventListener('click', () => {
                 document.getElementById('vendors-modal').classList.remove('active');
             });
+            document.getElementById('vendors-modal-content').addEventListener('click', (e) => {
+                if (e.target.classList.contains('review-vendor-btn')) openVendorReviewModal(e.target.dataset.id);
+            });
+            document.getElementById('close-vendor-review-modal').addEventListener('click', () => {
+                document.getElementById('vendor-review-modal').classList.remove('active');
+            });
+            document.getElementById('vendor-approve-btn').addEventListener('click', (e) => {
+                decideVendorApplication(e.target.dataset.id, 'approve');
+            });
+            document.getElementById('vendor-reject-btn').addEventListener('click', (e) => {
+                decideVendorApplication(e.target.dataset.id, 'reject');
+            });
 
             // ---- Help & Support ----
             document.getElementById('open-help-support-btn').addEventListener('click', () => {
@@ -5039,7 +5076,8 @@
             try {
                 const data = await apiFetch('/api/super-admin/vendors');
                 const vendors = data.vendors || [];
-                const totals = data.platformTotals || { totalOrders: 0, totalRevenue: 0, totalAgents: 0 };
+                vendorsCache = vendors;
+                const totals = data.platformTotals || { totalMarketplaceOrders: 0, totalMarketplaceRevenue: 0, pendingVendorApplications: 0 };
 
                 let html = `
                     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
@@ -5047,30 +5085,40 @@
                             <div style="font-size: 0.75rem; color: var(--slate-light); text-transform: uppercase; letter-spacing: 0.03em;">Total Vendors</div>
                             <div style="font-size: 1.5rem; font-weight: 800; color: var(--slate);">${vendors.length}</div>
                         </div>
-                        <div style="background: var(--bg-light); padding: 1rem; border-radius: 0.75rem; text-align: center;">
-                            <div style="font-size: 0.75rem; color: var(--slate-light); text-transform: uppercase; letter-spacing: 0.03em;">Platform Orders</div>
-                            <div style="font-size: 1.5rem; font-weight: 800; color: var(--slate);">${totals.totalOrders}</div>
+                        <div style="background: ${totals.pendingVendorApplications > 0 ? '#fef3c7' : 'var(--bg-light)'}; padding: 1rem; border-radius: 0.75rem; text-align: center;">
+                            <div style="font-size: 0.75rem; color: ${totals.pendingVendorApplications > 0 ? '#92400e' : 'var(--slate-light)'}; text-transform: uppercase; letter-spacing: 0.03em;">Pending Applications</div>
+                            <div style="font-size: 1.5rem; font-weight: 800; color: ${totals.pendingVendorApplications > 0 ? '#92400e' : 'var(--slate)'};">${totals.pendingVendorApplications}</div>
                         </div>
                         <div style="background: var(--bg-light); padding: 1rem; border-radius: 0.75rem; text-align: center;">
-                            <div style="font-size: 0.75rem; color: var(--slate-light); text-transform: uppercase; letter-spacing: 0.03em;">Platform Revenue</div>
-                            <div style="font-size: 1.5rem; font-weight: 800; color: var(--primary);">$${totals.totalRevenue.toFixed(2)}</div>
+                            <div style="font-size: 0.75rem; color: var(--slate-light); text-transform: uppercase; letter-spacing: 0.03em;">Marketplace Orders</div>
+                            <div style="font-size: 1.5rem; font-weight: 800; color: var(--slate);">${totals.totalMarketplaceOrders}</div>
                         </div>
                         <div style="background: var(--bg-light); padding: 1rem; border-radius: 0.75rem; text-align: center;">
-                            <div style="font-size: 0.75rem; color: var(--slate-light); text-transform: uppercase; letter-spacing: 0.03em;">Total Agents</div>
-                            <div style="font-size: 1.5rem; font-weight: 800; color: var(--slate);">${totals.totalAgents}</div>
+                            <div style="font-size: 0.75rem; color: var(--slate-light); text-transform: uppercase; letter-spacing: 0.03em;">Marketplace Revenue</div>
+                            <div style="font-size: 1.5rem; font-weight: 800; color: var(--primary);">$${totals.totalMarketplaceRevenue.toFixed(2)}</div>
                         </div>
                     </div>
                 `;
 
                 if (vendors.length === 0) {
-                    html += '<p style="text-align: center; color: var(--slate-light); padding: 1rem 0;">No Manage Agent accounts yet.</p>';
+                    html += '<p style="text-align: center; color: var(--slate-light); padding: 1rem 0;">No vendor accounts yet.</p>';
                 } else {
-                    html += '<div style="overflow-x: auto;"><table class="settings-table"><thead><tr><th>Business</th><th>Email</th><th>Since</th></tr></thead><tbody>';
+                    const statusPill = (status) => {
+                        const map = {
+                            approved: '<span style="background:#dcfce7; color:#15803d; padding:0.1875rem 0.625rem; border-radius:9999px; font-size:0.75rem; font-weight:700;">Approved</span>',
+                            pending: '<span style="background:#fef3c7; color:#92400e; padding:0.1875rem 0.625rem; border-radius:9999px; font-size:0.75rem; font-weight:700;">Pending</span>',
+                            rejected: '<span style="background:#fee2e2; color:#b91c1c; padding:0.1875rem 0.625rem; border-radius:9999px; font-size:0.75rem; font-weight:700;">Rejected</span>',
+                        };
+                        return map[status] || status;
+                    };
+                    html += '<div style="overflow-x: auto;"><table class="settings-table"><thead><tr><th>Business</th><th>Email</th><th>Since</th><th>Status</th><th></th></tr></thead><tbody>';
                     vendors.forEach(v => {
                         html += `<tr>
                             <td style="font-weight:700;">${v.businessName}</td>
                             <td>${v.email}</td>
                             <td>${new Date(v.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</td>
+                            <td>${statusPill(v.approvalStatus)}</td>
+                            <td>${v.approvalStatus === 'pending' ? `<button type="button" class="btn-small btn-secondary review-vendor-btn" data-id="${v.id}">Review</button>` : ''}</td>
                         </tr>`;
                     });
                     html += '</tbody></table></div>';
@@ -5078,6 +5126,57 @@
                 container.innerHTML = html;
             } catch (err) {
                 container.innerHTML = `<p style="text-align: center; color: #dc2626; padding: 2rem 0;">${err.message}</p>`;
+            }
+        }
+
+        let vendorsCache = [];
+
+        // Review a pending vendor's submitted documents, with real
+        // Approve/Reject actions — this is the review side of the
+        // approval workflow that was previously missing entirely.
+        async function openVendorReviewModal(vendorId) {
+            const vendor = vendorsCache.find(v => v.id === vendorId);
+            if (!vendor) return;
+            document.getElementById('vendor-review-name').textContent = vendor.businessName;
+            document.getElementById('vendor-review-email').textContent = vendor.email;
+            document.getElementById('vendor-review-phone').textContent = vendor.phone || '—';
+            document.getElementById('vendor-review-applied').textContent = vendor.appliedAt
+                ? new Date(vendor.appliedAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+                : '—';
+            document.getElementById('vendor-review-biz-doc').innerHTML = '<p style="color:var(--slate-light); font-size:0.875rem;">Loading…</p>';
+            document.getElementById('vendor-review-id-doc').innerHTML = '';
+            document.getElementById('vendor-approve-btn').dataset.id = vendorId;
+            document.getElementById('vendor-reject-btn').dataset.id = vendorId;
+            document.getElementById('vendor-review-modal').classList.add('active');
+
+            try {
+                const docs = await apiFetch(`/api/super-admin/vendors/${vendorId}/documents`);
+                const renderDoc = (dataUrl) => {
+                    if (!dataUrl) return '<p style="color:var(--slate-light); font-size:0.875rem;">Not provided.</p>';
+                    if (dataUrl.startsWith('data:application/pdf')) {
+                        return `<a href="${dataUrl}" target="_blank" rel="noopener" class="btn-small btn-secondary">Open PDF</a>`;
+                    }
+                    return `<img src="${dataUrl}" style="max-width:100%; border-radius:0.625rem; border:1px solid var(--border);" alt="Document">`;
+                };
+                document.getElementById('vendor-review-biz-doc').innerHTML = renderDoc(docs.businessRegistrationDoc);
+                const idLabel = { passport: 'Passport', national_id: 'National ID', drivers_license: "Driver's License" }[docs.idDocumentType] || 'ID Document';
+                document.getElementById('vendor-review-id-label').textContent = idLabel;
+                document.getElementById('vendor-review-id-doc').innerHTML = renderDoc(docs.idDocumentDoc);
+            } catch (err) {
+                document.getElementById('vendor-review-biz-doc').innerHTML = `<p style="color:#dc2626; font-size:0.875rem;">${err.message}</p>`;
+            }
+        }
+
+        async function decideVendorApplication(vendorId, decision) {
+            const verb = decision === 'approve' ? 'approve' : 'reject';
+            if (!confirm(`Are you sure you want to ${verb} this vendor application?`)) return;
+            try {
+                await apiFetch(`/api/super-admin/vendors/${vendorId}/${decision}`, { method: 'POST' });
+                showToast(`Vendor ${decision === 'approve' ? 'approved' : 'rejected'}`, 'success');
+                document.getElementById('vendor-review-modal').classList.remove('active');
+                loadVendors();
+            } catch (err) {
+                showToast(err.message, 'error');
             }
         }
 

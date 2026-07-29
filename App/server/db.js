@@ -451,23 +451,48 @@ const db = {
     }));
   },
 
-  // ---- Vendors (Manage Agent accounts — Super Admin oversight) --------
-  // NOTE: this app is still single-tenant today. There is no per-vendor
-  // data isolation yet — orders/agents/expenses aren't scoped to a
-  // specific "admin" account, they're one shared dataset. This just
-  // lists the Manage Agent accounts themselves; the platform totals
-  // shown alongside them (in server.js) are GLOBAL, not per-vendor,
-  // until the marketplace/vendor schema exists.
+  // ---- Vendors (real vendor accounts — Super Admin oversight) --------
+  // NOTE: this app is still single-tenant for ORDER data — there is no
+  // per-vendor isolation of orders/agents/expenses yet, those stay one
+  // shared dataset until the marketplace's own data model exists. But
+  // vendor ACCOUNTS themselves are real and distinct (role = 'vendor'),
+  // including the approval workflow below — this was previously (and
+  // wrongly) querying role = 'admin' instead, a leftover from before
+  // real vendor accounts existed.
   async getVendors() {
     const { rows } = await pool.query(
-      "SELECT id, business_name, email, created_at FROM users WHERE role = 'admin' ORDER BY created_at ASC"
+      "SELECT id, business_name, email, phone, approval_status, applied_at, created_at FROM users WHERE role = 'vendor' ORDER BY created_at DESC"
     );
     return rows.map(r => ({
       id: r.id,
       businessName: r.business_name,
       email: r.email,
+      phone: r.phone,
+      approvalStatus: r.approval_status,
+      appliedAt: r.applied_at,
       createdAt: r.created_at,
     }));
+  },
+
+  async getVendorApplicationDocuments(vendorId) {
+    const { rows } = await pool.query(
+      "SELECT business_registration_doc, id_document_type, id_document_doc FROM users WHERE id = $1 AND role = 'vendor'",
+      [vendorId]
+    );
+    if (!rows[0]) return null;
+    return {
+      businessRegistrationDoc: rows[0].business_registration_doc,
+      idDocumentType: rows[0].id_document_type,
+      idDocumentDoc: rows[0].id_document_doc,
+    };
+  },
+
+  async setVendorApprovalStatus(vendorId, status) {
+    const { rows } = await pool.query(
+      "UPDATE users SET approval_status = $1 WHERE id = $2 AND role = 'vendor' RETURNING *",
+      [status, vendorId]
+    );
+    return rowToUser(rows[0]);
   },
 
   // ---- Price presets (Settings > Pricing) ------------------------------
@@ -758,6 +783,22 @@ const db = {
       GROUP BY COALESCE(o.status, 'placed')
     `, [vendorId]);
     return rows.map(r => ({ status: r.status, count: r.count }));
+  },
+
+  // Real marketplace-wide stats for the Super Admin Vendors panel —
+  // actual purchases across every vendor, and how many applications are
+  // waiting on a decision. Replaces the previous version of this panel,
+  // which showed unrelated Delivery-service order/agent numbers.
+  async getMarketplacePlatformStats() {
+    const [purchaseTotals, pendingCount] = await Promise.all([
+      pool.query("SELECT COUNT(*)::int AS total_orders, COALESCE(SUM(total_amount), 0)::numeric AS total_revenue FROM purchases"),
+      pool.query("SELECT COUNT(*)::int AS count FROM users WHERE role = 'vendor' AND approval_status = 'pending'"),
+    ]);
+    return {
+      totalMarketplaceOrders: purchaseTotals.rows[0].total_orders,
+      totalMarketplaceRevenue: Number(purchaseTotals.rows[0].total_revenue),
+      pendingVendorApplications: pendingCount.rows[0].count,
+    };
   },
 };
 
