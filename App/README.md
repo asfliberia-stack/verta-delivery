@@ -1493,3 +1493,34 @@ its 3 duplicate login forms, and letting the single form (and
 The Customer/Vendor toggle on the *signup* form is unaffected and
 still there — that one has to stay, since a brand-new account has no
 existing credentials to "identify" its role from.
+
+## Fixed a real mobile layout bug: topbar text overlap
+
+Found and fixed the bug shown in your screenshot. The root cause: the
+`.desktop-icon-label` class (used for the "Cart", "Notifications", and
+"Back to service selector" text) was only ever hidden inside a narrow
+1024–1279px desktop sub-range — there was no rule hiding it on actual
+mobile viewports at all. Below 1024px, the browser's default `inline`
+display for those `<span>` elements applied instead, so all that text
+rendered and overlapped the logo and each other on real phones, exactly
+as your screenshot shows.
+
+**Fix**: added the missing base rule (`.desktop-icon-label { display:
+none; }`, no media query — applies everywhere by default), then
+re-enabled it specifically inside the `≥1024px` block. Verified the
+resulting cascade by hand across all three ranges:
+- **< 1024px (mobile)**: hidden — icon-only, exactly the target layout
+  from your spec (logo left, compact icon buttons right).
+- **1024–1279px**: still hidden (unchanged from before — a narrower
+  desktop window that doesn't have room for full labels).
+- **≥ 1280px**: visible — full "Cart" / "Notifications" / "Back to
+  service selector" text, unchanged from the intended desktop design.
+
+Also brought the Login/Logout button in line with the same pattern —
+its text was a plain (unhidden) text node before, so it always showed
+on every viewport; now it's wrapped in the same `.desktop-icon-label`
+span and follows the same icon-only-on-mobile behavior as Cart/
+Notifications/Back button, matching your spec's instruction to hide it
+on mobile too. Both buttons already had proper 44px circular touch
+targets on mobile, so they didn't need further layout changes — just
+this visibility fix.
