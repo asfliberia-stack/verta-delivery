@@ -19,6 +19,20 @@ CREATE TABLE IF NOT EXISTS users (
 -- reset simply won't be available to them until then (see README).
 ALTER TABLE users ADD COLUMN IF NOT EXISTS phone TEXT;
 
+-- Vendor self-registration approval workflow. Existing/seeded accounts
+-- (customers, Manage Agent, Super Admin, and the seeded Girlee Fashion
+-- vendor) default to 'approved' so nothing already working is affected —
+-- only a NEW self-registered vendor starts 'pending'. Documents stored
+-- as base64 in Postgres, same pattern as product/logo images elsewhere
+-- in this app, for the same reason (Railway wipes its filesystem on
+-- redeploy, so a file path would silently break).
+ALTER TABLE users ADD COLUMN IF NOT EXISTS approval_status TEXT NOT NULL DEFAULT 'approved'
+    CHECK (approval_status IN ('pending', 'approved', 'rejected'));
+ALTER TABLE users ADD COLUMN IF NOT EXISTS business_registration_doc TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS id_document_type TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS id_document_doc TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS applied_at TIMESTAMPTZ;
+
 -- Existing databases already have a `role` CHECK constraint that only
 -- allows 'sender'/'admin' — CREATE TABLE IF NOT EXISTS above won't touch
 -- it on an already-existing table, so this widens it explicitly to add

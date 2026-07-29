@@ -46,7 +46,11 @@ const app = express();
 app.set('trust proxy', 1);
 
 app.use(cors());
-app.use(express.json());
+// Default express.json() limit is 100kb — too small for base64 image/
+// document uploads (product photos, business logos, vendor registration
+// documents). Raised to comfortably cover the largest of those with
+// room for JSON overhead and two documents in one request.
+app.use(express.json({ limit: '10mb' }));
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
 // Brute-force protection on the three password-checking endpoints
@@ -372,9 +376,71 @@ app.post('/api/auth/register', authLimiter, async (req, res) => {
     });
     const token = signToken(user);
     await recordLoginHistory(req, user.id);
-    res.json({ token, user: { id: user.id, businessName: user.businessName, email: user.email, role: user.role } });
+    res.json({ token, user: { id: user.id, businessName: user.businessName, email: user.email, role: user.role, approvalStatus: user.approvalStatus } });
   } catch (err) {
     console.error('register failed', err);
+    res.status(500).json({ error: 'Registration failed' });
+  }
+});
+
+// Vendor self-registration — creates a real account (so the applicant
+// can log in and see their status) but starts 'pending': requireVendor
+// blocks every actual vendor action (products, orders, etc.) until a
+// Super Admin approves it. That approval UI doesn't exist yet — this
+// endpoint is the intake side of that workflow; the review side is a
+// separate, later piece of work.
+const MAX_DOCUMENT_BYTES = 2 * 1024 * 1024; // ~2MB raw per document — these are photos of real paperwork, larger than a product photo
+const VALID_ID_DOCUMENT_TYPES = ['passport', 'national_id', 'drivers_license'];
+
+app.post('/api/auth/register-vendor', authLimiter, async (req, res) => {
+  const { businessName, email, password, phone, businessRegistrationDoc, idDocumentType, idDocumentDoc } = req.body || {};
+  if (!businessName || !email || !password || !phone) {
+    return res.status(400).json({ error: 'Business name, email, phone, and password are required' });
+  }
+  if (password.length < 8) {
+    return res.status(400).json({ error: 'Password must be at least 8 characters' });
+  }
+  if (!businessRegistrationDoc || !idDocumentDoc || !idDocumentType) {
+    return res.status(400).json({ error: 'Business registration document and a government ID are required for vendor applications' });
+  }
+  if (!VALID_ID_DOCUMENT_TYPES.includes(idDocumentType)) {
+    return res.status(400).json({ error: 'Invalid ID document type' });
+  }
+  if (businessRegistrationDoc.length > MAX_DOCUMENT_BYTES * 1.4 || idDocumentDoc.length > MAX_DOCUMENT_BYTES * 1.4) {
+    return res.status(400).json({ error: 'Each document must be under ~2MB — please use a smaller photo or scan.' });
+  }
+  try {
+    const existing = await db.getUserByEmail(email);
+    if (existing) return res.status(409).json({ error: 'An account with that email already exists' });
+
+    const passwordHash = await hashPassword(password);
+    const user = await db.createUser({
+      id: crypto.randomUUID(),
+      businessName,
+      email,
+      phone,
+      passwordHash,
+      role: 'vendor',
+      approvalStatus: 'pending',
+      businessRegistrationDoc,
+      idDocumentType,
+      idDocumentDoc,
+      appliedAt: new Date().toISOString(),
+    });
+
+    // Real notification attempt — logged clearly rather than faked.
+    // This app has no email service configured (no SMTP/SendGrid/etc),
+    // so an actual email to onlib231@gmail.com can't be sent yet; once
+    // one is wired in, this is the one place that needs to change.
+    console.log(`[vendor-application] New vendor application from "${businessName}" (${email}) — would notify onlib231@gmail.com if an email service were configured. Review via the database (users table, approval_status='pending') until the Super Admin approval UI is built.`);
+
+    const token = signToken(user);
+    res.json({
+      token,
+      user: { id: user.id, businessName: user.businessName, email: user.email, role: user.role, approvalStatus: user.approvalStatus },
+    });
+  } catch (err) {
+    console.error('register-vendor failed', err);
     res.status(500).json({ error: 'Registration failed' });
   }
 });
@@ -389,7 +455,7 @@ app.post('/api/auth/login', authLimiter, async (req, res) => {
     if (!match) return res.status(401).json({ error: 'Invalid email or password' });
     const token = signToken(user);
     await recordLoginHistory(req, user.id);
-    res.json({ token, user: { id: user.id, businessName: user.businessName, email: user.email, role: user.role } });
+    res.json({ token, user: { id: user.id, businessName: user.businessName, email: user.email, role: user.role, approvalStatus: user.approvalStatus } });
   } catch (err) {
     console.error('login failed', err);
     res.status(500).json({ error: 'Login failed' });
@@ -496,7 +562,7 @@ app.post('/api/auth/admin-login', authLimiter, async (req, res) => {
 app.get('/api/me', requireAuth, async (req, res) => {
   const user = await db.getUserById(req.user.id);
   if (!user) return res.status(401).json({ error: 'Account no longer exists' });
-  res.json({ user: { id: user.id, businessName: user.businessName, email: user.email, role: user.role } });
+  res.json({ user: { id: user.id, businessName: user.businessName, email: user.email, role: user.role, approvalStatus: user.approvalStatus } });
 });
 
 // Role-scoped bootstrap load: senders get only their own orders; admins get
@@ -803,6 +869,31 @@ app.get('/api/vendor/purchases', requireAuth, requireVendor, async (req, res) =>
   } catch (err) {
     console.error('GET /api/vendor/purchases failed', err);
     res.status(500).json({ error: 'Failed to load orders' });
+  }
+});
+
+// Real customers — who has actually bought from this vendor, derived
+// from purchase records. Not a "leads" concept (no such data exists).
+app.get('/api/vendor/customers', requireAuth, requireVendor, async (req, res) => {
+  try {
+    const customers = await db.getVendorCustomers(req.user.id);
+    res.json({ customers });
+  } catch (err) {
+    console.error('GET /api/vendor/customers failed', err);
+    res.status(500).json({ error: 'Failed to load customers' });
+  }
+});
+
+// Real order-status breakdown — used for the dashboard's donut chart in
+// place of the mockup's "Sales by Channel" (no traffic-source tracking
+// exists in this app; status IS real, tracked data).
+app.get('/api/vendor/order-status-breakdown', requireAuth, requireVendor, async (req, res) => {
+  try {
+    const breakdown = await db.getVendorOrderStatusBreakdown(req.user.id);
+    res.json({ breakdown });
+  } catch (err) {
+    console.error('GET /api/vendor/order-status-breakdown failed', err);
+    res.status(500).json({ error: 'Failed to load order status breakdown' });
   }
 });
 

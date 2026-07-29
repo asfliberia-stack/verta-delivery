@@ -1321,3 +1321,61 @@ correctly on the next page load regardless of which was used.
 Manage Agent, Super Admin, and Vendor login forms — this redesign was
 scoped to the customer-facing login/register flow specifically, since
 that's what "Please add a Login page for users" was asking for.
+
+## Vendor self-registration + approval workflow, and dashboard expansion
+
+### Vendor self-registration (real, with a genuine approval gate)
+
+- Signup now has a real **Customer / Vendor toggle**. Choosing Vendor
+  reveals: store name, a **Business Registration document upload**, an
+  **ID Type selector** (Passport / National ID / Driver's License), and
+  an **ID document upload** — all real file uploads (stored as base64
+  in Postgres, 2MB limit each, same safe pattern as product/logo
+  images elsewhere in this app).
+- New `POST /api/auth/register-vendor` creates a real account with
+  `role='vendor'` and `approval_status='pending'`. It can log in
+  immediately (so they can check their status) but sees a **pending
+  approval screen** instead of the dashboard — `requireVendor` also now
+  checks approval status against the live database on every vendor API
+  call, so a pending vendor can't actually manage products/orders even
+  by calling the API directly.
+- **What's honestly NOT built**: an actual email to onlib231@gmail.com.
+  This app has no email service configured (no SMTP/SendGrid/etc) —
+  the application is logged clearly server-side
+  (`[vendor-application] ...`) rather than silently pretending an email
+  was sent. The Super Admin review UI itself also isn't built yet (you
+  said that's coming later) — applications are stored correctly
+  (`users` table, `approval_status='pending'`) and ready for that UI
+  when it exists.
+- **Contact/phone is now required on every signup** — customer signup
+  already had it; vendor signup requires it too.
+- **Found and fixed a real pre-existing bug** while building this:
+  Express's default JSON body limit (100kb) was already too small for
+  the base64 product/logo uploads from earlier rounds — raised to
+  10mb, which also covers the new document uploads.
+
+### Vendor Dashboard — expanded to match the new mockup
+
+- **Real desktop sidebar** added (reusing the same responsive pattern
+  as the Marketplace): Dashboard, Products, Orders, Messages, Leads,
+  Reports, Customers, Promotions, Settings, Help Center, Logout —
+  plus a profile dropdown (name + "Vendor" + Settings/Logout).
+- **Customers** — genuinely real: a new `getVendorCustomers()` query
+  aggregates actual purchase records into a per-customer order
+  count/total spent list. Not a fabricated "leads" number.
+- **Reports** — real: the same Sales Overview chart as Dashboard, plus
+  a real **Order Status donut chart** (Delivered/Pending/Cancelled/etc,
+  from actual order data).
+- **Leads and Promotions are honestly marked "Coming Soon"** — no
+  lead-tracking or discount/promo backend exists.
+- **Settings** — real account info (store name, email), read-only for
+  now, same pattern as the marketplace customer's Settings tab.
+
+### One deliberate substitution from the mockup
+
+The mockup's "Sales by Channel" donut (Direct/Website/Referral/Social
+Media, with specific percentages) isn't something this app can produce
+honestly — there's no traffic-source attribution anywhere in the data
+model, and fabricating percentages would just be made-up numbers
+dressed up as a chart. The real Order Status donut on the Reports tab
+fills the same visual role with data that's actually tracked.

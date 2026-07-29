@@ -136,7 +136,7 @@
         .desktop-layout-wrapper { display: block; }
         .desktop-sidebar { display: none; }
         @media (min-width: 1024px) {
-            #home-screen .mobile-app-shell { max-width: none; flex: 1; min-height: 100vh; }
+            #home-screen .mobile-app-shell, #vendor-app .mobile-app-shell { max-width: none; flex: 1; min-height: 100vh; }
             .desktop-layout-wrapper { display: flex; align-items: stretch; max-width: 1400px; margin: 0 auto; }
             .desktop-sidebar {
                 display: flex; flex-direction: column; width: 260px; flex-shrink: 0;
@@ -647,6 +647,20 @@
         }
         .auth-google-btn:disabled { opacity: 0.55; cursor: not-allowed; }
         .auth-switch-line { text-align: center; font-size: 0.875rem; color: var(--slate-light); }
+
+        .auth-role-toggle { display: flex; gap: 0.5rem; background: var(--bg-light); padding: 0.3125rem; border-radius: 0.75rem; margin-bottom: 1.5rem; }
+        .auth-role-toggle-btn {
+            flex: 1; padding: 0.625rem; min-height: 40px; border: none; border-radius: 0.5rem; background: transparent;
+            color: var(--slate-light); font-weight: 700; font-size: 0.875rem; cursor: pointer;
+        }
+        .auth-role-toggle-btn.active { background: white; color: var(--primary); box-shadow: var(--shadow-sm); }
+        .auth-vendor-note {
+            background: #eef2ff; color: #4338ca; font-size: 0.8125rem; padding: 0.75rem 1rem;
+            border-radius: 0.75rem; margin-bottom: 1.25rem; line-height: 1.5;
+        }
+        .auth-upload-row { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
+        .auth-upload-thumb { width: 44px; height: 44px; object-fit: cover; border-radius: 0.5rem; border: 1px solid var(--border); }
+        .auth-upload-filename { font-size: 0.8125rem; color: var(--slate-light); word-break: break-all; }
 
         /* App Chooser — Delivery vs Marketplace */
         #app-chooser-screen { min-height: 100vh; background: var(--bg-light); display: flex; flex-direction: column; }
@@ -1333,30 +1347,75 @@
             </form>
 
             <form id="sender-register-form" style="display:none;">
-                <div class="form-group">
-                    <label class="form-label">Business / Sender Name</label>
-                    <select class="form-input" id="register-business-name" required>
-                        <option value="">-- Select --</option>
-                        <option value="Roberta Business HUB">Roberta Business HUB</option>
-                        <option value="SM Salon">SM Salon</option>
-                        <option value="Prinda">Prinda</option>
-                        <option value="Pralex">Pralex</option>
-                        <option value="Mako's Fruit">Mako's Fruit</option>
-                        <option value="Monrovia Slay">Monrovia Slay</option>
-                        <option value="Dream Girl Collections">Dream Girl Collections</option>
-                        <option value="Ella's Collection">Ella's Collection</option>
-                        <option value="TY Collection">TY Collection</option>
-                        <option value="Dara's Kitchen">Dara's Kitchen</option>
-                        <option value="Denise Kitchen">Denise Kitchen</option>
-                        <option value="Yanabuy">Yanabuy</option>
-                        <option value="Teera Cotta">Teera Cotta</option>
-                        <option value="Others">Others (type below)</option>
-                    </select>
+                <div class="auth-role-toggle" id="register-role-toggle">
+                    <button type="button" class="auth-role-toggle-btn active" data-register-role="customer">Customer</button>
+                    <button type="button" class="auth-role-toggle-btn" data-register-role="vendor">Vendor</button>
                 </div>
-                <div class="form-group" id="register-custom-name-group" style="display:none;">
-                    <label class="form-label">Your Business Name</label>
-                    <input type="text" class="form-input" id="register-custom-name" placeholder="Enter your business name">
+
+                <!-- Customer fields -->
+                <div id="register-customer-fields">
+                    <div class="form-group">
+                        <label class="form-label">Business / Sender Name</label>
+                        <select class="form-input" id="register-business-name">
+                            <option value="">-- Select --</option>
+                            <option value="Roberta Business HUB">Roberta Business HUB</option>
+                            <option value="SM Salon">SM Salon</option>
+                            <option value="Prinda">Prinda</option>
+                            <option value="Pralex">Pralex</option>
+                            <option value="Mako's Fruit">Mako's Fruit</option>
+                            <option value="Monrovia Slay">Monrovia Slay</option>
+                            <option value="Dream Girl Collections">Dream Girl Collections</option>
+                            <option value="Ella's Collection">Ella's Collection</option>
+                            <option value="TY Collection">TY Collection</option>
+                            <option value="Dara's Kitchen">Dara's Kitchen</option>
+                            <option value="Denise Kitchen">Denise Kitchen</option>
+                            <option value="Yanabuy">Yanabuy</option>
+                            <option value="Teera Cotta">Teera Cotta</option>
+                            <option value="Others">Others (type below)</option>
+                        </select>
+                    </div>
+                    <div class="form-group" id="register-custom-name-group" style="display:none;">
+                        <label class="form-label">Your Business Name</label>
+                        <input type="text" class="form-input" id="register-custom-name" placeholder="Enter your business name">
+                    </div>
                 </div>
+
+                <!-- Vendor fields -->
+                <div id="register-vendor-fields" style="display:none;">
+                    <p class="auth-vendor-note">Vendor accounts require Super Admin approval before you can list products. We'll review your documents and follow up by email.</p>
+                    <div class="form-group">
+                        <label class="form-label">Store / Business Name</label>
+                        <input type="text" class="form-input" id="register-vendor-name" placeholder="e.g. Girlee Fashion">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Business Registration Document</label>
+                        <div class="auth-upload-row">
+                            <img id="register-vendor-biz-doc-preview" class="auth-upload-thumb" style="display:none;" alt="Preview">
+                            <input type="file" accept="image/*,.pdf" id="register-vendor-biz-doc-input" style="display:none;">
+                            <button type="button" class="btn-small btn-secondary" id="register-vendor-biz-doc-btn">Upload Document</button>
+                            <span class="auth-upload-filename" id="register-vendor-biz-doc-filename"></span>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">ID Type</label>
+                        <select class="form-input" id="register-vendor-id-type">
+                            <option value="">-- Select ID Type --</option>
+                            <option value="passport">Passport</option>
+                            <option value="national_id">National ID</option>
+                            <option value="drivers_license">Driver's License</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Identification Document</label>
+                        <div class="auth-upload-row">
+                            <img id="register-vendor-id-doc-preview" class="auth-upload-thumb" style="display:none;" alt="Preview">
+                            <input type="file" accept="image/*,.pdf" id="register-vendor-id-doc-input" style="display:none;">
+                            <button type="button" class="btn-small btn-secondary" id="register-vendor-id-doc-btn">Upload ID</button>
+                            <span class="auth-upload-filename" id="register-vendor-id-doc-filename"></span>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="form-group">
                     <label class="form-label">Email</label>
                     <input type="email" class="form-input" id="register-email" required>
@@ -1823,6 +1882,20 @@
         </footer>
     </div>
 
+    <!-- Vendor application status — shown instead of the Store Dashboard
+         until a Super Admin approves the application (that review UI
+         doesn't exist yet; this is the applicant-facing side). -->
+    <div id="vendor-pending-screen" style="display:none; min-height:100vh; align-items:center; justify-content:center; padding:1.5rem; background: var(--bg-light);">
+        <div style="max-width:420px; width:100%; text-align:center; background:white; border-radius:1.5rem; box-shadow:var(--shadow-lg); border:1px solid var(--border); padding:2.5rem;">
+            <div style="width:64px; height:64px; border-radius:50%; background:#eef2ff; color:var(--primary); display:flex; align-items:center; justify-content:center; margin:0 auto 1.5rem;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="30" height="30"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+            </div>
+            <h2 id="vendor-pending-status" style="font-size:1.25rem; font-weight:800; color:var(--slate); margin-bottom:0.75rem;">Your vendor application is under review.</h2>
+            <p id="vendor-pending-detail" style="color:var(--slate-light); margin-bottom:2rem; line-height:1.5;"></p>
+            <button type="button" class="quick-access-btn secondary" id="vendor-pending-logout-btn" style="width:100%;">Logout</button>
+        </div>
+    </div>
+
     <!-- Privacy Policy / Terms of Service — generic template content;
          review with counsel before relying on this for a real launch. -->
     <div class="modal-overlay" id="legal-modal">
@@ -2117,15 +2190,86 @@
          Not full mockup fidelity (no charts/promos/reports yet — see
          README for what's deferred and why). -->
     <div id="vendor-app" style="display: none;">
+      <div class="desktop-layout-wrapper">
+        <aside class="desktop-sidebar">
+            <div class="desktop-sidebar-logo"><img src="assets/logo.png" alt="ONLib"></div>
+            <nav class="desktop-sidebar-nav">
+                <button type="button" class="desktop-sidebar-item active" data-vendor-tab="home">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+                    Dashboard
+                </button>
+                <button type="button" class="desktop-sidebar-item" data-vendor-tab="products">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.38 3.46 16 2a4 4 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.47a1 1 0 0 0 .99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 0 0 2-2V10h2.15a1 1 0 0 0 .99-.84l.58-3.47a2 2 0 0 0-1.34-2.23z"></path></svg>
+                    Products
+                </button>
+                <button type="button" class="desktop-sidebar-item" data-vendor-tab="orders">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+                    Orders
+                </button>
+                <button type="button" class="desktop-sidebar-item" data-vendor-tab="messages">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+                    Messages
+                </button>
+                <button type="button" class="desktop-sidebar-item" data-vendor-tab="leads">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                    Leads
+                </button>
+                <button type="button" class="desktop-sidebar-item" data-vendor-tab="reports">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+                    Reports
+                </button>
+                <button type="button" class="desktop-sidebar-item" data-vendor-tab="customers">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><path d="M20 8v6M23 11h-6"></path></svg>
+                    Customers
+                </button>
+                <button type="button" class="desktop-sidebar-item" data-vendor-tab="promotions">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41 13.42 20.58a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7.01" y2="7"></line></svg>
+                    Promotions
+                </button>
+                <button type="button" class="desktop-sidebar-item" data-vendor-tab="settings">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                    Settings
+                </button>
+            </nav>
+            <div class="desktop-sidebar-footer">
+                <button type="button" class="desktop-sidebar-item" id="vendor-desktop-help-btn">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+                    Help Center
+                </button>
+                <button type="button" class="desktop-sidebar-item desktop-sidebar-logout" id="vendor-desktop-logout-btn">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+                    Logout
+                </button>
+            </div>
+        </aside>
+
       <div class="mobile-app-shell">
         <header class="mobile-topbar">
-            <div class="mobile-topbar-logo">
+            <div class="mobile-topbar-logo desktop-hide-logo">
                 <img src="assets/logo.png" alt="ONLib">
             </div>
+            <div style="flex:1;"></div>
             <button type="button" class="mobile-icon-btn" id="vendor-notification-btn" aria-label="Notifications">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
                 <span class="mobile-icon-badge" id="vendor-notification-badge" style="display:none;">0</span>
             </button>
+
+            <!-- Desktop profile dropdown -->
+            <div class="desktop-profile-dropdown" id="vendor-profile-dropdown" style="display:none;">
+                <button type="button" class="desktop-profile-trigger" id="vendor-profile-trigger">
+                    <span class="user-avatar" id="vendor-profile-avatar-desktop" style="width:2.25rem;height:2.25rem;font-size:0.875rem;">V</span>
+                    <span class="desktop-profile-text">
+                        <span class="desktop-profile-name" id="vendor-profile-name-desktop">—</span>
+                        <span class="desktop-profile-role">Vendor</span>
+                    </span>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                </button>
+                <div class="desktop-profile-menu" id="vendor-profile-menu">
+                    <button type="button" data-vendor-tab="settings">Settings</button>
+                    <button type="button" id="vendor-profile-logout-btn">Logout</button>
+                </div>
+            </div>
+
             <div class="mp-notification-panel" id="vendor-notification-panel" style="right: auto; left: 1rem;">
                 <div class="mp-notification-panel-header">
                     <strong>Notifications</strong>
@@ -2232,6 +2376,64 @@
                 </div>
             </div>
 
+            <!-- Leads — no real lead-tracking concept exists in this app -->
+            <div id="vendor-view-leads" style="display:none;">
+                <div class="mobile-section" style="margin-top:0; text-align:center; padding: 3rem 1rem; color: var(--slate-light);">
+                    <div style="font-size:2rem; margin-bottom:0.75rem;">👥</div>
+                    <div style="font-weight:700; color:var(--slate); margin-bottom:0.375rem;">Leads — Coming Soon</div>
+                    <div style="font-size:0.875rem;">There's no lead-tracking (browsing/interest signals) built yet — only actual purchases are tracked, which you can see under Customers.</div>
+                </div>
+            </div>
+
+            <!-- Reports — real: the Sales Overview chart on Dashboard IS
+                 the real reporting that exists today -->
+            <div id="vendor-view-reports" style="display:none;">
+                <div class="mobile-section" style="margin-top:0;">
+                    <div class="vendor-sales-card">
+                        <div class="mobile-section-header" style="margin-bottom:0.375rem;">
+                            <div class="mobile-section-title" style="font-size:0.9375rem;">Sales Overview (Last 30 Days)</div>
+                        </div>
+                        <div style="display:flex; align-items:baseline; gap:0.625rem;">
+                            <span class="vendor-sales-total" id="vendor-reports-total-sales">$0.00</span>
+                        </div>
+                        <canvas id="vendor-reports-sales-chart" height="160" style="margin-top:0.75rem;"></canvas>
+                    </div>
+                </div>
+                <div class="mobile-section">
+                    <div class="mobile-section-header"><div class="mobile-section-title">Order Status</div></div>
+                    <div class="vendor-sales-card" style="display:flex; align-items:center; gap:1.5rem; flex-wrap:wrap;">
+                        <canvas id="vendor-order-status-chart" width="140" height="140" style="max-width:140px;"></canvas>
+                        <div id="vendor-order-status-legend" style="flex:1; min-width:160px;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Customers — real, derived from actual purchase records -->
+            <div id="vendor-view-customers" style="display:none;">
+                <div class="mobile-section-header" style="margin-top:0;"><div class="mobile-section-title">Your Customers</div></div>
+                <div id="vendor-customers-container"></div>
+            </div>
+
+            <!-- Promotions — no discounts/promo backend exists yet -->
+            <div id="vendor-view-promotions" style="display:none;">
+                <div class="mobile-section" style="margin-top:0; text-align:center; padding: 3rem 1rem; color: var(--slate-light);">
+                    <div style="font-size:2rem; margin-bottom:0.75rem;">🏷️</div>
+                    <div style="font-weight:700; color:var(--slate); margin-bottom:0.375rem;">Promotions — Coming Soon</div>
+                    <div style="font-size:0.875rem;">Creating discount codes or sales isn't built yet.</div>
+                </div>
+            </div>
+
+            <!-- Settings — real account info, read-only for now -->
+            <div id="vendor-view-settings" style="display:none;">
+                <div class="mobile-section-header" style="margin-top:0;"><div class="mobile-section-title">Store Settings</div></div>
+                <div style="background:white; border-radius:1rem; padding:1.25rem; border:1px solid var(--border); box-shadow:var(--shadow-sm);">
+                    <div style="margin-bottom:1rem;"><div style="font-size:0.75rem; color:var(--slate-light); font-weight:700; text-transform:uppercase; letter-spacing:0.03em;">Store Name</div><div id="vendor-settings-name" style="font-weight:700; font-size:1rem;">—</div></div>
+                    <div style="margin-bottom:1rem;"><div style="font-size:0.75rem; color:var(--slate-light); font-weight:700; text-transform:uppercase; letter-spacing:0.03em;">Email</div><div id="vendor-settings-email" style="font-weight:700; font-size:1rem;">—</div></div>
+                    <div><div style="font-size:0.75rem; color:var(--slate-light); font-weight:700; text-transform:uppercase; letter-spacing:0.03em;">Role</div><div style="font-weight:700; font-size:1rem;">Vendor</div></div>
+                </div>
+                <p style="color:var(--slate-light); font-size:0.8125rem; margin-top:1rem;">Editing these details isn't built yet.</p>
+            </div>
+
             <!-- Account -->
             <div id="vendor-view-account" style="display:none;">
                 <div class="mobile-section" style="margin-top:0; display:flex; align-items:center; gap:0.875rem;">
@@ -2268,6 +2470,7 @@
                 Account
             </button>
         </nav>
+      </div>
       </div>
     </div>
 
@@ -3470,6 +3673,20 @@
             document.getElementById('delivery-customer-app').style.display = 'none';
             document.getElementById('delivery-app').style.display = 'none';
             document.getElementById('vendor-app').style.display = 'none';
+            document.getElementById('vendor-pending-screen').style.display = 'none';
+        }
+
+        function showVendorPendingScreen() {
+            hideAllTopLevelViews();
+            const statusEl = document.getElementById('vendor-pending-status');
+            const isRejected = currentUser.approvalStatus === 'rejected';
+            statusEl.textContent = isRejected
+                ? "Your vendor application wasn't approved."
+                : "Your vendor application is under review.";
+            document.getElementById('vendor-pending-detail').textContent = isRejected
+                ? "If you think this is a mistake, contact support to discuss next steps."
+                : "A Super Admin needs to review your business registration and ID before your store can go live. This usually doesn't take long — check back soon.";
+            document.getElementById('vendor-pending-screen').style.display = 'flex';
         }
 
         function showAppChooser() {
@@ -3629,6 +3846,11 @@
             document.getElementById('back-to-store-dashboard-btn').addEventListener('click', showVendorDashboardView);
 
             document.getElementById('choose-delivery-btn').addEventListener('click', () => chooseAppMode('delivery'));
+            document.getElementById('vendor-pending-logout-btn').addEventListener('click', async () => {
+                clearAuth();
+                currentUser = null;
+                showAppChooser();
+            });
             document.getElementById('choose-marketplace-btn').addEventListener('click', () => chooseAppMode('marketplace'));
 
             document.getElementById('chooser-help-btn').addEventListener('click', () => {
@@ -3791,10 +4013,20 @@
             } else if (currentUser.role === 'vendor') {
                 // Vendor login/session restore routes straight to the
                 // Store Dashboard — never the marketplace — per the
-                // routing rules (1.2 and 3).
+                // routing rules (1.2 and 3). But a not-yet-approved
+                // vendor application sees a status screen instead of the
+                // real dashboard (server-side, requireVendor blocks the
+                // actual vendor endpoints either way).
+                if (currentUser.approvalStatus && currentUser.approvalStatus !== 'approved') {
+                    showVendorPendingScreen();
+                    return;
+                }
                 document.getElementById('vendor-display-name').textContent = currentUser.businessName;
                 document.getElementById('vendor-avatar').textContent = currentUser.businessName.charAt(0).toUpperCase();
                 document.getElementById('vendor-store-name-hero').textContent = currentUser.businessName;
+                document.getElementById('vendor-profile-name-desktop').textContent = currentUser.businessName;
+                document.getElementById('vendor-profile-avatar-desktop').textContent = currentUser.businessName.charAt(0).toUpperCase();
+                document.getElementById('vendor-profile-dropdown').style.display = 'block';
                 showVendorDashboardView();
                 setVendorTab('home');
                 await loadVendorDashboard();
@@ -3975,6 +4207,49 @@
                 group.style.display = e.target.value === 'Others' ? 'block' : 'none';
             });
 
+            // Account type toggle — Customer vs Vendor. Vendor applications
+            // need documents and go into the approval workflow; the fields
+            // shown/required change accordingly.
+            let registerRole = 'customer';
+            let pendingBizDocDataUrl = null;
+            let pendingIdDocDataUrl = null;
+            document.querySelectorAll('#register-role-toggle .auth-role-toggle-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    registerRole = btn.dataset.registerRole;
+                    document.querySelectorAll('#register-role-toggle .auth-role-toggle-btn').forEach(b => b.classList.toggle('active', b === btn));
+                    document.getElementById('register-customer-fields').style.display = registerRole === 'customer' ? 'block' : 'none';
+                    document.getElementById('register-vendor-fields').style.display = registerRole === 'vendor' ? 'block' : 'none';
+                    document.getElementById('register-submit-btn').textContent = registerRole === 'vendor' ? 'Submit Application' : 'Create Account';
+                });
+            });
+
+            function wireDocUpload(btnId, inputId, previewId, filenameId, onLoaded) {
+                const btn = document.getElementById(btnId);
+                const input = document.getElementById(inputId);
+                btn.addEventListener('click', () => input.click());
+                input.addEventListener('change', () => {
+                    const file = input.files[0];
+                    if (!file) return;
+                    if (file.size > 2 * 1024 * 1024) {
+                        showToast('Please choose a file under 2MB.', 'error');
+                        return;
+                    }
+                    const reader = new FileReader();
+                    reader.onload = () => {
+                        onLoaded(reader.result);
+                        document.getElementById(filenameId).textContent = file.name;
+                        if (file.type.startsWith('image/')) {
+                            const preview = document.getElementById(previewId);
+                            preview.src = reader.result;
+                            preview.style.display = 'block';
+                        }
+                    };
+                    reader.readAsDataURL(file);
+                });
+            }
+            wireDocUpload('register-vendor-biz-doc-btn', 'register-vendor-biz-doc-input', 'register-vendor-biz-doc-preview', 'register-vendor-biz-doc-filename', (url) => { pendingBizDocDataUrl = url; });
+            wireDocUpload('register-vendor-id-doc-btn', 'register-vendor-id-doc-input', 'register-vendor-id-doc-preview', 'register-vendor-id-doc-filename', (url) => { pendingIdDocDataUrl = url; });
+
             loginForm.addEventListener('submit', async (e) => {
                 e.preventDefault();
                 const errorEl = document.getElementById('login-error');
@@ -4008,6 +4283,47 @@
                 const btn = document.getElementById('register-submit-btn');
                 errorEl.style.display = 'none';
 
+                const email = document.getElementById('register-email').value;
+                const phone = document.getElementById('register-phone').value.trim();
+                const password = document.getElementById('register-password').value;
+
+                if (registerRole === 'vendor') {
+                    const businessName = document.getElementById('register-vendor-name').value.trim();
+                    const idDocumentType = document.getElementById('register-vendor-id-type').value;
+                    if (!businessName) {
+                        errorEl.textContent = 'Please enter your store/business name.';
+                        errorEl.style.display = 'block';
+                        return;
+                    }
+                    if (!pendingBizDocDataUrl || !pendingIdDocDataUrl || !idDocumentType) {
+                        errorEl.textContent = 'Please upload your business registration document and a government ID.';
+                        errorEl.style.display = 'block';
+                        return;
+                    }
+                    btn.disabled = true;
+                    btn.textContent = 'Submitting…';
+                    try {
+                        const data = await apiFetch('/api/auth/register-vendor', {
+                            method: 'POST',
+                            body: JSON.stringify({
+                                businessName, email, phone, password,
+                                businessRegistrationDoc: pendingBizDocDataUrl,
+                                idDocumentType,
+                                idDocumentDoc: pendingIdDocDataUrl,
+                            })
+                        });
+                        await saveAuth(data.token, data.user);
+                        await enterApp();
+                    } catch (err) {
+                        errorEl.textContent = err.message;
+                        errorEl.style.display = 'block';
+                    } finally {
+                        btn.disabled = false;
+                        btn.textContent = 'Submit Application';
+                    }
+                    return;
+                }
+
                 const selected = document.getElementById('register-business-name').value;
                 const businessName = selected === 'Others'
                     ? document.getElementById('register-custom-name').value.trim()
@@ -4024,14 +4340,9 @@
                 try {
                     const data = await apiFetch('/api/auth/register', {
                         method: 'POST',
-                        body: JSON.stringify({
-                            businessName,
-                            email: document.getElementById('register-email').value,
-                            phone: document.getElementById('register-phone').value.trim(),
-                            password: document.getElementById('register-password').value
-                        })
+                        body: JSON.stringify({ businessName, email, phone, password })
                     });
-                    saveAuth(data.token, data.user);
+                    await saveAuth(data.token, data.user);
                     await enterApp();
                 } catch (err) {
                     errorEl.textContent = err.message;
@@ -6282,8 +6593,6 @@
         // overview and recent orders come from actual purchases, product
         // management is full CRUD against the real products table.
         // ============================================================
-        let vendorSalesChartInstance = null;
-
         async function loadVendorDashboard() {
             try {
                 const [overview, dailySalesData, productsData, purchasesData] = await Promise.all([
@@ -6303,7 +6612,7 @@
                 renderVendorProducts();
                 renderVendorOrders(purchases);
 
-                renderVendorSalesChart(dailySalesData.days || []);
+                renderVendorSalesChart(dailySalesData.days || [], 'vendor-sales-chart', 'vendor-sales-trend');
                 renderNotificationCenter();
             } catch (err) {
                 console.error('Failed to load vendor dashboard', err);
@@ -6316,22 +6625,28 @@
         // 30-day window against the second half (a coarser but still
         // genuine comparison; a true "vs previous 30 days" figure would
         // need a second backend query this pass didn't add).
-        function renderVendorSalesChart(days) {
-            const canvas = document.getElementById('vendor-sales-chart');
+        const vendorChartInstances = {};
+        function renderVendorSalesChart(days, canvasId, trendElId) {
+            canvasId = canvasId || 'vendor-sales-chart';
+            const canvas = document.getElementById(canvasId);
             if (!canvas || typeof Chart === 'undefined') return;
             const labels = days.map(d => new Date(d.day).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
             const totals = days.map(d => d.total);
 
-            const mid = Math.ceil(totals.length / 2);
-            const firstHalf = totals.slice(0, mid).reduce((s, v) => s + v, 0);
-            const secondHalf = totals.slice(mid).reduce((s, v) => s + v, 0);
-            const trend = formatTrend(secondHalf, firstHalf, 'vs. earlier this period');
-            const trendEl = document.getElementById('vendor-sales-trend');
-            trendEl.textContent = totals.length === 0 ? '' : trend.text;
-            trendEl.className = `stat-trend ${trend.cls}`;
+            if (trendElId) {
+                const mid = Math.ceil(totals.length / 2);
+                const firstHalf = totals.slice(0, mid).reduce((s, v) => s + v, 0);
+                const secondHalf = totals.slice(mid).reduce((s, v) => s + v, 0);
+                const trend = formatTrend(secondHalf, firstHalf, 'vs. earlier this period');
+                const trendEl = document.getElementById(trendElId);
+                if (trendEl) {
+                    trendEl.textContent = totals.length === 0 ? '' : trend.text;
+                    trendEl.className = `stat-trend ${trend.cls}`;
+                }
+            }
 
-            if (vendorSalesChartInstance) vendorSalesChartInstance.destroy();
-            vendorSalesChartInstance = new Chart(canvas.getContext('2d'), {
+            if (vendorChartInstances[canvasId]) vendorChartInstances[canvasId].destroy();
+            vendorChartInstances[canvasId] = new Chart(canvas.getContext('2d'), {
                 type: 'line',
                 data: {
                     labels,
@@ -6346,6 +6661,78 @@
                     scales: { y: { display: false }, x: { display: totals.length > 0, grid: { display: false } } },
                 },
             });
+        }
+
+        // Reports tab — real Sales Overview (same data as Dashboard) plus
+        // a real Order Status breakdown donut. This replaces the
+        // mockup's "Sales by Channel" (Direct/Website/Referral/Social),
+        // which this app has no way to track — there's no traffic-source
+        // attribution anywhere in the data model. Order status IS real.
+        let vendorOrderStatusChartInstance = null;
+        async function loadVendorReportsTab() {
+            try {
+                const [overview, dailySalesData, statusData] = await Promise.all([
+                    apiFetch('/api/vendor/sales-overview'),
+                    apiFetch('/api/vendor/daily-sales'),
+                    apiFetch('/api/vendor/order-status-breakdown'),
+                ]);
+                document.getElementById('vendor-reports-total-sales').textContent = `$${overview.totalSales.toFixed(2)}`;
+                renderVendorSalesChart(dailySalesData.days || [], 'vendor-reports-sales-chart', null);
+
+                const breakdown = statusData.breakdown || [];
+                const statusColors = { delivered: '#10b981', pending: '#f59e0b', accepted: '#3b82f6', 'picked-up': '#8b5cf6', cancelled: '#ef4444', placed: '#94a3b8' };
+                const statusLabels = { delivered: 'Delivered', pending: 'Pending', accepted: 'Accepted', 'picked-up': 'Picked Up', cancelled: 'Cancelled', placed: 'Placed' };
+                const canvas = document.getElementById('vendor-order-status-chart');
+                if (canvas && typeof Chart !== 'undefined') {
+                    if (vendorOrderStatusChartInstance) vendorOrderStatusChartInstance.destroy();
+                    if (breakdown.length === 0) {
+                        document.getElementById('vendor-order-status-legend').innerHTML = '<p style="color:var(--slate-light); font-size:0.875rem;">No orders yet.</p>';
+                    } else {
+                        vendorOrderStatusChartInstance = new Chart(canvas.getContext('2d'), {
+                            type: 'doughnut',
+                            data: {
+                                labels: breakdown.map(b => statusLabels[b.status] || b.status),
+                                datasets: [{ data: breakdown.map(b => b.count), backgroundColor: breakdown.map(b => statusColors[b.status] || '#94a3b8'), borderWidth: 0 }],
+                            },
+                            options: { responsive: true, cutout: '65%', plugins: { legend: { display: false } } },
+                        });
+                        const total = breakdown.reduce((s, b) => s + b.count, 0);
+                        document.getElementById('vendor-order-status-legend').innerHTML = breakdown.map(b => `
+                            <div style="display:flex; align-items:center; justify-content:space-between; padding:0.375rem 0; font-size:0.875rem;">
+                                <span style="display:flex; align-items:center; gap:0.5rem;"><span style="width:10px;height:10px;border-radius:50%;background:${statusColors[b.status] || '#94a3b8'};display:inline-block;"></span>${statusLabels[b.status] || b.status}</span>
+                                <span style="font-weight:700;">${b.count} (${Math.round((b.count / total) * 100)}%)</span>
+                            </div>
+                        `).join('');
+                    }
+                }
+            } catch (err) {
+                console.error('Failed to load vendor reports', err);
+            }
+        }
+
+        // Customers — real, from actual purchase records
+        async function loadVendorCustomers() {
+            const container = document.getElementById('vendor-customers-container');
+            try {
+                const data = await apiFetch('/api/vendor/customers');
+                const customers = data.customers || [];
+                if (customers.length === 0) {
+                    renderEmptyState(container, 'No customers yet.');
+                    return;
+                }
+                container.innerHTML = `<div style="overflow-x:auto;"><table class="settings-table"><thead><tr>
+                    <th>Customer</th><th>Orders</th><th>Total Spent</th><th>Last Order</th>
+                    </tr></thead><tbody>${customers.map(c => `
+                    <tr>
+                        <td style="font-weight:700;">${c.businessName}</td>
+                        <td>${c.orderCount}</td>
+                        <td style="font-weight:700; color:var(--primary);">$${c.totalSpent.toFixed(2)}</td>
+                        <td>${c.lastOrderAt ? new Date(c.lastOrderAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}</td>
+                    </tr>
+                `).join('')}</tbody></table></div>`;
+            } catch (err) {
+                container.innerHTML = `<p style="text-align:center; color:#dc2626;">${err.message}</p>`;
+            }
         }
 
         function renderVendorProducts() {
@@ -6477,15 +6864,23 @@
             }
         }
 
+        const VENDOR_TAB_VIEWS = ['home', 'products', 'orders', 'messages', 'leads', 'reports', 'customers', 'promotions', 'settings', 'account'];
         function setVendorTab(tab) {
-            document.querySelectorAll('#vendor-app .mobile-nav-item').forEach(btn => btn.classList.toggle('active', btn.dataset.vendorTab === tab));
-            document.getElementById('vendor-view-home').style.display = tab === 'home' ? 'block' : 'none';
-            document.getElementById('vendor-view-products').style.display = tab === 'products' ? 'block' : 'none';
-            document.getElementById('vendor-view-orders').style.display = tab === 'orders' ? 'block' : 'none';
-            document.getElementById('vendor-view-messages').style.display = tab === 'messages' ? 'block' : 'none';
-            document.getElementById('vendor-view-account').style.display = tab === 'account' ? 'block' : 'none';
+            document.querySelectorAll('#vendor-app .mobile-nav-item, #vendor-app .desktop-sidebar-item[data-vendor-tab]').forEach(btn => btn.classList.toggle('active', btn.dataset.vendorTab === tab));
+            VENDOR_TAB_VIEWS.forEach(v => {
+                const el = document.getElementById(`vendor-view-${v}`);
+                if (el) el.style.display = v === tab ? 'block' : 'none';
+            });
             const shell = document.querySelector('#vendor-app .mobile-content');
             if (shell) shell.scrollTop = 0;
+            if (tab === 'reports') {
+                loadVendorReportsTab();
+            } else if (tab === 'customers') {
+                loadVendorCustomers();
+            } else if (tab === 'settings' && currentUser) {
+                document.getElementById('vendor-settings-name').textContent = currentUser.businessName || '—';
+                document.getElementById('vendor-settings-email').textContent = currentUser.email || '—';
+            }
         }
 
         function wireVendorEvents() {
@@ -6532,14 +6927,11 @@
                 el.addEventListener('click', () => setVendorTab(el.dataset.vendorTab));
             });
 
-            // Honestly-scoped placeholders — no backend exists for either yet.
-            document.getElementById('vendor-manage-promos-btn').addEventListener('click', () => {
-                showToast('Promos aren\'t built yet — coming soon.', 'info');
-            });
-            document.getElementById('vendor-view-reports-btn').addEventListener('click', () => {
-                setVendorTab('home'); // the Sales Overview chart above *is* the real report today
-                showToast('Deeper reports aren\'t built yet — this is everything real we track so far.', 'info');
-            });
+            // Quick Actions — Manage Promos and View Reports now route to
+            // real tabs (Promotions honestly says "Coming Soon" there;
+            // Reports shows the real sales chart + order status donut).
+            document.getElementById('vendor-manage-promos-btn').addEventListener('click', () => setVendorTab('promotions'));
+            document.getElementById('vendor-view-reports-btn').addEventListener('click', () => setVendorTab('reports'));
 
             // Notification bell — same real notification log as everywhere else.
             const bell = document.getElementById('vendor-notification-btn');
@@ -6560,6 +6952,38 @@
             document.getElementById('vendor-clear-notifications-link').addEventListener('click', () => {
                 notificationLog = [];
                 renderNotificationCenter();
+            });
+
+            // Desktop sidebar Help/Logout
+            document.getElementById('vendor-desktop-help-btn').addEventListener('click', () => {
+                renderHelpSupport('customer');
+                document.getElementById('help-support-modal').classList.add('active');
+            });
+            document.getElementById('vendor-desktop-logout-btn').addEventListener('click', async () => {
+                clearAuth();
+                currentUser = null;
+                showAppChooser();
+            });
+
+            // Desktop profile dropdown
+            const vendorProfileTrigger = document.getElementById('vendor-profile-trigger');
+            const vendorProfileMenu = document.getElementById('vendor-profile-menu');
+            vendorProfileTrigger.addEventListener('click', (e) => {
+                e.stopPropagation();
+                vendorProfileMenu.classList.toggle('open');
+            });
+            document.addEventListener('click', (e) => {
+                if (vendorProfileMenu.classList.contains('open') && !vendorProfileMenu.contains(e.target) && e.target !== vendorProfileTrigger) {
+                    vendorProfileMenu.classList.remove('open');
+                }
+            });
+            document.querySelectorAll('#vendor-profile-menu [data-vendor-tab]').forEach(btn => {
+                btn.addEventListener('click', () => { setVendorTab(btn.dataset.vendorTab); vendorProfileMenu.classList.remove('open'); });
+            });
+            document.getElementById('vendor-profile-logout-btn').addEventListener('click', async () => {
+                clearAuth();
+                currentUser = null;
+                showAppChooser();
             });
         }
 

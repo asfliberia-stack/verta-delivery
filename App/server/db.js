@@ -130,6 +130,11 @@ function rowToUser(r) {
     role: r.role,
     passwordHash: r.password_hash, // only used internally for login checks
     tokenVersion: r.token_version,
+    approvalStatus: r.approval_status,
+    businessRegistrationDoc: r.business_registration_doc,
+    idDocumentType: r.id_document_type,
+    idDocumentDoc: r.id_document_doc,
+    appliedAt: r.applied_at,
   };
 }
 
@@ -143,11 +148,11 @@ const db = {
 
   // ---- Users -------------------------------------------------------
 
-  async createUser({ id, businessName, email, phone, passwordHash, role }) {
+  async createUser({ id, businessName, email, phone, passwordHash, role, approvalStatus, businessRegistrationDoc, idDocumentType, idDocumentDoc, appliedAt }) {
     const { rows } = await pool.query(
-      `INSERT INTO users (id, business_name, email, phone, password_hash, role)
-       VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
-      [id, businessName, email.toLowerCase(), phone || null, passwordHash, role]
+      `INSERT INTO users (id, business_name, email, phone, password_hash, role, approval_status, business_registration_doc, id_document_type, id_document_doc, applied_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *`,
+      [id, businessName, email.toLowerCase(), phone || null, passwordHash, role, approvalStatus || 'approved', businessRegistrationDoc || null, idDocumentType || null, idDocumentDoc || null, appliedAt || null]
     );
     return rowToUser(rows[0]);
   },
@@ -712,6 +717,47 @@ const db = {
       avgRating: Number(r.avg_rating),
       reviewCount: r.review_count,
     }));
+  },
+
+  // ---- Vendor: real customers (from actual purchases) -----------------
+  // Real per-vendor customer list — who bought from this vendor, how many
+  // times, and how much they've spent. No fabricated "leads" concept.
+  async getVendorCustomers(vendorId) {
+    const { rows } = await pool.query(`
+      SELECT u.id, u.business_name, u.email, u.phone,
+        COUNT(p.id)::int AS order_count,
+        COALESCE(SUM(p.total_amount), 0)::numeric AS total_spent,
+        MAX(p.created_at) AS last_order_at
+      FROM purchases p
+      JOIN users u ON u.id = p.customer_id
+      WHERE p.vendor_id = $1
+      GROUP BY u.id
+      ORDER BY total_spent DESC
+    `, [vendorId]);
+    return rows.map(r => ({
+      id: r.id,
+      businessName: r.business_name,
+      email: r.email,
+      phone: r.phone,
+      orderCount: r.order_count,
+      totalSpent: Number(r.total_spent),
+      lastOrderAt: r.last_order_at,
+    }));
+  },
+
+  // Real order-status breakdown for this vendor's purchases — replaces
+  // the mockup's "Sales by Channel" (Direct/Website/Referral/Social),
+  // which this app has no way to track (no traffic-source attribution
+  // exists). Status IS real, tracked data.
+  async getVendorOrderStatusBreakdown(vendorId) {
+    const { rows } = await pool.query(`
+      SELECT COALESCE(o.status, 'placed') AS status, COUNT(*)::int AS count
+      FROM purchases p
+      LEFT JOIN orders o ON o.id = p.delivery_order_id
+      WHERE p.vendor_id = $1
+      GROUP BY COALESCE(o.status, 'placed')
+    `, [vendorId]);
+    return rows.map(r => ({ status: r.status, count: r.count }));
   },
 };
 
