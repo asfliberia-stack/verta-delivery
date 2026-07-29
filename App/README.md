@@ -1221,3 +1221,44 @@ Real modal, real generic content — but it's clearly labeled as
 unreviewed template text in the modal itself. I'm not a lawyer, this
 isn't tailored to your actual business practices or jurisdiction, and
 it needs real legal review before you rely on it for an actual launch.
+
+## Real desktop marketplace layout (sidebar nav), matching the mockup
+
+Built a genuine desktop experience alongside the existing mobile one —
+one `≥1024px` breakpoint switches the marketplace from the mobile
+bottom-tab layout to a persistent left sidebar with search/cart/bell/
+profile in a proper top bar, matching the desktop mockup. Below 1024px,
+nothing changed — same mobile experience as before.
+
+### What's real vs. honestly marked
+
+Every sidebar item does something real when clicked:
+
+- **Home, Categories, Stores, Wishlist** — same real tabs/data as the
+  mobile view, just reachable from the sidebar now too.
+- **Orders** — genuinely real: the same order data shown in Verta
+  Delivery's "Your Orders" (a marketplace checkout creates a real
+  delivery order, so this is the same underlying list, not a
+  duplicate/fake one). `renderOrdersHome()` was parameterized so it can
+  render into either screen's grid from the same real data.
+- **Settings** — real account info (name, email, role) pulled from the
+  logged-in session. Read-only for now — no edit form exists yet, and
+  the panel says so rather than pretending fields are editable.
+- **Help Center** — reuses the same Help & Support modal already built
+  elsewhere, now showing customer-relevant FAQs in this context.
+- **Logout** — real, from both the sidebar and the profile dropdown.
+
+**Deals, Messages, Addresses, and Payment Methods are honestly marked
+"Coming Soon"** — none has a real backend yet (no discounts/promotions
+model, no in-app messaging, no saved-address book, no payment
+gateway). Each says plainly what's missing rather than showing fake
+content. Also note: unlike the mockup, the Wishlist nav badge stays
+hidden rather than showing a fabricated "2" — there's no real wishlist
+data to count yet.
+
+### Profile dropdown
+
+New desktop-only dropdown (name + "Customer" + chevron, matching the
+mockup) with Settings and Logout shortcuts — click-outside-to-close,
+same interaction pattern as the notification bell dropdown already in
+the app.

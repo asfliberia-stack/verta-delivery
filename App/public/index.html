@@ -128,6 +128,72 @@
         .mobile-section-title { font-size: 1.0625rem; font-weight: 800; color: var(--slate); }
         .mobile-view-all { color: var(--golib-red); font-weight: 700; font-size: 0.8125rem; cursor: pointer; display: flex; align-items: center; gap: 0.25rem; }
 
+        /* Desktop marketplace layout — a persistent sidebar instead of
+           the mobile bottom-tab bar, shown only on wide viewports. On
+           narrow viewports .desktop-sidebar is display:none and this
+           wrapper behaves like a normal block container, so mobile is
+           completely unaffected. */
+        .desktop-layout-wrapper { display: block; }
+        .desktop-sidebar { display: none; }
+        @media (min-width: 1024px) {
+            #home-screen .mobile-app-shell { max-width: none; flex: 1; min-height: 100vh; }
+            .desktop-layout-wrapper { display: flex; align-items: stretch; max-width: 1400px; margin: 0 auto; }
+            .desktop-sidebar {
+                display: flex; flex-direction: column; width: 260px; flex-shrink: 0;
+                background: white; border-right: 1px solid var(--border); padding: 1.5rem 1rem; min-height: 100vh;
+                position: sticky; top: 0; align-self: flex-start;
+            }
+            .desktop-sidebar-logo { padding: 0 0.75rem 1.5rem; }
+            .desktop-sidebar-logo img { height: 36px; }
+            .desktop-sidebar-nav { display: flex; flex-direction: column; gap: 0.125rem; flex: 1; }
+            .desktop-sidebar-item {
+                display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem; border-radius: 0.625rem;
+                background: none; border: none; cursor: pointer; text-align: left; font-weight: 600; font-size: 0.9375rem;
+                color: var(--slate-light); min-height: 44px; position: relative;
+            }
+            .desktop-sidebar-item svg { width: 19px; height: 19px; flex-shrink: 0; }
+            .desktop-sidebar-item:hover { background: var(--bg-light); color: var(--slate); }
+            .desktop-sidebar-item.active { background: #eef2ff; color: var(--golib-red); }
+            .desktop-sidebar-badge {
+                margin-left: auto; background: var(--golib-red); color: white; font-size: 0.6875rem; font-weight: 800;
+                min-width: 18px; height: 18px; border-radius: 9999px; display: flex; align-items: center; justify-content: center; padding: 0 4px;
+            }
+            .desktop-sidebar-footer { border-top: 1px solid var(--border); padding-top: 0.75rem; margin-top: 0.75rem; }
+            .desktop-sidebar-logout { color: #dc2626; }
+
+            .mobile-bottom-nav { display: none; }
+            .mobile-topbar { padding: 1rem 2rem; }
+            .desktop-hide-logo { display: none; }
+            .mobile-search-bar { margin: 1rem 2rem; max-width: 640px; }
+            .mobile-content { padding: 0 2rem calc(2.5rem + env(safe-area-inset-bottom)); }
+            .desktop-icon-labeled { width: auto; border-radius: 9999px; padding: 0 0.875rem; gap: 0.5rem; display: flex; align-items: center; }
+            .desktop-icon-label { font-size: 0.8125rem; font-weight: 600; }
+
+            .desktop-profile-dropdown { position: relative; }
+            .desktop-profile-trigger {
+                display: flex; align-items: center; gap: 0.625rem; background: none; border: 1px solid var(--border);
+                border-radius: 9999px; padding: 0.25rem 0.875rem 0.25rem 0.25rem; cursor: pointer; min-height: 44px;
+            }
+            .desktop-profile-text { display: flex; flex-direction: column; align-items: flex-start; }
+            .desktop-profile-name { font-weight: 700; font-size: 0.8125rem; color: var(--slate); }
+            .desktop-profile-role { font-size: 0.6875rem; color: var(--slate-light); }
+            .desktop-profile-trigger svg { width: 14px; height: 14px; color: var(--slate-lighter); }
+            .desktop-profile-menu {
+                display: none; position: absolute; top: 100%; right: 0; margin-top: 0.5rem; background: white;
+                border-radius: 0.75rem; box-shadow: var(--shadow-lg); border: 1px solid var(--border); min-width: 160px; overflow: hidden; z-index: 80;
+            }
+            .desktop-profile-menu.open { display: block; }
+            .desktop-profile-menu button {
+                display: block; width: 100%; text-align: left; padding: 0.75rem 1rem; background: none; border: none;
+                cursor: pointer; font-size: 0.875rem; font-weight: 600; color: var(--slate); min-height: 44px;
+            }
+            .desktop-profile-menu button:hover { background: var(--bg-light); }
+        }
+        @media (min-width: 1024px) and (max-width: 1279px) {
+            .desktop-icon-label { display: none; }
+            .desktop-icon-labeled { border-radius: 50%; padding: 0; width: 44px; }
+        }
+
         .discovery-banner {
             background: linear-gradient(135deg, var(--golib-navy) 0%, var(--golib-navy-light) 100%);
             border-radius: 1.125rem; padding: 1.5rem; color: white; position: relative; overflow: hidden;
@@ -1344,27 +1410,106 @@
     <!-- ============== MARKETPLACE / SENDER HOME (default landing page —
          visible to guests, customers, and vendors previewing "as customer") ============== -->
     <div id="home-screen">
+      <div class="desktop-layout-wrapper">
+        <!-- Desktop sidebar — shown only ≥1024px; mobile keeps the bottom
+             tab bar below. Same underlying tabs/actions either way, just
+             a different nav chrome for the extra screen space. -->
+        <aside class="desktop-sidebar">
+            <div class="desktop-sidebar-logo"><img src="assets/logo.png" alt="ONLib"></div>
+            <nav class="desktop-sidebar-nav">
+                <button type="button" class="desktop-sidebar-item active" data-mp-tab="home">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+                    Home
+                </button>
+                <button type="button" class="desktop-sidebar-item" data-mp-tab="categories">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+                    Categories
+                </button>
+                <button type="button" class="desktop-sidebar-item" data-mp-tab="stores">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>
+                    Stores
+                </button>
+                <button type="button" class="desktop-sidebar-item" data-mp-tab="deals">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41 13.42 20.58a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7.01" y2="7"></line></svg>
+                    Deals
+                </button>
+                <button type="button" class="desktop-sidebar-item" data-mp-tab="orders">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path><line x1="3" y1="6" x2="21" y2="6"></line><path d="M16 10a4 4 0 0 1-8 0"></path></svg>
+                    Orders
+                </button>
+                <button type="button" class="desktop-sidebar-item" data-mp-tab="wishlist">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
+                    Wishlist
+                    <span class="desktop-sidebar-badge" id="desktop-wishlist-badge" style="display:none;">0</span>
+                </button>
+                <button type="button" class="desktop-sidebar-item" data-mp-tab="messages">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+                    Messages
+                </button>
+                <button type="button" class="desktop-sidebar-item" data-mp-tab="addresses">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+                    Addresses
+                </button>
+                <button type="button" class="desktop-sidebar-item" data-mp-tab="payment-methods">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
+                    Payment Methods
+                </button>
+                <button type="button" class="desktop-sidebar-item" data-mp-tab="settings">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                    Settings
+                </button>
+            </nav>
+            <div class="desktop-sidebar-footer">
+                <button type="button" class="desktop-sidebar-item" id="desktop-help-btn">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+                    Help Center
+                </button>
+                <button type="button" class="desktop-sidebar-item desktop-sidebar-logout" id="desktop-logout-btn">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+                    Logout
+                </button>
+            </div>
+        </aside>
+
       <div class="mobile-app-shell">
         <header class="mobile-topbar">
-            <div class="mobile-topbar-logo">
+            <div class="mobile-topbar-logo desktop-hide-logo">
                 <img src="assets/logo.png" alt="ONLib">
             </div>
             <div style="display:flex; gap:0.5rem; align-items:center;">
                 <button type="button" class="mobile-icon-btn" id="mp-switch-app-btn" aria-label="Switch app" title="Switch between Delivery and Marketplace">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"></polyline><path d="M3 11V9a4 4 0 0 1 4-4h14"></path><polyline points="7 23 3 19 7 15"></polyline><path d="M21 13v2a4 4 0 0 1-4 4H3"></path></svg>
                 </button>
-                <button type="button" class="mobile-icon-btn" id="open-cart-btn" aria-label="Cart">
+                <button type="button" class="mobile-icon-btn desktop-icon-labeled" id="open-cart-btn" aria-label="Cart">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
                     <span class="mobile-icon-badge" id="cart-count-badge" style="display:none;">0</span>
+                    <span class="desktop-icon-label">Cart</span>
                 </button>
-                <button type="button" class="mobile-icon-btn" id="mp-notification-btn" aria-label="Notifications">
+                <button type="button" class="mobile-icon-btn desktop-icon-labeled" id="mp-notification-btn" aria-label="Notifications">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
                     <span class="mobile-icon-badge" id="mp-notification-badge" style="display:none;">0</span>
+                    <span class="desktop-icon-label">Notifications</span>
                 </button>
                 <!-- Auth controls, relocated here from Account so they're
                      reachable in one tap from anywhere in the app. -->
                 <button type="button" class="mobile-topbar-auth-btn primary" id="mp-topbar-login-btn" style="display:none;">Login</button>
                 <button type="button" class="mobile-topbar-auth-btn" id="mp-topbar-logout-btn" style="display:none;">Logout</button>
+
+                <!-- Desktop profile dropdown (customer only) -->
+                <div class="desktop-profile-dropdown" id="desktop-profile-dropdown" style="display:none;">
+                    <button type="button" class="desktop-profile-trigger" id="desktop-profile-trigger">
+                        <span class="user-avatar" id="desktop-profile-avatar" style="width:2.25rem;height:2.25rem;font-size:0.875rem;">V</span>
+                        <span class="desktop-profile-text">
+                            <span class="desktop-profile-name" id="desktop-profile-name">—</span>
+                            <span class="desktop-profile-role">Customer</span>
+                        </span>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                    </button>
+                    <div class="desktop-profile-menu" id="desktop-profile-menu">
+                        <button type="button" data-mp-tab="settings">Settings</button>
+                        <button type="button" id="desktop-profile-logout-btn">Logout</button>
+                    </div>
+                </div>
             </div>
             <div class="mp-notification-panel" id="mp-notification-panel">
                 <div class="mp-notification-panel-header">
@@ -1428,6 +1573,66 @@
                 </div>
             </div>
 
+            <!-- Deals — no discounts/promotions backend exists yet -->
+            <div id="mp-view-deals" style="display:none;">
+                <div class="mobile-section" style="margin-top:0; text-align:center; padding: 3rem 1rem; color: var(--slate-light);">
+                    <div style="font-size:2rem; margin-bottom:0.75rem;">🏷️</div>
+                    <div style="font-weight:700; color:var(--slate); margin-bottom:0.375rem;">Deals — Coming Soon</div>
+                    <div style="font-size:0.875rem;">Vendor discounts and promotions aren't built yet.</div>
+                </div>
+            </div>
+
+            <!-- Orders — real data, same orders shown in Verta Delivery's
+                 "Your Orders" (marketplace checkouts create real delivery
+                 orders, so this is the same underlying list). -->
+            <div id="mp-view-orders" style="display:none;">
+                <div class="mobile-section" style="margin-top:0;">
+                    <div class="mobile-section-header"><div class="mobile-section-title">Your Orders</div></div>
+                    <div class="orders-grid" id="mp-orders-grid"></div>
+                </div>
+            </div>
+
+            <!-- Messages — no in-app messaging backend exists yet -->
+            <div id="mp-view-messages" style="display:none;">
+                <div class="mobile-section" style="margin-top:0; text-align:center; padding: 3rem 1rem; color: var(--slate-light);">
+                    <div style="font-size:2rem; margin-bottom:0.75rem;">✉</div>
+                    <div style="font-weight:700; color:var(--slate); margin-bottom:0.375rem;">Messages — Coming Soon</div>
+                    <div style="font-size:0.875rem;">In-app messaging with vendors isn't built yet.</div>
+                </div>
+            </div>
+
+            <!-- Addresses — no saved-address book exists yet; checkout
+                 asks for an address each time -->
+            <div id="mp-view-addresses" style="display:none;">
+                <div class="mobile-section" style="margin-top:0; text-align:center; padding: 3rem 1rem; color: var(--slate-light);">
+                    <div style="font-size:2rem; margin-bottom:0.75rem;">📍</div>
+                    <div style="font-weight:700; color:var(--slate); margin-bottom:0.375rem;">Saved Addresses — Coming Soon</div>
+                    <div style="font-size:0.875rem;">You'll enter your delivery address at checkout each time until this is built.</div>
+                </div>
+            </div>
+
+            <!-- Payment Methods — no payment gateway exists; pay on delivery only -->
+            <div id="mp-view-payment-methods" style="display:none;">
+                <div class="mobile-section" style="margin-top:0; text-align:center; padding: 3rem 1rem; color: var(--slate-light);">
+                    <div style="font-size:2rem; margin-bottom:0.75rem;">💳</div>
+                    <div style="font-weight:700; color:var(--slate); margin-bottom:0.375rem;">Payment Methods — Coming Soon</div>
+                    <div style="font-size:0.875rem;">There's no online payment gateway yet — every order is pay on delivery.</div>
+                </div>
+            </div>
+
+            <!-- Settings — real account info, read-only for now -->
+            <div id="mp-view-settings" style="display:none;">
+                <div class="mobile-section" style="margin-top:0;">
+                    <div class="mobile-section-header"><div class="mobile-section-title">Account Settings</div></div>
+                    <div style="background:white; border-radius:1rem; padding:1.25rem; border:1px solid var(--border); box-shadow:var(--shadow-sm);">
+                        <div style="margin-bottom:1rem;"><div style="font-size:0.75rem; color:var(--slate-light); font-weight:700; text-transform:uppercase; letter-spacing:0.03em;">Name</div><div id="mp-settings-name" style="font-weight:700; font-size:1rem;">—</div></div>
+                        <div style="margin-bottom:1rem;"><div style="font-size:0.75rem; color:var(--slate-light); font-weight:700; text-transform:uppercase; letter-spacing:0.03em;">Email</div><div id="mp-settings-email" style="font-weight:700; font-size:1rem;">—</div></div>
+                        <div><div style="font-size:0.75rem; color:var(--slate-light); font-weight:700; text-transform:uppercase; letter-spacing:0.03em;">Role</div><div style="font-weight:700; font-size:1rem;">Customer</div></div>
+                    </div>
+                    <p style="color:var(--slate-light); font-size:0.8125rem; margin-top:1rem;">Editing these details isn't built yet.</p>
+                </div>
+            </div>
+
             <!-- Account -->
             <div id="mp-view-account" style="display:none;">
                 <!-- Guest -->
@@ -1478,6 +1683,7 @@
                 Account
             </button>
         </nav>
+      </div>
       </div>
     </div>
 
@@ -3098,7 +3304,10 @@
         }
 
         function refreshAllViews() {
-            if (currentUser && currentUser.role === 'sender') renderOrdersHome();
+            if (currentUser && currentUser.role === 'sender') {
+                renderOrdersHome('orders-grid');
+                renderOrdersHome('mp-orders-grid');
+            }
             if (currentUser && currentUser.role === 'admin') {
                 renderOrdersDelivery();
                 renderRecentDeliveries();
@@ -3200,23 +3409,39 @@
             // tab — visible from anywhere in the marketplace, one tap away.
             document.getElementById('mp-topbar-login-btn').style.display = mode === 'guest' ? 'inline-flex' : 'none';
             document.getElementById('mp-topbar-logout-btn').style.display = mode === 'customer' ? 'inline-flex' : 'none';
+
+            // Desktop profile dropdown — customer only (guests get the
+            // Login pill; a vendor previewing has their own banner instead).
+            const profileDropdown = document.getElementById('desktop-profile-dropdown');
+            profileDropdown.style.display = mode === 'customer' ? 'block' : 'none';
+            if (mode === 'customer' && currentUser) {
+                document.getElementById('desktop-profile-name').textContent = currentUser.businessName;
+                document.getElementById('desktop-profile-avatar').textContent = currentUser.businessName.charAt(0).toUpperCase();
+            }
         }
 
         // Bottom nav tab switching — Home and Categories share the same
         // underlying feed (Categories just focuses the category picker),
         // Stores/Wishlist/Account are their own views.
+        const MP_TAB_VIEWS = ['shop', 'stores', 'wishlist', 'deals', 'orders', 'messages', 'addresses', 'payment-methods', 'settings', 'account'];
         function setMarketplaceTab(tab) {
-            document.querySelectorAll('#home-screen .mobile-nav-item').forEach(btn => btn.classList.toggle('active', btn.dataset.mpTab === tab));
-            document.getElementById('mp-view-shop').style.display = (tab === 'home' || tab === 'categories') ? 'block' : 'none';
-            document.getElementById('mp-view-stores').style.display = tab === 'stores' ? 'block' : 'none';
-            document.getElementById('mp-view-wishlist').style.display = tab === 'wishlist' ? 'block' : 'none';
-            document.getElementById('mp-view-account').style.display = tab === 'account' ? 'block' : 'none';
+            document.querySelectorAll('#home-screen .mobile-nav-item, #home-screen .desktop-sidebar-item[data-mp-tab]').forEach(btn => btn.classList.toggle('active', btn.dataset.mpTab === tab));
+            const shownView = (tab === 'home' || tab === 'categories') ? 'shop' : tab;
+            MP_TAB_VIEWS.forEach(v => {
+                const el = document.getElementById(`mp-view-${v}`);
+                if (el) el.style.display = v === shownView ? 'block' : 'none';
+            });
             const shell = document.querySelector('#home-screen .mobile-content');
             if (shell) shell.scrollTop = 0;
             if (tab === 'categories') {
                 document.getElementById('mp-category-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
             } else if (tab === 'stores') {
                 loadStoresDirectory();
+            } else if (tab === 'orders') {
+                renderOrdersHome('mp-orders-grid');
+            } else if (tab === 'settings' && currentUser) {
+                document.getElementById('mp-settings-name').textContent = currentUser.businessName || '—';
+                document.getElementById('mp-settings-email').textContent = currentUser.email || '—';
             }
         }
 
@@ -3343,6 +3568,40 @@
             document.querySelectorAll('#home-screen .mobile-nav-item').forEach(btn => {
                 btn.addEventListener('click', () => setMarketplaceTab(btn.dataset.mpTab));
             });
+            document.querySelectorAll('#home-screen .desktop-sidebar-item[data-mp-tab]').forEach(btn => {
+                btn.addEventListener('click', () => setMarketplaceTab(btn.dataset.mpTab));
+            });
+            document.getElementById('desktop-help-btn').addEventListener('click', () => {
+                renderHelpSupport('customer');
+                document.getElementById('help-support-modal').classList.add('active');
+            });
+            document.getElementById('desktop-logout-btn').addEventListener('click', async () => {
+                clearAuth();
+                currentUser = null;
+                showAppChooser();
+            });
+
+            // Desktop profile dropdown
+            const profileTrigger = document.getElementById('desktop-profile-trigger');
+            const profileMenu = document.getElementById('desktop-profile-menu');
+            profileTrigger.addEventListener('click', (e) => {
+                e.stopPropagation();
+                profileMenu.classList.toggle('open');
+            });
+            document.addEventListener('click', (e) => {
+                if (profileMenu.classList.contains('open') && !profileMenu.contains(e.target) && e.target !== profileTrigger) {
+                    profileMenu.classList.remove('open');
+                }
+            });
+            document.querySelectorAll('#desktop-profile-menu [data-mp-tab]').forEach(btn => {
+                btn.addEventListener('click', () => { setMarketplaceTab(btn.dataset.mpTab); profileMenu.classList.remove('open'); });
+            });
+            document.getElementById('desktop-profile-logout-btn').addEventListener('click', async () => {
+                clearAuth();
+                currentUser = null;
+                showAppChooser();
+            });
+
             document.querySelectorAll('.mobile-view-all[data-mp-tab]').forEach(link => {
                 link.addEventListener('click', () => setMarketplaceTab(link.dataset.mpTab));
             });
@@ -5344,8 +5603,9 @@
             `;
         }
 
-        function renderOrdersHome() {
-            const grid = document.getElementById('orders-grid');
+        function renderOrdersHome(containerId) {
+            const grid = document.getElementById(containerId || 'orders-grid');
+            if (!grid) return;
             grid.innerHTML = '';
             if (orders.length === 0) {
                 renderEmptyState(grid, 'No orders yet — create your first one above.');
