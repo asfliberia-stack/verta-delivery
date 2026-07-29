@@ -1807,3 +1807,30 @@ it would have been silently ignored and the PDP would've stayed
 single-column on desktop too. Fixed by switching to a class toggle
 (`.open`) instead of an inline style, so the mobile/desktop CSS rules
 can actually take effect the way they're supposed to.
+
+## Desktop grid: denser Taobao-style layout, minus the fake parts
+
+Matched the reference's dense multi-column desktop grid — more,
+smaller cards, minimal borderless card style, bold red price. Mobile
+is completely unaffected (verified: the base 2-column bordered-card
+rules are untouched; only the desktop media query changed).
+
+### What I didn't reproduce, and why
+
+- **The colored promo tags** ("Official discount of 23 yuan," "Buy 6
+  get 2 off," "Return Treasure Free shipping") — these represent real
+  Taobao seller programs and shipping policies. This app has none of
+  that (no discount engine, no shipping-fee-insurance program), so
+  showing them would misrepresent policies that don't actually exist
+  for a real customer to rely on.
+- **The "×" dismiss button** on each product image — a "not
+  interested, hide this" feed-personalization feature. No such
+  preference exists here; a decorative × that does nothing when
+  clicked would be worse than not having one.
+
+### What's real and included
+
+"X people purchased" now shows on both the grid cards and the Product
+Detail Page, worded to match the reference — this is the same real
+units-sold data from two rounds ago, just rephrased to read more
+naturally ("68 people purchased" instead of "68+ sold").

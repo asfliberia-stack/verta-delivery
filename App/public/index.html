@@ -213,7 +213,13 @@
 
             /* Product grid — more columns to use the extra width instead
                of the mobile 2-column density */
-            .product-grid { grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 1.25rem; }
+            .product-grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 1rem; }
+            .product-card { border: none; box-shadow: none; border-radius: 0.625rem; }
+            .product-card-image { border-radius: 0.625rem; }
+            .product-card-body { padding: 0.5rem 0.125rem 0; gap: 0.1875rem; }
+            .product-card-name { font-size: 0.8125rem; font-weight: 500; }
+            .product-card-price { color: var(--golib-red); font-size: 1.0625rem; }
+            .product-card-sold { font-size: 0.6875rem; color: var(--slate-light); }
 
             /* Product Detail Page — contained to the content area (not
                the whole viewport/sidebar), real two-column desktop
@@ -7473,7 +7479,7 @@
                         <div class="product-card-vendor">${p.vendorName}</div>
                         <div class="product-card-price-row">
                             <span class="product-card-price">$${p.price.toFixed(2)}</span>
-                            ${p.unitsSold > 0 ? `<span class="product-card-sold">${p.unitsSold}+ sold</span>` : ''}
+                            ${p.unitsSold > 0 ? `<span class="product-card-sold">${p.unitsSold} ${p.unitsSold === 1 ? 'person' : 'people'} purchased</span>` : ''}
                         </div>
                     </div>
                 </button>
@@ -7500,7 +7506,7 @@
             document.getElementById('pdp-title-text').textContent = product.name;
             document.getElementById('pdp-price-text').textContent = `$${product.price.toFixed(2)}`;
             document.getElementById('pdp-bottom-price-text').textContent = `$${product.price.toFixed(2)}`;
-            const soldText = product.unitsSold > 0 ? `${product.unitsSold}+ sold` : '';
+            const soldText = product.unitsSold > 0 ? `${product.unitsSold} ${product.unitsSold === 1 ? 'person' : 'people'} purchased` : '';
             document.getElementById('pdp-sold-text').textContent = soldText;
             document.getElementById('pdp-bottom-sold-text').textContent = soldText;
             document.getElementById('pdp-rating-row').innerHTML = renderStars(product.avgRating, product.reviewCount);
