@@ -621,6 +621,33 @@
         }
         .auth-card { background: white; border-radius: 1.5rem; box-shadow: var(--shadow-lg); border: 1px solid var(--border); padding: 2.5rem; }
 
+        .auth-eyebrow { color: var(--slate-light); font-size: 0.9375rem; margin-bottom: 0.375rem; }
+        .auth-heading { font-size: 1.75rem; font-weight: 800; color: var(--slate); margin-bottom: 1.75rem; }
+        .auth-input-lg {
+            width: 100%; padding: 0.875rem 1rem; border: 1px solid var(--border); border-radius: 0.75rem;
+            font-size: 0.9375rem; min-height: 48px;
+        }
+        .auth-input-lg:focus { outline: none; border-color: var(--primary); }
+        .auth-input-lg::placeholder { color: var(--slate-lighter); }
+        .auth-row-between {
+            display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem;
+            margin: -0.25rem 0 1.5rem;
+        }
+        .auth-checkbox-label {
+            display: flex; align-items: center; gap: 0.5rem; font-size: 0.875rem; color: var(--slate);
+            cursor: pointer; user-select: none;
+        }
+        .auth-checkbox-label input { width: 1rem; height: 1rem; accent-color: var(--primary); cursor: pointer; }
+        .auth-inline-link { color: var(--primary); font-weight: 600; font-size: 0.875rem; text-decoration: underline; cursor: pointer; }
+        .auth-submit-btn { width: 100%; min-height: 48px; font-size: 0.9375rem; margin-bottom: 0.875rem; }
+        .auth-google-btn {
+            width: 100%; min-height: 48px; display: flex; align-items: center; justify-content: center; gap: 0.625rem;
+            background: white; border: 1px solid var(--border); border-radius: 0.75rem; font-weight: 600;
+            font-size: 0.9375rem; color: var(--slate); cursor: pointer; margin-bottom: 1.25rem;
+        }
+        .auth-google-btn:disabled { opacity: 0.55; cursor: not-allowed; }
+        .auth-switch-line { text-align: center; font-size: 0.875rem; color: var(--slate-light); }
+
         /* App Chooser — Delivery vs Marketplace */
         #app-chooser-screen { min-height: 100vh; background: var(--bg-light); display: flex; flex-direction: column; }
         .chooser-header {
@@ -1277,23 +1304,32 @@
 
         <!-- Sender login/register card -->
         <div class="auth-card" id="sender-auth-card">
-            <div class="auth-tabs" id="sender-auth-tabs">
-                <button type="button" class="auth-tab active" id="tab-login">Login</button>
-                <button type="button" class="auth-tab" id="tab-register">Create Account</button>
+            <div id="sender-auth-heading">
+                <p class="auth-eyebrow" id="sender-auth-eyebrow">Please enter your details</p>
+                <h2 class="auth-heading" id="sender-auth-heading-text">Welcome back</h2>
             </div>
 
             <form id="sender-login-form">
                 <div class="form-group">
-                    <label class="form-label">Email</label>
-                    <input type="email" class="form-input" id="login-email" required>
+                    <input type="email" class="form-input auth-input-lg" id="login-email" placeholder="Email address" required>
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Password</label>
-                    <input type="password" class="form-input" id="login-password" required>
+                    <input type="password" class="form-input auth-input-lg" id="login-password" placeholder="Password" required>
+                </div>
+                <div class="auth-row-between">
+                    <label class="auth-checkbox-label">
+                        <input type="checkbox" id="login-remember-me" checked>
+                        Remember for 30 days
+                    </label>
+                    <a id="forgot-password-link" class="auth-inline-link">Forgot password?</a>
                 </div>
                 <div class="auth-error" id="login-error"></div>
-                <button type="submit" class="btn-primary" style="width:100%;" id="login-submit-btn">Login</button>
-                <div class="auth-switch-link"><a id="forgot-password-link">Forgot password?</a></div>
+                <button type="submit" class="btn-primary auth-submit-btn" id="login-submit-btn">Login</button>
+                <button type="button" class="auth-google-btn" id="auth-google-btn" disabled title="Google sign-in isn't set up yet — email/password only for now">
+                    <svg viewBox="0 0 48 48" width="18" height="18"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3c-1.6 4.7-6.1 8-11.3 8-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.9 1.1 8 3l6-6C34 5.1 29.3 3 24 3 12.4 3 3 12.4 3 24s9.4 21 21 21 21-9.4 21-21c0-1.2-.1-2.5-.4-3.5z"></path><path fill="#FF3D00" d="m6.3 14.7 6.6 4.8C14.6 15.6 18.9 13 24 13c3.1 0 5.9 1.1 8 3l6-6C34 5.1 29.3 3 24 3c-7.3 0-13.6 4.2-16.7 10.3z"></path><path fill="#4CAF50" d="M24 45c5.2 0 9.9-1.7 13.5-4.6l-6.2-5.3c-2.1 1.4-4.7 2.2-7.3 2.2-5.3 0-9.8-3.4-11.3-8.1l-6.6 5.1C9 40.6 15.9 45 24 45z"></path><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.9 2.5-2.6 4.6-4.8 6.1l6.2 5.3C40.7 36.3 44 30.6 44 24c0-1.2-.1-2.5-.4-3.5z"></path></svg>
+                    Sign in with Google
+                </button>
+                <p class="auth-switch-line">Don't have an account? <a id="switch-to-register-link" class="auth-inline-link">Sign up</a></p>
             </form>
 
             <form id="sender-register-form" style="display:none;">
@@ -1334,7 +1370,8 @@
                     <input type="password" class="form-input" id="register-password" placeholder="At least 8 characters" required minlength="8">
                 </div>
                 <div class="auth-error" id="register-error"></div>
-                <button type="submit" class="btn-primary" style="width:100%;" id="register-submit-btn">Create Account</button>
+                <button type="submit" class="btn-primary auth-submit-btn" id="register-submit-btn">Create Account</button>
+                <p class="auth-switch-line">Already have an account? <a id="switch-to-login-link" class="auth-inline-link">Login</a></p>
             </form>
 
             <!-- Forgot password: step 1 (request a code via SMS/WhatsApp) -->
@@ -3145,21 +3182,38 @@
         let currentUser = null; // { id, businessName, email, role }
         let socket = null;
 
-        async function saveAuth(token, user) {
+        // "Remember for 30 days" (login form checkbox) is real: checked
+        // (default) persists the session via Platform.storage as before;
+        // unchecked uses sessionStorage instead, so the session ends when
+        // the tab/browser closes rather than surviving indefinitely.
+        async function saveAuth(token, user, remember = true) {
             authToken = token;
             currentUser = user;
-            await Platform.storage.set(AUTH_STORAGE_KEY, JSON.stringify({ token, user }));
+            const payload = JSON.stringify({ token, user });
+            if (remember) {
+                sessionStorage.removeItem(AUTH_STORAGE_KEY); // avoid a stale session-only copy shadowing the remembered one
+                await Platform.storage.set(AUTH_STORAGE_KEY, payload);
+            } else {
+                await Platform.storage.remove(AUTH_STORAGE_KEY);
+                sessionStorage.setItem(AUTH_STORAGE_KEY, payload);
+            }
         }
 
         async function clearAuth() {
             authToken = null;
             currentUser = null;
             await Platform.storage.remove(AUTH_STORAGE_KEY);
+            sessionStorage.removeItem(AUTH_STORAGE_KEY);
             if (socket) { socket.disconnect(); socket = null; }
         }
 
         async function loadStoredAuth() {
             try {
+                // A "not remembered" session (this tab only) takes
+                // priority if present; otherwise fall back to whatever's
+                // persisted longer-term.
+                const sessionRaw = sessionStorage.getItem(AUTH_STORAGE_KEY);
+                if (sessionRaw) return JSON.parse(sessionRaw);
                 const raw = await Platform.storage.get(AUTH_STORAGE_KEY);
                 if (!raw) return null;
                 return JSON.parse(raw);
@@ -3823,28 +3877,19 @@
             modeSuperAdminBtn.addEventListener('click', () => showAuthMode('super-admin'));
             modeVendorBtn.addEventListener('click', () => showAuthMode('vendor'));
 
-            const tabLogin = document.getElementById('tab-login');
-            const tabRegister = document.getElementById('tab-register');
             const loginForm = document.getElementById('sender-login-form');
             const registerForm = document.getElementById('sender-register-form');
 
-            tabLogin.addEventListener('click', () => {
-                tabLogin.classList.add('active');
-                tabRegister.classList.remove('active');
-                loginForm.style.display = 'block';
-                registerForm.style.display = 'none';
-            });
-            tabRegister.addEventListener('click', () => {
-                tabRegister.classList.add('active');
-                tabLogin.classList.remove('active');
-                registerForm.style.display = 'block';
-                loginForm.style.display = 'none';
-            });
-
             // Forgot/reset password panels share the sender auth card but
-            // replace the tabs + login/register forms entirely while active.
+            // replace the login/register forms and heading entirely while active.
+            const AUTH_PANEL_HEADINGS = {
+                login: { eyebrow: 'Please enter your details', title: 'Welcome back' },
+                register: { eyebrow: "Let's get you started", title: 'Create your account' },
+                forgotRequest: { eyebrow: 'Forgot your password?', title: 'Reset password' },
+                resetPassword: { eyebrow: 'Check your phone', title: 'Enter your code' },
+            };
             function showAuthPanel(panel) {
-                const tabs = document.getElementById('sender-auth-tabs');
+                const heading = document.getElementById('sender-auth-heading');
                 const panels = {
                     login: loginForm,
                     register: registerForm,
@@ -3853,22 +3898,22 @@
                 };
                 Object.values(panels).forEach(el => { el.style.display = 'none'; });
                 panels[panel].style.display = 'block';
-                tabs.style.display = (panel === 'login' || panel === 'register') ? 'flex' : 'none';
+                const h = AUTH_PANEL_HEADINGS[panel];
+                document.getElementById('sender-auth-eyebrow').textContent = h.eyebrow;
+                document.getElementById('sender-auth-heading-text').textContent = h.title;
+                heading.style.display = 'block';
             }
+
+            document.getElementById('switch-to-register-link').addEventListener('click', () => showAuthPanel('register'));
+            document.getElementById('switch-to-login-link').addEventListener('click', () => showAuthPanel('login'));
 
             document.getElementById('forgot-password-link').addEventListener('click', () => {
                 document.getElementById('forgot-password-error').style.display = 'none';
                 document.getElementById('forgot-password-email').value = document.getElementById('login-email').value || '';
                 showAuthPanel('forgotRequest');
             });
-            document.getElementById('back-to-login-link-1').addEventListener('click', () => {
-                tabLogin.classList.add('active'); tabRegister.classList.remove('active');
-                showAuthPanel('login');
-            });
-            document.getElementById('back-to-login-link-2').addEventListener('click', () => {
-                tabLogin.classList.add('active'); tabRegister.classList.remove('active');
-                showAuthPanel('login');
-            });
+            document.getElementById('back-to-login-link-1').addEventListener('click', () => showAuthPanel('login'));
+            document.getElementById('back-to-login-link-2').addEventListener('click', () => showAuthPanel('login'));
 
             document.getElementById('forgot-password-request-form').addEventListener('submit', async (e) => {
                 e.preventDefault();
@@ -3945,7 +3990,8 @@
                             password: document.getElementById('login-password').value
                         })
                     });
-                    saveAuth(data.token, data.user);
+                    const remember = document.getElementById('login-remember-me').checked;
+                    await saveAuth(data.token, data.user, remember);
                     await enterApp();
                 } catch (err) {
                     errorEl.textContent = err.message;

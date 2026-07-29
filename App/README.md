@@ -1285,3 +1285,39 @@ Two fixes to the marketplace:
 
 Nothing else changed — Wishlist/Deals/Messages/Addresses/Payment
 Methods/Orders/Settings behave the same as the previous round.
+
+## Customer login/register redesign, matching the "Welcome back" reference
+
+Redesigned the customer Login and Create Account forms to match the
+provided mockup's style (eyebrow + bold heading, borderless-tab
+switching via a bottom link instead of tab buttons, larger rounded
+inputs, checkbox + inline link row, full-width primary button).
+
+### Two things adapted rather than copied literally
+
+- **Button label**: the mockup's button says "Sign up" but the form
+  above it says "Welcome back" and asks for existing credentials —
+  that's a login form. I labeled it "Login" since that's what it
+  actually does; using "Sign up" on a login button would be genuinely
+  confusing for a returning user.
+- **"Sign in with Google"**: shown in the same visual style as the
+  mockup, but disabled with a tooltip explaining why. This app has no
+  Google OAuth integration (no backend callback route, no client ID
+  configured) — a clickable button that does nothing would be worse
+  than not having one. Real Google sign-in is a distinct backend
+  integration, not a styling change.
+
+### "Remember for 30 days" is real, not decorative
+
+Checked (default): session persists via the existing storage layer, as
+before. Unchecked: the session is stored in `sessionStorage` instead —
+it survives page reloads but ends when the tab/browser closes, rather
+than persisting indefinitely. `loadStoredAuth()` checks the session-only
+copy first, falling back to the persistent one, so both paths work
+correctly on the next page load regardless of which was used.
+
+### Unaffected
+
+Manage Agent, Super Admin, and Vendor login forms — this redesign was
+scoped to the customer-facing login/register flow specifically, since
+that's what "Please add a Login page for users" was asking for.
