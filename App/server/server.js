@@ -14,6 +14,7 @@ const {
   hashPassword,
   comparePassword,
   signToken,
+  signImpersonationToken,
   requireAuth,
   requireAdmin,
   requireSuperAdmin,
@@ -761,6 +762,38 @@ app.post('/api/super-admin/vendors/:id/reject', requireAuth, requireSuperAdmin, 
   } catch (err) {
     console.error('POST vendor reject failed', err);
     res.status(500).json({ error: 'Failed to reject vendor' });
+  }
+});
+
+// "Enter Dashboard" — lets a Super Admin operate a vendor's real
+// dashboard (same UI the vendor themselves uses, full read/write) for
+// oversight/support purposes. Real safeguards, not just a relabeled
+// login:
+//   - Requires requireSuperAdmin (only Super Admin can mint this).
+//   - The token is short-lived (1 hour — see signImpersonationToken),
+//     not a normal 30-day session.
+//   - Carries `impersonatedBy` so every action taken shows up in
+//     server logs traceable back to the real Super Admin, not silently
+//     attributed to the vendor with no trail.
+//   - If the vendor isn't approved yet, this still works, but
+//     enterApp() will show that vendor's own pending/rejected status
+//     screen (same as the vendor would see) rather than the operational
+//     dashboard — reviewing a pending application is what the Vendors
+//     panel's document review is for, not this.
+app.post('/api/super-admin/vendors/:id/impersonate', requireAuth, requireSuperAdmin, async (req, res) => {
+  try {
+    const vendor = await db.getUserById(req.params.id);
+    if (!vendor || vendor.role !== 'vendor') return res.status(404).json({ error: 'Vendor not found' });
+    const superAdmin = await db.getUserById(req.user.id);
+    const token = signImpersonationToken(vendor, superAdmin);
+    console.log(`[impersonation] Super Admin ${superAdmin.email} entered vendor dashboard for "${vendor.businessName}" (${vendor.email})`);
+    res.json({
+      token,
+      user: { id: vendor.id, businessName: vendor.businessName, email: vendor.email, role: vendor.role, approvalStatus: vendor.approvalStatus },
+    });
+  } catch (err) {
+    console.error('POST vendor impersonate failed', err);
+    res.status(500).json({ error: 'Failed to enter vendor dashboard' });
   }
 });
 

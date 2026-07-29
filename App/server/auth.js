@@ -35,6 +35,30 @@ function signToken(user) {
   );
 }
 
+// Super Admin "enter their dashboard" for a vendor — a real, distinct
+// token type from normal login, not just a relabeled signToken():
+// - Short expiry (1 hour), since this is a temporary oversight session,
+//   not a standing credential.
+// - Carries `impersonatedBy` so every action taken during this session
+//   is traceable in server logs back to the real Super Admin, not just
+//   attributed to the vendor.
+const IMPERSONATION_TOKEN_TTL = '1h';
+function signImpersonationToken(targetUser, superAdminUser) {
+  return jwt.sign(
+    {
+      id: targetUser.id,
+      role: targetUser.role,
+      businessName: targetUser.businessName,
+      email: targetUser.email,
+      tokenVersion: targetUser.tokenVersion || 0,
+      impersonatedBy: superAdminUser.id,
+      impersonatedByEmail: superAdminUser.email,
+    },
+    JWT_SECRET,
+    { expiresIn: IMPERSONATION_TOKEN_TTL }
+  );
+}
+
 function verifyToken(token) {
   return jwt.verify(token, JWT_SECRET); // throws on invalid/expired
 }
@@ -122,6 +146,7 @@ module.exports = {
   hashPassword,
   comparePassword,
   signToken,
+  signImpersonationToken,
   verifyToken,
   requireAuth,
   requireAdmin,

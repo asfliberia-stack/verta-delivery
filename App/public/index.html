@@ -2299,6 +2299,11 @@
             </div>
         </header>
 
+        <div id="impersonation-banner" style="display:none; background:#fef3c7; color:#92400e; padding:0.75rem 1.125rem; align-items:center; justify-content:space-between; gap:0.75rem; font-size:0.8125rem; font-weight:600;">
+            <span>👁️ Viewing as Super Admin — this is <span id="impersonation-vendor-name">this vendor's</span> real dashboard.</span>
+            <button type="button" id="exit-impersonation-btn" style="background:#92400e; color:white; border:none; border-radius:9999px; padding:0.375rem 0.875rem; font-weight:700; font-size:0.75rem; cursor:pointer; min-height:32px; white-space:nowrap;">Exit</button>
+        </div>
+
         <div class="mobile-content" style="padding-top: 1rem;">
             <!-- Home -->
             <div id="vendor-view-home">
@@ -4057,6 +4062,13 @@
                 document.getElementById('vendor-profile-name-desktop').textContent = currentUser.businessName;
                 document.getElementById('vendor-profile-avatar-desktop').textContent = currentUser.businessName.charAt(0).toUpperCase();
                 document.getElementById('vendor-profile-dropdown').style.display = 'block';
+                const impersonationBanner = document.getElementById('impersonation-banner');
+                if (currentUser.impersonating) {
+                    document.getElementById('impersonation-vendor-name').textContent = `${currentUser.businessName}'s`;
+                    impersonationBanner.style.display = 'flex';
+                } else {
+                    impersonationBanner.style.display = 'none';
+                }
                 showVendorDashboardView();
                 setVendorTab('home');
                 await loadVendorDashboard();
@@ -4954,6 +4966,7 @@
             });
             document.getElementById('vendors-modal-content').addEventListener('click', (e) => {
                 if (e.target.classList.contains('review-vendor-btn')) openVendorReviewModal(e.target.dataset.id);
+                if (e.target.classList.contains('enter-vendor-dashboard-btn')) enterVendorImpersonation(e.target.dataset.id);
             });
             document.getElementById('close-vendor-review-modal').addEventListener('click', () => {
                 document.getElementById('vendor-review-modal').classList.remove('active');
@@ -5118,7 +5131,10 @@
                             <td>${v.email}</td>
                             <td>${new Date(v.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</td>
                             <td>${statusPill(v.approvalStatus)}</td>
-                            <td>${v.approvalStatus === 'pending' ? `<button type="button" class="btn-small btn-secondary review-vendor-btn" data-id="${v.id}">Review</button>` : ''}</td>
+                            <td style="white-space:nowrap; display:flex; gap:0.5rem;">
+                                ${v.approvalStatus === 'pending' ? `<button type="button" class="btn-small btn-secondary review-vendor-btn" data-id="${v.id}">Review</button>` : ''}
+                                <button type="button" class="btn-small btn-secondary enter-vendor-dashboard-btn" data-id="${v.id}" title="Open this vendor's real dashboard for support/oversight">Enter Dashboard</button>
+                            </td>
                         </tr>`;
                     });
                     html += '</tbody></table></div>';
@@ -5178,6 +5194,35 @@
             } catch (err) {
                 showToast(err.message, 'error');
             }
+        }
+
+        // Super Admin "Enter Dashboard" — a real, short-lived (1 hour)
+        // session as the vendor, using the vendor's actual dashboard UI.
+        // Deliberately kept in-memory only (never persisted via
+        // saveAuth/Platform.storage): refreshing the page during
+        // impersonation drops back to whatever real session was already
+        // persisted, rather than the impersonation surviving a refresh.
+        let superAdminSessionBeforeImpersonation = null;
+
+        async function enterVendorImpersonation(vendorId) {
+            try {
+                const data = await apiFetch(`/api/super-admin/vendors/${vendorId}/impersonate`, { method: 'POST' });
+                superAdminSessionBeforeImpersonation = { token: authToken, user: currentUser };
+                authToken = data.token;
+                currentUser = { ...data.user, impersonating: true };
+                document.getElementById('vendors-modal').classList.remove('active');
+                await enterApp();
+            } catch (err) {
+                showToast(err.message, 'error');
+            }
+        }
+
+        async function exitVendorImpersonation() {
+            if (!superAdminSessionBeforeImpersonation) { showAppChooser(); return; }
+            authToken = superAdminSessionBeforeImpersonation.token;
+            currentUser = superAdminSessionBeforeImpersonation.user;
+            superAdminSessionBeforeImpersonation = null;
+            await enterApp();
         }
 
         // ============================================================
@@ -6892,17 +6937,26 @@
             }
         }
 
+        // Every "leave the vendor dashboard" action (Logout, Back to
+        // service selector, desktop sidebar Logout, profile dropdown
+        // Logout) needs to behave differently while impersonating —
+        // otherwise a Super Admin viewing a vendor's dashboard would
+        // accidentally clear their OWN real persisted session instead of
+        // just stepping out of the impersonation view.
+        async function vendorLogoutOrExitImpersonation() {
+            if (currentUser && currentUser.impersonating) {
+                await exitVendorImpersonation();
+            } else {
+                clearAuth();
+                currentUser = null;
+                showAppChooser();
+            }
+        }
+
         function wireVendorEvents() {
-            document.getElementById('vendor-logout-btn').addEventListener('click', async () => {
-                clearAuth();
-                currentUser = null;
-                showAppChooser();
-            });
-            document.getElementById('vendor-back-to-chooser-btn').addEventListener('click', async () => {
-                clearAuth();
-                currentUser = null;
-                showAppChooser();
-            });
+            document.getElementById('exit-impersonation-btn').addEventListener('click', exitVendorImpersonation);
+            document.getElementById('vendor-logout-btn').addEventListener('click', vendorLogoutOrExitImpersonation);
+            document.getElementById('vendor-back-to-chooser-btn').addEventListener('click', vendorLogoutOrExitImpersonation);
             document.getElementById('vendor-add-product-btn').addEventListener('click', () => openProductModal(null));
             document.getElementById('vendor-add-product-btn-2').addEventListener('click', () => openProductModal(null));
             document.getElementById('close-product-modal').addEventListener('click', closeProductModal);
@@ -6973,11 +7027,7 @@
                 renderHelpSupport('customer');
                 document.getElementById('help-support-modal').classList.add('active');
             });
-            document.getElementById('vendor-desktop-logout-btn').addEventListener('click', async () => {
-                clearAuth();
-                currentUser = null;
-                showAppChooser();
-            });
+            document.getElementById('vendor-desktop-logout-btn').addEventListener('click', vendorLogoutOrExitImpersonation);
 
             // Desktop profile dropdown
             const vendorProfileTrigger = document.getElementById('vendor-profile-trigger');
@@ -6994,11 +7044,7 @@
             document.querySelectorAll('#vendor-profile-menu [data-vendor-tab]').forEach(btn => {
                 btn.addEventListener('click', () => { setVendorTab(btn.dataset.vendorTab); vendorProfileMenu.classList.remove('open'); });
             });
-            document.getElementById('vendor-profile-logout-btn').addEventListener('click', async () => {
-                clearAuth();
-                currentUser = null;
-                showAppChooser();
-            });
+            document.getElementById('vendor-profile-logout-btn').addEventListener('click', vendorLogoutOrExitImpersonation);
         }
 
         // ============================================================

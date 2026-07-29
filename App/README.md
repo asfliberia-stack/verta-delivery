@@ -1603,3 +1603,50 @@ already properly separated per vendor via `vendor_id`. The only
 remaining shared-data limitation is on the Delivery side (Fleet
 Directory agents, delivery orders) — updated the panel's copy to say
 that precisely instead of the older, broader claim.
+
+## Super Admin can now enter vendor dashboards ("Enter Dashboard")
+
+Built a real "enter their dashboard" feature for vendors, using the
+exact same dashboard UI vendors themselves use — full read/write, not
+a stripped-down summary view.
+
+### How it works
+
+- Every vendor row in the Vendors panel now has an **"Enter
+  Dashboard"** button.
+- Clicking it calls a new endpoint
+  (`POST /api/super-admin/vendors/:id/impersonate`, Super Admin only)
+  that mints a **short-lived (1 hour) token** for that vendor — a real,
+  distinct token type from a normal 30-day login session
+  (`signImpersonationToken()` in `auth.js`), not just a relabeled
+  login.
+- The token carries `impersonatedBy` (the real Super Admin's id/email),
+  logged server-side every time this is used
+  (`[impersonation] Super Admin ... entered vendor dashboard for ...`)
+  — so actions taken during the session are traceable back to the real
+  actor, not silently attributed to the vendor with no trail.
+- The session is **deliberately never persisted** (no `saveAuth()` /
+  `Platform.storage` write) — it only lives in memory for that tab.
+  Refreshing the page during impersonation drops back to whatever real
+  session was already saved, rather than the impersonation surviving a
+  refresh.
+- A visible **"Viewing as Super Admin"** banner appears at the top of
+  the vendor dashboard the whole time, with an **Exit** button that
+  restores the real Super Admin session instantly.
+- Fixed every existing "leave the dashboard" action inside the vendor
+  view (Logout — both mobile and desktop, sidebar Logout, profile
+  dropdown Logout, "Back to service selector") to correctly **exit
+  impersonation** instead of clearing the real Super Admin's actual
+  persisted session — this was a real bug risk I caught and fixed while
+  building this, not something already safe by accident.
+
+### On Manage Agent specifically
+
+There's currently only **one** Manage Agent account (the shared-password
+model), and Super Admin already operates the exact same dashboard
+(`#delivery-app` is shared between the two roles) — so there's nothing
+additional to "enter" there; Super Admin's existing access already *is*
+full Manage Agent access. If multiple Manage Agent accounts become a
+real feature later (one per business, as originally discussed), this
+same impersonation mechanism extends to that case directly — the
+token-signing and audit-trail logic isn't vendor-specific.
