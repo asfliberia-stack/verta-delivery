@@ -213,13 +213,18 @@
 
             /* Product grid — more columns to use the extra width instead
                of the mobile 2-column density */
-            .product-grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 1rem; }
-            .product-card { border: none; box-shadow: none; border-radius: 0.625rem; }
-            .product-card-image { border-radius: 0.625rem; }
-            .product-card-body { padding: 0.5rem 0.125rem 0; gap: 0.1875rem; }
-            .product-card-name { font-size: 0.8125rem; font-weight: 500; }
-            .product-card-price { color: var(--golib-red); font-size: 1.0625rem; }
-            .product-card-sold { font-size: 0.6875rem; color: var(--slate-light); }
+            .product-grid { grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 1.125rem 1rem; }
+            .product-card { border: none; box-shadow: none; border-radius: 0.5rem; }
+            .product-card-image { border-radius: 0.5rem; }
+            .product-card-body { padding: 0.5rem 0 0; gap: 0.25rem; }
+            .product-card-name {
+                font-size: 0.8125rem; font-weight: 400; color: var(--slate);
+                -webkit-line-clamp: 1; white-space: nowrap; text-overflow: ellipsis;
+            }
+            .product-card-vendor { font-size: 0.75rem; color: var(--slate-lighter); }
+            .product-card-price-row { margin-top: 0.125rem; gap: 0.5rem; }
+            .product-card-price { color: var(--golib-red); font-size: 1.125rem; font-weight: 700; }
+            .product-card-sold { font-size: 0.75rem; color: var(--slate-light); }
 
             /* Product Detail Page — contained to the content area (not
                the whole viewport/sidebar), real two-column desktop
@@ -7475,7 +7480,7 @@
                 <button type="button" class="product-card open-product-detail-btn" data-id="${p.id}">
                     <img class="product-card-image" src="${p.imageDataUrl || 'assets/logo.png'}" alt="${p.name}">
                     <div class="product-card-body">
-                        <div class="product-card-name">${p.name}</div>
+                        <div class="product-card-name" title="${p.name}">${p.name}</div>
                         <div class="product-card-vendor">${p.vendorName}</div>
                         <div class="product-card-price-row">
                             <span class="product-card-price">$${p.price.toFixed(2)}</span>

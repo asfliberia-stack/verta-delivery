@@ -1834,3 +1834,23 @@ rules are untouched; only the desktop media query changed).
 Detail Page, worded to match the reference — this is the same real
 units-sold data from two rounds ago, just rephrased to read more
 naturally ("68 people purchased" instead of "68+ sold").
+
+## Desktop grid layout precision fix
+
+You were right that it wasn't actually matching — the real gap was
+structural, not missing content: the reference has exactly 3 text rows
+per card (single-line title / secondary line / price+sold row), but my
+card had 4 (2-line-clamped title / vendor / price / sold on its own
+line), which threw off the whole vertical rhythm and made the grid
+read as taller/sparser than the reference.
+
+Fixed on desktop only (mobile's 2-line title clamp is untouched):
+- Title now truncates to a single line with ellipsis, matching the
+  reference exactly, instead of wrapping to 2 lines.
+- Tightened the card body's internal spacing and the grid gap to match
+  the reference's denser packing.
+- Price is now bold/larger and colored, sitting on the same row as the
+  purchase count — matching the reference's proportions.
+
+Real data only, no new fake elements added — this was purely a
+structural/spacing correction.
