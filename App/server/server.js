@@ -706,7 +706,7 @@ app.delete('/api/admin/price-presets/:id', requireAuth, requireAdmin, async (req
 });
 
 // ============================================================
-// Marketplace (GoLib) — vendor product management
+// Marketplace (ONLib) — vendor product management
 // ============================================================
 
 app.get('/api/vendor/products', requireAuth, requireVendor, async (req, res) => {
@@ -786,6 +786,16 @@ app.get('/api/vendor/sales-overview', requireAuth, requireVendor, async (req, re
   }
 });
 
+app.get('/api/vendor/daily-sales', requireAuth, requireVendor, async (req, res) => {
+  try {
+    const days = await db.getVendorDailySales(req.user.id, 30);
+    res.json({ days });
+  } catch (err) {
+    console.error('GET /api/vendor/daily-sales failed', err);
+    res.status(500).json({ error: 'Failed to load sales chart' });
+  }
+});
+
 app.get('/api/vendor/purchases', requireAuth, requireVendor, async (req, res) => {
   try {
     const purchases = await db.getPurchasesByVendor(req.user.id);
@@ -800,13 +810,62 @@ app.get('/api/vendor/purchases', requireAuth, requireVendor, async (req, res) =>
 // Marketplace — customer storefront + checkout
 // ============================================================
 
-app.get('/api/marketplace/products', requireAuth, async (req, res) => {
+// Public — no requireAuth. The marketplace homepage is the default
+// landing page for guests, so browsing must work with no login at all.
+// Checkout still requires a real sender account (checked below).
+app.get('/api/marketplace/products', async (req, res) => {
   try {
     const products = await db.getActiveProductsForStorefront();
     res.json({ products });
   } catch (err) {
     console.error('GET /api/marketplace/products failed', err);
     res.status(500).json({ error: 'Failed to load products' });
+  }
+});
+
+// Public — the Stores tab, real vendor list with real aggregate ratings.
+app.get('/api/marketplace/stores', async (req, res) => {
+  try {
+    const stores = await db.getStorefrontVendors();
+    res.json({ stores });
+  } catch (err) {
+    console.error('GET /api/marketplace/stores failed', err);
+    res.status(500).json({ error: 'Failed to load stores' });
+  }
+});
+
+app.get('/api/marketplace/products/:id/reviews', async (req, res) => {
+  try {
+    const reviews = await db.getProductReviews(req.params.id);
+    res.json({ reviews });
+  } catch (err) {
+    console.error('GET /api/marketplace/products/:id/reviews failed', err);
+    res.status(500).json({ error: 'Failed to load reviews' });
+  }
+});
+
+// Only a customer who actually bought this product can review it —
+// verified server-side, not just hidden in the UI.
+app.post('/api/marketplace/products/:id/reviews', requireAuth, async (req, res) => {
+  if (req.user.role !== 'sender') {
+    return res.status(403).json({ error: 'Only customers can leave reviews' });
+  }
+  const { rating, comment } = req.body || {};
+  if (!rating || rating < 1 || rating > 5) {
+    return res.status(400).json({ error: 'A rating from 1 to 5 is required' });
+  }
+  try {
+    const purchased = await db.hasCustomerPurchasedProduct(req.user.id, req.params.id);
+    if (!purchased) {
+      return res.status(403).json({ error: 'You can only review products you have purchased' });
+    }
+    const review = await db.upsertProductReview({
+      id: crypto.randomUUID(), productId: req.params.id, customerId: req.user.id, rating, comment,
+    });
+    res.json({ ok: true, review });
+  } catch (err) {
+    console.error('POST reviews failed', err);
+    res.status(500).json({ error: 'Failed to save review' });
   }
 });
 

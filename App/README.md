@@ -901,3 +901,323 @@ cart splitting, and the polished mobile-native visual style from the
 mockup (this reuses the existing web app's card/modal design system
 instead). Each of these is a reasonable, separately-scoped follow-up —
 say which one you want next.
+
+## Marketplace-first routing (guest landing, vendor auto-routing)
+
+Reworked the app's launch/login flow to match the required routing
+rules exactly:
+
+1. **Default launch**: the Marketplace homepage is now the true public
+   landing page — no login wall. Guests browse (search, filter by
+   category, add to cart) with zero authentication. `GET
+   /api/marketplace/products` is now a public endpoint (was
+   `requireAuth` before); checkout still requires a real logged-in
+   customer account, enforced server-side same as always.
+2. **Login is a modal now, not a full-page gate.** `#auth-screen`
+   became an overlay (closable ×) triggered by a "Login / Sign Up"
+   button in the marketplace header, instead of blocking the whole app
+   before login.
+3. **Vendor login/session-restore routes straight to the Store
+   Dashboard** — never the marketplace. Confirmed via `enterApp()`'s
+   vendor branch and the boot-time session restore using the same
+   function, so this holds whether they just logged in or reopened the
+   app with a saved session.
+4. **Regular customer login stays on the marketplace**, with their
+   profile and orders now visible in the header/page (previously the
+   marketplace only existed *inside* the logged-in customer view; now
+   it's the same page in two states — guest and customer — controlled
+   by `setMarketplaceHeaderState()`).
+5. **Session-aware navigation**:
+   - Store Dashboard header has a real "Switch to Marketplace" button —
+     lets a vendor browse the marketplace without logging out.
+   - The marketplace header shows "← Manage Store" instead of
+     Login/Sign Up when a vendor is previewing it this way, taking them
+     straight back to their dashboard.
+   - Regular customers never see either of these — the marketplace
+     header only has three states (guest / customer / vendor-preview)
+     and customers only ever get the "customer" one.
+6. **No flash of the wrong UI on boot**: the marketplace container
+   stays hidden (`display:none`) until the stored-session check
+   resolves, so a returning vendor's session restore goes straight to
+   their dashboard instead of flashing the guest marketplace first.
+
+Nothing about the admin (Manage Agent / Super Admin) login or dashboard
+changed in this pass — verified byte-for-byte identical against the
+pre-change snapshot.
+
+## GoLib mobile-app redesign (PWA)
+
+Rewrote the Marketplace and Vendor Dashboard to match the GoLib mockup
+as a mobile-first, installable web app — real, verified, working today
+(as opposed to native React Native/Flutter source code, which this
+sandboxed environment has no way to compile or test — see the
+conversation for that tradeoff).
+
+### Installable (PWA)
+
+- `public/manifest.json`, `public/sw.js` (minimal — caches the app
+  shell for a fast reload, never caches `/api/*` or Socket.io traffic,
+  so data is always live, never stale).
+- Correctly-sized icons generated fresh (`icon-192.png`, `icon-512.png`)
+  — the original logo was 555×449, not square; reusing it directly
+  with mismatched manifest sizes would have made a broken/distorted
+  home-screen icon on some devices.
+- Full mobile meta tags (viewport-fit=cover for notches, theme-color,
+  apple-mobile-web-app-capable) — opens full-screen with no browser
+  chrome once installed, on iOS and Android both.
+
+### Marketplace (customer view)
+
+- Sticky navy topbar (cart + notification icons with real badge
+  counts), search bar, 5-tab bottom nav: Home, Categories, Stores,
+  Wishlist, Account.
+- Discovery banner, category icon grid (built from real product
+  categories — not a fixed fake list), Featured Products, Popular
+  Stores — all real data from the backend.
+- **Real star ratings**: added a `product_reviews` table. A product
+  with no reviews honestly shows "No ratings yet" rather than a
+  fabricated number. A customer can only review something they
+  actually bought (`hasCustomerPurchasedProduct`, checked server-side).
+- **Real Stores directory**: new `GET /api/marketplace/stores` —
+  actual vendor list with real product counts and real aggregate
+  ratings.
+- **Wishlist tab**: shown in the nav to match the mockup, but honestly
+  marked "Coming Soon" — no backend exists for it, and I didn't fake
+  one.
+
+### Vendor Dashboard (Girlee Fashion, or any vendor)
+
+- Navy welcome banner, real Sales Overview line chart (new
+  `GET /api/vendor/daily-sales` — actual day-by-day totals, not a
+  fabricated curve), a trend % comparing the first half vs second half
+  of the 30-day window (a coarser but still genuine comparison — a
+  true "vs. previous 30 days" figure would need a second query this
+  pass didn't add).
+- Replaced the mockup's "New Leads" stat (no real concept in this app)
+  with **Unique Customers** — a real count derived from actual
+  purchase records.
+- Recent Orders now show the *real* linked delivery order's status as
+  a Fulfilled/Processing/Cancelled pill (new join in
+  `getPurchasesByVendor`), not a guessed label.
+- Quick Actions: Add Product and Check Inventory are fully real.
+  Manage Promos and View Reports are honestly marked as not built yet
+  when tapped (View Reports points back to the real Sales Overview
+  chart, which *is* the real reporting that exists today).
+- **Messages tab**: shown to match the mockup, honestly marked "Coming
+  Soon" — no messaging backend exists.
+
+### What didn't change
+
+The admin dashboard (Manage Agent / Super Admin) — verified
+byte-for-byte identical against the pre-redesign snapshot. This pass
+was scoped entirely to the marketplace/vendor mobile experience.
+
+## Splitting Delivery and Marketplace into two real, chosen experiences
+
+Fixed the core problem from the last round: Delivery and Marketplace
+had been blended into one screen (delivery order creation buried in the
+marketplace's Account tab). They're two separate products now, and a
+user explicitly chooses between them — not a single merged interface.
+
+### App Chooser (new default landing)
+
+- Guests now land on a Chooser screen first: "Verta Delivery" (indigo,
+  original branding) vs. "GoLib Marketplace" (navy/red). Neither is
+  forced — this is the real "choose between both" entry point.
+- The choice is remembered (`localStorage`), so returning users go
+  straight back into their last-used app rather than re-choosing every
+  visit — but a "⇄ Switch" control is always present in both apps to
+  jump back to the Chooser or the other product at any time.
+- Vendor login is unaffected — still routes straight to the Store
+  Dashboard, since vendors aren't choosing between the two customer
+  experiences.
+
+### Verta Delivery is now its own standalone app
+
+- New `#delivery-customer-app` container with the *original* indigo
+  Verta branding (not GoLib navy/red) — "Send a Package," Create Order,
+  Your Orders. This is exactly what existed before the marketplace was
+  ever added, just properly separated out instead of nested inside the
+  marketplace's Account tab.
+- The Marketplace's Account tab is now just profile + a "🚚 Use Verta
+  Delivery" button + Logout — no delivery-order UI mixed in.
+
+### Marketplace styling corrections (matching the reference image exactly)
+
+- **Top bar background fixed to white** — I had mistakenly made it
+  navy in the last round. In the actual mockup, navy is only used for
+  the "Welcome back" banner and the discovery banner; the top bar
+  (logo, cart, bell) is white/light on both the vendor and marketplace
+  screens.
+- **"Add to Cart" buttons fixed to blue**, distinct from the red "Shop
+  Now" — the mockup uses two accent colors (red for the primary
+  marketing CTA, blue for in-card actions), not one red for everything.
+- Vendor Dashboard's "Add Product" quick action corrected to a solid
+  blue circle with a white plus, matching the reference.
+
+### One honest limitation
+
+Full pixel-for-pixel replication (the exact scooter/shopping-bag
+illustration, real product photography, the exact custom font/icon
+set) isn't achievable without the original design source files — I
+matched the color palette, layout structure, and component styling as
+closely as possible using inline SVG icons and the sampled color
+values, but this is a faithful recreation, not an asset-for-asset copy.
+
+## Top bar refactor + Capacitor-readiness pass
+
+### 1. Top Bar & UI Refactoring (done)
+
+- **Switch button**: added next to the notification bell in the
+  Marketplace top bar (⇄ icon). Context-aware: for a guest/customer it
+  jumps to Verta Delivery; for a vendor previewing the marketplace, it
+  returns to their Store Dashboard instead.
+- **Login/Logout relocated**: removed from the marketplace's Account
+  tab entirely, now live in the top header next to cart/bell/switch —
+  reachable in one tap from anywhere in the marketplace. (Verta
+  Delivery already had its Login/Logout in its own header, not an
+  Account section, from the earlier split — nothing needed to change
+  there.)
+- **Responsive**: added a narrow-viewport breakpoint (≤360px, e.g.
+  iPhone SE) that shrinks the icon buttons and auth pill so all four
+  top-bar controls stay usable on the smallest common phone width.
+
+### 2. Realtime Data Architecture Audit
+
+Your stack is Express + **Socket.io** + Postgres — not
+Supabase/Firebase, and not React, so there's no SWR/TanStack Query to
+"recommend adding." Socket.io already *is* your realtime layer, and
+it's push-based (the server emits the moment data changes), which is
+strictly better than the poll-and-revalidate model those libraries
+provide. Nothing to add here — it already does what was asked:
+
+- Every mutation (orders, expenses, agents, settings, price presets,
+  purchases) broadcasts over Socket.io to every connected client in
+  the relevant room (`admins`, `user:<id>`, `vendor:<id>`).
+- A Capacitor WebView is just a Chromium/WebKit browser running this
+  same JS — the existing `socket.io-client` connection works
+  identically inside a native wrapper as it does in a desktop tab. No
+  separate mobile realtime path is needed.
+
+### 3. Single-Codebase Strategy & Abstraction Layer (done)
+
+**Browser-only APIs audited** (all in `public/index.html`):
+- `localStorage` — 11 call sites. The auth token (most critical —
+  breaks login persistence if wrong) and theme/app-mode prefs (lower
+  risk — `localStorage` genuinely works fine inside Capacitor
+  WebViews, so these were left as-is rather than over-engineered).
+- `Notification` (Web Notification API) — does **not** reliably work
+  inside a native WebView; this was the important one to abstract.
+- `navigator.serviceWorker`, `window.matchMedia` — already safely
+  feature-detected, no crash risk either way.
+
+**New `Platform` module** (top of the main script) — `Platform.storage`
+and `Platform.notify()`. Right now, with no Capacitor plugins
+installed, every call transparently falls through to `localStorage`
+and the Web Notification API — **zero behavior change today**. Once
+you run `npx cap add ios/android` and install
+`@capacitor/preferences` + `@capacitor/local-notifications`, this same
+module automatically routes to the native plugins instead, with no
+changes needed at any of the ~15 call sites that already go through
+`saveAuth()`/`clearAuth()`/`loadStoredAuth()`/`sendLocalNotification()`.
+
+**`capacitor.config.json`** — added, `webDir: "public"` but
+`server.url` pointed at your deployed Railway URL rather than bundling
+`public/` standalone. This matters: your `index.html` calls `/api/...`
+and `/socket.io/socket.io.js` as **relative paths**, assuming
+same-origin with your Express server. Bundling the static files alone
+into the native shell would break every API call and the realtime
+connection — pointing `server.url` at the live deployment is what
+makes it work correctly, and it's also what gives you free OTA updates
+(see below). Replace the placeholder URL before running `npx cap add`.
+
+### 4. Live-Update & Deployment Roadmap
+
+Because `server.url` points at your live Railway app instead of
+bundling static assets into the binary, **you already get OTA updates
+for free, with no extra tooling** — the native app is a thin native
+shell that always loads whatever HTML/CSS/JS is currently deployed on
+Railway. Push to Railway, every installed app (iOS, Android, and every
+web browser) gets the update the next time they open it — no
+Capgo/App Store/Play Store resubmission needed for JS/CSS/HTML/backend
+changes.
+
+The tradeoff: this means the app requires a network connection to
+launch (no offline-first cold start) and native-shell changes
+(app icon, permissions, splash screen, native plugin additions) still
+need a real store resubmission — those live in the native project, not
+the web bundle. If true offline-first bundling is a priority later,
+that's when a tool like Capgo becomes worth adding (it manages OTA
+updates for the *bundled-assets* model specifically) — not needed for
+the setup here.
+
+**Hosting**: no changes needed — Railway already serves this over
+HTTPS at a stable URL, which is exactly what `server.url` needs.
+
+### 5. Actionable Refactoring Checklist
+
+- [x] Add Switch button to marketplace top bar
+- [x] Relocate Login/Logout to top header (marketplace); confirmed
+      already correct in Verta Delivery
+- [x] Add `Platform.storage` / `Platform.notify` abstraction
+- [x] Route auth persistence + notifications through it
+- [x] Add `capacitor.config.json` with `server.url` (not bundled-only)
+- [ ] Before wrapping: replace the placeholder URL in
+      `capacitor.config.json` with your real Railway domain
+- [ ] Run `npx cap init` (already have appId/appName via the config
+      file), then `npx cap add ios` / `npx cap add android`
+- [ ] Install `@capacitor/preferences` and
+      `@capacitor/local-notifications` if you want native-grade storage/
+      notifications instead of the WebView fallback (optional — the
+      fallback already works)
+- [ ] Awaiting `saveAuth`/`clearAuth`/`loadStoredAuth` at their ~15 call
+      sites is currently safe to skip (the fallback path is
+      synchronous), but worth doing once the native Preferences plugin
+      is actually in use, since that path is genuinely async
+- [ ] Test push notification permissions on a real iOS device — iOS
+      Safari/WebView notification behavior differs meaningfully from
+      Android and desktop and is worth a dedicated pass once you're
+      wrapping for real
+
+## Chooser screen redesign + ONLib rebrand
+
+Rebuilt the App Chooser to match the provided mockup closely, and
+renamed the marketplace brand from "GoLib" to "ONLib" everywhere
+(manifest, page title, comments, in-app copy).
+
+### What changed
+
+- **Header**: Verta logo on the left, a real "Help" button on the
+  right (opens the same Help & Support modal already built for the
+  admin dashboard — now made context-aware, showing customer-relevant
+  FAQs here instead of the operational ones vendors/admins see).
+- **Chooser body**: small grid-icon badge, "What would you like to
+  do?" heading, "Two separate services, one account." subtitle —
+  matching the mockup's copy exactly.
+- **Cards**: redesigned with a colored image area (soft indigo
+  gradient for Delivery, soft red gradient for Marketplace) with an
+  icon inside, title, description, a pill badge ("⚡ Fast. Reliable.
+  Secure." / "🏷️ Quality. Trusted. Convenient."), and a circular arrow
+  button — all matching the mockup's layout.
+- **Responsive**: stacked cards on mobile (with an "OR" divider,
+  matching the phone mockup), side-by-side cards on desktop ≥800px
+  (matching the desktop mockup) — one real breakpoint, not two
+  different implementations.
+- **Footer**: "🔒 One account. Two powerful experiences." note, plus
+  real Privacy Policy / Terms of Service links.
+
+### One honest note on the illustrations
+
+The mockup's 3D-rendered truck and shopping-bag illustrations aren't
+something I can reproduce exactly — those are custom-commissioned
+graphic assets, not something generatable from a text description at
+pixel fidelity. I approximated the same layout/color treatment using
+inline SVG icons instead. If you have the actual illustration files,
+drop them in `public/assets/` and I can swap them in directly.
+
+### Privacy Policy / Terms of Service
+
+Real modal, real generic content — but it's clearly labeled as
+unreviewed template text in the modal itself. I'm not a lawyer, this
+isn't tailored to your actual business practices or jurisdiction, and
+it needs real legal review before you rely on it for an actual launch.
