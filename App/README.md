@@ -1389,3 +1389,21 @@ this single addition covers both — the check ("Passwords do not
 match") runs before either registration path (customer or vendor) is
 attempted, so a mismatch is caught immediately without hitting the
 server.
+
+## Marketplace top bar, matching the reference screenshot
+
+- **Search bar moved inline** into the top row on desktop (search
+  centered between the back button and Cart/Notifications/Login,
+  rather than sitting on its own row below). On mobile, it still wraps
+  to its own row below the icons — there isn't room to keep it inline
+  on a phone-width screen.
+- **"⇄ Switch" renamed to "← Back to service selector"**, with the
+  full text label visible on desktop (icon-only on mobile, where space
+  is tight). This is also a real behavior change to match the label
+  precisely: it now returns to the App Chooser (the Delivery vs.
+  Marketplace picker) rather than jumping straight into Delivery. A
+  vendor previewing the marketplace still has "← Manage Store" in
+  their Account tab to get back to their own dashboard specifically.
+- **Login/Logout restyled** to a minimal text+icon link (matching the
+  screenshot) instead of a filled pill button, with a vertical divider
+  separating it from Cart/Notifications.
