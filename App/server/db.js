@@ -528,12 +528,18 @@ const db = {
     const { rows } = await pool.query(`
       SELECT p.*, u.business_name AS vendor_name,
         COALESCE(AVG(r.rating), 0)::numeric AS avg_rating,
-        COUNT(r.id)::int AS review_count
+        COUNT(DISTINCT r.id)::int AS review_count,
+        COALESCE(sold.units_sold, 0)::int AS units_sold
       FROM products p
       JOIN users u ON u.id = p.vendor_id
       LEFT JOIN product_reviews r ON r.product_id = p.id
+      LEFT JOIN (
+        SELECT product_id, SUM(quantity)::int AS units_sold
+        FROM purchase_items
+        GROUP BY product_id
+      ) sold ON sold.product_id = p.id
       WHERE p.is_active = true AND p.stock_quantity > 0
-      GROUP BY p.id, u.business_name
+      GROUP BY p.id, u.business_name, sold.units_sold
       ORDER BY p.created_at DESC
     `);
     return rows.map(r => ({
@@ -541,6 +547,7 @@ const db = {
       vendorName: r.vendor_name,
       avgRating: Number(r.avg_rating),
       reviewCount: r.review_count,
+      unitsSold: r.units_sold,
     }));
   },
 

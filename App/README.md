@@ -1729,3 +1729,50 @@ stays hidden), and their landing view, sidebar, and every existing
 feature work exactly as before. This was scoped as a Super-Admin-only
 addition layered onto the shared dashboard shell, not a rework of the
 Manage Agent experience.
+
+## 2-column product grid + real Product Detail Page
+
+### Grid feed (Featured Products)
+
+Reworked to match the AliExpress/Taobao-style 2-column grid from the
+reference images. Note: this reverses the horizontal-scroll carousel
+built two rounds ago for this same section — that was a deliberate
+match to a different reference image at the time; this round's
+reference explicitly shows a wrapping 2-column grid instead, so that's
+what's implemented now. If this keeps needing to flip back and forth,
+worth deciding on one final layout so we're not re-touching the same
+CSS repeatedly.
+
+- 2-column CSS grid, square images (`object-fit: cover`, also a
+  reversal from `contain` — same reasoning, this round's spec asked
+  for `object-cover` explicitly).
+- Titles clamp to 2 lines, price bold, and a real **units-sold** figure
+  next to the price (not fabricated — new SQL query aggregates actual
+  `purchase_items.quantity` per product; a product with zero real
+  sales simply shows no sold count rather than a fake "0+ sold").
+- Inline "Add to Cart" removed from cards — the whole card is now a
+  real button that opens the Product Detail Page.
+
+### Product Detail Page (new — didn't exist before)
+
+- Transparent floating header over the hero image: back button, a
+  vendor pill (real vendor name + initial avatar — tapping it goes to
+  the Stores tab), wishlist star, cart icon, and a **real** Share
+  button (`navigator.share()` where supported, clipboard-copy
+  fallback otherwise — not a decorative icon).
+- Image carousel with a pagination badge — shows the **real** image
+  count (almost always "1/1", since product uploads only support one
+  photo today). I did not fabricate multiple carousel frames to match
+  the reference's "1/5" — that would be showing images that don't exist.
+- Title (tap to expand a real description section), price, real star
+  rating, category, and stock status.
+- Sticky bottom bar: price + units sold, a compact Add to Cart icon
+  button, and a full-width "Buy Now" button. Buy Now adds the item to
+  the real cart and opens checkout directly — a small simplification
+  from "true" buy-now (which would bypass any other items already in
+  the cart); given this app already restricts the cart to one vendor
+  at a time, the practical difference is minor, but worth knowing this
+  isn't a fully separate express-checkout path.
+
+Wishlist stays honestly marked "coming soon" when tapped from the PDP,
+consistent with the rest of the app.
