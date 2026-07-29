@@ -1447,3 +1447,19 @@ Scope check: only the marketplace's desktop sidebar changed. The
 Manage Agent/Super Admin dashboard and the Vendor dashboard are
 unaffected — vendors are always logged in by the time they see their
 sidebar, so there was nothing to gate there.
+
+## "Back to service selector" added to Manage Agent, Super Admin, and Vendor
+
+Added the same button to the Manage Agent/Super Admin dashboard (shared
+`#delivery-app` topbar, so both roles get it automatically) and the
+Vendor dashboard topbar — restyled to match each dashboard's own visual
+language rather than reusing the marketplace's exact look.
+
+One deliberate behavior difference from the marketplace's version: for
+admin/vendor, this button **logs the session out** before returning to
+the Chooser, rather than just navigating there while staying signed in.
+The Chooser is built for the guest Delivery-vs-Marketplace flow — an
+admin or vendor session doesn't fit that model (picking a card there
+would incorrectly treat them as a guest), so ending the session first
+avoids a broken half-logged-in state. Logging back in from the Chooser
+is one tap away either way.

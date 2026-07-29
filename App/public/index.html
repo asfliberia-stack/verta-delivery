@@ -1043,6 +1043,17 @@
         #delivery-app .admin-topbar-datetime { text-align: right; }
         #delivery-app .admin-topbar-date { font-size: 0.8125rem; font-weight: 600; color: var(--admin-text); }
         #delivery-app .admin-topbar-time { font-size: 0.75rem; color: var(--admin-text-secondary); }
+        #delivery-app .admin-back-to-chooser-btn {
+            display: flex; align-items: center; gap: 0.5rem; min-height: 44px; padding: 0 1rem 0 0.875rem;
+            border-radius: 9999px; border: 1px solid var(--admin-border); background: var(--admin-surface);
+            color: var(--admin-text-secondary); cursor: pointer; font-weight: 600; font-size: 0.8125rem; white-space: nowrap;
+        }
+        #delivery-app .admin-back-to-chooser-btn:hover { background: var(--admin-surface-alt); color: var(--admin-text); }
+        #delivery-app .admin-back-to-chooser-btn svg { width: 16px; height: 16px; flex-shrink: 0; }
+        @media (max-width: 640px) {
+            #delivery-app .admin-back-to-chooser-btn span { display: none; }
+            #delivery-app .admin-back-to-chooser-btn { padding: 0; width: 44px; justify-content: center; }
+        }
         #delivery-app .admin-notification-bell {
             position: relative; width: 44px; height: 44px; border-radius: 50%;
             border: 1px solid var(--admin-border); background: var(--admin-surface); color: var(--admin-text-secondary);
@@ -2031,6 +2042,10 @@
                                 <div class="admin-topbar-date" id="admin-topbar-date">—</div>
                                 <div class="admin-topbar-time" id="admin-topbar-time">—</div>
                             </div>
+                            <button type="button" class="admin-back-to-chooser-btn" id="admin-back-to-chooser-btn" title="Back to service selector">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+                                <span>Back to service selector</span>
+                            </button>
                             <button type="button" class="admin-notification-bell" id="notification-bell-btn" aria-label="Notifications">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
                                 <span class="admin-notification-badge" id="notification-badge" style="display:none;">0</span>
@@ -2260,6 +2275,10 @@
                 <img src="assets/logo.png" alt="ONLib">
             </div>
             <div style="flex:1;"></div>
+            <button type="button" class="mp-back-to-chooser-btn" id="vendor-back-to-chooser-btn" aria-label="Back to service selector" title="Back to service selector">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+                <span class="desktop-icon-label">Back to service selector</span>
+            </button>
             <button type="button" class="mobile-icon-btn" id="vendor-notification-btn" aria-label="Notifications">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
                 <span class="mobile-icon-badge" id="vendor-notification-badge" style="display:none;">0</span>
@@ -5003,6 +5022,20 @@
                 renderNotificationCenter();
             });
 
+            // "Back to service selector" — admin/Super Admin aren't part
+            // of the guest Delivery-vs-Marketplace flow the Chooser is
+            // built for, so this works like a logout that lands on the
+            // Chooser instead of the login modal, rather than trying to
+            // keep an admin session "logged in" on a guest-oriented screen.
+            const backToChooserBtn = document.getElementById('admin-back-to-chooser-btn');
+            if (backToChooserBtn) {
+                backToChooserBtn.addEventListener('click', async () => {
+                    clearAuth();
+                    currentUser = null;
+                    showAppChooser();
+                });
+            }
+
             // ---- Customers ----
             document.getElementById('open-customers-btn').addEventListener('click', () => {
                 document.getElementById('customers-modal').classList.add('active');
@@ -6888,6 +6921,11 @@
 
         function wireVendorEvents() {
             document.getElementById('vendor-logout-btn').addEventListener('click', async () => {
+                clearAuth();
+                currentUser = null;
+                showAppChooser();
+            });
+            document.getElementById('vendor-back-to-chooser-btn').addEventListener('click', async () => {
                 clearAuth();
                 currentUser = null;
                 showAppChooser();
