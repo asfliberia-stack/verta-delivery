@@ -1335,12 +1335,6 @@
         <div style="text-align:center; margin-bottom: 2rem;">
             <img src="assets/logo.png" alt="Verta Delivery Service" style="height: 70px; max-width: 320px; object-fit: contain;">
         </div>
-        <div class="mode-toggle">
-            <button type="button" id="mode-sender-btn" class="active">Customer</button>
-            <button type="button" id="mode-admin-btn">Manage Agent</button>
-            <button type="button" id="mode-super-admin-btn">Super Admin</button>
-            <button type="button" id="mode-vendor-btn">Vendor</button>
-        </div>
 
         <!-- Sender login/register card -->
         <div class="auth-card" id="sender-auth-card">
@@ -1493,55 +1487,12 @@
             </form>
         </div>
 
-        <!-- Admin login card -->
-        <!-- Admin login card -->
-        <div class="auth-card" id="admin-auth-card" style="display:none;">
-            <h3 style="margin-bottom: 1.5rem; text-align:center;">Manage Agent Login</h3>
-            <form id="admin-login-form">
-                <div class="form-group">
-                    <label class="form-label">Admin Password</label>
-                    <input type="password" class="form-input" id="admin-password" placeholder="••••••••" required>
-                </div>
-                <div class="auth-error" id="admin-login-error"></div>
-                <button type="submit" class="btn-primary" style="width:100%;" id="admin-login-submit-btn">Login as Manage Agent</button>
-            </form>
-        </div>
-
-        <!-- Super Admin login card — a real, distinct account (email +
-             password), not the shared Manage Agent password. -->
-        <div class="auth-card" id="super-admin-auth-card" style="display:none;">
-            <h3 style="margin-bottom: 1.5rem; text-align:center;">Super Admin Login</h3>
-            <form id="super-admin-login-form">
-                <div class="form-group">
-                    <label class="form-label">Email</label>
-                    <input type="email" class="form-input" id="super-admin-email" required>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Password</label>
-                    <input type="password" class="form-input" id="super-admin-password" required>
-                </div>
-                <div class="auth-error" id="super-admin-login-error"></div>
-                <button type="submit" class="btn-primary" style="width:100%;" id="super-admin-login-submit-btn">Login as Super Admin</button>
-            </form>
-        </div>
-
-        <!-- Vendor login card — real account (e.g. Girlee Fashion),
-             email + password, same pattern as Super Admin. -->
-        <div class="auth-card" id="vendor-auth-card" style="display:none;">
-            <h3 style="margin-bottom: 1.5rem; text-align:center;">Vendor Login</h3>
-            <form id="vendor-login-form">
-                <div class="form-group">
-                    <label class="form-label">Email</label>
-                    <input type="email" class="form-input" id="vendor-email" required>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Password</label>
-                    <input type="password" class="form-input" id="vendor-password" required>
-                </div>
-                <div class="auth-error" id="vendor-login-error"></div>
-                <button type="submit" class="btn-primary" style="width:100%;" id="vendor-login-submit-btn">Login as Vendor</button>
-            </form>
-        </div>
+        <!-- Every role (Customer, Manage Agent, Super Admin, Vendor) logs
+             in through the single form above — /api/auth/login is
+             role-agnostic, and enterApp() routes to the right dashboard
+             based on whatever role comes back. No separate login screens
+             needed; an account is identified by its credentials, not by
+             a mode picked beforehand. -->
         </div>
     </div>
 
@@ -4101,30 +4052,6 @@
         // Auth screen wiring (login / register / admin login)
         // ============================================================
         function wireAuthScreenEvents() {
-            const modeSenderBtn = document.getElementById('mode-sender-btn');
-            const modeAdminBtn = document.getElementById('mode-admin-btn');
-            const modeSuperAdminBtn = document.getElementById('mode-super-admin-btn');
-            const modeVendorBtn = document.getElementById('mode-vendor-btn');
-            const senderCard = document.getElementById('sender-auth-card');
-            const adminCard = document.getElementById('admin-auth-card');
-            const superAdminCard = document.getElementById('super-admin-auth-card');
-            const vendorCard = document.getElementById('vendor-auth-card');
-
-            function showAuthMode(mode) {
-                modeSenderBtn.classList.toggle('active', mode === 'sender');
-                modeAdminBtn.classList.toggle('active', mode === 'admin');
-                modeSuperAdminBtn.classList.toggle('active', mode === 'super-admin');
-                modeVendorBtn.classList.toggle('active', mode === 'vendor');
-                senderCard.style.display = mode === 'sender' ? 'block' : 'none';
-                adminCard.style.display = mode === 'admin' ? 'block' : 'none';
-                superAdminCard.style.display = mode === 'super-admin' ? 'block' : 'none';
-                vendorCard.style.display = mode === 'vendor' ? 'block' : 'none';
-            }
-            modeSenderBtn.addEventListener('click', () => showAuthMode('sender'));
-            modeAdminBtn.addEventListener('click', () => showAuthMode('admin'));
-            modeSuperAdminBtn.addEventListener('click', () => showAuthMode('super-admin'));
-            modeVendorBtn.addEventListener('click', () => showAuthMode('vendor'));
-
             const loginForm = document.getElementById('sender-login-form');
             const registerForm = document.getElementById('sender-register-form');
 
@@ -4373,98 +4300,6 @@
                 } finally {
                     btn.disabled = false;
                     btn.textContent = 'Create Account';
-                }
-            });
-
-            document.getElementById('admin-login-form').addEventListener('submit', async (e) => {
-                e.preventDefault();
-                const errorEl = document.getElementById('admin-login-error');
-                const btn = document.getElementById('admin-login-submit-btn');
-                errorEl.style.display = 'none';
-                btn.disabled = true;
-                btn.textContent = 'Logging in…';
-                try {
-                    const data = await apiFetch('/api/auth/admin-login', {
-                        method: 'POST',
-                        body: JSON.stringify({ password: document.getElementById('admin-password').value })
-                    });
-                    saveAuth(data.token, data.user);
-                    await enterApp();
-                } catch (err) {
-                    errorEl.textContent = err.message;
-                    errorEl.style.display = 'block';
-                    document.getElementById('admin-password').value = '';
-                } finally {
-                    btn.disabled = false;
-                    btn.textContent = 'Login as Manage Agent';
-                }
-            });
-
-            document.getElementById('super-admin-login-form').addEventListener('submit', async (e) => {
-                e.preventDefault();
-                const errorEl = document.getElementById('super-admin-login-error');
-                const btn = document.getElementById('super-admin-login-submit-btn');
-                errorEl.style.display = 'none';
-                btn.disabled = true;
-                btn.textContent = 'Logging in…';
-                try {
-                    // Reuses the same email+password endpoint sender login
-                    // uses — it's role-agnostic server-side. This form just
-                    // refuses to proceed if the account it authenticated
-                    // isn't actually a Super Admin account.
-                    const data = await apiFetch('/api/auth/login', {
-                        method: 'POST',
-                        body: JSON.stringify({
-                            email: document.getElementById('super-admin-email').value,
-                            password: document.getElementById('super-admin-password').value,
-                        })
-                    });
-                    if (data.user.role !== 'super_admin') {
-                        errorEl.textContent = 'This account is not a Super Admin account.';
-                        errorEl.style.display = 'block';
-                        return;
-                    }
-                    saveAuth(data.token, data.user);
-                    await enterApp();
-                } catch (err) {
-                    errorEl.textContent = err.message;
-                    errorEl.style.display = 'block';
-                    document.getElementById('super-admin-password').value = '';
-                } finally {
-                    btn.disabled = false;
-                    btn.textContent = 'Login as Super Admin';
-                }
-            });
-
-            document.getElementById('vendor-login-form').addEventListener('submit', async (e) => {
-                e.preventDefault();
-                const errorEl = document.getElementById('vendor-login-error');
-                const btn = document.getElementById('vendor-login-submit-btn');
-                errorEl.style.display = 'none';
-                btn.disabled = true;
-                btn.textContent = 'Logging in…';
-                try {
-                    const data = await apiFetch('/api/auth/login', {
-                        method: 'POST',
-                        body: JSON.stringify({
-                            email: document.getElementById('vendor-email').value,
-                            password: document.getElementById('vendor-password').value,
-                        })
-                    });
-                    if (data.user.role !== 'vendor') {
-                        errorEl.textContent = 'This account is not a Vendor account.';
-                        errorEl.style.display = 'block';
-                        return;
-                    }
-                    saveAuth(data.token, data.user);
-                    await enterApp();
-                } catch (err) {
-                    errorEl.textContent = err.message;
-                    errorEl.style.display = 'block';
-                    document.getElementById('vendor-password').value = '';
-                } finally {
-                    btn.disabled = false;
-                    btn.textContent = 'Login as Vendor';
                 }
             });
 

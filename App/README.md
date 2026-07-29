@@ -1479,3 +1479,17 @@ with the actual illustration images you provided:
 This closes out the honest limitation flagged a few rounds back — the
 Chooser now matches the reference mockup with the real artwork instead
 of hand-drawn SVG stand-ins.
+
+## One unified login form
+
+Removed the Customer/Manage Agent/Super Admin/Vendor mode selector from
+the login screen — there's just one login form now (email + password).
+The account itself carries the role; `/api/auth/login` was already
+role-agnostic server-side, so no backend change was needed — this was
+purely about removing the now-redundant client-side role picker and
+its 3 duplicate login forms, and letting the single form (and
+`enterApp()`'s existing role-based routing) handle every account type.
+
+The Customer/Vendor toggle on the *signup* form is unaffected and
+still there — that one has to stay, since a brand-new account has no
+existing credentials to "identify" its role from.
