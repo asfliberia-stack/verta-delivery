@@ -1969,10 +1969,14 @@
                     <img src="assets/logo.png" alt="Verta Delivery Service">
                 </div>
                 <nav class="admin-nav">
-                    <div class="admin-nav-item active">
+                    <button type="button" class="admin-nav-item" id="sa-platform-overview-nav-btn" style="display:none;">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"></path><path d="M18.7 8 12 14.7 8.5 11.2 4 15.7"></path></svg>
+                        Platform Overview
+                    </button>
+                    <button type="button" class="admin-nav-item active" id="admin-overview-nav-btn">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
-                        Overview
-                    </div>
+                        <span id="admin-overview-nav-label">Overview</span>
+                    </button>
                     <button type="button" class="admin-nav-item" id="view-order-history-delivery">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
                         Order History
@@ -2060,6 +2064,7 @@
                     </div>
                 </header>
 
+                <div id="admin-operational-view">
                 <div class="admin-section-label">TODAY'S SNAPSHOT</div>
                 <section class="stats-section" style="margin-bottom: 1.5rem;">
                     <div class="stats-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.5rem;">
@@ -2190,6 +2195,65 @@
                         </section>
                     </div>
                 </div>
+                </div>
+
+                <!-- Super Admin's real landing view — platform oversight,
+                     not the delivery-operations queue. Hidden entirely for
+                     Manage Agent (who never sees this at all); toggled via
+                     the sidebar for Super Admin, who lands here by default. -->
+                <div id="super-admin-overview-view" style="display:none;">
+                    <div class="admin-section-label">PLATFORM OVERVIEW</div>
+                    <section class="stats-section" style="margin-bottom: 1.5rem;">
+                        <div class="stats-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.5rem;">
+                            <div class="stat-card">
+                                <div class="stat-card-top"><h4>Total Vendors</h4><div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg></div></div>
+                                <p id="sa-total-vendors">0</p>
+                            </div>
+                            <div class="stat-card" id="sa-pending-card" style="cursor:pointer;" title="Jump to pending applications">
+                                <div class="stat-card-top"><h4>Pending Applications</h4><div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg></div></div>
+                                <p id="sa-pending-count">0</p>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-card-top"><h4>Total Customers</h4><div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><path d="M20 8v6M23 11h-6"></path></svg></div></div>
+                                <p id="sa-total-customers">0</p>
+                            </div>
+                            <div class="stat-card success">
+                                <div class="stat-card-top"><h4>Marketplace Orders</h4><div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path><line x1="3" y1="6" x2="21" y2="6"></line><path d="M16 10a4 4 0 0 1-8 0"></path></svg></div></div>
+                                <p id="sa-marketplace-orders">0</p>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-card-top"><h4>Marketplace Revenue</h4><div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg></div></div>
+                                <p id="sa-marketplace-revenue">$0.00</p>
+                            </div>
+                            <div class="stat-card warning">
+                                <div class="stat-card-top"><h4>Delivery Orders</h4><div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13"></rect><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon><circle cx="5.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle></svg></div></div>
+                                <p id="sa-delivery-orders">0</p>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-card-top"><h4>Delivery Revenue</h4><div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg></div></div>
+                                <p id="sa-delivery-revenue">$0.00</p>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="orders-section" id="sa-pending-section">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                            <h2 class="section-title" style="margin:0;">Vendor Applications Needing Review</h2>
+                            <a class="admin-view-all-link" id="sa-view-all-vendors-link">View All Vendors →</a>
+                        </div>
+                        <div id="sa-pending-applications-list"></div>
+                    </section>
+
+                    <section class="orders-section">
+                        <h2 class="section-title">Quick Actions</h2>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem;">
+                            <button type="button" class="btn-small btn-secondary" id="sa-quick-vendors-btn" style="padding:1rem; text-align:left;">🏬 Manage Vendors</button>
+                            <button type="button" class="btn-small btn-secondary" id="sa-quick-customers-btn" style="padding:1rem; text-align:left;">👥 View Customers</button>
+                            <button type="button" class="btn-small btn-secondary" id="sa-quick-delivery-ops-btn" style="padding:1rem; text-align:left;">🚚 Delivery Operations</button>
+                        </div>
+                    </section>
+                </div>
+
             </div>
         </div>
 
@@ -4026,6 +4090,9 @@
                 if (sidebarLabelEl) sidebarLabelEl.textContent = roleLabel;
                 const vendorsNavBtn = document.getElementById('open-vendors-btn');
                 if (vendorsNavBtn) vendorsNavBtn.style.display = isSuperAdmin ? 'flex' : 'none';
+                const platformOverviewNavBtn = document.getElementById('sa-platform-overview-nav-btn');
+                if (platformOverviewNavBtn) platformOverviewNavBtn.style.display = isSuperAdmin ? 'flex' : 'none';
+                document.getElementById('admin-overview-nav-label').textContent = isSuperAdmin ? 'Delivery Operations' : 'Overview';
                 startAdminClock();
                 renderNotificationCenter();
                 renderSkeletonCards(document.getElementById('orders-grouped-delivery'));
@@ -4045,6 +4112,18 @@
                     expenses = [];
                 }
                 refreshAllViews();
+
+                // Super Admin's real landing view is platform oversight,
+                // not the delivery-ops queue (which is still one click
+                // away via "Delivery Operations"). Manage Agent's
+                // experience is completely unaffected — they never see
+                // Platform Overview at all.
+                if (isSuperAdmin) {
+                    setAdminMainView('platform');
+                    loadSuperAdminOverview();
+                } else {
+                    setAdminMainView('operational');
+                }
             } else if (currentUser.role === 'vendor') {
                 // Vendor login/session restore routes straight to the
                 // Store Dashboard — never the marketplace — per the
@@ -4911,6 +4990,63 @@
             adminClockInterval = setInterval(update, 30000); // no need for per-second updates
         }
 
+        // ============================================================
+        // Super Admin's real landing view vs. the operational (Manage
+        // Agent-style) dashboard — a toggle, not two separate apps, so
+        // Super Admin can still reach Delivery Operations in one click
+        // when they need to, without it being their default view.
+        // ============================================================
+        function setAdminMainView(view) {
+            document.getElementById('admin-operational-view').style.display = view === 'operational' ? 'block' : 'none';
+            document.getElementById('super-admin-overview-view').style.display = view === 'platform' ? 'block' : 'none';
+            const platformBtn = document.getElementById('sa-platform-overview-nav-btn');
+            const overviewBtn = document.getElementById('admin-overview-nav-btn');
+            if (platformBtn) platformBtn.classList.toggle('active', view === 'platform');
+            if (overviewBtn) overviewBtn.classList.toggle('active', view === 'operational');
+        }
+
+        async function loadSuperAdminOverview() {
+            try {
+                const [vendorsData, overviewData] = await Promise.all([
+                    apiFetch('/api/super-admin/vendors'),
+                    apiFetch('/api/super-admin/overview'),
+                ]);
+                const vendors = vendorsData.vendors || [];
+                vendorsCache = vendors;
+                const totals = vendorsData.platformTotals || { totalMarketplaceOrders: 0, totalMarketplaceRevenue: 0, pendingVendorApplications: 0 };
+
+                document.getElementById('sa-total-vendors').textContent = vendors.length;
+                document.getElementById('sa-pending-count').textContent = totals.pendingVendorApplications;
+                document.getElementById('sa-marketplace-orders').textContent = totals.totalMarketplaceOrders;
+                document.getElementById('sa-marketplace-revenue').textContent = `$${totals.totalMarketplaceRevenue.toFixed(2)}`;
+                document.getElementById('sa-total-customers').textContent = overviewData.totalCustomers;
+                document.getElementById('sa-delivery-orders').textContent = overviewData.delivery.totalOrders;
+                document.getElementById('sa-delivery-revenue').textContent = `$${overviewData.delivery.totalRevenue.toFixed(2)}`;
+
+                const pending = vendors.filter(v => v.approvalStatus === 'pending');
+                const listEl = document.getElementById('sa-pending-applications-list');
+                if (pending.length === 0) {
+                    renderEmptyState(listEl, 'No vendor applications waiting on a decision right now.');
+                } else {
+                    listEl.innerHTML = pending.map(v => `
+                        <div class="vendor-order-row" data-id="${v.id}" style="cursor:default;">
+                            <div class="vendor-order-icon" style="background:#fef3c7; color:#92400e;">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                            </div>
+                            <div class="vendor-order-main">
+                                <div class="vendor-order-id">${v.businessName}</div>
+                                <div class="vendor-order-buyer">${v.email} · Applied ${v.appliedAt ? new Date(v.appliedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—'}</div>
+                            </div>
+                            <button type="button" class="btn-small btn-secondary sa-review-btn" data-id="${v.id}">Review</button>
+                        </div>
+                    `).join('');
+                }
+            } catch (err) {
+                console.error('Failed to load Super Admin overview', err);
+                showToast('Could not load the platform overview.', 'error');
+            }
+        }
+
         function wireTopbarEvents() {
             const bell = document.getElementById('notification-bell-btn');
             const panel = document.getElementById('notification-panel');
@@ -4946,6 +5082,48 @@
                     showAppChooser();
                 });
             }
+
+            // Super Admin's two main views — Platform Overview (their
+            // real landing view) and Delivery Operations (the exact same
+            // operational dashboard Manage Agent uses — Super Admin
+            // already has legitimate direct access to it, no
+            // impersonation needed, unlike entering a specific vendor's
+            // dashboard). Manage Agent never sees the Platform Overview
+            // button at all (hidden), so this doesn't change their
+            // experience.
+            const platformOverviewBtn = document.getElementById('sa-platform-overview-nav-btn');
+            if (platformOverviewBtn) {
+                platformOverviewBtn.addEventListener('click', () => {
+                    setAdminMainView('platform');
+                    loadSuperAdminOverview();
+                });
+            }
+            document.getElementById('admin-overview-nav-btn').addEventListener('click', () => {
+                setAdminMainView('operational');
+            });
+
+            // Platform Overview's Quick Actions + interactive elements
+            document.getElementById('sa-pending-card').addEventListener('click', () => {
+                document.getElementById('sa-pending-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
+            });
+            document.getElementById('sa-view-all-vendors-link').addEventListener('click', () => {
+                document.getElementById('vendors-modal').classList.add('active');
+                loadVendors();
+            });
+            document.getElementById('sa-quick-vendors-btn').addEventListener('click', () => {
+                document.getElementById('vendors-modal').classList.add('active');
+                loadVendors();
+            });
+            document.getElementById('sa-quick-customers-btn').addEventListener('click', () => {
+                document.getElementById('customers-modal').classList.add('active');
+                loadCustomers();
+            });
+            document.getElementById('sa-quick-delivery-ops-btn').addEventListener('click', () => {
+                setAdminMainView('operational');
+            });
+            document.getElementById('sa-pending-applications-list').addEventListener('click', (e) => {
+                if (e.target.classList.contains('sa-review-btn')) openVendorReviewModal(e.target.dataset.id);
+            });
 
             // ---- Customers ----
             document.getElementById('open-customers-btn').addEventListener('click', () => {

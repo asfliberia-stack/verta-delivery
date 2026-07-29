@@ -135,6 +135,7 @@ function rowToUser(r) {
     idDocumentType: r.id_document_type,
     idDocumentDoc: r.id_document_doc,
     appliedAt: r.applied_at,
+    createdAt: r.created_at,
   };
 }
 

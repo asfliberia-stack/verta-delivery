@@ -711,6 +711,43 @@ app.get('/api/admin/customers', requireAuth, requireAdmin, async (req, res) => {
 });
 
 // ============================================================
+// Super Admin only — platform-wide Overview. Genuinely cross-cutting
+// data (vendors, customers, marketplace AND delivery totals) — this is
+// what makes the Super Admin console a real oversight view rather than
+// a relabeled copy of the Manage Agent operations dashboard.
+// ============================================================
+app.get('/api/super-admin/overview', requireAuth, requireSuperAdmin, async (req, res) => {
+  try {
+    const [vendors, marketplaceStats, customers, deliveryOrders] = await Promise.all([
+      db.getVendors(),
+      db.getMarketplacePlatformStats(),
+      db.getCustomers(),
+      db.getAllOrders(),
+    ]);
+    const deliveryRevenue = deliveryOrders
+      .filter(o => o.status === 'delivered')
+      .reduce((sum, o) => sum + (o.amount || 0), 0);
+    res.json({
+      vendorCounts: {
+        total: vendors.length,
+        approved: vendors.filter(v => v.approvalStatus === 'approved').length,
+        pending: vendors.filter(v => v.approvalStatus === 'pending').length,
+        rejected: vendors.filter(v => v.approvalStatus === 'rejected').length,
+      },
+      totalCustomers: customers.length,
+      marketplace: marketplaceStats,
+      delivery: {
+        totalOrders: deliveryOrders.length,
+        totalRevenue: deliveryRevenue,
+      },
+    });
+  } catch (err) {
+    console.error('GET /api/super-admin/overview failed', err);
+    res.status(500).json({ error: 'Failed to load overview' });
+  }
+});
+
+// ============================================================
 // Super Admin only — Vendors oversight panel. Lists every real vendor
 // account (role = 'vendor'), their approval status, and real
 // marketplace-wide stats. This previously (incorrectly) listed Manage
@@ -726,6 +763,20 @@ app.get('/api/super-admin/vendors', requireAuth, requireSuperAdmin, async (req, 
   } catch (err) {
     console.error('GET /api/super-admin/vendors failed', err);
     res.status(500).json({ error: 'Failed to load vendors' });
+  }
+});
+
+// Real Manage Agent account summary — for the Super Admin Console's
+// "Manage Agent" tab. There's only one such account today (the shared
+// ADMIN_EMAIL/ADMIN_PASSWORD login), so this just surfaces it.
+app.get('/api/super-admin/manage-agent', requireAuth, requireSuperAdmin, async (req, res) => {
+  try {
+    const admin = await db.getUserByEmail(ADMIN_EMAIL);
+    if (!admin) return res.status(404).json({ error: 'Manage Agent account not found' });
+    res.json({ businessName: admin.businessName, email: admin.email, createdAt: admin.createdAt });
+  } catch (err) {
+    console.error('GET /api/super-admin/manage-agent failed', err);
+    res.status(500).json({ error: 'Failed to load Manage Agent account' });
   }
 });
 

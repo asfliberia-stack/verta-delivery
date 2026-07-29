@@ -1650,3 +1650,82 @@ full Manage Agent access. If multiple Manage Agent accounts become a
 real feature later (one per business, as originally discussed), this
 same impersonation mechanism extends to that case directly — the
 token-signing and audit-trail logic isn't vendor-specific.
+
+## Super Admin now has a real, distinct workflow — not a reskinned Manage Agent dashboard
+
+Found that a genuine "Platform Overview" view already existed in the
+codebase (`#super-admin-overview-view`, `setAdminMainView()`,
+`loadSuperAdminOverview()`) but was incomplete — the two most important
+buttons (the sidebar toggle between "Platform Overview" and "Delivery
+Operations") had no click handlers wired at all, several Quick Action
+buttons did nothing, and the stats only covered marketplace numbers,
+missing customers and delivery entirely. Finished it properly rather
+than starting over:
+
+### What Super Admin sees now (real, distinct from Manage Agent)
+
+**Platform Overview** — Super Admin's actual landing view:
+- Total Vendors, Pending Applications, **Total Customers** (new),
+  Marketplace Orders, Marketplace Revenue, **Delivery Orders** (new),
+  **Delivery Revenue** (new) — genuinely platform-wide now, not just
+  marketplace-only.
+- "Vendor Applications Needing Review" — a live list of pending
+  vendors right on the overview, each with a real **Review** button
+  (opens the same document-review modal as the Vendors panel).
+- Quick Actions that actually work now: Manage Vendors, View Customers,
+  Delivery Operations — all wired to real destinations.
+
+**Delivery Operations** — the exact same operational dashboard Manage
+Agent uses, one click away via the sidebar or Quick Actions, for when
+Super Admin needs to see the day-to-day queue. This is real, direct
+access (not impersonation) — Super Admin already legitimately has
+`isAdminLike` access to this data, unlike entering a specific vendor's
+account, which does need the impersonation mechanism from last round.
+
+**Manage Agent's own experience is completely unchanged** — the
+Platform Overview nav item stays hidden for them, and they land
+directly on the operational dashboard exactly as before.
+
+### New backend
+
+`GET /api/super-admin/overview` — real cross-cutting stats (vendor
+counts by status, total customers, marketplace totals, delivery
+totals) in one call, purpose-built for this view rather than
+repurposing delivery-specific endpoints.
+
+## Super Admin now has a genuinely distinct workflow, not a relabeled Manage Agent dashboard
+
+Note: partial groundwork for this already existed in the codebase
+(a "Platform Overview" view, its stat cards, and `setAdminMainView()`)
+but the core navigation was never actually wired up — clicking anything
+did nothing. This pass finished it properly and made the stats
+genuinely platform-wide rather than marketplace-only.
+
+### What Super Admin sees now
+
+- **Platform Overview is the real landing view** — not the Manage
+  Agent's day-to-day delivery queue. Shows: Total Vendors, Pending
+  Applications, Total Customers, Marketplace Orders, Marketplace
+  Revenue, Delivery Orders, Delivery Revenue — genuinely cross-cutting
+  (new `GET /api/super-admin/overview` endpoint), not just the vendor
+  numbers from before.
+- **"Vendor Applications Needing Review"** — a real, live list of
+  pending vendors right on the landing view, each with a working
+  Review button (opens the same document-review flow from last round).
+- **Quick Actions that actually do something now**: Manage Vendors,
+  View Customers, and Delivery Operations all open the right
+  panel/view — none of these had a click handler wired before this pass.
+- **A real toggle between Platform Overview and Delivery Operations**,
+  via the sidebar — Super Admin can drop into the exact same
+  operational dashboard Manage Agent uses (they already have
+  legitimate direct access to it, no impersonation needed for this one,
+  unlike entering a specific vendor's dashboard) and switch back to
+  Platform Overview just as easily.
+
+### What Manage Agent sees — completely unaffected
+
+Manage Agent never sees "Platform Overview" at all (the nav button
+stays hidden), and their landing view, sidebar, and every existing
+feature work exactly as before. This was scoped as a Super-Admin-only
+addition layered onto the shared dashboard shell, not a rework of the
+Manage Agent experience.
