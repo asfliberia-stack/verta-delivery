@@ -1463,3 +1463,19 @@ admin or vendor session doesn't fit that model (picking a card there
 would incorrectly treat them as a guest), so ending the session first
 avoids a broken half-logged-in state. Logging back in from the Chooser
 is one tap away either way.
+
+## Real illustration assets added to the App Chooser
+
+Replaced the SVG icon approximations on the Chooser screen's two cards
+with the actual illustration images you provided:
+
+- `public/assets/delivery-truck.png` — Verta Delivery card
+- `public/assets/shopping-bag.png` — ONLib Marketplace card
+- `public/assets/logo.png` — replaced with your supplied file (turned
+  out to be pixel-identical to what was already there, so the
+  generated PWA icons, which were made from this same logo, didn't
+  need regenerating)
+
+This closes out the honest limitation flagged a few rounds back — the
+Chooser now matches the reference mockup with the real artwork instead
+of hand-drawn SVG stand-ins.
