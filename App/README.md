@@ -1379,3 +1379,13 @@ honestly — there's no traffic-source attribution anywhere in the data
 model, and fabricating percentages would just be made-up numbers
 dressed up as a chart. The real Order Status donut on the Reports tab
 fills the same visual role with data that's actually tracked.
+
+## Confirm Password on signup
+
+Added a "Confirm Password" field to the signup form, right below
+Password. Since Customer and Vendor signup share the same form (just
+different fields shown around a common email/phone/password block),
+this single addition covers both — the check ("Passwords do not
+match") runs before either registration path (customer or vendor) is
+attempted, so a mismatch is caught immediately without hitting the
+server.

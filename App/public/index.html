@@ -1428,6 +1428,10 @@
                     <label class="form-label">Password</label>
                     <input type="password" class="form-input" id="register-password" placeholder="At least 8 characters" required minlength="8">
                 </div>
+                <div class="form-group">
+                    <label class="form-label">Confirm Password</label>
+                    <input type="password" class="form-input" id="register-confirm-password" placeholder="Re-enter your password" required minlength="8">
+                </div>
                 <div class="auth-error" id="register-error"></div>
                 <button type="submit" class="btn-primary auth-submit-btn" id="register-submit-btn">Create Account</button>
                 <p class="auth-switch-line">Already have an account? <a id="switch-to-login-link" class="auth-inline-link">Login</a></p>
@@ -4286,6 +4290,13 @@
                 const email = document.getElementById('register-email').value;
                 const phone = document.getElementById('register-phone').value.trim();
                 const password = document.getElementById('register-password').value;
+                const confirmPassword = document.getElementById('register-confirm-password').value;
+
+                if (password !== confirmPassword) {
+                    errorEl.textContent = 'Passwords do not match.';
+                    errorEl.style.display = 'block';
+                    return;
+                }
 
                 if (registerRole === 'vendor') {
                     const businessName = document.getElementById('register-vendor-name').value.trim();
