@@ -1775,3 +1775,32 @@ honestly marked "coming soon," consistent with the rest of the app.
 Re-added the units-sold aggregation query (`purchase_items.quantity`
 summed per product) that this snapshot was missing — needed for an
 honest "X+ sold" figure rather than a fabricated one.
+
+## Desktop gets the clean card + a real desktop Product Detail Page
+
+Two changes, superseding the "keep desktop exactly as it was" note
+from a couple rounds back — this round explicitly asked for desktop to
+match the clean card style and get its own PDP layout.
+
+### Desktop card now matches the clean mobile style
+
+Vendor name, star rating, and the inline "Add to Cart" button are now
+hidden on **every** viewport, not just mobile — moved that CSS out of
+the mobile-only media query into the shared base rules. Desktop cards
+now show just image / title / price / real sold-count, same as
+mobile. The whole card is clickable everywhere, opening the Product
+Detail Page — which is now the only place "Add to Cart" lives on
+desktop too, consistent with mobile.
+
+### Real desktop Product Detail Page layout
+
+Previously the PDP only had the mobile single-column layout, which
+would've looked cramped and centered oddly on a wide screen. Desktop
+now gets a proper two-column layout: image on the left, title/price/
+description on the right, with the bottom action bar becoming a normal
+inline "buy box" instead of a bar stretched across the full screen
+width. Contained to the content area next to the sidebar (not covering
+it) — same approach as earlier desktop-specific work in this project:
+the marketplace shell becomes a real positioning context so the PDP
+overlay only takes over where the product grid was, not the whole
+viewport.
