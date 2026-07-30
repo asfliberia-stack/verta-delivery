@@ -1804,3 +1804,135 @@ it) — same approach as earlier desktop-specific work in this project:
 the marketplace shell becomes a real positioning context so the PDP
 overlay only takes over where the product grid was, not the whole
 viewport.
+
+## Two "coming soon" items fixed for real
+
+### 1. Account/Store Settings — now actually editable
+
+Both the marketplace customer Settings tab and the Vendor Dashboard
+Settings tab were real but read-only ("Editing these details isn't
+built yet"). Now they're real editable forms — business/store name and
+phone, saved via a new `PUT /api/me/profile` endpoint that works for
+any authenticated role. Email and password stay on their own separate,
+more careful flows (uniqueness checks, re-auth) rather than folding
+into this simpler form.
+
+Found and fixed a real gap while building this: `phone` was missing
+from every single login/register/`/api/me` response shape (4 places)
+— meaning even though phone numbers were stored, the frontend never
+actually received them. Fixed all 4 in one pass.
+
+### 2. Active Sessions — real per-device revoke, not just "logout everywhere"
+
+Previously "Active Sessions" only had "Logout All Devices" (bumps
+`token_version`, invalidates every session at once) with a note that a
+real per-device list wasn't built. Now each row in the Login History
+table (device, browser, IP, timestamp — all already real data) has a
+genuine **"Sign out this device"** button that ends *only* that one
+session, leaving every other device logged in.
+
+How it works, for real: each login now gets its own row in
+`login_history` (already existed), and that row's id gets embedded in
+the JWT issued at that login as a `sessionId` claim. Every
+authenticated request checks whether that specific session has been
+revoked — completely independent of `token_version`, so revoking one
+device never touches any other session.
+
+**Backward compatible, verified**: tokens issued before this change
+carry no `sessionId` claim, and the check
+(`if (payload.sessionId) { ... }`) skips entirely when it's absent —
+nobody already logged in gets logged out by this change.
+
+### Left for its own pass: Two-Factor Authentication
+
+I'd planned to build this in the same round (reusing the existing
+Twilio SMS infrastructure from password reset), but given it directly
+touches login security, I chose not to rush it in alongside the
+Active Sessions work above — that already meant real changes to
+`requireAuth`, used by every request in the app. Deferring 2FA to its
+own focused pass so it gets the same level of care rather than being
+squeezed in at the end.
+
+## Two-Factor Authentication — built for real, using your existing phone numbers
+
+Reuses the exact same SMS infrastructure already proven out by
+password reset — same hashed-code/expiry/used pattern, same Twilio
+delivery path, same graceful "not configured yet" degradation if
+Twilio isn't set up on this deployment.
+
+### How it actually works
+
+1. **Enabling** (Settings → Security, Manage Agent/Super Admin only,
+   matching where the toggle already lived): requires a phone number on
+   file. Flipping the toggle sends a real code and shows an inline
+   confirm step — the flag only actually turns on once that code is
+   verified. This deliberately protects against enabling 2FA against a
+   wrong or stale phone number and getting locked out.
+2. **Logging in** with 2FA on: after a correct password, the server
+   sends a code and returns a **short-lived (5 minute) challenge
+   token** instead of real access — not a real session, and explicitly
+   rejected by every other endpoint if someone tried to use it as one.
+   The login screen shows a "Verify it's you" step; submitting the
+   right code exchanges the challenge token for a real access token
+   (with its own session ID, tying into the Active Sessions work from
+   last round).
+3. **Disabling**: immediate, with a confirmation prompt — no code
+   needed to turn off.
+
+### Safety checks done before shipping this
+
+- **Confirmed backward compatible**: `twoFactorEnabled` defaults to
+  `false` for every existing account, and the login endpoints only
+  branch into the 2FA flow `if (user.twoFactorEnabled)` — for anyone
+  who hasn't opted in, the login code path is byte-for-byte the same
+  as before this round.
+- **Confirmed the challenge token can't be used for anything else** —
+  `requireAuth` explicitly checks for and rejects
+  `payload.twoFactorPending` before any other check runs, on every
+  single authenticated endpoint in the app.
+- Ran a whole-document HTML structural balance check (not just a
+  regional one) before packaging, since this round touched the shared
+  auth screen used by every role.
+
+## Removed: 2FA-on-every-login (kept: real phone verification, but only where it already belonged)
+
+Per your clarification, this round undoes the "require a code on every
+login" feature from last round — that wasn't what you wanted, and it
+added friction you didn't ask for.
+
+### What's confirmed true now (both of your points)
+
+1. **Codes only ever go to the phone number already on the account.**
+   This was actually already true even in what got removed — the
+   server always looks up the phone from the account record itself
+   (`db.getUserByEmail(email).phone`), never from anything a client
+   could send. Verified this is still exactly how "Forgot password?"
+   works, since that's the only place a code gets sent now.
+2. **Verification only happens for "Forgot password," never on a
+   normal login.** Removed the toggle, the challenge-token flow, and
+   the login-time branching entirely. `/api/auth/login` and
+   `/api/auth/admin-login` are back to being simple password checks —
+   byte-for-byte the same behavior as before last round's 2FA work.
+
+### What actually got removed
+
+- The "Two-Factor Authentication" Settings toggle and its inline
+  confirm-code panel
+- The login screen's "Verify it's you" code-entry step
+- `POST /api/auth/verify-2fa`, `POST /api/admin/2fa/enable/request`,
+  `/enable/confirm`, `/disable`
+- The SMS-sending helper that only existed to support the above
+
+### What's harmless leftover (not cleaned up, deliberately)
+
+The `two_factor_codes` table, the `two_factor_enabled` column, and a
+few now-unused functions in `db.js`/`auth.js` are still there but
+completely inert — nothing calls them anymore. Left them in place
+rather than risk a database migration to remove them; unused columns
+and dead functions don't cause bugs, so this was the lower-risk choice.
+
+### What's unchanged (and is your real "2FA")
+
+"Forgot password?" on the login screen — already real, already sends
+a genuine SMS code to the account's phone, already required before a
+password can be reset. Nothing about that flow changed this round.

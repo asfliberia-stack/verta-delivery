@@ -1871,16 +1871,31 @@
                 </div>
             </div>
 
-            <!-- Settings — real account info, read-only for now -->
+            <!-- Settings — real, editable (name/phone) -->
             <div id="mp-view-settings" style="display:none;">
                 <div class="mobile-section" style="margin-top:0;">
                     <div class="mobile-section-header"><div class="mobile-section-title">Account Settings</div></div>
-                    <div style="background:white; border-radius:1rem; padding:1.25rem; border:1px solid var(--border); box-shadow:var(--shadow-sm);">
-                        <div style="margin-bottom:1rem;"><div style="font-size:0.75rem; color:var(--slate-light); font-weight:700; text-transform:uppercase; letter-spacing:0.03em;">Name</div><div id="mp-settings-name" style="font-weight:700; font-size:1rem;">—</div></div>
-                        <div style="margin-bottom:1rem;"><div style="font-size:0.75rem; color:var(--slate-light); font-weight:700; text-transform:uppercase; letter-spacing:0.03em;">Email</div><div id="mp-settings-email" style="font-weight:700; font-size:1rem;">—</div></div>
-                        <div><div style="font-size:0.75rem; color:var(--slate-light); font-weight:700; text-transform:uppercase; letter-spacing:0.03em;">Role</div><div style="font-weight:700; font-size:1rem;">Customer</div></div>
-                    </div>
-                    <p style="color:var(--slate-light); font-size:0.8125rem; margin-top:1rem;">Editing these details isn't built yet.</p>
+                    <form id="mp-settings-form" style="background:white; border-radius:1rem; padding:1.25rem; border:1px solid var(--border); box-shadow:var(--shadow-sm);">
+                        <div class="form-group">
+                            <label class="form-label">Name</label>
+                            <input type="text" class="form-input" id="mp-settings-name-input" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Phone</label>
+                            <input type="tel" class="form-input" id="mp-settings-phone-input" placeholder="e.g. 0881405696">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Email</label>
+                            <input type="email" class="form-input" id="mp-settings-email" disabled style="background:var(--bg-light); color:var(--slate-light);">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Role</label>
+                            <input type="text" class="form-input" value="Customer" disabled style="background:var(--bg-light); color:var(--slate-light);">
+                        </div>
+                        <div class="auth-error" id="mp-settings-error"></div>
+                        <button type="submit" class="btn-primary" id="mp-settings-save-btn" style="width:100%;">Save Changes</button>
+                    </form>
+                    <p style="color:var(--slate-light); font-size:0.8125rem; margin-top:1rem;">Email and password changes aren't part of this form yet — those need their own careful flow (uniqueness checks, verification).</p>
                 </div>
             </div>
 
@@ -2690,12 +2705,27 @@
             <!-- Settings — real account info, read-only for now -->
             <div id="vendor-view-settings" style="display:none;">
                 <div class="mobile-section-header" style="margin-top:0;"><div class="mobile-section-title">Store Settings</div></div>
-                <div style="background:white; border-radius:1rem; padding:1.25rem; border:1px solid var(--border); box-shadow:var(--shadow-sm);">
-                    <div style="margin-bottom:1rem;"><div style="font-size:0.75rem; color:var(--slate-light); font-weight:700; text-transform:uppercase; letter-spacing:0.03em;">Store Name</div><div id="vendor-settings-name" style="font-weight:700; font-size:1rem;">—</div></div>
-                    <div style="margin-bottom:1rem;"><div style="font-size:0.75rem; color:var(--slate-light); font-weight:700; text-transform:uppercase; letter-spacing:0.03em;">Email</div><div id="vendor-settings-email" style="font-weight:700; font-size:1rem;">—</div></div>
-                    <div><div style="font-size:0.75rem; color:var(--slate-light); font-weight:700; text-transform:uppercase; letter-spacing:0.03em;">Role</div><div style="font-weight:700; font-size:1rem;">Vendor</div></div>
-                </div>
-                <p style="color:var(--slate-light); font-size:0.8125rem; margin-top:1rem;">Editing these details isn't built yet.</p>
+                <form id="vendor-settings-form" style="background:white; border-radius:1rem; padding:1.25rem; border:1px solid var(--border); box-shadow:var(--shadow-sm);">
+                    <div class="form-group">
+                        <label class="form-label">Store Name</label>
+                        <input type="text" class="form-input" id="vendor-settings-name-input" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Phone</label>
+                        <input type="tel" class="form-input" id="vendor-settings-phone-input" placeholder="e.g. 0881405696">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Email</label>
+                        <input type="email" class="form-input" id="vendor-settings-email" disabled style="background:var(--bg-light); color:var(--slate-light);">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Role</label>
+                        <input type="text" class="form-input" value="Vendor" disabled style="background:var(--bg-light); color:var(--slate-light);">
+                    </div>
+                    <div class="auth-error" id="vendor-settings-error"></div>
+                    <button type="submit" class="btn-primary" id="vendor-settings-save-btn" style="width:100%;">Save Changes</button>
+                </form>
+                <p style="color:var(--slate-light); font-size:0.8125rem; margin-top:1rem;">Email and password changes aren't part of this form yet — those need their own careful flow (uniqueness checks, verification).</p>
             </div>
 
             <!-- Account -->
@@ -3195,27 +3225,24 @@
                             <button type="submit" class="btn-small btn-success">Update Password</button>
                         </form>
 
-                        <h4 class="settings-section-title">Two-Factor Authentication <span class="settings-badge-soon">Coming soon</span></h4>
-                        <p class="settings-hint">Adds a verification step (email code or authenticator app) beyond your password. Not built yet — the toggle below is disabled rather than pretending to protect your account.</p>
-                        <label class="settings-toggle-row settings-toggle-disabled">
-                            <span>Enable Two-Factor Authentication</span>
-                            <input type="checkbox" disabled>
-                        </label>
+                        <h4 class="settings-section-title">Account Recovery</h4>
+                        <p class="settings-hint">If you forget your password, "Forgot password?" on the login screen texts a real verification code to the phone number on this account before letting you set a new one — that's the account-security check this app actually has.</p>
 
                         <h4 class="settings-section-title">Login History</h4>
+                        <p class="settings-hint">"Logout All Devices" above ends every session at once. Use "Sign out this device" on any row below to end just that one specific session instead.</p>
                         <div style="overflow-x: auto;">
                             <table class="settings-table" id="login-history-table">
                                 <thead>
-                                    <tr><th>Date</th><th>Device</th><th>Browser</th><th>IP Address</th><th>Status</th></tr>
+                                    <tr><th>Date</th><th>Device</th><th>Browser</th><th>IP Address</th><th>Status</th><th>Session</th></tr>
                                 </thead>
                                 <tbody id="login-history-tbody">
-                                    <tr><td colspan="5" style="text-align:center; color: var(--slate-light);">Loading…</td></tr>
+                                    <tr><td colspan="6" style="text-align:center; color: var(--slate-light);">Loading…</td></tr>
                                 </tbody>
                             </table>
                         </div>
 
-                        <h4 class="settings-section-title">Active Sessions <span class="settings-badge-soon">Partial</span></h4>
-                        <p class="settings-hint">A full per-device session list isn't built yet, but you can immediately invalidate every login token below — useful if you think your account is logged in somewhere it shouldn't be.</p>
+                        <h4 class="settings-section-title">Active Sessions</h4>
+                        <p class="settings-hint">"Logout All Devices" below ends every session at once. For a single specific device instead, use "Sign out this device" on any row in the Login History table further down — that's the real per-device session list.</p>
                         <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
                             <button type="button" class="btn-small btn-secondary" id="logout-this-device-btn">Logout This Device</button>
                             <button type="button" class="btn-small btn-danger" id="logout-all-devices-btn">Logout All Devices</button>
@@ -4044,8 +4071,9 @@
             } else if (tab === 'orders') {
                 renderOrdersHome('mp-orders-grid');
             } else if (tab === 'settings' && currentUser) {
-                document.getElementById('mp-settings-name').textContent = currentUser.businessName || '—';
-                document.getElementById('mp-settings-email').textContent = currentUser.email || '—';
+                document.getElementById('mp-settings-name-input').value = currentUser.businessName || '';
+                document.getElementById('mp-settings-phone-input').value = currentUser.phone || '';
+                document.getElementById('mp-settings-email').value = currentUser.email || '';
             }
         }
 
@@ -5062,6 +5090,10 @@
                     showToast(err.message, 'error');
                 }
             });
+            document.getElementById('login-history-tbody').addEventListener('click', (e) => {
+                const btn = e.target.closest('.revoke-session-btn');
+                if (btn) revokeLoginSession(btn.dataset.id);
+            });
 
             // ---- Appearance ----
             document.getElementById('theme-option-light').addEventListener('click', () => setThemeChoice('light'));
@@ -5359,7 +5391,7 @@
             try {
                 const data = await apiFetch('/api/admin/login-history');
                 if (!data.history || data.history.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color: var(--slate-light);">No login history yet.</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color: var(--slate-light);">No login history yet.</td></tr>';
                     return;
                 }
                 tbody.innerHTML = data.history.map(row => `
@@ -5369,10 +5401,26 @@
                         <td>${row.browser || 'Unknown'}</td>
                         <td>${row.ipAddress || '—'}</td>
                         <td class="settings-status-success">Success</td>
+                        <td>
+                            ${row.revokedAt
+                                ? '<span style="color:var(--slate-light); font-weight:600;">Signed out</span>'
+                                : `<button type="button" class="btn-small btn-secondary revoke-session-btn" data-id="${row.id}">Sign out this device</button>`}
+                        </td>
                     </tr>
                 `).join('');
             } catch (err) {
-                tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color: #dc2626;">${err.message}</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color: #dc2626;">${err.message}</td></tr>`;
+            }
+        }
+
+        async function revokeLoginSession(sessionId) {
+            if (!confirm('Sign out this specific device/session? It will need to log in again there — every other device stays signed in.')) return;
+            try {
+                await apiFetch(`/api/admin/login-history/${sessionId}/revoke`, { method: 'POST' });
+                showToast('That session has been signed out.', 'success');
+                loadLoginHistory();
+            } catch (err) {
+                showToast(err.message, 'error');
             }
         }
 
@@ -7285,8 +7333,9 @@
             } else if (tab === 'customers') {
                 loadVendorCustomers();
             } else if (tab === 'settings' && currentUser) {
-                document.getElementById('vendor-settings-name').textContent = currentUser.businessName || '—';
-                document.getElementById('vendor-settings-email').textContent = currentUser.email || '—';
+                document.getElementById('vendor-settings-name-input').value = currentUser.businessName || '';
+                document.getElementById('vendor-settings-phone-input').value = currentUser.phone || '';
+                document.getElementById('vendor-settings-email').value = currentUser.email || '';
             }
         }
 
@@ -7307,6 +7356,37 @@
         }
 
         function wireVendorEvents() {
+            document.getElementById('vendor-settings-form').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const errorEl = document.getElementById('vendor-settings-error');
+                const btn = document.getElementById('vendor-settings-save-btn');
+                errorEl.style.display = 'none';
+                btn.disabled = true;
+                btn.textContent = 'Saving…';
+                try {
+                    const data = await apiFetch('/api/me/profile', {
+                        method: 'PUT',
+                        body: JSON.stringify({
+                            businessName: document.getElementById('vendor-settings-name-input').value,
+                            phone: document.getElementById('vendor-settings-phone-input').value,
+                        }),
+                    });
+                    currentUser.businessName = data.user.businessName;
+                    currentUser.phone = data.user.phone;
+                    document.getElementById('vendor-display-name').textContent = currentUser.businessName;
+                    document.getElementById('vendor-avatar').textContent = currentUser.businessName.charAt(0).toUpperCase();
+                    document.getElementById('vendor-store-name-hero').textContent = currentUser.businessName;
+                    document.getElementById('vendor-profile-name-desktop').textContent = currentUser.businessName;
+                    document.getElementById('vendor-profile-avatar-desktop').textContent = currentUser.businessName.charAt(0).toUpperCase();
+                    showToast('Store settings updated', 'success');
+                } catch (err) {
+                    errorEl.textContent = err.message;
+                    errorEl.style.display = 'block';
+                } finally {
+                    btn.disabled = false;
+                    btn.textContent = 'Save Changes';
+                }
+            });
             document.getElementById('exit-impersonation-btn').addEventListener('click', exitVendorImpersonation);
             document.getElementById('vendor-logout-btn').addEventListener('click', vendorLogoutOrExitImpersonation);
             document.getElementById('vendor-back-to-chooser-btn').addEventListener('click', vendorLogoutOrExitImpersonation);
@@ -7643,6 +7723,36 @@
         }
 
         function wireStorefrontEvents() {
+            document.getElementById('mp-settings-form').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const errorEl = document.getElementById('mp-settings-error');
+                const btn = document.getElementById('mp-settings-save-btn');
+                errorEl.style.display = 'none';
+                btn.disabled = true;
+                btn.textContent = 'Saving…';
+                try {
+                    const data = await apiFetch('/api/me/profile', {
+                        method: 'PUT',
+                        body: JSON.stringify({
+                            businessName: document.getElementById('mp-settings-name-input').value,
+                            phone: document.getElementById('mp-settings-phone-input').value,
+                        }),
+                    });
+                    currentUser.businessName = data.user.businessName;
+                    currentUser.phone = data.user.phone;
+                    document.getElementById('sender-display-name').textContent = currentUser.businessName;
+                    document.getElementById('sender-avatar').textContent = currentUser.businessName.charAt(0).toUpperCase();
+                    document.getElementById('desktop-profile-name').textContent = currentUser.businessName;
+                    document.getElementById('desktop-profile-avatar').textContent = currentUser.businessName.charAt(0).toUpperCase();
+                    showToast('Profile updated', 'success');
+                } catch (err) {
+                    errorEl.textContent = err.message;
+                    errorEl.style.display = 'block';
+                } finally {
+                    btn.disabled = false;
+                    btn.textContent = 'Save Changes';
+                }
+            });
             document.getElementById('storefront-search-input').addEventListener('input', debounce(renderStorefrontProducts, 200));
             document.getElementById('mp-category-grid').addEventListener('click', (e) => {
                 const btn = e.target.closest('.category-item');

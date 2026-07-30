@@ -117,6 +117,7 @@ function rowToLoginHistory(r) {
     device: r.device,
     browser: r.browser,
     createdAt: r.created_at,
+    revokedAt: r.revoked_at,
   };
 }
 
@@ -136,6 +137,7 @@ function rowToUser(r) {
     idDocumentDoc: r.id_document_doc,
     appliedAt: r.applied_at,
     createdAt: r.created_at,
+    twoFactorEnabled: r.two_factor_enabled,
   };
 }
 
@@ -166,6 +168,18 @@ const db = {
     const { rows } = await pool.query(
       'UPDATE users SET email = $1 WHERE id = $2 RETURNING *',
       [email.toLowerCase(), userId]
+    );
+    return rowToUser(rows[0]);
+  },
+
+  // Self-service profile edit (business/store name + phone) — any
+  // authenticated user updating their own account. Email/password stay
+  // on their existing separate, more careful flows (uniqueness checks,
+  // re-auth) rather than folding into this simpler update.
+  async updateUserProfile(userId, { businessName, phone }) {
+    const { rows } = await pool.query(
+      'UPDATE users SET business_name = $1, phone = $2 WHERE id = $3 RETURNING *',
+      [businessName, phone || null, userId]
     );
     return rowToUser(rows[0]);
   },
@@ -340,6 +354,37 @@ const db = {
     await pool.query('UPDATE password_resets SET used = true WHERE id = $1', [id]);
   },
 
+  // ---- Two-Factor Authentication (same pattern as password resets) ----
+
+  async createTwoFactorCode({ id, userId, codeHash, expiresAt }) {
+    await pool.query(
+      `INSERT INTO two_factor_codes (id, user_id, code_hash, expires_at) VALUES ($1, $2, $3, $4)`,
+      [id, userId, codeHash, expiresAt]
+    );
+  },
+
+  async getActiveTwoFactorCode(userId) {
+    const { rows } = await pool.query(
+      `SELECT * FROM two_factor_codes
+       WHERE user_id = $1 AND used = false AND expires_at > now()
+       ORDER BY created_at DESC LIMIT 1`,
+      [userId]
+    );
+    return rows[0] || null;
+  },
+
+  async markTwoFactorCodeUsed(id) {
+    await pool.query('UPDATE two_factor_codes SET used = true WHERE id = $1', [id]);
+  },
+
+  async setTwoFactorEnabled(userId, enabled) {
+    const { rows } = await pool.query(
+      'UPDATE users SET two_factor_enabled = $1 WHERE id = $2 RETURNING *',
+      [enabled, userId]
+    );
+    return rowToUser(rows[0]);
+  },
+
   // ---- Settings (Business Profile / Regional) -------------------------
   // Single row, id = 'business' always. Upsert on save.
 
@@ -398,6 +443,27 @@ const db = {
       [userId, limit]
     );
     return rows.map(rowToLoginHistory);
+  },
+
+  // Fail-open by design: if the session row doesn't exist (e.g. the
+  // history insert failed at login time — a real but rare case), this
+  // returns false rather than locking the person out. Login history is
+  // a convenience; it should never become a way to break login itself.
+  async isSessionRevoked(sessionId) {
+    if (!sessionId) return false;
+    const { rows } = await pool.query('SELECT revoked_at FROM login_history WHERE id = $1', [sessionId]);
+    if (!rows[0]) return false;
+    return rows[0].revoked_at !== null;
+  },
+
+  // Ownership-checked — a user (or admin viewing their own history)
+  // can only revoke sessions that are actually theirs.
+  async revokeSession(sessionId, userId) {
+    const { rows } = await pool.query(
+      'UPDATE login_history SET revoked_at = now() WHERE id = $1 AND user_id = $2 AND revoked_at IS NULL RETURNING id',
+      [sessionId, userId]
+    );
+    return rows.length > 0;
   },
 
   // ---- Full data export (Backup & Restore > Export Database) ----------

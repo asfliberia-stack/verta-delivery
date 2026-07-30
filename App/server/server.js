@@ -95,10 +95,15 @@ function parseUserAgent(ua) {
 async function recordLoginHistory(req, userId) {
   try {
     const { device, browser } = parseUserAgent(req.headers['user-agent']);
-    await db.recordLogin({ id: crypto.randomUUID(), userId, ipAddress: req.ip, device, browser });
+    const sessionId = crypto.randomUUID();
+    await db.recordLogin({ id: sessionId, userId, ipAddress: req.ip, device, browser });
+    return sessionId;
   } catch (err) {
-    // Login history is a convenience, never a reason to fail a login.
+    // Login history is a convenience, never a reason to fail a login —
+    // a null sessionId just means this token won't support individual
+    // revocation (falls back to "Logout All Devices" only).
     console.error('recordLoginHistory failed', err);
+    return null;
   }
 }
 
@@ -375,9 +380,9 @@ app.post('/api/auth/register', authLimiter, async (req, res) => {
       passwordHash,
       role: 'sender', // public registration always creates senders; admins are seeded (see below)
     });
-    const token = signToken(user);
-    await recordLoginHistory(req, user.id);
-    res.json({ token, user: { id: user.id, businessName: user.businessName, email: user.email, role: user.role, approvalStatus: user.approvalStatus } });
+    const sessionId = await recordLoginHistory(req, user.id);
+    const token = signToken(user, sessionId);
+    res.json({ token, user: { id: user.id, businessName: user.businessName, email: user.email, phone: user.phone, role: user.role, approvalStatus: user.approvalStatus, twoFactorEnabled: user.twoFactorEnabled } });
   } catch (err) {
     console.error('register failed', err);
     res.status(500).json({ error: 'Registration failed' });
@@ -435,10 +440,11 @@ app.post('/api/auth/register-vendor', authLimiter, async (req, res) => {
     // one is wired in, this is the one place that needs to change.
     console.log(`[vendor-application] New vendor application from "${businessName}" (${email}) — would notify onlib231@gmail.com if an email service were configured. Review via the database (users table, approval_status='pending') until the Super Admin approval UI is built.`);
 
-    const token = signToken(user);
+    const sessionId = await recordLoginHistory(req, user.id);
+    const token = signToken(user, sessionId);
     res.json({
       token,
-      user: { id: user.id, businessName: user.businessName, email: user.email, role: user.role, approvalStatus: user.approvalStatus },
+      user: { id: user.id, businessName: user.businessName, email: user.email, phone: user.phone, role: user.role, approvalStatus: user.approvalStatus, twoFactorEnabled: user.twoFactorEnabled },
     });
   } catch (err) {
     console.error('register-vendor failed', err);
@@ -454,9 +460,10 @@ app.post('/api/auth/login', authLimiter, async (req, res) => {
     if (!user) return res.status(401).json({ error: 'Invalid email or password' });
     const match = await comparePassword(password, user.passwordHash);
     if (!match) return res.status(401).json({ error: 'Invalid email or password' });
-    const token = signToken(user);
-    await recordLoginHistory(req, user.id);
-    res.json({ token, user: { id: user.id, businessName: user.businessName, email: user.email, role: user.role, approvalStatus: user.approvalStatus } });
+
+    const sessionId = await recordLoginHistory(req, user.id);
+    const token = signToken(user, sessionId);
+    res.json({ token, user: { id: user.id, businessName: user.businessName, email: user.email, phone: user.phone, role: user.role, approvalStatus: user.approvalStatus } });
   } catch (err) {
     console.error('login failed', err);
     res.status(500).json({ error: 'Login failed' });
@@ -530,8 +537,8 @@ app.post('/api/auth/reset-password', authLimiter, async (req, res) => {
     // phone ownership via the code, which is a stronger check than a
     // typed password alone.
     const freshUser = await db.getUserById(user.id);
-    const token = signToken(freshUser);
-    await recordLoginHistory(req, freshUser.id);
+    const sessionId = await recordLoginHistory(req, freshUser.id);
+    const token = signToken(freshUser, sessionId);
     res.json({ ok: true, token, user: { id: freshUser.id, businessName: freshUser.businessName, email: freshUser.email, role: freshUser.role } });
   } catch (err) {
     console.error('reset-password failed', err);
@@ -551,8 +558,9 @@ app.post('/api/auth/admin-login', authLimiter, async (req, res) => {
     if (!admin) return res.status(500).json({ error: 'Admin account is not set up yet' });
     const match = await comparePassword(password, admin.passwordHash);
     if (!match) return res.status(401).json({ error: 'Incorrect password' });
-    const token = signToken(admin);
-    await recordLoginHistory(req, admin.id);
+
+    const sessionId = await recordLoginHistory(req, admin.id);
+    const token = signToken(admin, sessionId);
     res.json({ token, user: { id: admin.id, businessName: admin.businessName, email: admin.email, role: admin.role } });
   } catch (err) {
     console.error('admin-login failed', err);
@@ -563,7 +571,24 @@ app.post('/api/auth/admin-login', authLimiter, async (req, res) => {
 app.get('/api/me', requireAuth, async (req, res) => {
   const user = await db.getUserById(req.user.id);
   if (!user) return res.status(401).json({ error: 'Account no longer exists' });
-  res.json({ user: { id: user.id, businessName: user.businessName, email: user.email, role: user.role, approvalStatus: user.approvalStatus } });
+  res.json({ user: { id: user.id, businessName: user.businessName, email: user.email, phone: user.phone, role: user.role, approvalStatus: user.approvalStatus, twoFactorEnabled: user.twoFactorEnabled } });
+});
+
+// Self-service profile edit — any authenticated user updating their own
+// name/phone (customer, vendor, admin, or super admin). Email and
+// password stay on their existing separate flows.
+app.put('/api/me/profile', requireAuth, async (req, res) => {
+  const { businessName, phone } = req.body || {};
+  if (!businessName || !businessName.trim()) {
+    return res.status(400).json({ error: 'Name cannot be empty' });
+  }
+  try {
+    const updated = await db.updateUserProfile(req.user.id, { businessName: businessName.trim(), phone: phone ? phone.trim() : null });
+    res.json({ user: { id: updated.id, businessName: updated.businessName, email: updated.email, phone: updated.phone, role: updated.role } });
+  } catch (err) {
+    console.error('PUT /api/me/profile failed', err);
+    res.status(500).json({ error: 'Failed to update profile' });
+  }
 });
 
 // Role-scoped bootstrap load: senders get only their own orders; admins get
@@ -665,6 +690,21 @@ app.get('/api/admin/login-history', requireAuth, requireAdmin, async (req, res) 
   } catch (err) {
     console.error('GET /api/admin/login-history failed', err);
     res.status(500).json({ error: 'Failed to load login history' });
+  }
+});
+
+// Real per-device revoke — ends exactly one session (identified by its
+// login_history row id), unlike "Logout All Devices" below which ends
+// every session at once. Ownership-checked in db.revokeSession, so this
+// can only revoke a session that's actually yours.
+app.post('/api/admin/login-history/:id/revoke', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const revoked = await db.revokeSession(req.params.id, req.user.id);
+    if (!revoked) return res.status(404).json({ error: 'Session not found, not yours, or already signed out' });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('POST /api/admin/login-history/:id/revoke failed', err);
+    res.status(500).json({ error: 'Failed to revoke session' });
   }
 });
 

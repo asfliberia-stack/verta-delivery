@@ -86,6 +86,15 @@ CREATE TABLE IF NOT EXISTS login_history (
 );
 CREATE INDEX IF NOT EXISTS idx_login_history_user_id ON login_history (user_id, created_at DESC);
 
+-- Real per-device "Active Sessions" revocation. Each login_history row
+-- IS the session — its id gets embedded in the JWT issued at that
+-- login, and requireAuth checks revoked_at on every request. NULL
+-- means still active; set means that one specific token now rejects
+-- regardless of its expiry, without affecting any other device's
+-- session (unlike "Logout All Devices", which bumps token_version and
+-- invalidates everything at once).
+ALTER TABLE login_history ADD COLUMN IF NOT EXISTS revoked_at TIMESTAMPTZ;
+
 -- Password reset codes, sent via SMS/WhatsApp (server/notify.js) to the
 -- phone number a sender registered with. Each code is single-use and
 -- expires — old/used rows are harmless to keep around (no cleanup job
@@ -100,6 +109,23 @@ CREATE TABLE IF NOT EXISTS password_resets (
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS idx_password_resets_user_id ON password_resets (user_id);
+
+-- Two-Factor Authentication (Manage Agent / Super Admin only, matching
+-- where the toggle lives in Settings). Same hashed-code/expiry/used
+-- pattern as password_resets above, sent via the same SMS
+-- infrastructure (server/notify.js) — requires a phone number on file,
+-- same real requirement as password reset already has.
+ALTER TABLE users ADD COLUMN IF NOT EXISTS two_factor_enabled BOOLEAN NOT NULL DEFAULT false;
+
+CREATE TABLE IF NOT EXISTS two_factor_codes (
+    id         TEXT PRIMARY KEY,
+    user_id    TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    code_hash  TEXT NOT NULL,
+    expires_at TIMESTAMPTZ NOT NULL,
+    used       BOOLEAN NOT NULL DEFAULT false,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_two_factor_codes_user_id ON two_factor_codes (user_id);
 
 CREATE TABLE IF NOT EXISTS orders (
     id               TEXT PRIMARY KEY,
