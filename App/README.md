@@ -2350,3 +2350,25 @@ squeezed it into one narrow auto-sized grid column instead of using
 the full available width. Added `grid-column: 1 / -1` to the table's
 wrapper so it correctly spans the full row regardless of that parent's
 column calculation.
+
+## Fixed: switching between Delivery and Marketplace logged you out
+
+Real bug, root cause found: `chooseAppMode()` — the function that runs
+when you click the Delivery or Marketplace card on the "Back to
+service selector" screen — always hardcoded `'guest'` mode, regardless
+of whether you were actually logged in. So a logged-in customer
+switching from Marketplace to Delivery (or back) would land on the
+guest/login-prompt view every time, even though their session was
+still perfectly valid.
+
+Fixed to check the real session state first: if you're logged in as a
+customer, switching apps now keeps you logged in and takes you
+straight to your own dashboard on the other side — same account, same
+session, just a different view of it. Only an actual guest (or another
+role that doesn't belong on this screen) falls back to the guest view.
+
+Checked the rest of the switching paths too, to make sure this was the
+only place with the bug: the "Switch"/"Back to service selector"
+buttons inside both the Delivery and Marketplace headers already only
+call `showAppChooser()` and never touch the session — those were
+already correct. This was the one actual gap.

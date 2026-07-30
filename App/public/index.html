@@ -4604,11 +4604,17 @@
             }
         }
 
-        // A guest picking a mode from the Chooser (or switching) — no
-        // account yet either way.
+        // A logged-in customer switching between Delivery and Marketplace
+        // via the Chooser should stay logged in — they're the same
+        // account either way, not two separate sessions. Only an actual
+        // guest (no currentUser, or some other role like vendor/admin
+        // that doesn't belong on this screen at all) falls back to the
+        // guest view.
         async function chooseAppMode(mode) {
-            if (mode === 'delivery') await enterDeliveryMode('guest');
-            else await enterMarketplaceMode('guest');
+            const isLoggedInCustomer = currentUser && currentUser.role === 'sender';
+            const headerMode = isLoggedInCustomer ? 'customer' : 'guest';
+            if (mode === 'delivery') await enterDeliveryMode(headerMode);
+            else await enterMarketplaceMode(headerMode);
         }
 
         function wireMarketplaceRoutingEvents() {
