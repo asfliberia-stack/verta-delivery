@@ -2423,3 +2423,19 @@ checked those specifically, and this change is simply redundant
 (harmless, identical values) for them, while genuinely fixing every
 other modal — including a version of this same bug in those very
 modals themselves, since their headers weren't sticky before either.
+
+## Help & Support contact info — clarified this is real, live-editable data
+
+Updated the code's fallback default (used only if the setting has
+never been configured) to `onlib231@gmail.com` / `+231880465612`, for
+consistency on any future fresh deployment.
+
+**Important**: this alone does not change what's showing on your
+currently-deployed app. The "Still need help?" email/phone comes from
+the real "Business Email" / "Business Phone" fields in Admin Settings
+→ Business Profile — already-configured, live data in your database,
+which takes priority over the code's fallback default regardless of
+what that default is. To actually update what customers see, go to
+Settings → Business Profile in the admin dashboard, update those two
+fields to the new values, and Save — that's the real, correct way to
+change this (and it already works).
