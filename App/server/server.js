@@ -382,7 +382,7 @@ app.post('/api/auth/register', authLimiter, async (req, res) => {
     });
     const sessionId = await recordLoginHistory(req, user.id);
     const token = signToken(user, sessionId);
-    res.json({ token, user: { id: user.id, businessName: user.businessName, email: user.email, phone: user.phone, role: user.role, approvalStatus: user.approvalStatus, twoFactorEnabled: user.twoFactorEnabled } });
+    res.json({ token, user: { id: user.id, businessName: user.businessName, email: user.email, phone: user.phone, role: user.role, approvalStatus: user.approvalStatus } });
   } catch (err) {
     console.error('register failed', err);
     res.status(500).json({ error: 'Registration failed' });
@@ -444,7 +444,7 @@ app.post('/api/auth/register-vendor', authLimiter, async (req, res) => {
     const token = signToken(user, sessionId);
     res.json({
       token,
-      user: { id: user.id, businessName: user.businessName, email: user.email, phone: user.phone, role: user.role, approvalStatus: user.approvalStatus, twoFactorEnabled: user.twoFactorEnabled },
+      user: { id: user.id, businessName: user.businessName, email: user.email, phone: user.phone, role: user.role, approvalStatus: user.approvalStatus },
     });
   } catch (err) {
     console.error('register-vendor failed', err);
@@ -571,7 +571,7 @@ app.post('/api/auth/admin-login', authLimiter, async (req, res) => {
 app.get('/api/me', requireAuth, async (req, res) => {
   const user = await db.getUserById(req.user.id);
   if (!user) return res.status(401).json({ error: 'Account no longer exists' });
-  res.json({ user: { id: user.id, businessName: user.businessName, email: user.email, phone: user.phone, role: user.role, approvalStatus: user.approvalStatus, twoFactorEnabled: user.twoFactorEnabled } });
+  res.json({ user: { id: user.id, businessName: user.businessName, email: user.email, phone: user.phone, role: user.role, approvalStatus: user.approvalStatus } });
 });
 
 // Self-service profile edit — any authenticated user updating their own

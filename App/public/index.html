@@ -572,6 +572,9 @@
         .close-btn:hover { background: #e2e8f0; color: var(--slate); transform: rotate(90deg); }
 
         .form-group { margin-bottom: 1.5rem; }
+        .phone-input-row { display: flex; gap: 0.5rem; }
+        .phone-input-row .country-code-select { flex: 0 0 128px; }
+        .phone-input-row input[type="tel"] { flex: 1; min-width: 0; }
         .form-label { display: block; margin-bottom: 0.625rem; font-weight: 700; color: var(--slate); font-size: 0.9375rem; }
         .form-input {
             width: 100%; padding: 0.875rem 1rem; border: 2px solid var(--border); border-radius: 0.875rem;
@@ -1593,7 +1596,10 @@
                 </div>
                 <div class="form-group">
                     <label class="form-label">Phone Number</label>
-                    <input type="tel" class="form-input" id="register-phone" placeholder="e.g. 0881405696" required>
+                    <div class="phone-input-row">
+                        <select class="form-input country-code-select" id="register-phone-country"></select>
+                        <input type="tel" class="form-input" id="register-phone" placeholder="881405696" required>
+                    </div>
                 </div>
                 <div class="form-group">
                     <label class="form-label">Password</label>
@@ -1882,7 +1888,10 @@
                         </div>
                         <div class="form-group">
                             <label class="form-label">Phone</label>
-                            <input type="tel" class="form-input" id="mp-settings-phone-input" placeholder="e.g. 0881405696">
+                            <div class="phone-input-row">
+                                <select class="form-input country-code-select" id="mp-settings-phone-country"></select>
+                                <input type="tel" class="form-input" id="mp-settings-phone-input" placeholder="881405696">
+                            </div>
                         </div>
                         <div class="form-group">
                             <label class="form-label">Email</label>
@@ -2712,7 +2721,10 @@
                     </div>
                     <div class="form-group">
                         <label class="form-label">Phone</label>
-                        <input type="tel" class="form-input" id="vendor-settings-phone-input" placeholder="e.g. 0881405696">
+                        <div class="phone-input-row">
+                            <select class="form-input country-code-select" id="vendor-settings-phone-country"></select>
+                            <input type="tel" class="form-input" id="vendor-settings-phone-input" placeholder="881405696">
+                        </div>
                     </div>
                     <div class="form-group">
                         <label class="form-label">Email</label>
@@ -3696,6 +3708,167 @@
             },
         };
 
+        // Country calling codes — used by every phone input in the app so
+        // numbers get stored in a real, consistent E.164-ish format
+        // (e.g. "+231881405696"), which Twilio needs for reliable SMS
+        // delivery. Liberia listed first as the default, matching this
+        // business's home market; the rest are grouped by region.
+        const COUNTRY_DIAL_CODES = [
+            { name: 'Liberia', code: '+231' },
+            // West Africa
+            { name: 'Nigeria', code: '+234' },
+            { name: 'Ghana', code: '+233' },
+            { name: 'Sierra Leone', code: '+232' },
+            { name: 'Guinea', code: '+224' },
+            { name: "Côte d'Ivoire", code: '+225' },
+            { name: 'Senegal', code: '+221' },
+            { name: 'Mali', code: '+223' },
+            { name: 'Burkina Faso', code: '+226' },
+            { name: 'Togo', code: '+228' },
+            { name: 'Benin', code: '+229' },
+            { name: 'Niger', code: '+227' },
+            { name: 'The Gambia', code: '+220' },
+            { name: 'Guinea-Bissau', code: '+245' },
+            { name: 'Cape Verde', code: '+238' },
+            { name: 'Mauritania', code: '+222' },
+            // Central & East Africa
+            { name: 'Cameroon', code: '+237' },
+            { name: 'Gabon', code: '+241' },
+            { name: 'Congo (Rep.)', code: '+242' },
+            { name: 'Congo (DR)', code: '+243' },
+            { name: 'Chad', code: '+235' },
+            { name: 'Central African Republic', code: '+236' },
+            { name: 'Equatorial Guinea', code: '+240' },
+            { name: 'Kenya', code: '+254' },
+            { name: 'Uganda', code: '+256' },
+            { name: 'Tanzania', code: '+255' },
+            { name: 'Rwanda', code: '+250' },
+            { name: 'Burundi', code: '+257' },
+            { name: 'Ethiopia', code: '+251' },
+            { name: 'Eritrea', code: '+291' },
+            { name: 'Djibouti', code: '+253' },
+            { name: 'Somalia', code: '+252' },
+            { name: 'South Sudan', code: '+211' },
+            // North Africa
+            { name: 'Egypt', code: '+20' },
+            { name: 'Libya', code: '+218' },
+            { name: 'Tunisia', code: '+216' },
+            { name: 'Algeria', code: '+213' },
+            { name: 'Morocco', code: '+212' },
+            { name: 'Sudan', code: '+249' },
+            // Southern Africa
+            { name: 'South Africa', code: '+27' },
+            { name: 'Zambia', code: '+260' },
+            { name: 'Zimbabwe', code: '+263' },
+            { name: 'Malawi', code: '+265' },
+            { name: 'Mozambique', code: '+258' },
+            { name: 'Angola', code: '+244' },
+            { name: 'Namibia', code: '+264' },
+            { name: 'Botswana', code: '+267' },
+            { name: 'Lesotho', code: '+266' },
+            { name: 'Eswatini', code: '+268' },
+            { name: 'Madagascar', code: '+261' },
+            { name: 'Mauritius', code: '+230' },
+            { name: 'Seychelles', code: '+248' },
+            // Europe
+            { name: 'United Kingdom', code: '+44' },
+            { name: 'Ireland', code: '+353' },
+            { name: 'France', code: '+33' },
+            { name: 'Germany', code: '+49' },
+            { name: 'Spain', code: '+34' },
+            { name: 'Portugal', code: '+351' },
+            { name: 'Italy', code: '+39' },
+            { name: 'Netherlands', code: '+31' },
+            { name: 'Belgium', code: '+32' },
+            { name: 'Switzerland', code: '+41' },
+            { name: 'Austria', code: '+43' },
+            { name: 'Sweden', code: '+46' },
+            { name: 'Norway', code: '+47' },
+            { name: 'Denmark', code: '+45' },
+            { name: 'Finland', code: '+358' },
+            { name: 'Poland', code: '+48' },
+            { name: 'Russia', code: '+7' },
+            { name: 'Ukraine', code: '+380' },
+            // Americas
+            { name: 'United States / Canada', code: '+1' },
+            { name: 'Brazil', code: '+55' },
+            { name: 'Mexico', code: '+52' },
+            { name: 'Argentina', code: '+54' },
+            { name: 'Colombia', code: '+57' },
+            { name: 'Chile', code: '+56' },
+            { name: 'Peru', code: '+51' },
+            { name: 'Venezuela', code: '+58' },
+            { name: 'Ecuador', code: '+593' },
+            // Middle East
+            { name: 'Saudi Arabia', code: '+966' },
+            { name: 'United Arab Emirates', code: '+971' },
+            { name: 'Qatar', code: '+974' },
+            { name: 'Kuwait', code: '+965' },
+            { name: 'Bahrain', code: '+973' },
+            { name: 'Oman', code: '+968' },
+            { name: 'Jordan', code: '+962' },
+            { name: 'Lebanon', code: '+961' },
+            { name: 'Israel', code: '+972' },
+            { name: 'Turkey', code: '+90' },
+            { name: 'Iraq', code: '+964' },
+            // Asia-Pacific
+            { name: 'China', code: '+86' },
+            { name: 'Japan', code: '+81' },
+            { name: 'South Korea', code: '+82' },
+            { name: 'India', code: '+91' },
+            { name: 'Pakistan', code: '+92' },
+            { name: 'Bangladesh', code: '+880' },
+            { name: 'Philippines', code: '+63' },
+            { name: 'Indonesia', code: '+62' },
+            { name: 'Malaysia', code: '+60' },
+            { name: 'Singapore', code: '+65' },
+            { name: 'Thailand', code: '+66' },
+            { name: 'Vietnam', code: '+84' },
+            { name: 'Australia', code: '+61' },
+            { name: 'New Zealand', code: '+64' },
+        ];
+
+        function populateCountryCodeSelects() {
+            const optionsHtml = COUNTRY_DIAL_CODES.map(c => `<option value="${c.code}">${c.name} (${c.code})</option>`).join('');
+            document.querySelectorAll('.country-code-select').forEach(select => {
+                select.innerHTML = optionsHtml;
+                select.value = '+231'; // Liberia default
+            });
+        }
+
+        // Combines a country-code <select> + phone <input> into one E.164-ish
+        // string (e.g. "+231881405696"), stripping any leading zero from
+        // the local number (common in local-format entry like "0881405696").
+        function combinePhoneNumber(countrySelectId, numberInputId) {
+            const code = document.getElementById(countrySelectId).value;
+            const local = document.getElementById(numberInputId).value.trim().replace(/^0+/, '').replace(/\D/g, '');
+            if (!local) return '';
+            return code + local;
+        }
+
+        // Splits a stored phone number back into country-select + local
+        // number when populating an edit form. Best-effort: numbers saved
+        // before this feature existed may have no recognizable country
+        // code, in which case this just leaves the country at the default
+        // and puts the whole thing in the number field.
+        function splitPhoneNumber(fullNumber, countrySelectId, numberInputId) {
+            const countrySelect = document.getElementById(countrySelectId);
+            const numberInput = document.getElementById(numberInputId);
+            if (!fullNumber) { countrySelect.value = '+231'; numberInput.value = ''; return; }
+            if (!fullNumber.startsWith('+')) { countrySelect.value = '+231'; numberInput.value = fullNumber; return; }
+            // Match the longest dial code first (e.g. "+1" vs "+256" — a
+            // shorter code could otherwise wrongly match as a prefix).
+            const sorted = [...COUNTRY_DIAL_CODES].sort((a, b) => b.code.length - a.code.length);
+            const match = sorted.find(c => fullNumber.startsWith(c.code));
+            if (match) {
+                countrySelect.value = match.code;
+                numberInput.value = fullNumber.slice(match.code.length);
+            } else {
+                countrySelect.value = '+231';
+                numberInput.value = fullNumber;
+            }
+        }
+
         const AUTH_STORAGE_KEY = 'verta_auth';
         let authToken = null;
         let currentUser = null; // { id, businessName, email, role }
@@ -3925,6 +4098,7 @@
         // Bootstrap: figure out logged-in state on page load
         // ============================================================
         document.addEventListener('DOMContentLoaded', async () => {
+            populateCountryCodeSelects();
             wireAuthScreenEvents();
             wireAppEvents();
             wireSidebarToggle();
@@ -4072,7 +4246,7 @@
                 renderOrdersHome('mp-orders-grid');
             } else if (tab === 'settings' && currentUser) {
                 document.getElementById('mp-settings-name-input').value = currentUser.businessName || '';
-                document.getElementById('mp-settings-phone-input').value = currentUser.phone || '';
+                splitPhoneNumber(currentUser.phone, 'mp-settings-phone-country', 'mp-settings-phone-input');
                 document.getElementById('mp-settings-email').value = currentUser.email || '';
             }
         }
@@ -4584,7 +4758,7 @@
                 errorEl.style.display = 'none';
 
                 const email = document.getElementById('register-email').value;
-                const phone = document.getElementById('register-phone').value.trim();
+                const phone = combinePhoneNumber('register-phone-country', 'register-phone');
                 const password = document.getElementById('register-password').value;
                 const confirmPassword = document.getElementById('register-confirm-password').value;
 
@@ -7334,7 +7508,7 @@
                 loadVendorCustomers();
             } else if (tab === 'settings' && currentUser) {
                 document.getElementById('vendor-settings-name-input').value = currentUser.businessName || '';
-                document.getElementById('vendor-settings-phone-input').value = currentUser.phone || '';
+                splitPhoneNumber(currentUser.phone, 'vendor-settings-phone-country', 'vendor-settings-phone-input');
                 document.getElementById('vendor-settings-email').value = currentUser.email || '';
             }
         }
@@ -7368,7 +7542,7 @@
                         method: 'PUT',
                         body: JSON.stringify({
                             businessName: document.getElementById('vendor-settings-name-input').value,
-                            phone: document.getElementById('vendor-settings-phone-input').value,
+                            phone: combinePhoneNumber('vendor-settings-phone-country', 'vendor-settings-phone-input'),
                         }),
                     });
                     currentUser.businessName = data.user.businessName;
@@ -7735,7 +7909,7 @@
                         method: 'PUT',
                         body: JSON.stringify({
                             businessName: document.getElementById('mp-settings-name-input').value,
-                            phone: document.getElementById('mp-settings-phone-input').value,
+                            phone: combinePhoneNumber('mp-settings-phone-country', 'mp-settings-phone-input'),
                         }),
                     });
                     currentUser.businessName = data.user.businessName;

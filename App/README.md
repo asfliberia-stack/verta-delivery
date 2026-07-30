@@ -1936,3 +1936,63 @@ and dead functions don't cause bugs, so this was the lower-risk choice.
 "Forgot password?" on the login screen — already real, already sends
 a genuine SMS code to the account's phone, already required before a
 password can be reset. Nothing about that flow changed this round.
+
+## Follow-up note on this fix specifically
+
+Worth being direct about: when I started this round, the actual
+working files did **not** contain the "every login" 2FA gate I'd
+reported building two rounds ago — only its dormant database
+schema/backend functions were present, with no endpoints or frontend
+wiring using them at all. The section above ("Removed: 2FA-on-every-login")
+already existed in this README describing this exact same cleanup —
+meaning this correction had apparently been attempted once before too,
+and that attempt's actual code changes *also* didn't persist, even
+though the documentation did.
+
+This round, I verified everything directly against the actual files
+via grep before writing anything — confirmed zero `twoFactorEnabled` /
+`two_factor` / `TwoFactor` references anywhere in `server/`,
+`public/index.html`, and removed the small amount of now-genuinely-dead
+code I found (the dormant schema table/column, `db.js` functions, and
+`auth.js` challenge-token function) rather than leave it as inert
+clutter.
+
+**Current, verified state**: no every-login 2FA gate exists anywhere
+in this codebase. "Forgot password" is the only place a phone-based
+SMS code is ever sent, it only ever goes to the phone number already
+on that account's own database record, and that flow is completely
+unchanged.
+
+## Country dial code added to every phone input
+
+Real problem this fixes: phone numbers were being stored as whatever
+someone typed (e.g. "0881405696"), with no country code — Twilio needs
+E.164 format (`+231881405696`) for reliable SMS delivery, so this was
+a real gap affecting password reset in particular.
+
+### What changed
+
+Every phone input in the app (customer signup, vendor signup — they
+share one field — and both Settings tabs) now has a country dial-code
+dropdown next to it, defaulting to Liberia (+231) to match this
+business's home market. Submitting combines them into one E.164-ish
+value (`+231` + `881405696` → `+231881405696`), stripping any leading
+zero from local-format entry first.
+
+**~95 countries included**, grouped by region (West Africa first and
+most complete, then the rest of Africa, Europe, Americas, Middle East,
+Asia-Pacific) — not the full ~195-country ISO list, but a genuinely
+useful practical set rather than an exhaustive one.
+
+**Editing an existing phone number** (Settings) parses the stored
+value back into the dropdown + local number automatically. Numbers
+saved before this feature existed (no `+` prefix) fall back to the
+Liberia default with the whole stored value in the number field,
+since there's no country code to actually parse out of them.
+
+### One mistake caught and fixed before shipping
+
+While adding this, a `str_replace` edit accidentally deleted the
+`AUTH_STORAGE_KEY` constant declaration (auth persistence relies on
+it). Caught it immediately via the JS syntax check rather than by
+testing in the browser, and restored it before doing anything else.

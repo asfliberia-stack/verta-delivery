@@ -60,22 +60,6 @@ function signImpersonationToken(targetUser, superAdminUser) {
   );
 }
 
-// Two-Factor Authentication challenge token — issued after a correct
-// password when 2FA is enabled, proving "this request already knows
-// the password" without granting any real access. Extremely short
-// expiry (5 minutes, matching the SMS code's own expiry) and a
-// dedicated `twoFactorPending: true` marker so requireAuth and every
-// other real endpoint reject it outright — it's only ever accepted by
-// POST /api/auth/verify-2fa, which exchanges it for a real token.
-const TWO_FACTOR_CHALLENGE_TTL = '5m';
-function signTwoFactorChallengeToken(user) {
-  return jwt.sign(
-    { id: user.id, twoFactorPending: true },
-    JWT_SECRET,
-    { expiresIn: TWO_FACTOR_CHALLENGE_TTL }
-  );
-}
-
 function verifyToken(token) {
   return jwt.verify(token, JWT_SECRET); // throws on invalid/expired
 }
@@ -98,9 +82,6 @@ async function requireAuth(req, res, next) {
   if (!token) return res.status(401).json({ error: 'Missing token' });
   try {
     const payload = verifyToken(token);
-    if (payload.twoFactorPending) {
-      return res.status(401).json({ error: 'Two-factor verification required — this token cannot access anything else' });
-    }
     const stillValid = await checkTokenVersion(payload);
     if (!stillValid) return res.status(401).json({ error: 'Session expired — please log in again' });
     if (payload.sessionId) {
@@ -171,7 +152,6 @@ module.exports = {
   comparePassword,
   signToken,
   signImpersonationToken,
-  signTwoFactorChallengeToken,
   verifyToken,
   requireAuth,
   requireAdmin,

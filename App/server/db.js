@@ -137,7 +137,6 @@ function rowToUser(r) {
     idDocumentDoc: r.id_document_doc,
     appliedAt: r.applied_at,
     createdAt: r.created_at,
-    twoFactorEnabled: r.two_factor_enabled,
   };
 }
 
@@ -352,37 +351,6 @@ const db = {
 
   async markPasswordResetUsed(id) {
     await pool.query('UPDATE password_resets SET used = true WHERE id = $1', [id]);
-  },
-
-  // ---- Two-Factor Authentication (same pattern as password resets) ----
-
-  async createTwoFactorCode({ id, userId, codeHash, expiresAt }) {
-    await pool.query(
-      `INSERT INTO two_factor_codes (id, user_id, code_hash, expires_at) VALUES ($1, $2, $3, $4)`,
-      [id, userId, codeHash, expiresAt]
-    );
-  },
-
-  async getActiveTwoFactorCode(userId) {
-    const { rows } = await pool.query(
-      `SELECT * FROM two_factor_codes
-       WHERE user_id = $1 AND used = false AND expires_at > now()
-       ORDER BY created_at DESC LIMIT 1`,
-      [userId]
-    );
-    return rows[0] || null;
-  },
-
-  async markTwoFactorCodeUsed(id) {
-    await pool.query('UPDATE two_factor_codes SET used = true WHERE id = $1', [id]);
-  },
-
-  async setTwoFactorEnabled(userId, enabled) {
-    const { rows } = await pool.query(
-      'UPDATE users SET two_factor_enabled = $1 WHERE id = $2 RETURNING *',
-      [enabled, userId]
-    );
-    return rowToUser(rows[0]);
   },
 
   // ---- Settings (Business Profile / Regional) -------------------------
