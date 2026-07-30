@@ -2241,3 +2241,68 @@ frontend UI. Neither fits your exact 4-value `type` enum, so I didn't
 force them into the leads table — but if you want a real "Get
 Directions" and "Follow Store" feature, most of the backend is already
 sitting there ready to be finished.
+
+## Store Physical Address — added to Vendor Settings, real auto-fill at checkout
+
+The backend for this (schema column, `updateUserProfile`, `/api/me/profile`,
+even the storefront query joining it into every product listing)
+already existed from earlier work — this round was mostly about
+finishing the frontend and fixing one real bug found along the way.
+
+### What's new
+
+- Real "Store Physical Address" field in Vendor Settings, placed right
+  after Phone, with the exact placeholder and subtext requested.
+  Loads the vendor's real saved value on mount, included in the save
+  payload, updates local state on success.
+- Fixed a gap matching the same pattern found with `phone` a few
+  rounds back: `storeAddress` was missing from 3 of the 4
+  login/register response shapes (only `/api/me` had it) — fixed all 4
+  consistently.
+- **Real auto-populate at checkout**: the Pickup Address field now
+  fills in automatically from the vendor's actual stored address the
+  moment checkout opens — still editable by the customer if it needs
+  adjusting, just pre-filled instead of typed from scratch. Wired the
+  vendor's real store address through the cart item itself (it wasn't
+  carried there before) so this works without an extra request at
+  checkout time.
+
+### A real bug caught and fixed while verifying the existing backend
+
+`updateUserProfile`'s SQL used `COALESCE($3, store_address)` to update
+the field — which meant a vendor could never actually *clear* their
+address once set: submitting an empty value would silently keep the
+old one, since `null` and "clear it" looked identical to COALESCE.
+Fixed by explicitly distinguishing "this caller isn't touching this
+field at all" (non-vendor profile edits) from "this vendor explicitly
+set it to empty" using an explicit flag instead of relying on
+COALESCE's null-handling to do double duty for both cases.
+
+## Checkout Pickup Address — real auto-fill/lock logic
+
+The empty field in your screenshot wasn't a bug — that particular
+vendor genuinely hadn't set a Store Physical Address yet, so the
+previous simple auto-fill correctly had nothing to show. This round
+builds the more complete behavior you asked for:
+
+- **Vendor has a real stored address**: field auto-fills with it and
+  locks (disabled) so the buyer can't alter where the order is
+  actually coming from, with a "Auto-filled from vendor store profile"
+  subtext explaining why it's locked.
+- **Vendor hasn't set one**: field stays editable, with the placeholder
+  "Vendor address not specified - enter pickup address" instead of
+  silently showing blank with no explanation.
+- **Multi-vendor carts**: handled honestly — shows "Multiple pickup
+  locations (Vendor A, Vendor B)" and locks the field, exactly as
+  requested. Worth flagging directly though: this app's cart is
+  already restricted to one vendor at a time (adding a second vendor's
+  item is blocked with an error elsewhere), so this specific branch
+  isn't actually reachable today given that existing constraint — it's
+  real, correct code, just for a case this app currently prevents from
+  happening in the first place.
+
+Confirmed the disabled state doesn't break submission: the checkout
+form reads the field's value directly via the DOM (not native form
+serialization), and disabled fields are excluded from the browser's
+`required` validation entirely — so a locked, auto-filled address
+submits correctly every time.

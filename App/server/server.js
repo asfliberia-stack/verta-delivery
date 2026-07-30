@@ -383,7 +383,7 @@ app.post('/api/auth/register', authLimiter, async (req, res) => {
     });
     const sessionId = await recordLoginHistory(req, user.id);
     const token = signToken(user, sessionId);
-    res.json({ token, user: { id: user.id, businessName: user.businessName, email: user.email, phone: user.phone, role: user.role, approvalStatus: user.approvalStatus } });
+    res.json({ token, user: { id: user.id, businessName: user.businessName, email: user.email, phone: user.phone, storeAddress: user.storeAddress, role: user.role, approvalStatus: user.approvalStatus } });
   } catch (err) {
     console.error('register failed', err);
     res.status(500).json({ error: 'Registration failed' });
@@ -445,7 +445,7 @@ app.post('/api/auth/register-vendor', authLimiter, async (req, res) => {
     const token = signToken(user, sessionId);
     res.json({
       token,
-      user: { id: user.id, businessName: user.businessName, email: user.email, phone: user.phone, role: user.role, approvalStatus: user.approvalStatus },
+      user: { id: user.id, businessName: user.businessName, email: user.email, phone: user.phone, storeAddress: user.storeAddress, role: user.role, approvalStatus: user.approvalStatus },
     });
   } catch (err) {
     console.error('register-vendor failed', err);
@@ -464,7 +464,7 @@ app.post('/api/auth/login', authLimiter, async (req, res) => {
 
     const sessionId = await recordLoginHistory(req, user.id);
     const token = signToken(user, sessionId);
-    res.json({ token, user: { id: user.id, businessName: user.businessName, email: user.email, phone: user.phone, role: user.role, approvalStatus: user.approvalStatus } });
+    res.json({ token, user: { id: user.id, businessName: user.businessName, email: user.email, phone: user.phone, storeAddress: user.storeAddress, role: user.role, approvalStatus: user.approvalStatus } });
   } catch (err) {
     console.error('login failed', err);
     res.status(500).json({ error: 'Login failed' });

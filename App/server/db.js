@@ -187,9 +187,17 @@ const db = {
   // on their existing separate, more careful flows (uniqueness checks,
   // re-auth) rather than folding into this simpler update.
   async updateUserProfile(userId, { businessName, phone, storeAddress }) {
+    // storeAddress === undefined means "don't touch this field" (e.g. a
+    // non-vendor caller, where it's never part of the payload at all).
+    // Anything else — including an explicit null/empty string — means
+    // "set it to this," so a vendor can actually clear their address,
+    // not just ever replace it with a new non-empty value.
+    const touchingAddress = storeAddress !== undefined;
     const { rows } = await pool.query(
-      'UPDATE users SET business_name = $1, phone = $2, store_address = COALESCE($3, store_address) WHERE id = $4 RETURNING *',
-      [businessName, phone || null, storeAddress !== undefined ? (storeAddress || null) : null, userId]
+      `UPDATE users SET business_name = $1, phone = $2,
+         store_address = CASE WHEN $3 THEN $4 ELSE store_address END
+       WHERE id = $5 RETURNING *`,
+      [businessName, phone || null, touchingAddress, touchingAddress ? (storeAddress || null) : null, userId]
     );
     return rowToUser(rows[0]);
   },
