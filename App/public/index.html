@@ -299,6 +299,30 @@
         .store-card-name { font-weight: 700; font-size: 0.8125rem; color: var(--slate); text-align: center; }
         .store-card-rating { font-size: 0.75rem; color: var(--accent); font-weight: 700; }
 
+        .address-card {
+            background: white; border: 1px solid var(--border); border-radius: 1rem; padding: 1rem;
+            margin-bottom: 0.75rem; display: flex; gap: 0.75rem; align-items: flex-start;
+        }
+        .address-card-icon {
+            width: 40px; height: 40px; border-radius: 0.75rem; background: #eef2ff; color: var(--golib-navy);
+            display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+        }
+        .address-card-icon svg { width: 18px; height: 18px; }
+        .address-card-body { flex: 1; min-width: 0; }
+        .address-card-label-row { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem; }
+        .address-card-label { font-weight: 700; color: var(--slate); font-size: 0.9375rem; }
+        .address-card-default-pill {
+            font-size: 0.6875rem; font-weight: 700; color: var(--golib-red); background: #fee2e2;
+            padding: 0.125rem 0.5rem; border-radius: 9999px;
+        }
+        .address-card-text { font-size: 0.875rem; color: var(--slate-light); line-height: 1.4; word-break: break-word; }
+        .address-card-actions { display: flex; flex-direction: column; gap: 0.375rem; flex-shrink: 0; }
+        .address-card-actions button {
+            background: none; border: none; color: var(--slate-light); font-size: 0.75rem; font-weight: 600;
+            cursor: pointer; padding: 0.25rem; white-space: nowrap;
+        }
+        .address-card-actions button:hover { color: var(--golib-red); }
+
         .vendor-welcome-banner {
             background: var(--golib-navy); color: white; border-radius: 1.125rem; padding: 1.125rem;
             display: flex; align-items: center; gap: 0.875rem;
@@ -1289,6 +1313,8 @@
             display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0;
         }
         .pdp-icon-btn svg { width: 18px; height: 18px; }
+        .pdp-icon-btn.saved { background: var(--golib-red); }
+        .pdp-icon-btn.saved svg { fill: currentColor; }
         .pdp-header-left { display: flex; align-items: center; gap: 0.625rem; min-width: 0; }
         .pdp-vendor-pill {
             display: flex; align-items: center; gap: 0.5rem; background: rgba(0,0,0,0.35); color: white;
@@ -1686,7 +1712,7 @@
                 <button type="button" class="desktop-sidebar-item" data-mp-tab="wishlist">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
                     Wishlist
-                    <span class="desktop-sidebar-badge" id="desktop-wishlist-badge" style="display:none;">0</span>
+                    <span class="desktop-sidebar-badge wishlist-count-badge" id="desktop-wishlist-badge" style="display:none;">0</span>
                 </button>
                 <button type="button" class="desktop-sidebar-item" data-mp-tab="messages">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
@@ -1823,10 +1849,9 @@
 
             <!-- Wishlist — no backend for this yet, honestly marked -->
             <div id="mp-view-wishlist" style="display:none;">
-                <div class="mobile-section" style="margin-top:0; text-align:center; padding: 3rem 1rem; color: var(--slate-light);">
-                    <div style="font-size:2rem; margin-bottom:0.75rem;">♡</div>
-                    <div style="font-weight:700; color:var(--slate); margin-bottom:0.375rem;">Wishlist — Coming Soon</div>
-                    <div style="font-size:0.875rem;">Saving favorite products isn't built yet.</div>
+                <div class="mobile-section" style="margin-top:0;">
+                    <div class="mobile-section-header"><div class="mobile-section-title">Wishlist</div></div>
+                    <div id="wishlist-products-container"></div>
                 </div>
             </div>
 
@@ -1861,10 +1886,37 @@
             <!-- Addresses — no saved-address book exists yet; checkout
                  asks for an address each time -->
             <div id="mp-view-addresses" style="display:none;">
-                <div class="mobile-section" style="margin-top:0; text-align:center; padding: 3rem 1rem; color: var(--slate-light);">
-                    <div style="font-size:2rem; margin-bottom:0.75rem;">📍</div>
-                    <div style="font-weight:700; color:var(--slate); margin-bottom:0.375rem;">Saved Addresses — Coming Soon</div>
-                    <div style="font-size:0.875rem;">You'll enter your delivery address at checkout each time until this is built.</div>
+                <div class="mobile-section" style="margin-top:0;">
+                    <div class="mobile-section-header">
+                        <div class="mobile-section-title">Saved Addresses</div>
+                        <button type="button" class="mobile-view-all" id="add-address-btn">+ Add</button>
+                    </div>
+                    <div id="saved-addresses-list"></div>
+                </div>
+
+                <!-- Add/Edit form — shown inline, not a modal, so it stays
+                     in the same tab flow -->
+                <div class="mobile-section" id="address-form-section" style="display:none;">
+                    <form id="address-form" style="background:white; border-radius:1rem; padding:1.25rem; border:1px solid var(--border); box-shadow:var(--shadow-sm);">
+                        <input type="hidden" id="address-form-id">
+                        <div class="form-group">
+                            <label class="form-label">Label</label>
+                            <input type="text" class="form-input" id="address-form-label" placeholder="e.g. Home, Office" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Address</label>
+                            <textarea class="form-input" id="address-form-address" rows="3" placeholder="Street, city, landmark…" required></textarea>
+                        </div>
+                        <label class="auth-checkbox-label" style="margin-bottom: 1.25rem;">
+                            <input type="checkbox" id="address-form-default">
+                            Set as default
+                        </label>
+                        <div class="auth-error" id="address-form-error"></div>
+                        <div style="display:flex; gap:0.75rem;">
+                            <button type="button" class="btn-small btn-secondary" id="address-form-cancel-btn" style="flex:1;">Cancel</button>
+                            <button type="submit" class="btn-primary" id="address-form-save-btn" style="flex:1;">Save Address</button>
+                        </div>
+                    </form>
                 </div>
             </div>
 
@@ -2013,7 +2065,7 @@
             <button type="button" class="mobile-nav-item" data-mp-tab="wishlist">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
                 Wishlist
-                <span class="mobile-nav-badge" style="display:none;">0</span>
+                <span class="mobile-nav-badge wishlist-count-badge" style="display:none;">0</span>
             </button>
             <button type="button" class="mobile-nav-item" data-mp-tab="account">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
@@ -2859,6 +2911,9 @@
                 </div>
                 <div class="form-group">
                     <label class="form-label">Dropoff Address (you)</label>
+                    <select class="form-input" id="checkout-saved-address-select" style="margin-bottom:0.625rem;">
+                        <option value="">— Type a new address below —</option>
+                    </select>
                     <input type="text" class="form-input" id="checkout-dropoff-address" required>
                 </div>
                 <div id="checkout-summary" style="background: var(--bg-light); padding: 1rem; border-radius: 0.75rem; margin-bottom: 1rem; font-weight: 700;"></div>
@@ -4244,6 +4299,11 @@
                 loadStoresDirectory();
             } else if (tab === 'orders') {
                 renderOrdersHome('mp-orders-grid');
+            } else if (tab === 'wishlist') {
+                loadWishlist();
+            } else if (tab === 'addresses') {
+                closeAddressForm();
+                loadSavedAddresses();
             } else if (tab === 'settings' && currentUser) {
                 document.getElementById('mp-settings-name-input').value = currentUser.businessName || '';
                 splitPhoneNumber(currentUser.phone, 'mp-settings-phone-country', 'mp-settings-phone-input');
@@ -4260,6 +4320,7 @@
             renderNotificationCenter();
             renderSkeletonCards(document.getElementById('storefront-products-container'));
             await loadStorefront();
+            await loadWishlistIds();
         }
 
         function showMarketplaceAsVendorPreview() {
@@ -7733,22 +7794,174 @@
             }
         }
 
-        function renderStorefrontProducts() {
-            const container = document.getElementById('storefront-products-container');
-            const search = document.getElementById('storefront-search-input').value.trim().toLowerCase();
-            document.querySelectorAll('#mp-category-grid .category-item').forEach(btn => {
-                btn.classList.toggle('active-category', btn.dataset.category === selectedStorefrontCategory);
+        // Real wishlist — tracked as a Set of product ids so the PDP's
+        // heart button always reflects true saved/not-saved state
+        // without a network round-trip on every open.
+        let wishlistedProductIds = new Set();
+
+        async function loadWishlistIds() {
+            if (!currentUser || currentUser.role !== 'sender') { wishlistedProductIds = new Set(); return; }
+            try {
+                const data = await apiFetch('/api/wishlist/ids');
+                wishlistedProductIds = new Set(data.productIds || []);
+                updateWishlistBadge();
+            } catch (err) {
+                console.error('Failed to load wishlist ids', err);
+            }
+        }
+
+        function updateWishlistBadge() {
+            const count = wishlistedProductIds.size;
+            document.querySelectorAll('.wishlist-count-badge').forEach(badge => {
+                badge.textContent = count;
+                badge.style.display = count > 0 ? 'flex' : 'none';
             });
-            const filtered = storefrontProducts.filter(p => {
-                if (selectedStorefrontCategory && p.category !== selectedStorefrontCategory) return false;
-                if (search && !`${p.name} ${p.vendorName}`.toLowerCase().includes(search)) return false;
-                return true;
-            });
-            if (filtered.length === 0) {
-                renderEmptyState(container, 'No products found.');
+        }
+
+        async function toggleWishlist(productId) {
+            if (!currentUser || currentUser.role !== 'sender') {
+                showToast('Log in to save items to your wishlist.', 'info');
                 return;
             }
-            container.innerHTML = `<div class="product-grid">${filtered.map(p => `
+            const isSaved = wishlistedProductIds.has(productId);
+            try {
+                if (isSaved) {
+                    await apiFetch(`/api/wishlist/${productId}`, { method: 'DELETE' });
+                    wishlistedProductIds.delete(productId);
+                    showToast('Removed from wishlist', 'success');
+                } else {
+                    await apiFetch(`/api/wishlist/${productId}`, { method: 'POST' });
+                    wishlistedProductIds.add(productId);
+                    showToast('Added to wishlist', 'success');
+                }
+                updateWishlistBadge();
+                updatePdpWishlistButton(productId);
+                if (document.getElementById('mp-view-wishlist').style.display === 'block') loadWishlist();
+            } catch (err) {
+                showToast(err.message, 'error');
+            }
+        }
+
+        function updatePdpWishlistButton(productId) {
+            const btn = document.getElementById('pdp-wishlist-btn');
+            if (!btn || currentPdpProductId !== productId) return;
+            const saved = wishlistedProductIds.has(productId);
+            btn.classList.toggle('saved', saved);
+            btn.setAttribute('aria-label', saved ? 'Remove from wishlist' : 'Add to wishlist');
+        }
+
+        async function loadWishlist() {
+            const container = document.getElementById('wishlist-products-container');
+            if (!currentUser || currentUser.role !== 'sender') {
+                renderEmptyState(container, 'Log in to save products to your wishlist.');
+                return;
+            }
+            renderSkeletonCards(container);
+            try {
+                const data = await apiFetch('/api/wishlist');
+                const products = data.products || [];
+                if (products.length === 0) {
+                    renderEmptyState(container, "Nothing saved yet — tap the ♡ on any product to add it here.");
+                    return;
+                }
+                container.innerHTML = `<div class="product-grid">${products.map(p => productCardHtml(p)).join('')}</div>`;
+            } catch (err) {
+                container.innerHTML = `<p style="text-align:center; color:#dc2626;">${err.message}</p>`;
+            }
+        }
+
+        // Real Saved Addresses — cached client-side after each load so
+        // the checkout modal's quick-picker doesn't need its own fetch.
+        let savedAddressesCache = [];
+
+        async function loadSavedAddresses() {
+            const container = document.getElementById('saved-addresses-list');
+            if (!currentUser || currentUser.role !== 'sender') {
+                renderEmptyState(container, 'Log in to save delivery addresses.');
+                return;
+            }
+            container.innerHTML = '<p style="text-align:center; color:var(--slate-light);">Loading…</p>';
+            try {
+                const data = await apiFetch('/api/addresses');
+                savedAddressesCache = data.addresses || [];
+                renderSavedAddressesList();
+            } catch (err) {
+                container.innerHTML = `<p style="text-align:center; color:#dc2626;">${err.message}</p>`;
+            }
+        }
+
+        function renderSavedAddressesList() {
+            const container = document.getElementById('saved-addresses-list');
+            if (savedAddressesCache.length === 0) {
+                renderEmptyState(container, 'No saved addresses yet — add one to skip typing it at checkout every time.');
+                return;
+            }
+            container.innerHTML = savedAddressesCache.map(a => `
+                <div class="address-card">
+                    <div class="address-card-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+                    </div>
+                    <div class="address-card-body">
+                        <div class="address-card-label-row">
+                            <span class="address-card-label">${a.label}</span>
+                            ${a.isDefault ? '<span class="address-card-default-pill">Default</span>' : ''}
+                        </div>
+                        <div class="address-card-text">${a.address}</div>
+                    </div>
+                    <div class="address-card-actions">
+                        <button type="button" class="edit-address-btn" data-id="${a.id}">Edit</button>
+                        ${!a.isDefault ? `<button type="button" class="set-default-address-btn" data-id="${a.id}">Set Default</button>` : ''}
+                        <button type="button" class="delete-address-btn" data-id="${a.id}">Delete</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function openAddressForm(addressId) {
+            const address = addressId ? savedAddressesCache.find(a => a.id === addressId) : null;
+            document.getElementById('address-form-id').value = address ? address.id : '';
+            document.getElementById('address-form-label').value = address ? address.label : '';
+            document.getElementById('address-form-address').value = address ? address.address : '';
+            document.getElementById('address-form-default').checked = address ? address.isDefault : false;
+            document.getElementById('address-form-error').style.display = 'none';
+            document.getElementById('address-form-section').style.display = 'block';
+            document.getElementById('address-form-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        function closeAddressForm() {
+            document.getElementById('address-form-section').style.display = 'none';
+        }
+
+        async function deleteSavedAddress(addressId) {
+            if (!confirm('Delete this saved address?')) return;
+            try {
+                await apiFetch(`/api/addresses/${addressId}`, { method: 'DELETE' });
+                showToast('Address deleted', 'success');
+                await loadSavedAddresses();
+            } catch (err) {
+                showToast(err.message, 'error');
+            }
+        }
+
+        async function setDefaultSavedAddress(addressId) {
+            const address = savedAddressesCache.find(a => a.id === addressId);
+            if (!address) return;
+            try {
+                await apiFetch(`/api/addresses/${addressId}`, {
+                    method: 'PUT',
+                    body: JSON.stringify({ label: address.label, address: address.address, isDefault: true }),
+                });
+                showToast('Default address updated', 'success');
+                await loadSavedAddresses();
+            } catch (err) {
+                showToast(err.message, 'error');
+            }
+        }
+
+        // Shared product card markup — used by the main storefront grid
+        // and the Wishlist tab, so both look and behave identically.
+        function productCardHtml(p) {
+            return `
                 <div class="product-card open-product-detail-btn" data-id="${p.id}" role="button" tabindex="0">
                     <img class="product-card-image" src="${p.imageDataUrl || 'assets/logo.png'}" alt="${p.name}">
                     <div class="product-card-body">
@@ -7764,7 +7977,25 @@
                         <button type="button" class="btn-small btn-success add-to-cart-btn" data-id="${p.id}" style="flex:1;">Add to Cart</button>
                     </div>
                 </div>
-            `).join('')}</div>`;
+            `;
+        }
+
+        function renderStorefrontProducts() {
+            const container = document.getElementById('storefront-products-container');
+            const search = document.getElementById('storefront-search-input').value.trim().toLowerCase();
+            document.querySelectorAll('#mp-category-grid .category-item').forEach(btn => {
+                btn.classList.toggle('active-category', btn.dataset.category === selectedStorefrontCategory);
+            });
+            const filtered = storefrontProducts.filter(p => {
+                if (selectedStorefrontCategory && p.category !== selectedStorefrontCategory) return false;
+                if (search && !`${p.name} ${p.vendorName}`.toLowerCase().includes(search)) return false;
+                return true;
+            });
+            if (filtered.length === 0) {
+                renderEmptyState(container, 'No products found.');
+                return;
+            }
+            container.innerHTML = `<div class="product-grid">${filtered.map(p => productCardHtml(p)).join('')}</div>`;
         }
 
         // Product Detail Page — reuses the already-loaded storefrontProducts
@@ -7794,6 +8025,7 @@
             document.getElementById('pdp-stock-text').textContent = product.stockQuantity > 0 ? `${product.stockQuantity} in stock` : 'Out of stock';
             document.getElementById('pdp-description-text').textContent = product.description || 'No description provided.';
             document.getElementById('pdp-description').classList.remove('open');
+            updatePdpWishlistButton(productId);
 
             document.getElementById('mp-view-product-detail').classList.add('open');
             document.getElementById('mp-view-product-detail').scrollTop = 0;
@@ -7849,7 +8081,7 @@
             `).join('') + `<div style="text-align:right; font-weight: 800; font-size: 1.125rem; margin-top: 1rem;">Total: $${total.toFixed(2)}</div>`;
         }
 
-        function openCheckoutModal() {
+        async function openCheckoutModal() {
             if (cart.length === 0) return;
             if (!currentUser || currentUser.role !== 'sender') {
                 document.getElementById('cart-modal').classList.remove('active');
@@ -7861,6 +8093,26 @@
             document.getElementById('checkout-error').style.display = 'none';
             const total = cart.reduce((sum, c) => sum + c.price * c.quantity, 0);
             document.getElementById('checkout-summary').textContent = `${cart.reduce((s, c) => s + c.quantity, 0)} item(s) — Total: $${total.toFixed(2)}`;
+
+            // Real saved-address quick-picker — fetches fresh so a newly
+            // added/edited address always shows up here immediately.
+            const select = document.getElementById('checkout-saved-address-select');
+            select.innerHTML = '<option value="">— Type a new address below —</option>';
+            try {
+                const data = await apiFetch('/api/addresses');
+                savedAddressesCache = data.addresses || [];
+                savedAddressesCache.forEach(a => {
+                    select.innerHTML += `<option value="${a.id}">${a.label} — ${a.address}</option>`;
+                });
+                const defaultAddress = savedAddressesCache.find(a => a.isDefault);
+                if (defaultAddress) {
+                    select.value = defaultAddress.id;
+                    document.getElementById('checkout-dropoff-address').value = defaultAddress.address;
+                }
+            } catch (err) {
+                console.error('Failed to load saved addresses for checkout', err);
+            }
+
             document.getElementById('checkout-modal').classList.add('active');
         }
 
@@ -7897,6 +8149,48 @@
         }
 
         function wireStorefrontEvents() {
+            // ---- Saved Addresses ----
+            document.getElementById('add-address-btn').addEventListener('click', () => openAddressForm(null));
+            document.getElementById('address-form-cancel-btn').addEventListener('click', closeAddressForm);
+            document.getElementById('saved-addresses-list').addEventListener('click', (e) => {
+                const editBtn = e.target.closest('.edit-address-btn');
+                if (editBtn) { openAddressForm(editBtn.dataset.id); return; }
+                const defaultBtn = e.target.closest('.set-default-address-btn');
+                if (defaultBtn) { setDefaultSavedAddress(defaultBtn.dataset.id); return; }
+                const deleteBtn = e.target.closest('.delete-address-btn');
+                if (deleteBtn) { deleteSavedAddress(deleteBtn.dataset.id); return; }
+            });
+            document.getElementById('address-form').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const errorEl = document.getElementById('address-form-error');
+                const btn = document.getElementById('address-form-save-btn');
+                errorEl.style.display = 'none';
+                const id = document.getElementById('address-form-id').value;
+                const body = JSON.stringify({
+                    label: document.getElementById('address-form-label').value.trim(),
+                    address: document.getElementById('address-form-address').value.trim(),
+                    isDefault: document.getElementById('address-form-default').checked,
+                });
+                btn.disabled = true;
+                btn.textContent = 'Saving…';
+                try {
+                    if (id) {
+                        await apiFetch(`/api/addresses/${id}`, { method: 'PUT', body });
+                    } else {
+                        await apiFetch('/api/addresses', { method: 'POST', body });
+                    }
+                    showToast('Address saved', 'success');
+                    closeAddressForm();
+                    await loadSavedAddresses();
+                } catch (err) {
+                    errorEl.textContent = err.message;
+                    errorEl.style.display = 'block';
+                } finally {
+                    btn.disabled = false;
+                    btn.textContent = 'Save Address';
+                }
+            });
+
             document.getElementById('mp-settings-form').addEventListener('submit', async (e) => {
                 e.preventDefault();
                 const errorEl = document.getElementById('mp-settings-error');
@@ -7934,16 +8228,20 @@
                 selectedStorefrontCategory = btn.dataset.category;
                 renderStorefrontProducts();
             });
-            document.getElementById('storefront-products-container').addEventListener('click', (e) => {
-                const addBtn = e.target.closest('.add-to-cart-btn');
-                if (addBtn) {
-                    e.stopPropagation();
-                    addToCart(addBtn.dataset.id);
-                    return;
-                }
-                const card = e.target.closest('.open-product-detail-btn');
-                if (card) openProductDetail(card.dataset.id);
-            });
+            function wireProductGridDelegation(containerId) {
+                document.getElementById(containerId).addEventListener('click', (e) => {
+                    const addBtn = e.target.closest('.add-to-cart-btn');
+                    if (addBtn) {
+                        e.stopPropagation();
+                        addToCart(addBtn.dataset.id);
+                        return;
+                    }
+                    const card = e.target.closest('.open-product-detail-btn');
+                    if (card) openProductDetail(card.dataset.id);
+                });
+            }
+            wireProductGridDelegation('storefront-products-container');
+            wireProductGridDelegation('wishlist-products-container');
 
             document.getElementById('open-cart-btn').addEventListener('click', () => {
                 renderCartModal();
@@ -7970,6 +8268,10 @@
                 document.getElementById('checkout-modal').classList.remove('active');
                 document.getElementById('cart-modal').classList.add('active');
             });
+            document.getElementById('checkout-saved-address-select').addEventListener('change', (e) => {
+                const selected = savedAddressesCache.find(a => a.id === e.target.value);
+                if (selected) document.getElementById('checkout-dropoff-address').value = selected.address;
+            });
             document.getElementById('checkout-form').addEventListener('submit', handleCheckoutSubmit);
 
             // ---- Product Detail Page ----
@@ -7978,7 +8280,7 @@
                 document.getElementById('pdp-description').classList.toggle('open');
             });
             document.getElementById('pdp-wishlist-btn').addEventListener('click', () => {
-                showToast("Wishlist isn't built yet — coming soon.", 'info');
+                if (currentPdpProductId) toggleWishlist(currentPdpProductId);
             });
             document.getElementById('pdp-cart-btn').addEventListener('click', () => {
                 closeProductDetail();

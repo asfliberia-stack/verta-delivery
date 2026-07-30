@@ -1108,6 +1108,117 @@ app.post('/api/marketplace/products/:id/reviews', requireAuth, async (req, res) 
   }
 });
 
+// ============================================================
+// Wishlist — real, customer-only (senders). Vendors previewing the
+// marketplace "as customer" don't get a wishlist of their own here,
+// same restriction as leaving a review.
+// ============================================================
+app.get('/api/wishlist', requireAuth, async (req, res) => {
+  if (req.user.role !== 'sender') return res.status(403).json({ error: 'Only customers have a wishlist' });
+  try {
+    const products = await db.getWishlist(req.user.id);
+    res.json({ products });
+  } catch (err) {
+    console.error('GET /api/wishlist failed', err);
+    res.status(500).json({ error: 'Failed to load wishlist' });
+  }
+});
+
+// Just the ids — cheap enough to fetch once when the marketplace loads
+// so every product card/PDP can show the right heart state.
+app.get('/api/wishlist/ids', requireAuth, async (req, res) => {
+  if (req.user.role !== 'sender') return res.json({ productIds: [] });
+  try {
+    const productIds = await db.getWishlistProductIds(req.user.id);
+    res.json({ productIds });
+  } catch (err) {
+    console.error('GET /api/wishlist/ids failed', err);
+    res.status(500).json({ error: 'Failed to load wishlist' });
+  }
+});
+
+app.post('/api/wishlist/:productId', requireAuth, async (req, res) => {
+  if (req.user.role !== 'sender') return res.status(403).json({ error: 'Only customers have a wishlist' });
+  try {
+    await db.addToWishlist(req.user.id, req.params.productId);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('POST /api/wishlist failed', err);
+    res.status(500).json({ error: 'Failed to add to wishlist' });
+  }
+});
+
+app.delete('/api/wishlist/:productId', requireAuth, async (req, res) => {
+  if (req.user.role !== 'sender') return res.status(403).json({ error: 'Only customers have a wishlist' });
+  try {
+    await db.removeFromWishlist(req.user.id, req.params.productId);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('DELETE /api/wishlist failed', err);
+    res.status(500).json({ error: 'Failed to remove from wishlist' });
+  }
+});
+
+// ============================================================
+// Saved Addresses — real, customer-only. Same restriction pattern as
+// the wishlist and reviews above.
+// ============================================================
+app.get('/api/addresses', requireAuth, async (req, res) => {
+  if (req.user.role !== 'sender') return res.status(403).json({ error: 'Only customers have saved addresses' });
+  try {
+    const addresses = await db.getSavedAddresses(req.user.id);
+    res.json({ addresses });
+  } catch (err) {
+    console.error('GET /api/addresses failed', err);
+    res.status(500).json({ error: 'Failed to load addresses' });
+  }
+});
+
+app.post('/api/addresses', requireAuth, async (req, res) => {
+  if (req.user.role !== 'sender') return res.status(403).json({ error: 'Only customers have saved addresses' });
+  const { label, address, isDefault } = req.body || {};
+  if (!label || !label.trim() || !address || !address.trim()) {
+    return res.status(400).json({ error: 'Label and address are both required' });
+  }
+  try {
+    const saved = await db.createSavedAddress({
+      id: crypto.randomUUID(), customerId: req.user.id, label: label.trim(), address: address.trim(), isDefault,
+    });
+    res.json({ address: saved });
+  } catch (err) {
+    console.error('POST /api/addresses failed', err);
+    res.status(500).json({ error: 'Failed to save address' });
+  }
+});
+
+app.put('/api/addresses/:id', requireAuth, async (req, res) => {
+  if (req.user.role !== 'sender') return res.status(403).json({ error: 'Only customers have saved addresses' });
+  const { label, address, isDefault } = req.body || {};
+  if (!label || !label.trim() || !address || !address.trim()) {
+    return res.status(400).json({ error: 'Label and address are both required' });
+  }
+  try {
+    const updated = await db.updateSavedAddress(req.params.id, req.user.id, { label: label.trim(), address: address.trim(), isDefault });
+    if (!updated) return res.status(404).json({ error: 'Address not found' });
+    res.json({ address: updated });
+  } catch (err) {
+    console.error('PUT /api/addresses/:id failed', err);
+    res.status(500).json({ error: 'Failed to update address' });
+  }
+});
+
+app.delete('/api/addresses/:id', requireAuth, async (req, res) => {
+  if (req.user.role !== 'sender') return res.status(403).json({ error: 'Only customers have saved addresses' });
+  try {
+    const deleted = await db.deleteSavedAddress(req.params.id, req.user.id);
+    if (!deleted) return res.status(404).json({ error: 'Address not found' });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('DELETE /api/addresses/:id failed', err);
+    res.status(500).json({ error: 'Failed to delete address' });
+  }
+});
+
 // Checkout — pay-on-delivery (no payment gateway integrated yet) and
 // automatically creates a real delivery order for fulfillment. Both are
 // defaults, not confirmed decisions — see README.

@@ -1996,3 +1996,61 @@ While adding this, a `str_replace` edit accidentally deleted the
 `AUTH_STORAGE_KEY` constant declaration (auth persistence relies on
 it). Caught it immediately via the JS syntax check rather than by
 testing in the browser, and restored it before doing anything else.
+
+## Wishlist — built for real (first of the 8-item list)
+
+### What's real
+
+- New `wishlist_items` table, real add/remove/list endpoints, all
+  scoped to customer accounts only.
+- The Wishlist tab shows actual saved products — same card design and
+  behavior as the main storefront grid (tapping a card opens the real
+  Product Detail Page, "Add to Cart" works the same way).
+- The PDP's wishlist star is now a real toggle — filled/highlighted
+  when saved, with the correct state shown immediately on open (no
+  flash of the wrong state).
+- Both the bottom-nav and desktop-sidebar Wishlist badges show a real
+  count, not a hardcoded number.
+- Guests get a clear "Log in to save products" message instead of a
+  raw server error if they tap into the tab before logging in.
+
+### What's next on the list
+
+Deals, Messages, Saved Addresses, Payment Methods, Leads, Promotions,
+Restore Database — Saved Addresses is next up per the proposed order
+(Payment Methods stays blocked on a real payment gateway).
+
+## Saved Addresses — built for real (second of the 8-item list)
+
+### What's real
+
+- New `saved_addresses` table — label, address text, and a real
+  single-default flag (enforced in application logic: setting one as
+  default unsets any other for that customer first).
+- Full CRUD: `GET/POST /api/addresses`, `PUT/DELETE /api/addresses/:id`
+  — all customer-only.
+- The "Saved Addresses" tab now shows a real list (label, address text,
+  a "Default" pill when applicable) with working Edit, Set Default, and
+  Delete actions, plus an inline Add/Edit form.
+- **Checkout integration**: the dropoff address field now has a
+  quick-picker dropdown of saved addresses above it — selecting one
+  fills the field instantly; the default address (if any) is
+  pre-selected automatically when checkout opens. Typing a brand new
+  address instead still works exactly as before — nothing required.
+
+### A syntax mistake caught before it went anywhere
+
+While adding the `rowToAddress` helper to `db.js`, I initially wrote it
+using `function name() {}` syntax *inside* the `db` object literal —
+that's invalid JavaScript in that position (object literals need
+`key: function(){}` or method shorthand, not a bare function
+statement). Caught it immediately via `node --check` before writing
+anything else, and fixed it by making `rowToAddress` a proper top-level
+helper, matching the existing `rowToUser`/`rowToLoginHistory` pattern
+already used throughout this file.
+
+### What's next
+
+Messages, Deals + Promotions, Leads, Restore Database remain (Payment
+Methods still blocked on a real payment gateway). Messages is next per
+the proposed order.

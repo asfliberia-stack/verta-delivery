@@ -250,3 +250,29 @@ CREATE TABLE IF NOT EXISTS product_reviews (
     UNIQUE (product_id, customer_id)
 );
 CREATE INDEX IF NOT EXISTS idx_product_reviews_product_id ON product_reviews (product_id);
+
+-- Real wishlist — one row per (customer, product) they've saved.
+CREATE TABLE IF NOT EXISTS wishlist_items (
+    id          TEXT PRIMARY KEY,
+    customer_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    product_id  TEXT NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+    UNIQUE (customer_id, product_id)
+);
+CREATE INDEX IF NOT EXISTS idx_wishlist_items_customer_id ON wishlist_items (customer_id);
+
+-- Real saved addresses — customers can keep a few labeled delivery
+-- addresses (e.g. "Home", "Office") instead of typing one at checkout
+-- every time. Only one can be the default per customer, enforced in
+-- application logic (unset the others, then set the new one) rather
+-- than a DB constraint, since "exactly one default, or none" is easier
+-- to express that way than as a partial unique index.
+CREATE TABLE IF NOT EXISTS saved_addresses (
+    id          TEXT PRIMARY KEY,
+    customer_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    label       TEXT NOT NULL,
+    address     TEXT NOT NULL,
+    is_default  BOOLEAN NOT NULL DEFAULT false,
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_saved_addresses_customer_id ON saved_addresses (customer_id);

@@ -121,6 +121,11 @@ function rowToLoginHistory(r) {
   };
 }
 
+function rowToAddress(r) {
+  if (!r) return null;
+  return { id: r.id, label: r.label, address: r.address, isDefault: r.is_default, createdAt: r.created_at };
+}
+
 function rowToUser(r) {
   if (!r) return null;
   return {
@@ -759,6 +764,94 @@ const db = {
     return rows.map(r => ({
       id: r.id, rating: r.rating, comment: r.comment, customerName: r.customer_name, createdAt: r.created_at,
     }));
+  },
+
+  // ---- Wishlist ---------------------------------------------------------
+
+  async addToWishlist(customerId, productId) {
+    await pool.query(
+      `INSERT INTO wishlist_items (id, customer_id, product_id) VALUES ($1, $2, $3)
+       ON CONFLICT (customer_id, product_id) DO NOTHING`,
+      [crypto.randomUUID(), customerId, productId]
+    );
+  },
+
+  async removeFromWishlist(customerId, productId) {
+    await pool.query('DELETE FROM wishlist_items WHERE customer_id = $1 AND product_id = $2', [customerId, productId]);
+  },
+
+  // Full product data (same shape as the storefront listing) for
+  // rendering the actual Wishlist tab — not just a list of IDs.
+  async getWishlist(customerId) {
+    const { rows } = await pool.query(`
+      SELECT p.*, u.business_name AS vendor_name, w.created_at AS wishlisted_at,
+        COALESCE(AVG(r.rating), 0)::numeric AS avg_rating,
+        COUNT(DISTINCT r.id)::int AS review_count,
+        COALESCE(sold.units_sold, 0)::int AS units_sold
+      FROM wishlist_items w
+      JOIN products p ON p.id = w.product_id
+      JOIN users u ON u.id = p.vendor_id
+      LEFT JOIN product_reviews r ON r.product_id = p.id
+      LEFT JOIN (
+        SELECT product_id, SUM(quantity)::int AS units_sold
+        FROM purchase_items
+        GROUP BY product_id
+      ) sold ON sold.product_id = p.id
+      WHERE w.customer_id = $1
+      GROUP BY p.id, u.business_name, w.created_at, sold.units_sold
+      ORDER BY w.created_at DESC
+    `, [customerId]);
+    return rows.map(r => ({
+      ...rowToProduct(r),
+      vendorName: r.vendor_name,
+      avgRating: Number(r.avg_rating),
+      reviewCount: r.review_count,
+      unitsSold: r.units_sold,
+      wishlistedAt: r.wishlisted_at,
+    }));
+  },
+
+  // Just the product IDs — cheap to fetch on marketplace load so every
+  // product card/PDP can show the right heart state without a query per item.
+  async getWishlistProductIds(customerId) {
+    const { rows } = await pool.query('SELECT product_id FROM wishlist_items WHERE customer_id = $1', [customerId]);
+    return rows.map(r => r.product_id);
+  },
+
+  // ---- Saved Addresses ---------------------------------------------------
+
+  async getSavedAddresses(customerId) {
+    const { rows } = await pool.query(
+      'SELECT * FROM saved_addresses WHERE customer_id = $1 ORDER BY is_default DESC, created_at DESC',
+      [customerId]
+    );
+    return rows.map(rowToAddress);
+  },
+
+  async createSavedAddress({ id, customerId, label, address, isDefault }) {
+    if (isDefault) await pool.query('UPDATE saved_addresses SET is_default = false WHERE customer_id = $1', [customerId]);
+    const { rows } = await pool.query(
+      'INSERT INTO saved_addresses (id, customer_id, label, address, is_default) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+      [id, customerId, label, address, !!isDefault]
+    );
+    return rowToAddress(rows[0]);
+  },
+
+  async updateSavedAddress(id, customerId, { label, address, isDefault }) {
+    if (isDefault) await pool.query('UPDATE saved_addresses SET is_default = false WHERE customer_id = $1', [customerId]);
+    const { rows } = await pool.query(
+      'UPDATE saved_addresses SET label = $1, address = $2, is_default = $3 WHERE id = $4 AND customer_id = $5 RETURNING *',
+      [label, address, !!isDefault, id, customerId]
+    );
+    return rows[0] ? rowToAddress(rows[0]) : null;
+  },
+
+  async deleteSavedAddress(id, customerId) {
+    const { rows } = await pool.query(
+      'DELETE FROM saved_addresses WHERE id = $1 AND customer_id = $2 RETURNING id',
+      [id, customerId]
+    );
+    return rows.length > 0;
   },
 
   // ---- Stores directory (public — Marketplace "Stores" tab) -----------
