@@ -276,3 +276,79 @@ CREATE TABLE IF NOT EXISTS saved_addresses (
     created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS idx_saved_addresses_customer_id ON saved_addresses (customer_id);
+
+-- Real in-app messaging between a customer and a vendor. One
+-- conversation per (customer, vendor) pair — reused for every future
+-- exchange between the same two people rather than starting a new
+-- thread each time.
+CREATE TABLE IF NOT EXISTS conversations (
+    id          TEXT PRIMARY KEY,
+    customer_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    vendor_id   TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+    UNIQUE (customer_id, vendor_id)
+);
+CREATE INDEX IF NOT EXISTS idx_conversations_customer_id ON conversations (customer_id);
+CREATE INDEX IF NOT EXISTS idx_conversations_vendor_id ON conversations (vendor_id);
+
+CREATE TABLE IF NOT EXISTS messages (
+    id              TEXT PRIMARY KEY,
+    conversation_id TEXT NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+    sender_id       TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    body            TEXT NOT NULL,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+    read_at         TIMESTAMPTZ
+);
+CREATE INDEX IF NOT EXISTS idx_messages_conversation_id ON messages (conversation_id, created_at);
+
+-- Real vendor promotions — a percentage discount on one of the
+-- vendor's own products, active for a real date range. Capped at 90%
+-- as a sanity guard rail (not a business rule, just a safeguard
+-- against an obvious data-entry mistake like typing 100 by accident).
+-- "Deals" (customer-facing) is just the set of products with a
+-- currently-active row here — same data, two views.
+CREATE TABLE IF NOT EXISTS promotions (
+    id               TEXT PRIMARY KEY,
+    vendor_id        TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    product_id       TEXT NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+    discount_percent NUMERIC(5,2) NOT NULL CHECK (discount_percent > 0 AND discount_percent <= 90),
+    starts_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
+    ends_at          TIMESTAMPTZ NOT NULL,
+    created_at       TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_promotions_product_id ON promotions (product_id);
+CREATE INDEX IF NOT EXISTS idx_promotions_vendor_id ON promotions (vendor_id);
+
+-- Real high-intent buyer interaction tracking for vendors. buyer_id is
+-- nullable — a guest can trigger PHONE_CLICK (viewing a vendor's
+-- contact info doesn't require an account); every other type here
+-- currently requires login, so those always have a buyer_id.
+CREATE TABLE IF NOT EXISTS leads (
+    id         TEXT PRIMARY KEY,
+    vendor_id  TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    buyer_id   TEXT REFERENCES users(id) ON DELETE SET NULL,
+    product_id TEXT REFERENCES products(id) ON DELETE SET NULL,
+    type       TEXT NOT NULL CHECK (type IN ('PHONE_CLICK', 'MESSAGE_SENT', 'QUOTE_REQUEST', 'CHECKOUT_STARTED')),
+    status     TEXT NOT NULL DEFAULT 'NEW' CHECK (status IN ('NEW', 'CONTACTED', 'CONVERTED', 'ARCHIVED')),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_leads_vendor_id ON leads (vendor_id, created_at DESC);
+
+-- Vendor's physical store address, optional — powers a real "Get
+-- Directions" feature (a plain Google Maps search-query link, no API
+-- key needed). NULL until a vendor fills it in via Settings. Kept —
+-- this is real, separate infrastructure from leads above, not a
+-- duplicate of it.
+ALTER TABLE users ADD COLUMN IF NOT EXISTS store_address TEXT;
+
+-- Real "follow a store" — same pattern as wishlist_items, just for
+-- stores instead of products.
+CREATE TABLE IF NOT EXISTS store_follows (
+    id          TEXT PRIMARY KEY,
+    customer_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    vendor_id   TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+    UNIQUE (customer_id, vendor_id)
+);
+CREATE INDEX IF NOT EXISTS idx_store_follows_customer_id ON store_follows (customer_id);
+CREATE INDEX IF NOT EXISTS idx_store_follows_vendor_id ON store_follows (vendor_id);

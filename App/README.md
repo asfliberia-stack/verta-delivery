@@ -2054,3 +2054,190 @@ already used throughout this file.
 Messages, Deals + Promotions, Leads, Restore Database remain (Payment
 Methods still blocked on a real payment gateway). Messages is next per
 the proposed order.
+
+## Messages — built for real (third of the 8-item list), both sides
+
+### What's real
+
+- New `conversations` + `messages` tables — one conversation per
+  (customer, vendor) pair, reused for every future exchange between
+  the same two people.
+- Full API: list conversations (with real last-message preview and
+  real unread counts), start a conversation, fetch a thread (marks it
+  read), send a message — all with proper participant-only
+  authorization (you can only see/send in a conversation you're
+  actually part of).
+- **Real-time delivery**, reusing the exact same Socket.io rooms every
+  other live feature in this app already uses (`user:<id>` /
+  `vendor:<id>`) — a message shows up instantly in an open thread, or
+  updates the conversation list/unread badge live if you're not
+  currently viewing that thread.
+- Built once, generically, and used by **both** the customer and
+  vendor Messages tabs (parameterized by a `'mp'`/`'vendor'` prefix)
+  rather than as two separate implementations.
+- **"Message Seller" button added to the Product Detail Page** — this
+  is the actual entry point; without it, a customer would have no way
+  to ever start a conversation with a vendor in the first place.
+- Real unread-count badges on both the bottom-nav and desktop-sidebar
+  Messages items, on both the marketplace and vendor dashboard —
+  loaded proactively when either app opens, not just when the
+  Messages tab itself is clicked.
+
+### What's next
+
+Deals + Promotions, Leads, Restore Database remain (Payment Methods
+still blocked on a real payment gateway). Deals + Promotions is next.
+
+## Deals + Promotions — built for real (fourth of the 8-item list)
+
+Note: significant backend and HTML work for this was already in place
+when I started this round (the `promotions` schema, all four
+endpoints, the checkout pricing fix, and both tabs' HTML structure) —
+verified all of it directly against the files and confirmed it was
+correct before building on top of it, rather than assuming or
+duplicating. What was actually missing and got built this round: the
+load/render functions for both tabs, the vendor promotion create/cancel
+flow, and all the event wiring.
+
+### The correctness-critical part
+
+Checkout was already fetching each product's price fresh from the
+database inside its transaction (never trusting a client-supplied
+price) — so the fix was to make it check for a **currently active
+promotion on that specific product, inside the same transaction**, and
+use the discounted price for the actual charge if one exists. Verified
+the date-range condition (`starts_at <= now() AND ends_at > now()`) is
+byte-for-byte identical between the storefront display query and the
+checkout pricing query — so a product can never show one price to
+browse and get charged a different one.
+
+A promotion can only be scheduled if the product doesn't already have
+one overlapping that date range — no ambiguity about "which discount
+applies" if a vendor tries to double up.
+
+### What's real, end to end
+
+- Vendor Promotions tab: create a promotion (pick one of your own
+  products, set a discount 1–90%, set an end date), see active vs.
+  scheduled promotions, cancel one early (product returns to full price
+  immediately).
+- Customer Deals tab: real feed of currently-discounted products —
+  same card design as everywhere else in the marketplace, which
+  already shows the strikethrough original price and "-X%" badge.
+- The discount shows correctly on the storefront grid and the Product
+  Detail Page too, since all three (storefront, Deals, PDP) read from
+  the same underlying product query.
+
+### What's next
+
+Leads and Restore Database remain (Payment Methods still blocked on a
+real payment gateway). Leads is next, but its scope needs defining
+first — "lead" doesn't have an obvious meaning in a marketplace like
+this yet.
+
+## Restore Database — built for real, deliberately cautious (fifth of the 8-item list)
+
+### A real scope decision, made deliberately
+
+Export only ever captured orders, expenses, agents, and basic customer
+info (no password hashes, correctly excluded for security) — it never
+covered the Marketplace side (products, purchases, vendor accounts,
+reviews, etc.), since it predates that half of the app. Restore
+mirrors that same scope exactly: **it only ever touches orders,
+expenses, and Fleet Directory agents.**
+
+Customer and vendor **accounts** are never touched by a restore, on
+purpose. Since the export excludes password hashes, recreating account
+rows from it would leave every restored account unable to log in — an
+identity/auth table should never be silently destroyed and rebuilt by
+a data restore regardless. If Marketplace data (products, purchases,
+etc.) ever needs backup/restore too, that's a real expansion of scope
+worth its own dedicated pass, not something to bolt on hastily here.
+
+### The actual safety flow
+
+1. Upload a `.json` export file — validated server-side before
+   anything happens (is it really shaped like an export from this
+   app?).
+2. **Cross-referenced against the live database**: if any order in the
+   file belongs to a customer account that no longer exists, the whole
+   restore is refused with a clear explanation, rather than silently
+   dropping those orders or inserting a broken foreign key reference.
+3. A real preview shows exact counts before anything is touched.
+4. Must type **RESTORE** to enable the button at all.
+5. One more native confirm dialog as a last check.
+6. **Automatically downloads a fresh backup of the current data** (the
+   real Export feature, reused directly) before making any change —
+   so there's always a way back even from a restore you didn't mean to
+   run.
+7. The actual restore is one all-or-nothing database transaction — if
+   any single row fails to insert, everything rolls back and nothing
+   changes. Same transaction pattern already proven out by checkout.
+8. Full page reload after a successful restore, rather than trying to
+   patch the dozens of places in the UI that cache order/expense/agent
+   data — too much surface area to safely update piecemeal.
+
+### What's next
+
+Only Leads remains on the original list (Payment Methods still blocked
+on a real payment gateway) — and as discussed, that one needs its
+scope defined first before any code gets written.
+
+## Leads — built for real, matching your exact schema (sixth of the 8-item list)
+
+### A real conflict found and resolved before building anything
+
+Earlier work in this session had left a **parallel, different** Leads
+implementation partially in place — its own `leads` table using
+lowercase `lead_type` values (`direct_contact`/`inquiry`/`cart_add`/
+`checkout_started`/`store_action`), a duplicate `getVendorLeads`
+function that silently shadowed the one I was about to write, and
+substantial *unused* backend groundwork for a vendor `store_address`
+field and a full `store_follows` (follow-a-store) feature — none of it
+wired to any frontend yet.
+
+Consolidated around **your exact schema spec** as written (since you
+gave the precise enum values), removed the conflicting duplicate table
+and dead functions/endpoint, and verified afterward: zero remaining
+references anywhere to the old naming, exactly one `leads` table,
+exactly one of each function.
+
+### What's real, matching your spec precisely
+
+- `leads` table: `id`, `vendor_id`, `buyer_id` (nullable — guests can
+  trigger `PHONE_CLICK`), `product_id` (nullable), `type` (`PHONE_CLICK`
+  / `MESSAGE_SENT` / `QUOTE_REQUEST` / `CHECKOUT_STARTED`), `status`
+  (`NEW` / `CONTACTED` / `CONVERTED` / `ARCHIVED`), `created_at`.
+- **MESSAGE_SENT**: logged inside the real conversation-starting
+  endpoint, but only on genuine first contact with a vendor — not on
+  every reply within an already-open conversation, so the signal stays
+  meaningful.
+- **CHECKOUT_STARTED**: logged when a customer opens the checkout modal
+  — "even if abandoned" per your spec, so this fires independently of
+  whether the order is ever actually completed. Fire-and-forget: a
+  logging failure here can never block a real checkout.
+- **PHONE_CLICK**: a real "View Phone Number" button now exists on the
+  Product Detail Page (there wasn't one before) — works for guests too,
+  revealing the vendor's actual stored phone number with a tap-to-call
+  link.
+- **Vendor Leads Dashboard**: real summary stats (total/new/converted),
+  filterable by type, with a real status dropdown per lead
+  (New → Contacted → Converted → Archived).
+
+### Deliberately not built this round
+
+**QUOTE_REQUEST** stays in the schema enum as you specified, but I
+didn't fabricate a trigger for it — there's no dedicated "request a
+quote" form distinct from just messaging a seller, so wiring it up
+would just be a second name for the same MESSAGE_SENT event. A real
+quote-request flow (with its own form/fields) would be its own
+feature.
+
+**Directions / Follow Store** aren't wired to anything yet either —
+but unlike QUOTE_REQUEST, real backend groundwork already exists for
+both (a `store_address` column on vendor accounts, and a complete
+`store_follows` table + endpoints), just never connected to any
+frontend UI. Neither fits your exact 4-value `type` enum, so I didn't
+force them into the leads table — but if you want a real "Get
+Directions" and "Follow Store" feature, most of the backend is already
+sitting there ready to be finished.

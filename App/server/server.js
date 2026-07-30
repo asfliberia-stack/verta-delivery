@@ -15,6 +15,7 @@ const {
   comparePassword,
   signToken,
   signImpersonationToken,
+  verifyToken,
   requireAuth,
   requireAdmin,
   requireSuperAdmin,
@@ -571,20 +572,24 @@ app.post('/api/auth/admin-login', authLimiter, async (req, res) => {
 app.get('/api/me', requireAuth, async (req, res) => {
   const user = await db.getUserById(req.user.id);
   if (!user) return res.status(401).json({ error: 'Account no longer exists' });
-  res.json({ user: { id: user.id, businessName: user.businessName, email: user.email, phone: user.phone, role: user.role, approvalStatus: user.approvalStatus } });
+  res.json({ user: { id: user.id, businessName: user.businessName, email: user.email, phone: user.phone, storeAddress: user.storeAddress, role: user.role, approvalStatus: user.approvalStatus } });
 });
 
 // Self-service profile edit — any authenticated user updating their own
 // name/phone (customer, vendor, admin, or super admin). Email and
 // password stay on their existing separate flows.
 app.put('/api/me/profile', requireAuth, async (req, res) => {
-  const { businessName, phone } = req.body || {};
+  const { businessName, phone, storeAddress } = req.body || {};
   if (!businessName || !businessName.trim()) {
     return res.status(400).json({ error: 'Name cannot be empty' });
   }
   try {
-    const updated = await db.updateUserProfile(req.user.id, { businessName: businessName.trim(), phone: phone ? phone.trim() : null });
-    res.json({ user: { id: updated.id, businessName: updated.businessName, email: updated.email, phone: updated.phone, role: updated.role } });
+    const updated = await db.updateUserProfile(req.user.id, {
+      businessName: businessName.trim(),
+      phone: phone ? phone.trim() : null,
+      storeAddress: req.user.role === 'vendor' && storeAddress !== undefined ? (storeAddress.trim() || null) : undefined,
+    });
+    res.json({ user: { id: updated.id, businessName: updated.businessName, email: updated.email, phone: updated.phone, storeAddress: updated.storeAddress, role: updated.role } });
   } catch (err) {
     console.error('PUT /api/me/profile failed', err);
     res.status(500).json({ error: 'Failed to update profile' });
@@ -733,6 +738,36 @@ app.get('/api/admin/export', requireAuth, requireAdmin, async (req, res) => {
   } catch (err) {
     console.error('GET /api/admin/export failed', err);
     res.status(500).json({ error: 'Failed to export data' });
+  }
+});
+
+// Restore — dry-run validation only, changes nothing. Real execution is
+// a separate, explicit second step (see below).
+app.post('/api/admin/restore/validate', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const result = await db.validateRestorePayload(req.body);
+    res.json(result);
+  } catch (err) {
+    console.error('POST /api/admin/restore/validate failed', err);
+    res.status(500).json({ error: 'Failed to validate the file' });
+  }
+});
+
+// Restore — actually applies it. Re-validates from scratch server-side
+// (never trusts that the client's earlier /validate call is still
+// accurate) before touching anything.
+app.post('/api/admin/restore/execute', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const validation = await db.validateRestorePayload(req.body);
+    if (!validation.valid) {
+      return res.status(400).json({ error: validation.errors.join(' ') });
+    }
+    const result = await db.restoreFromExport(req.body);
+    console.log(`[restore] ${req.user.email} restored ${result.ordersRestored} orders, ${result.expensesRestored} expenses, ${result.agentsRestored} agents`);
+    res.json({ ok: true, ...result });
+  } catch (err) {
+    console.error('POST /api/admin/restore/execute failed', err);
+    res.status(500).json({ error: 'Restore failed — no changes were made (the whole operation is one transaction, so a failure partway through rolls back completely).' });
   }
 });
 
@@ -933,6 +968,57 @@ app.get('/api/vendor/products', requireAuth, requireVendor, async (req, res) => 
   }
 });
 
+// ============================================================
+// Promotions — a vendor puts one of their own products on sale for a
+// percentage off, for a real date range. The discount is enforced at
+// checkout (see db.checkout) — this isn't just cosmetic pricing.
+// ============================================================
+app.get('/api/vendor/promotions', requireAuth, requireVendor, async (req, res) => {
+  try {
+    const promotions = await db.getVendorPromotions(req.user.id);
+    res.json({ promotions });
+  } catch (err) {
+    console.error('GET /api/vendor/promotions failed', err);
+    res.status(500).json({ error: 'Failed to load promotions' });
+  }
+});
+
+app.post('/api/vendor/promotions', requireAuth, requireVendor, async (req, res) => {
+  const { productId, discountPercent, startsAt, endsAt } = req.body || {};
+  const discount = Number(discountPercent);
+  if (!productId || !discount || discount <= 0 || discount > 90) {
+    return res.status(400).json({ error: 'A product and a discount between 1 and 90 percent are required' });
+  }
+  if (!endsAt || new Date(endsAt) <= new Date()) {
+    return res.status(400).json({ error: 'End date must be in the future' });
+  }
+  try {
+    const product = await db.getProductById(productId);
+    if (!product || product.vendorId !== req.user.id) {
+      return res.status(404).json({ error: 'Product not found in your store' });
+    }
+    const promotion = await db.createPromotion({
+      id: crypto.randomUUID(), vendorId: req.user.id, productId,
+      discountPercent: discount, startsAt: startsAt ? new Date(startsAt) : new Date(), endsAt: new Date(endsAt),
+    });
+    res.json({ promotion });
+  } catch (err) {
+    console.error('POST /api/vendor/promotions failed', err);
+    res.status(400).json({ error: err.message || 'Failed to create promotion' });
+  }
+});
+
+app.delete('/api/vendor/promotions/:id', requireAuth, requireVendor, async (req, res) => {
+  try {
+    const deleted = await db.deletePromotion(req.params.id, req.user.id);
+    if (!deleted) return res.status(404).json({ error: 'Promotion not found' });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('DELETE /api/vendor/promotions/:id failed', err);
+    res.status(500).json({ error: 'Failed to end promotion' });
+  }
+});
+
 const MAX_PRODUCT_IMAGE_BYTES = 700 * 1024; // same limit/reasoning as the business logo upload
 
 app.post('/api/vendor/products', requireAuth, requireVendor, async (req, res) => {
@@ -1062,6 +1148,18 @@ app.get('/api/marketplace/products', async (req, res) => {
   }
 });
 
+// Public — real active deals feed (products with a currently-active
+// promotion). No fake discounts here; if nothing's on sale, it's empty.
+app.get('/api/marketplace/deals', async (req, res) => {
+  try {
+    const products = await db.getActiveDeals();
+    res.json({ products });
+  } catch (err) {
+    console.error('GET /api/marketplace/deals failed', err);
+    res.status(500).json({ error: 'Failed to load deals' });
+  }
+});
+
 // Public — the Stores tab, real vendor list with real aggregate ratings.
 app.get('/api/marketplace/stores', async (req, res) => {
   try {
@@ -1160,6 +1258,122 @@ app.delete('/api/wishlist/:productId', requireAuth, async (req, res) => {
 });
 
 // ============================================================
+// Leads — real high-intent buyer interaction tracking, matching the
+// schema: PHONE_CLICK / MESSAGE_SENT / QUOTE_REQUEST / CHECKOUT_STARTED,
+// with NEW / CONTACTED / CONVERTED / ARCHIVED status. MESSAGE_SENT is
+// logged directly inside POST /api/conversations above (only on
+// genuine first contact, not every reply) — the two endpoints below
+// cover the other real trigger points.
+// ============================================================
+
+// CHECKOUT_STARTED — fired when a customer opens the checkout modal,
+// "even if abandoned" per the spec: this logs intent, independent of
+// whether POST /api/marketplace/checkout ever actually completes.
+app.post('/api/leads/checkout-started', requireAuth, async (req, res) => {
+  if (req.user.role !== 'sender') return res.status(403).json({ error: 'Only customers trigger this' });
+  const { vendorId, productId } = req.body || {};
+  if (!vendorId) return res.status(400).json({ error: 'vendorId is required' });
+  try {
+    await db.createLead({ id: crypto.randomUUID(), vendorId, buyerId: req.user.id, productId: productId || null, type: 'CHECKOUT_STARTED' });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('POST /api/leads/checkout-started failed', err);
+    res.status(500).json({ error: 'Failed to log lead' });
+  }
+});
+
+// PHONE_CLICK — reveals a vendor's real phone number. Deliberately
+// public: viewing contact info shouldn't require an account, so a
+// guest lead (buyerId: null) is a real, expected case here, not an
+// error condition — matching the schema's nullable buyer_id.
+app.get('/api/vendors/:id/contact', async (req, res) => {
+  try {
+    const vendor = await db.getUserById(req.params.id);
+    if (!vendor || vendor.role !== 'vendor') return res.status(404).json({ error: 'Vendor not found' });
+    if (!vendor.phone) return res.status(404).json({ error: "This vendor hasn't added a phone number yet" });
+
+    let buyerId = null;
+    const header = req.headers.authorization || '';
+    const token = header.startsWith('Bearer ') ? header.slice(7) : null;
+    if (token) {
+      try {
+        const payload = verifyToken(token);
+        if (payload.role === 'sender') buyerId = payload.id;
+      } catch (err) { /* guest, or an expired/invalid token — still allow viewing contact info */ }
+    }
+    await db.createLead({
+      id: crypto.randomUUID(), vendorId: vendor.id, buyerId, productId: req.query.productId || null, type: 'PHONE_CLICK',
+    });
+    res.json({ phone: vendor.phone, businessName: vendor.businessName });
+  } catch (err) {
+    console.error('GET /api/vendors/:id/contact failed', err);
+    res.status(500).json({ error: 'Failed to load vendor contact info' });
+  }
+});
+
+app.get('/api/vendor/leads', requireAuth, requireVendor, async (req, res) => {
+  try {
+    const [leads, summary] = await Promise.all([
+      db.getVendorLeads(req.user.id),
+      db.getVendorLeadsSummary(req.user.id),
+    ]);
+    res.json({ leads, summary });
+  } catch (err) {
+    console.error('GET /api/vendor/leads failed', err);
+    res.status(500).json({ error: 'Failed to load leads' });
+  }
+});
+
+app.patch('/api/vendor/leads/:id/status', requireAuth, requireVendor, async (req, res) => {
+  const { status } = req.body || {};
+  if (!['NEW', 'CONTACTED', 'CONVERTED', 'ARCHIVED'].includes(status)) {
+    return res.status(400).json({ error: 'Invalid status' });
+  }
+  try {
+    const updated = await db.updateLeadStatus(req.params.id, req.user.id, status);
+    if (!updated) return res.status(404).json({ error: 'Lead not found' });
+    res.json({ ok: true, lead: updated });
+  } catch (err) {
+    console.error('PATCH /api/vendor/leads/:id/status failed', err);
+    res.status(500).json({ error: 'Failed to update lead status' });
+  }
+});
+
+// ---- Store Follows (mirrors the wishlist endpoints, for stores) ----
+app.get('/api/store-follows/ids', requireAuth, async (req, res) => {
+  if (req.user.role !== 'sender') return res.json({ vendorIds: [] });
+  try {
+    const vendorIds = await db.getFollowedStoreIds(req.user.id);
+    res.json({ vendorIds });
+  } catch (err) {
+    console.error('GET /api/store-follows/ids failed', err);
+    res.status(500).json({ error: 'Failed to load followed stores' });
+  }
+});
+
+app.post('/api/store-follows/:vendorId', requireAuth, async (req, res) => {
+  if (req.user.role !== 'sender') return res.status(403).json({ error: 'Only customers can follow stores' });
+  try {
+    await db.followStore(req.user.id, req.params.vendorId);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('POST /api/store-follows failed', err);
+    res.status(500).json({ error: 'Failed to follow store' });
+  }
+});
+
+app.delete('/api/store-follows/:vendorId', requireAuth, async (req, res) => {
+  if (req.user.role !== 'sender') return res.status(403).json({ error: 'Only customers can follow stores' });
+  try {
+    await db.unfollowStore(req.user.id, req.params.vendorId);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('DELETE /api/store-follows failed', err);
+    res.status(500).json({ error: 'Failed to unfollow store' });
+  }
+});
+
+// ============================================================
 // Saved Addresses — real, customer-only. Same restriction pattern as
 // the wishlist and reviews above.
 // ============================================================
@@ -1216,6 +1430,92 @@ app.delete('/api/addresses/:id', requireAuth, async (req, res) => {
   } catch (err) {
     console.error('DELETE /api/addresses/:id failed', err);
     res.status(500).json({ error: 'Failed to delete address' });
+  }
+});
+
+// ============================================================
+// Messages — real in-app messaging between a customer and a vendor.
+// Works for both roles: a customer sees their conversations with
+// vendors, a vendor sees their conversations with customers. Delivered
+// live over Socket.io to both participants' existing rooms
+// (`user:<id>` / `vendor:<id>`, same rooms used for order updates).
+// ============================================================
+app.get('/api/conversations', requireAuth, async (req, res) => {
+  if (req.user.role !== 'sender' && req.user.role !== 'vendor') {
+    return res.status(403).json({ error: 'Messaging is only available to customers and vendors' });
+  }
+  try {
+    const conversations = await db.getConversationsForUser(req.user.id, req.user.role);
+    res.json({ conversations });
+  } catch (err) {
+    console.error('GET /api/conversations failed', err);
+    res.status(500).json({ error: 'Failed to load conversations' });
+  }
+});
+
+// Customer-initiated only — a customer starts a conversation with a
+// vendor (e.g. from a product page); a vendor replies within it rather
+// than starting new ones with customers who haven't reached out.
+app.post('/api/conversations', requireAuth, async (req, res) => {
+  if (req.user.role !== 'sender') return res.status(403).json({ error: 'Only customers can start a conversation' });
+  const { vendorId, productId } = req.body || {};
+  if (!vendorId) return res.status(400).json({ error: 'vendorId is required' });
+  try {
+    const vendor = await db.getUserById(vendorId);
+    if (!vendor || vendor.role !== 'vendor') return res.status(404).json({ error: 'Vendor not found' });
+    const { conversation, wasCreated } = await db.getOrCreateConversation(req.user.id, vendorId);
+    if (wasCreated) {
+      // A real lead — genuine first contact with this vendor, not
+      // logged again for every reply within the same conversation.
+      await db.createLead({
+        id: crypto.randomUUID(), vendorId, buyerId: req.user.id, productId: productId || null, type: 'MESSAGE_SENT',
+      });
+    }
+    res.json({ conversationId: conversation.id, vendorName: vendor.businessName });
+  } catch (err) {
+    console.error('POST /api/conversations failed', err);
+    res.status(500).json({ error: 'Failed to start conversation' });
+  }
+});
+
+app.get('/api/conversations/:id/messages', requireAuth, async (req, res) => {
+  try {
+    const conversation = await db.getConversationById(req.params.id);
+    if (!conversation) return res.status(404).json({ error: 'Conversation not found' });
+    if (conversation.customer_id !== req.user.id && conversation.vendor_id !== req.user.id) {
+      return res.status(403).json({ error: 'Not your conversation' });
+    }
+    const messages = await db.getConversationMessages(req.params.id);
+    await db.markConversationRead(req.params.id, req.user.id);
+    res.json({ messages });
+  } catch (err) {
+    console.error('GET /api/conversations/:id/messages failed', err);
+    res.status(500).json({ error: 'Failed to load messages' });
+  }
+});
+
+app.post('/api/conversations/:id/messages', requireAuth, async (req, res) => {
+  const { body } = req.body || {};
+  if (!body || !body.trim()) return res.status(400).json({ error: 'Message cannot be empty' });
+  try {
+    const conversation = await db.getConversationById(req.params.id);
+    if (!conversation) return res.status(404).json({ error: 'Conversation not found' });
+    if (conversation.customer_id !== req.user.id && conversation.vendor_id !== req.user.id) {
+      return res.status(403).json({ error: 'Not your conversation' });
+    }
+    const message = await db.sendMessageToConversation({
+      id: crypto.randomUUID(), conversationId: req.params.id, senderId: req.user.id, body: body.trim(),
+    });
+    // Real-time delivery to both participants — whichever one didn't
+    // just send this gets it live; the sender's own other devices/tabs
+    // get it too, same pattern as every other realtime event here.
+    io.to(`user:${conversation.customer_id}`).to(`vendor:${conversation.vendor_id}`).emit('message:new', {
+      conversationId: req.params.id, message,
+    });
+    res.json({ message });
+  } catch (err) {
+    console.error('POST /api/conversations/:id/messages failed', err);
+    res.status(500).json({ error: 'Failed to send message' });
   }
 });
 

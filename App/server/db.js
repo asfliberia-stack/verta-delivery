@@ -126,6 +126,11 @@ function rowToAddress(r) {
   return { id: r.id, label: r.label, address: r.address, isDefault: r.is_default, createdAt: r.created_at };
 }
 
+function rowToMessage(r) {
+  if (!r) return null;
+  return { id: r.id, conversationId: r.conversation_id, senderId: r.sender_id, body: r.body, createdAt: r.created_at, readAt: r.read_at };
+}
+
 function rowToUser(r) {
   if (!r) return null;
   return {
@@ -142,6 +147,7 @@ function rowToUser(r) {
     idDocumentDoc: r.id_document_doc,
     appliedAt: r.applied_at,
     createdAt: r.created_at,
+    storeAddress: r.store_address,
   };
 }
 
@@ -180,10 +186,10 @@ const db = {
   // authenticated user updating their own account. Email/password stay
   // on their existing separate, more careful flows (uniqueness checks,
   // re-auth) rather than folding into this simpler update.
-  async updateUserProfile(userId, { businessName, phone }) {
+  async updateUserProfile(userId, { businessName, phone, storeAddress }) {
     const { rows } = await pool.query(
-      'UPDATE users SET business_name = $1, phone = $2 WHERE id = $3 RETURNING *',
-      [businessName, phone || null, userId]
+      'UPDATE users SET business_name = $1, phone = $2, store_address = COALESCE($3, store_address) WHERE id = $4 RETURNING *',
+      [businessName, phone || null, storeAddress !== undefined ? (storeAddress || null) : null, userId]
     );
     return rowToUser(rows[0]);
   },
@@ -464,6 +470,89 @@ const db = {
     };
   },
 
+  // ---- Restore Database -------------------------------------------------
+  // Deliberately restores ONLY what exportAllData() actually captures:
+  // orders, expenses, agents. Customer/vendor ACCOUNTS are never touched
+  // by a restore — the export excludes password hashes (correctly, for
+  // security), so recreating those rows here would leave every restored
+  // account unable to log in. An identity/auth table should never be
+  // silently destroyed and rebuilt by a data restore anyway; this is a
+  // deliberate scope limit, not an oversight.
+
+  // Dry-run — checks the file's shape and cross-references it against
+  // the CURRENT database (specifically: do the customers referenced by
+  // these orders still exist?) without changing anything. Real restore
+  // execution is a separate step, gated on this passing.
+  async validateRestorePayload(data) {
+    const errors = [];
+    if (!data || !Array.isArray(data.orders) || !Array.isArray(data.expenses) || !Array.isArray(data.agents)) {
+      return {
+        valid: false,
+        errors: ["This doesn't look like a real export from this app — expected orders/expenses/agents arrays weren't found."],
+        counts: null, missingSenderIds: [],
+      };
+    }
+    const senderIds = [...new Set(data.orders.map(o => o.senderId).filter(Boolean))];
+    let missingSenderIds = [];
+    if (senderIds.length > 0) {
+      const { rows } = await pool.query('SELECT id FROM users WHERE id = ANY($1)', [senderIds]);
+      const existing = new Set(rows.map(r => r.id));
+      missingSenderIds = senderIds.filter(id => !existing.has(id));
+    }
+    if (missingSenderIds.length > 0) {
+      errors.push(`${missingSenderIds.length} order(s) in this file belong to customer account(s) that no longer exist in this database (likely deleted since this backup was taken) — restore cancelled rather than creating orders with a broken reference.`);
+    }
+    return {
+      valid: errors.length === 0,
+      errors,
+      counts: { orders: data.orders.length, expenses: data.expenses.length, agents: data.agents.length },
+      missingSenderIds,
+    };
+  },
+
+  // Real restore — replaces every current order/expense/agent with the
+  // ones in the file, inside one transaction (all-or-nothing: if any
+  // row fails to insert, everything rolls back and nothing changes).
+  async restoreFromExport(data) {
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      await client.query('DELETE FROM orders');
+      await client.query('DELETE FROM expenses');
+      await client.query('DELETE FROM agents');
+
+      for (const o of data.orders) {
+        await client.query(
+          `INSERT INTO orders (id, sender_id, sender_name, pickup_address, dropoff_address, item_description, amount, status, accepted_by, payment_method, placed_by_admin, created_at, accepted_at, picked_up_at, delivered_at)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)`,
+          [o.id, o.senderId, o.senderName, o.pickupAddress, o.dropoffAddress, o.itemDescription, o.amount,
+           o.status, o.acceptedBy || null, o.paymentMethod || null, !!o.placedByAdmin,
+           o.createdAt, o.acceptedAt || null, o.pickedUpAt || null, o.deliveredAt || null]
+        );
+      }
+      for (const e of data.expenses) {
+        await client.query(
+          `INSERT INTO expenses (id, date, amount, description) VALUES ($1,$2,$3,$4)`,
+          [e.id, e.date, e.amount, e.description]
+        );
+      }
+      for (const a of data.agents) {
+        await client.query(
+          `INSERT INTO agents (id, name, phone, duty_status) VALUES ($1,$2,$3,$4)`,
+          [a.id, a.name, a.phone, a.dutyStatus || 'off_duty']
+        );
+      }
+
+      await client.query('COMMIT');
+      return { ordersRestored: data.orders.length, expensesRestored: data.expenses.length, agentsRestored: data.agents.length };
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
+  },
+
   // ---- Customers (aggregated from users + orders) ---------------------
 
   async getCustomers() {
@@ -565,10 +654,11 @@ const db = {
   // the vendor's business name attached so the storefront can show it.
   async getActiveProductsForStorefront() {
     const { rows } = await pool.query(`
-      SELECT p.*, u.business_name AS vendor_name,
+      SELECT p.*, u.business_name AS vendor_name, u.phone AS vendor_phone, u.store_address AS vendor_store_address,
         COALESCE(AVG(r.rating), 0)::numeric AS avg_rating,
         COUNT(DISTINCT r.id)::int AS review_count,
-        COALESCE(sold.units_sold, 0)::int AS units_sold
+        COALESCE(sold.units_sold, 0)::int AS units_sold,
+        promo.discount_percent, promo.ends_at AS promo_ends_at
       FROM products p
       JOIN users u ON u.id = p.vendor_id
       LEFT JOIN product_reviews r ON r.product_id = p.id
@@ -577,17 +667,39 @@ const db = {
         FROM purchase_items
         GROUP BY product_id
       ) sold ON sold.product_id = p.id
+      LEFT JOIN (
+        SELECT DISTINCT ON (product_id) product_id, discount_percent, ends_at
+        FROM promotions
+        WHERE starts_at <= now() AND ends_at > now()
+        ORDER BY product_id, ends_at ASC
+      ) promo ON promo.product_id = p.id
       WHERE p.is_active = true AND p.stock_quantity > 0
-      GROUP BY p.id, u.business_name, sold.units_sold
+      GROUP BY p.id, u.business_name, u.phone, u.store_address, sold.units_sold, promo.discount_percent, promo.ends_at
       ORDER BY p.created_at DESC
     `);
-    return rows.map(r => ({
-      ...rowToProduct(r),
-      vendorName: r.vendor_name,
-      avgRating: Number(r.avg_rating),
-      reviewCount: r.review_count,
-      unitsSold: r.units_sold,
-    }));
+    return rows.map(r => {
+      const originalPrice = Number(r.price);
+      const discountPercent = r.discount_percent ? Number(r.discount_percent) : null;
+      const effectivePrice = discountPercent ? Number((originalPrice * (1 - discountPercent / 100)).toFixed(2)) : originalPrice;
+      return {
+        ...rowToProduct(r),
+        vendorName: r.vendor_name,
+        vendorPhone: r.vendor_phone,
+        vendorStoreAddress: r.vendor_store_address,
+        avgRating: Number(r.avg_rating),
+        reviewCount: r.review_count,
+        unitsSold: r.units_sold,
+        originalPrice,
+        price: effectivePrice, // the price everywhere else in the app already reads
+        discountPercent,
+        promoEndsAt: r.promo_ends_at,
+      };
+    });
+  },
+
+  async getActiveDeals() {
+    const products = await db.getActiveProductsForStorefront();
+    return products.filter(p => p.discountPercent);
   },
 
   async getProductById(id) {
@@ -646,9 +758,22 @@ const db = {
         if (product.vendor_id !== vendorId) throw new Error('All items in a checkout must be from the same vendor');
         if (product.stock_quantity < item.quantity) throw new Error(`Not enough stock for ${product.name}`);
         await client.query('UPDATE products SET stock_quantity = stock_quantity - $1 WHERE id = $2', [item.quantity, product.id]);
-        const lineTotal = Number(product.price) * item.quantity;
+
+        // Real price, looked up fresh in the same transaction — never
+        // trusts a client-supplied price, and always reflects any
+        // currently-active promotion discount, not just the list price.
+        const promoRes = await client.query(
+          'SELECT discount_percent FROM promotions WHERE product_id = $1 AND starts_at <= now() AND ends_at > now() LIMIT 1',
+          [product.id]
+        );
+        const discountPercent = promoRes.rows[0] ? Number(promoRes.rows[0].discount_percent) : 0;
+        const unitPrice = discountPercent
+          ? Number((Number(product.price) * (1 - discountPercent / 100)).toFixed(2))
+          : Number(product.price);
+
+        const lineTotal = unitPrice * item.quantity;
         totalAmount += lineTotal;
-        lineItems.push({ productId: product.id, productName: product.name, unitPrice: Number(product.price), quantity: item.quantity });
+        lineItems.push({ productId: product.id, productName: product.name, unitPrice, quantity: item.quantity });
       }
 
       const purchaseId = `PUR-${Date.now().toString(36).toUpperCase()}`;
@@ -818,6 +943,32 @@ const db = {
     return rows.map(r => r.product_id);
   },
 
+  // ---- Leads --------------------------------------------------------
+  // Real high-intent interaction events (direct contact, inquiries,
+  // cart/checkout intent, store-profile actions). Logging a lead is a
+  // background side effect of a real user action — it should never
+  // block or break that action if it fails, so callers wrap this in
+  // try/catch and ignore errors (see server.js).
+
+  // ---- Store Follows (mirrors wishlist_items, for stores) ------------
+
+  async followStore(customerId, vendorId) {
+    await pool.query(
+      `INSERT INTO store_follows (id, customer_id, vendor_id) VALUES ($1, $2, $3)
+       ON CONFLICT (customer_id, vendor_id) DO NOTHING`,
+      [crypto.randomUUID(), customerId, vendorId]
+    );
+  },
+
+  async unfollowStore(customerId, vendorId) {
+    await pool.query('DELETE FROM store_follows WHERE customer_id = $1 AND vendor_id = $2', [customerId, vendorId]);
+  },
+
+  async getFollowedStoreIds(customerId) {
+    const { rows } = await pool.query('SELECT vendor_id FROM store_follows WHERE customer_id = $1', [customerId]);
+    return rows.map(r => r.vendor_id);
+  },
+
   // ---- Saved Addresses ---------------------------------------------------
 
   async getSavedAddresses(customerId) {
@@ -854,12 +1005,206 @@ const db = {
     return rows.length > 0;
   },
 
+  // ---- Promotions ---------------------------------------------------
+
+  // Rejects if this product already has a promotion whose window
+  // overlaps the requested one — one active/future discount per
+  // product at a time, so there's never ambiguity about which % applies.
+  // ---- Messages -----------------------------------------------------
+
+  // One conversation per (customer, vendor) pair, reused for every
+  // future exchange — created on first contact, found thereafter.
+  async getOrCreateConversation(customerId, vendorId) {
+    const existing = await pool.query(
+      'SELECT * FROM conversations WHERE customer_id = $1 AND vendor_id = $2',
+      [customerId, vendorId]
+    );
+    if (existing.rows[0]) return { conversation: existing.rows[0], wasCreated: false };
+    const { rows } = await pool.query(
+      'INSERT INTO conversations (id, customer_id, vendor_id) VALUES ($1, $2, $3) RETURNING *',
+      [crypto.randomUUID(), customerId, vendorId]
+    );
+    return { conversation: rows[0], wasCreated: true };
+  },
+
+  async getConversationById(conversationId) {
+    const { rows } = await pool.query('SELECT * FROM conversations WHERE id = $1', [conversationId]);
+    return rows[0] || null;
+  },
+
+  // Real conversation list — the other party's name, the actual last
+  // message preview, and a real unread count (messages in this
+  // conversation not sent by the viewer, not yet marked read).
+  async getConversationsForUser(userId, role) {
+    const otherPartyColumn = role === 'vendor' ? 'c.customer_id' : 'c.vendor_id';
+    const { rows } = await pool.query(`
+      SELECT c.id, c.created_at, u.business_name AS other_party_name, u.id AS other_party_id,
+        (SELECT body FROM messages m WHERE m.conversation_id = c.id ORDER BY m.created_at DESC LIMIT 1) AS last_message,
+        (SELECT created_at FROM messages m WHERE m.conversation_id = c.id ORDER BY m.created_at DESC LIMIT 1) AS last_message_at,
+        (SELECT COUNT(*)::int FROM messages m WHERE m.conversation_id = c.id AND m.sender_id != $1 AND m.read_at IS NULL) AS unread_count
+      FROM conversations c
+      JOIN users u ON u.id = ${otherPartyColumn}
+      WHERE ${role === 'vendor' ? 'c.vendor_id' : 'c.customer_id'} = $1
+      ORDER BY last_message_at DESC NULLS LAST, c.created_at DESC
+    `, [userId]);
+    return rows.map(r => ({
+      id: r.id,
+      otherPartyId: r.other_party_id,
+      otherPartyName: r.other_party_name,
+      lastMessage: r.last_message,
+      lastMessageAt: r.last_message_at,
+      unreadCount: r.unread_count,
+      createdAt: r.created_at,
+    }));
+  },
+
+  async sendMessageToConversation({ id, conversationId, senderId, body }) {
+    const { rows } = await pool.query(
+      'INSERT INTO messages (id, conversation_id, sender_id, body) VALUES ($1, $2, $3, $4) RETURNING *',
+      [id, conversationId, senderId, body]
+    );
+    return rowToMessage(rows[0]);
+  },
+
+  async getConversationMessages(conversationId) {
+    const { rows } = await pool.query(
+      'SELECT * FROM messages WHERE conversation_id = $1 ORDER BY created_at ASC',
+      [conversationId]
+    );
+    return rows.map(rowToMessage);
+  },
+
+  async markConversationRead(conversationId, readerId) {
+    await pool.query(
+      'UPDATE messages SET read_at = now() WHERE conversation_id = $1 AND sender_id != $2 AND read_at IS NULL',
+      [conversationId, readerId]
+    );
+  },
+
+  // ---- Promotions / Deals --------------------------------------------
+
+  // Rejects overlapping promotions on the same product — a product can
+  // only ever have one discount active (or scheduled) at a time, so
+  // there's never ambiguity about which percentage actually applies.
+  async createPromotion({ id, vendorId, productId, discountPercent, startsAt, endsAt }) {
+    const product = await pool.query('SELECT vendor_id FROM products WHERE id = $1', [productId]);
+    if (!product.rows[0]) throw new Error('Product not found');
+    if (product.rows[0].vendor_id !== vendorId) throw new Error('You can only run promotions on your own products');
+
+    const overlap = await pool.query(
+      `SELECT id FROM promotions WHERE product_id = $1 AND starts_at <= $3 AND ends_at >= $2`,
+      [productId, startsAt, endsAt]
+    );
+    if (overlap.rows.length > 0) {
+      throw new Error('This product already has a promotion scheduled or active in that date range — cancel it first');
+    }
+
+    const { rows } = await pool.query(
+      `INSERT INTO promotions (id, vendor_id, product_id, discount_percent, starts_at, ends_at)
+       VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+      [id, vendorId, productId, discountPercent, startsAt, endsAt]
+    );
+    return rows[0];
+  },
+
+  async getVendorPromotions(vendorId) {
+    const { rows } = await pool.query(`
+      SELECT p.*, pr.name AS product_name, pr.price AS product_price, pr.image_data_url AS product_image,
+        (now() BETWEEN p.starts_at AND p.ends_at) AS is_active
+      FROM promotions p
+      JOIN products pr ON pr.id = p.product_id
+      WHERE p.vendor_id = $1
+      ORDER BY p.starts_at DESC
+    `, [vendorId]);
+    return rows.map(r => ({
+      id: r.id,
+      productId: r.product_id,
+      productName: r.product_name,
+      productPrice: Number(r.product_price),
+      productImage: r.product_image,
+      discountPercent: Number(r.discount_percent),
+      startsAt: r.starts_at,
+      endsAt: r.ends_at,
+      isActive: r.is_active,
+    }));
+  },
+
+  async deletePromotion(id, vendorId) {
+    const { rows } = await pool.query(
+      'DELETE FROM promotions WHERE id = $1 AND vendor_id = $2 RETURNING id',
+      [id, vendorId]
+    );
+    return rows.length > 0;
+  },
+
+  // ---- Leads -------------------------------------------------------
+
+  async createLead({ id, vendorId, buyerId, productId, type }) {
+    const { rows } = await pool.query(
+      `INSERT INTO leads (id, vendor_id, buyer_id, product_id, type) VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+      [id, vendorId, buyerId || null, productId || null, type]
+    );
+    return rows[0];
+  },
+
+  async getVendorLeads(vendorId) {
+    const { rows } = await pool.query(`
+      SELECT l.*, u.business_name AS buyer_name, p.name AS product_name
+      FROM leads l
+      LEFT JOIN users u ON u.id = l.buyer_id
+      LEFT JOIN products p ON p.id = l.product_id
+      WHERE l.vendor_id = $1
+      ORDER BY l.created_at DESC
+    `, [vendorId]);
+    return rows.map(r => ({
+      id: r.id,
+      buyerId: r.buyer_id,
+      buyerName: r.buyer_name || 'Guest',
+      productId: r.product_id,
+      productName: r.product_name,
+      type: r.type,
+      status: r.status,
+      createdAt: r.created_at,
+    }));
+  },
+
+  async updateLeadStatus(id, vendorId, status) {
+    const { rows } = await pool.query(
+      'UPDATE leads SET status = $1 WHERE id = $2 AND vendor_id = $3 RETURNING *',
+      [status, id, vendorId]
+    );
+    return rows[0] || null;
+  },
+
+  async getVendorLeadsSummary(vendorId) {
+    const { rows } = await pool.query(`
+      SELECT
+        COUNT(*)::int AS total,
+        COUNT(*) FILTER (WHERE status = 'NEW')::int AS new_count,
+        COUNT(*) FILTER (WHERE status = 'CONVERTED')::int AS converted_count
+      FROM leads WHERE vendor_id = $1
+    `, [vendorId]);
+    return { total: rows[0].total, newCount: rows[0].new_count, convertedCount: rows[0].converted_count };
+  },
+
+  // Used inside the checkout transaction (passed the transaction's own
+  // client, not the shared pool) so the discount check sees a
+  // consistent snapshot alongside the FOR UPDATE product lock already
+  // taken there.
+  async getActivePromotionForProductTx(client, productId) {
+    const { rows } = await client.query(
+      'SELECT * FROM promotions WHERE product_id = $1 AND now() BETWEEN starts_at AND ends_at LIMIT 1',
+      [productId]
+    );
+    return rows[0] || null;
+  },
+
   // ---- Stores directory (public — Marketplace "Stores" tab) -----------
   // Real vendor list with real product counts and real average rating
   // aggregated across all of that vendor's products' reviews.
   async getStorefrontVendors() {
     const { rows } = await pool.query(`
-      SELECT u.id, u.business_name,
+      SELECT u.id, u.business_name, u.store_address, u.phone,
         COUNT(DISTINCT p.id)::int AS product_count,
         COALESCE(AVG(r.rating), 0)::numeric AS avg_rating,
         COUNT(r.id)::int AS review_count
@@ -873,6 +1218,8 @@ const db = {
     return rows.map(r => ({
       id: r.id,
       businessName: r.business_name,
+      storeAddress: r.store_address,
+      phone: r.phone,
       productCount: r.product_count,
       avgRating: Number(r.avg_rating),
       reviewCount: r.review_count,
