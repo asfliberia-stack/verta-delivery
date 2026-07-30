@@ -2400,3 +2400,26 @@ opens the same order-tracking modal the Delivery side already uses
 (reused, not rebuilt). Distinctly different from the dense, sortable
 data table built for the Delivery dashboard last round — this is
 built around *what you bought*, not operational tracking fields.
+
+## Fixed: long modals took over the full screen with no reachable close button
+
+Real bug, root cause: the base `.modal` CSS had no height limit or
+internal scrolling at all — it just grew to fit its content. For
+something short like a login form this never showed up, but for
+anything with a lot of content (the Help & Support FAQ list being the
+clearest case), the modal grew taller than the screen, and since there
+was no internal scroll container, scrolling down to read the content
+scrolled the header — and its close button — completely out of view.
+
+Fixed at the base `.modal`/`.modal-header` level rather than patching
+Help & Support alone, since this could affect any modal with enough
+content: the modal now caps at 85% of the viewport height with its own
+internal scroll, and the header (with the close button) is sticky, so
+it stays pinned and reachable no matter how far down you've scrolled.
+
+A few modals (Customers, Vendors, one other) already had their own
+manual `max-height: 85vh; overflow-y: auto` fix applied individually —
+checked those specifically, and this change is simply redundant
+(harmless, identical values) for them, while genuinely fixing every
+other modal — including a version of this same bug in those very
+modals themselves, since their headers weren't sticky before either.
