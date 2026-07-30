@@ -2306,3 +2306,47 @@ form reads the field's value directly via the DOM (not native form
 serialization), and disabled fields are excluded from the browser's
 `required` validation entirely — so a locked, auto-filled address
 submits correctly every time.
+
+## Sender's own order view — converted to a real sortable table
+
+Matches the reference layout you shared, applied to the Verta Delivery
+customer dashboard's "Your Orders" section specifically (the
+Marketplace's embedded orders view stays as cards — this was scoped to
+"the delivery app" per your framing this round).
+
+### One column left out on purpose, others kept as-is
+
+The reference's checkbox column exists on the admin side for a real
+bulk-delete action — there's no equivalent legitimate bulk operation
+for a customer on their own order history (deleting your own delivery
+records isn't something to offer), so it's left out here rather than
+added as a decorative, non-functional checkbox.
+
+The "Sender" and "Agent" columns aren't new exposure, for what it's
+worth — I checked, and the existing card view already showed both
+(your own name, and the delivery agent's name + phone) for a
+customer's own orders before this change.
+
+### What's real
+
+- **Every column header is a genuine sort trigger** — click to sort
+  ascending, click again to reverse, with a visual indicator (▲/▼)
+  showing the active sort. Not decorative arrows.
+- **The eye icon opens the same real order-details modal** the card
+  view already used (`openOrderDetails`) — reused, not rebuilt.
+- **Cancel Order** (for pending orders) moved into the row itself as a
+  second icon, since that's a real, existing capability I didn't want
+  to drop just to match the reference image exactly.
+- Real-time updates still work the same way they always did — the
+  table re-renders through the same `refreshAllViews()` path the card
+  view used.
+
+### A layout bug caught before it shipped
+
+The container this table renders into (`#orders-grid`) already had
+`display: grid` CSS designed for laying out multiple cards side by
+side. Dropping a single wide table straight into that would have
+squeezed it into one narrow auto-sized grid column instead of using
+the full available width. Added `grid-column: 1 / -1` to the table's
+wrapper so it correctly spans the full row regardless of that parent's
+column calculation.

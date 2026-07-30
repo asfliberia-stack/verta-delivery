@@ -962,6 +962,33 @@
         .settings-about-row strong { color: var(--slate); text-align: right; font-weight: 700; }
         .settings-link-pending { color: var(--slate-light); font-size: 0.8125rem; font-style: italic; }
 
+        .sender-orders-table-wrap {
+            background: white; border-radius: 1rem; border: 1px solid var(--border); box-shadow: var(--shadow-sm);
+            overflow-x: auto; grid-column: 1 / -1;
+        }
+        .sender-orders-table { width: 100%; border-collapse: collapse; font-size: 0.875rem; white-space: nowrap; }
+        .sender-orders-table th {
+            text-align: left; padding: 0.875rem 1rem; color: var(--slate-light);
+            font-weight: 700; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.03em;
+            border-bottom: 2px solid var(--border); background: var(--bg-light); cursor: pointer; user-select: none;
+        }
+        .sender-orders-table th:hover { color: var(--slate); }
+        .sender-orders-table th.not-sortable { cursor: default; }
+        .sender-orders-table th.not-sortable:hover { color: var(--slate-light); }
+        .sender-orders-table .sort-icon { margin-left: 0.25rem; opacity: 0.5; font-size: 0.6875rem; }
+        .sender-orders-table th.sorted-asc .sort-icon, .sender-orders-table th.sorted-desc .sort-icon { opacity: 1; color: var(--primary); }
+        .sender-orders-table td { padding: 0.875rem 1rem; border-bottom: 1px solid var(--border); color: var(--slate); vertical-align: middle; }
+        .sender-orders-table tbody tr:last-child td { border-bottom: none; }
+        .sender-orders-table tbody tr:hover { background: var(--bg-light); }
+        .sender-orders-table .route-cell { color: var(--slate-light); font-size: 0.8125rem; white-space: normal; max-width: 220px; }
+        .sender-orders-table .row-actions { display: flex; gap: 0.5rem; align-items: center; }
+        .sender-orders-table .row-action-btn {
+            background: none; border: none; cursor: pointer; color: var(--slate-light); padding: 0.25rem;
+            display: flex; align-items: center; justify-content: center; border-radius: 0.375rem;
+        }
+        .sender-orders-table .row-action-btn:hover { background: var(--border); color: var(--slate); }
+        .sender-orders-table .row-action-btn svg { width: 18px; height: 18px; }
+
         @media (max-width: 720px) {
             .settings-layout { flex-direction: column; }
             .settings-nav { width: 100%; flex-direction: row; overflow-x: auto; border-right: none; border-bottom: 1px solid var(--border); }
@@ -4325,7 +4352,7 @@
 
         function refreshAllViews() {
             if (currentUser && currentUser.role === 'sender') {
-                renderOrdersHome('orders-grid');
+                renderSenderOrdersTable('orders-grid');
                 renderOrdersHome('mp-orders-grid');
             }
             if (currentUser && currentUser.role === 'admin') {
@@ -6998,6 +7025,98 @@
             orders.forEach(order => grid.appendChild(createOrderCard(order, 'sender')));
         }
 
+        // Real sortable data table for the customer's own Verta Delivery
+        // order list — same underlying `orders` data as the card view
+        // above (renderOrdersHome), just a denser table layout. Sorting
+        // and every column here are genuinely wired, nothing decorative:
+        // - No checkbox/select column, unlike the admin equivalent — that
+        //   one exists for a real bulk-delete action that only makes
+        //   sense for staff managing everyone's orders, not a customer's
+        //   own order history.
+        // - "Agent" and "Sender" columns already appear in the existing
+        //   card view for a customer's own orders today, so this isn't
+        //   new information exposure, just a different layout for it.
+        let senderOrdersSortKey = 'createdAt';
+        let senderOrdersSortDir = 'desc';
+
+        const SENDER_ORDERS_COLUMNS = [
+            { key: 'id', label: 'Order ID' },
+            { key: 'createdAt', label: 'Time' },
+            { key: 'senderName', label: 'Sender' },
+            { key: null, label: 'Route' },
+            { key: 'itemDescription', label: 'Item' },
+            { key: 'amount', label: 'Amount' },
+            { key: 'acceptedBy', label: 'Agent' },
+            { key: 'status', label: 'Status' },
+            { key: null, label: 'Actions' },
+        ];
+
+        function renderSenderOrdersTable(containerId) {
+            const container = document.getElementById(containerId);
+            if (!container) return;
+            if (orders.length === 0) {
+                renderEmptyState(container, 'No orders yet — create your first one above.');
+                return;
+            }
+
+            const sorted = [...orders].sort((a, b) => {
+                let av = a[senderOrdersSortKey];
+                let bv = b[senderOrdersSortKey];
+                if (senderOrdersSortKey === 'createdAt') { av = new Date(av); bv = new Date(bv); }
+                if (av === null || av === undefined) av = '';
+                if (bv === null || bv === undefined) bv = '';
+                if (av < bv) return senderOrdersSortDir === 'asc' ? -1 : 1;
+                if (av > bv) return senderOrdersSortDir === 'asc' ? 1 : -1;
+                return 0;
+            });
+
+            const headerHtml = SENDER_ORDERS_COLUMNS.map(col => {
+                if (!col.key) return `<th class="not-sortable">${col.label}</th>`;
+                const isSorted = senderOrdersSortKey === col.key;
+                const dirClass = isSorted ? (senderOrdersSortDir === 'asc' ? 'sorted-asc' : 'sorted-desc') : '';
+                const icon = isSorted ? (senderOrdersSortDir === 'asc' ? '▲' : '▼') : '⇕';
+                return `<th class="${dirClass}" data-sort-key="${col.key}">${col.label} <span class="sort-icon">${icon}</span></th>`;
+            }).join('');
+
+            const rowsHtml = sorted.map(order => {
+                const statusClass = `status-${order.status.replace(' ', '-')}`;
+                const statusText = order.status.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+                const agentLabel = order.acceptedBy ? `${order.acceptedBy}${agents[order.acceptedBy] ? ` (${agents[order.acceptedBy]})` : ''}` : '—';
+                return `
+                    <tr data-id="${order.id}">
+                        <td style="font-weight:600;">${order.id}</td>
+                        <td>${formatTime(order.createdAt)}</td>
+                        <td>${order.senderName || '—'}</td>
+                        <td class="route-cell">${order.pickupAddress} → ${order.dropoffAddress}</td>
+                        <td>${order.itemDescription}</td>
+                        <td>${order.amount !== null ? `$${order.amount.toFixed(2)}` : '—'}</td>
+                        <td>${agentLabel}</td>
+                        <td><span class="status-badge ${statusClass}">${statusText}</span></td>
+                        <td>
+                            <div class="row-actions">
+                                <button type="button" class="row-action-btn view-order-row-btn" data-id="${order.id}" title="View Details" aria-label="View Details">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                                </button>
+                                ${order.status === 'pending' ? `
+                                <button type="button" class="row-action-btn cancel-order-row-btn" data-id="${order.id}" title="Cancel Order" aria-label="Cancel Order">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>
+                                </button>` : ''}
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+
+            container.innerHTML = `
+                <div class="sender-orders-table-wrap">
+                    <table class="sender-orders-table">
+                        <thead><tr>${headerHtml}</tr></thead>
+                        <tbody>${rowsHtml}</tbody>
+                    </table>
+                </div>
+            `;
+        }
+
         function getDayLabel(date) {
             const today = new Date();
             const orderDate = new Date(date);
@@ -7181,6 +7300,24 @@
             else if (e.target.classList.contains('pickup-order')) updateOrderStatus(e.target.dataset.id, 'picked-up');
             else if (e.target.classList.contains('deliver-order')) updateOrderStatus(e.target.dataset.id, 'delivered');
             else if (e.target.classList.contains('cancel-order')) cancelOrder(e.target.dataset.id);
+            else {
+                const sortHeader = e.target.closest('th[data-sort-key]');
+                if (sortHeader) {
+                    const key = sortHeader.dataset.sortKey;
+                    if (senderOrdersSortKey === key) {
+                        senderOrdersSortDir = senderOrdersSortDir === 'asc' ? 'desc' : 'asc';
+                    } else {
+                        senderOrdersSortKey = key;
+                        senderOrdersSortDir = 'asc';
+                    }
+                    renderSenderOrdersTable('orders-grid');
+                    return;
+                }
+                const viewBtn = e.target.closest('.view-order-row-btn');
+                if (viewBtn) { openOrderDetails(viewBtn.dataset.id, 'sender'); return; }
+                const cancelBtn = e.target.closest('.cancel-order-row-btn');
+                if (cancelBtn) { cancelOrder(cancelBtn.dataset.id); return; }
+            }
         }
 
         async function cancelOrder(orderId) {
