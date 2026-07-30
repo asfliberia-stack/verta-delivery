@@ -2372,3 +2372,31 @@ only place with the bug: the "Switch"/"Back to service selector"
 buttons inside both the Delivery and Marketplace headers already only
 call `showAppChooser()` and never touch the session — those were
 already correct. This was the one actual gap.
+
+## Marketplace "Your Orders" — genuinely different from the Delivery table
+
+Per your note, this deliberately doesn't reuse the Delivery table
+style from last round. Built as its own thing, backed by real data
+that didn't have an endpoint before.
+
+### A real gap found and filled
+
+There was no way for a customer to see their own marketplace purchase
+history with actual product details — only vendors had a "my
+purchases" view. Added `GET /api/marketplace/my-purchases`, backed by
+a new query that returns each purchase with the vendor's name, the
+real linked delivery status, and the actual items bought — including
+each product's **current** image (there's no image snapshot taken at
+purchase time, so this reflects the product as it exists now; if it
+was later deleted, that's handled gracefully with a fallback image
+rather than breaking).
+
+### What it looks like
+
+A receipt-style card per purchase — vendor name and date up top, a
+horizontally-scrollable row of the actual product photos you bought
+with quantities, a real total, and a "Track Delivery" button that
+opens the same order-tracking modal the Delivery side already uses
+(reused, not rebuilt). Distinctly different from the dense, sortable
+data table built for the Delivery dashboard last round — this is
+built around *what you bought*, not operational tracking fields.

@@ -831,6 +831,45 @@ const db = {
     return rows.map(r => ({ ...rowToPurchase(r), customerName: r.customer_name, deliveryStatus: r.delivery_status }));
   },
 
+  // Real customer-facing purchase history — vendor name, real delivery
+  // status (via the linked delivery order), and the actual items
+  // bought (name/price/quantity + the product's CURRENT image, since
+  // no image snapshot is stored at purchase time — if a product was
+  // later deleted or its photo changed, this reflects that rather than
+  // showing a stale copy).
+  async getPurchasesByCustomer(customerId, limit = 50) {
+    const { rows } = await pool.query(`
+      SELECT p.*, u.business_name AS vendor_name, o.status AS delivery_status,
+        (
+          SELECT json_agg(json_build_object(
+            'productId', pi.product_id,
+            'productName', pi.product_name,
+            'unitPrice', pi.unit_price,
+            'quantity', pi.quantity,
+            'imageDataUrl', prod.image_data_url
+          ) ORDER BY pi.id)
+          FROM purchase_items pi
+          LEFT JOIN products prod ON prod.id = pi.product_id
+          WHERE pi.purchase_id = p.id
+        ) AS items
+      FROM purchases p
+      JOIN users u ON u.id = p.vendor_id
+      LEFT JOIN orders o ON o.id = p.delivery_order_id
+      WHERE p.customer_id = $1
+      ORDER BY p.created_at DESC
+      LIMIT $2
+    `, [customerId, limit]);
+    return rows.map(r => ({
+      ...rowToPurchase(r),
+      vendorName: r.vendor_name,
+      deliveryStatus: r.delivery_status,
+      items: (r.items || []).map(i => ({
+        productId: i.productId, productName: i.productName,
+        unitPrice: Number(i.unitPrice), quantity: i.quantity, imageDataUrl: i.imageDataUrl,
+      })),
+    }));
+  },
+
   async getPurchaseItems(purchaseId) {
     const { rows } = await pool.query('SELECT * FROM purchase_items WHERE purchase_id = $1', [purchaseId]);
     return rows.map(r => ({ id: r.id, productId: r.product_id, productName: r.product_name, unitPrice: Number(r.unit_price), quantity: r.quantity }));

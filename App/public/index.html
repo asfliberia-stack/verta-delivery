@@ -989,6 +989,42 @@
         .sender-orders-table .row-action-btn:hover { background: var(--border); color: var(--slate); }
         .sender-orders-table .row-action-btn svg { width: 18px; height: 18px; }
 
+        /* Marketplace purchase history — deliberately different from the
+           Delivery order table above: a receipt-style card per purchase,
+           built around the real products bought (with images), not a
+           dense operational data grid. */
+        .mp-purchase-card {
+            background: white; border-radius: 1rem; border: 1px solid var(--border); box-shadow: var(--shadow-sm);
+            padding: 1.125rem; margin-bottom: 1rem;
+        }
+        .mp-purchase-header {
+            display: flex; justify-content: space-between; align-items: flex-start; gap: 0.75rem;
+            padding-bottom: 0.875rem; margin-bottom: 0.875rem; border-bottom: 1px solid var(--border);
+        }
+        .mp-purchase-vendor { font-weight: 700; color: var(--slate); font-size: 0.9375rem; }
+        .mp-purchase-date { font-size: 0.75rem; color: var(--slate-light); margin-top: 0.125rem; }
+        .mp-purchase-items-scroll {
+            display: flex; gap: 0.75rem; overflow-x: auto; padding-bottom: 0.25rem;
+            scrollbar-width: none; -ms-overflow-style: none;
+        }
+        .mp-purchase-items-scroll::-webkit-scrollbar { display: none; }
+        .mp-purchase-item { flex-shrink: 0; width: 84px; text-align: center; }
+        .mp-purchase-item img {
+            width: 84px; height: 84px; border-radius: 0.75rem; object-fit: cover; background: var(--bg-light);
+            border: 1px solid var(--border); margin-bottom: 0.375rem;
+        }
+        .mp-purchase-item-name {
+            font-size: 0.6875rem; color: var(--slate-light); line-height: 1.3;
+            display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+        }
+        .mp-purchase-item-qty { font-size: 0.6875rem; color: var(--slate-lighter); }
+        .mp-purchase-footer {
+            display: flex; justify-content: space-between; align-items: center; gap: 0.75rem;
+            padding-top: 0.875rem; margin-top: 0.875rem; border-top: 1px solid var(--border);
+        }
+        .mp-purchase-total { font-weight: 800; color: var(--slate); font-size: 1rem; }
+        .mp-purchase-total span { font-weight: 500; color: var(--slate-light); font-size: 0.8125rem; margin-right: 0.375rem; }
+
         @media (max-width: 720px) {
             .settings-layout { flex-direction: column; }
             .settings-nav { width: 100%; flex-direction: row; overflow-x: auto; border-right: none; border-bottom: 1px solid var(--border); }
@@ -4353,7 +4389,7 @@
         function refreshAllViews() {
             if (currentUser && currentUser.role === 'sender') {
                 renderSenderOrdersTable('orders-grid');
-                renderOrdersHome('mp-orders-grid');
+                renderMarketplacePurchases('mp-orders-grid');
             }
             if (currentUser && currentUser.role === 'admin') {
                 renderOrdersDelivery();
@@ -4514,7 +4550,7 @@
             } else if (tab === 'stores') {
                 loadStoresDirectory();
             } else if (tab === 'orders') {
-                renderOrdersHome('mp-orders-grid');
+                renderMarketplacePurchases('mp-orders-grid');
             } else if (tab === 'wishlist') {
                 loadWishlist();
             } else if (tab === 'deals') {
@@ -7123,6 +7159,56 @@
             `;
         }
 
+        // Marketplace "Your Orders" — deliberately NOT the Delivery-style
+        // table above. Shows what was actually bought (real product
+        // images from the /api/marketplace/my-purchases endpoint), one
+        // receipt-style card per purchase, with the linked delivery's
+        // real status and a way to track it.
+        async function renderMarketplacePurchases(containerId) {
+            const container = document.getElementById(containerId);
+            if (!container) return;
+            renderSkeletonCards(container);
+            try {
+                const data = await apiFetch('/api/marketplace/my-purchases');
+                const purchases = data.purchases || [];
+                if (purchases.length === 0) {
+                    renderEmptyState(container, 'No purchases yet — anything you buy in the Marketplace shows up here.');
+                    return;
+                }
+                container.innerHTML = purchases.map(purchase => {
+                    const statusClass = purchase.deliveryStatus ? `status-${purchase.deliveryStatus.replace(' ', '-')}` : 'status-pending';
+                    const statusText = purchase.deliveryStatus
+                        ? purchase.deliveryStatus.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
+                        : 'Processing';
+                    const itemsHtml = purchase.items.map(item => `
+                        <div class="mp-purchase-item">
+                            <img src="${item.imageDataUrl || 'assets/logo.png'}" alt="${item.productName}">
+                            <div class="mp-purchase-item-name">${item.productName}</div>
+                            <div class="mp-purchase-item-qty">Qty ${item.quantity}</div>
+                        </div>
+                    `).join('');
+                    return `
+                        <div class="mp-purchase-card">
+                            <div class="mp-purchase-header">
+                                <div>
+                                    <div class="mp-purchase-vendor">${purchase.vendorName}</div>
+                                    <div class="mp-purchase-date">${new Date(purchase.createdAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</div>
+                                </div>
+                                <span class="status-badge ${statusClass}">${statusText}</span>
+                            </div>
+                            <div class="mp-purchase-items-scroll">${itemsHtml}</div>
+                            <div class="mp-purchase-footer">
+                                <div class="mp-purchase-total"><span>Total</span>$${purchase.totalAmount.toFixed(2)}</div>
+                                ${purchase.deliveryOrderId ? `<button type="button" class="btn-small btn-secondary track-purchase-delivery-btn" data-order-id="${purchase.deliveryOrderId}">Track Delivery</button>` : ''}
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            } catch (err) {
+                container.innerHTML = `<p style="text-align:center; color:#dc2626;">${err.message}</p>`;
+            }
+        }
+
         function getDayLabel(date) {
             const today = new Date();
             const orderDate = new Date(date);
@@ -8997,6 +9083,12 @@
         }
 
         function wireStorefrontEvents() {
+            // ---- Your Orders (Marketplace purchase history) ----
+            document.getElementById('mp-orders-grid').addEventListener('click', (e) => {
+                const btn = e.target.closest('.track-purchase-delivery-btn');
+                if (btn) openOrderDetails(btn.dataset.orderId, 'sender');
+            });
+
             // ---- Messages ----
             document.getElementById('mp-conversations-list').addEventListener('click', (e) => {
                 const card = e.target.closest('.open-conversation-btn');

@@ -1106,6 +1106,20 @@ app.get('/api/vendor/purchases', requireAuth, requireVendor, async (req, res) =>
   }
 });
 
+// Real customer-facing purchase history — what a customer actually
+// bought on the marketplace, with real product images and real
+// delivery status, distinct from the Delivery-side raw order list.
+app.get('/api/marketplace/my-purchases', requireAuth, async (req, res) => {
+  if (req.user.role !== 'sender') return res.status(403).json({ error: 'Only customers have purchase history' });
+  try {
+    const purchases = await db.getPurchasesByCustomer(req.user.id);
+    res.json({ purchases });
+  } catch (err) {
+    console.error('GET /api/marketplace/my-purchases failed', err);
+    res.status(500).json({ error: 'Failed to load purchase history' });
+  }
+});
+
 // Real customers — who has actually bought from this vendor, derived
 // from purchase records. Not a "leads" concept (no such data exists).
 app.get('/api/vendor/customers', requireAuth, requireVendor, async (req, res) => {
