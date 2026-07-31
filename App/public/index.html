@@ -151,7 +151,6 @@
            completely unaffected. */
         .desktop-layout-wrapper { display: block; }
         .desktop-sidebar { display: none; }
-        .desktop-profile-dropdown { display: none; }
         @media (min-width: 1024px) {
             #home-screen .mobile-app-shell, #vendor-app .mobile-app-shell { max-width: none; flex: 1; min-height: 100vh; }
             #home-screen .mobile-app-shell { position: relative; }
@@ -211,7 +210,6 @@
                 cursor: pointer; font-size: 0.875rem; font-weight: 600; color: var(--slate); min-height: 44px;
             }
             .desktop-profile-menu button:hover { background: var(--bg-light); }
-            .desktop-profile-dropdown.mode-active { display: block; }
 
             /* Product Detail Page — desktop layout. Contained to the
                content area (not the whole viewport/sidebar, thanks to
@@ -1933,7 +1931,7 @@
                 </button>
 
                 <!-- Desktop profile dropdown (customer only) -->
-                <div class="desktop-profile-dropdown" id="desktop-profile-dropdown">
+                <div class="desktop-profile-dropdown" id="desktop-profile-dropdown" style="display:none;">
                     <button type="button" class="desktop-profile-trigger" id="desktop-profile-trigger">
                         <span class="user-avatar" id="desktop-profile-avatar" style="width:2.25rem;height:2.25rem;font-size:0.875rem;">V</span>
                         <span class="desktop-profile-text">
@@ -2760,7 +2758,7 @@
             </button>
 
             <!-- Desktop profile dropdown -->
-            <div class="desktop-profile-dropdown" id="vendor-profile-dropdown">
+            <div class="desktop-profile-dropdown" id="vendor-profile-dropdown" style="display:none;">
                 <button type="button" class="desktop-profile-trigger" id="vendor-profile-trigger">
                     <span class="user-avatar" id="vendor-profile-avatar-desktop" style="width:2.25rem;height:2.25rem;font-size:0.875rem;">V</span>
                     <span class="desktop-profile-text">
@@ -3629,7 +3627,7 @@
                     <div class="settings-panel" id="settings-panel-about" style="display:none;">
                         <h4 class="settings-section-title">Application Information</h4>
                         <div class="settings-about-row"><span>App Name</span><strong>Verta Delivery Services</strong></div>
-                        <div class="settings-about-row"><span>Current Version</span><strong>v1.0.0</strong></div>
+                        <div class="settings-about-row"><span>Current Version</span><strong>v26.4.6</strong></div>
                         <div class="settings-about-row"><span>Last Update</span><strong>July 18, 2026</strong></div>
                         <div class="settings-about-row"><span>Support Contact</span><strong>support@verta.com<br>+231-886-165-524</strong></div>
                         <h4 class="settings-section-title">Links</h4>
@@ -4547,24 +4545,11 @@
             // Desktop profile dropdown — customer only (guests get the
             // Login pill; a vendor previewing has their own banner instead).
             const profileDropdown = document.getElementById('desktop-profile-dropdown');
-            profileDropdown.classList.toggle('mode-active', mode === 'customer');
-            // Always close the dropdown's own open/closed toggle on every
-            // mode entry — never leave it to whatever state a previous
-            // session (e.g. Delivery, before switching apps) happened to
-            // leave it in.
-            document.getElementById('desktop-profile-menu').classList.remove('open');
+            profileDropdown.style.display = mode === 'customer' ? 'block' : 'none';
             if (mode === 'customer' && currentUser) {
                 document.getElementById('desktop-profile-name').textContent = currentUser.businessName;
                 document.getElementById('desktop-profile-avatar').textContent = currentUser.businessName.charAt(0).toUpperCase();
             }
-            // Force an immediate layout recalculation right after this
-            // class change. Some mobile browsers can leave a toggled
-            // display/class change in a stale layout state when it
-            // happens mid-transition (switching apps live) rather than on
-            // a fresh page load, which a full reload naturally clears —
-            // reading offsetHeight forces the browser to recompute layout
-            // immediately instead of leaving anything stale on screen.
-            void profileDropdown.offsetHeight;
         }
 
         // Bottom nav tab switching — Home and Categories share the same
@@ -4884,7 +4869,7 @@
                 document.getElementById('vendor-store-name-hero').textContent = currentUser.businessName;
                 document.getElementById('vendor-profile-name-desktop').textContent = currentUser.businessName;
                 document.getElementById('vendor-profile-avatar-desktop').textContent = currentUser.businessName.charAt(0).toUpperCase();
-                document.getElementById('vendor-profile-dropdown').classList.add('mode-active');
+                document.getElementById('vendor-profile-dropdown').style.display = 'block';
                 const impersonationBanner = document.getElementById('impersonation-banner');
                 if (currentUser.impersonating) {
                     document.getElementById('impersonation-vendor-name').textContent = `${currentUser.businessName}'s`;
