@@ -2439,3 +2439,121 @@ what that default is. To actually update what customers see, go to
 Settings → Business Profile in the admin dashboard, update those two
 fields to the new values, and Save — that's the real, correct way to
 change this (and it already works).
+
+## Fixed: broken oversized profile dropdown on mobile (Marketplace + Vendor)
+
+Real bug, same root cause as an earlier fix in this project (the
+Product Detail Page's mobile/desktop CSS conflict): JS was setting
+`element.style.display = 'block'` **directly and unconditionally**
+whenever a customer was logged in — with no check for screen width at
+all. Inline styles always override CSS rules regardless of media
+queries, so even though this profile dropdown was clearly meant to be
+a small, desktop-only anchored menu, that inline style forced it open
+on every screen size, including mobile — where none of its intended
+compact sizing/positioning CSS applied, so it rendered as an
+oversized, unstyled block taking over a big chunk of the screen.
+
+Fixed the same way as the earlier PDP bug: switched from an inline
+style to a class toggle (`classList.toggle('mode-active', ...)`), with
+a real base CSS rule (`display: none` — applies to every screen size
+by default) and the existing desktop media query re-enabling it only
+at ≥1024px. Found and fixed the identical bug on the **vendor**
+dashboard's own profile dropdown too, since it used the exact same
+broken pattern.
+
+## Investigated: giant profile dropdown taking over mobile view
+
+Real bug, matching exactly what you showed — the customer profile
+dropdown (avatar, name, role, chevron, Settings/Logout) is a
+desktop-sidebar-only component. On mobile it should be completely
+hidden (that dropdown isn't part of the mobile layout at all — Settings
+and Logout are reached differently there).
+
+After a thorough investigation (traced the exact CSS nesting depth
+line-by-line to be certain, not just skimmed it), the current codebase
+already has this correctly fixed: `.desktop-profile-dropdown` has a
+real base rule (`display: none`) applying everywhere by default, with
+the desktop-only re-enable properly confined inside the
+`@media (min-width: 1024px)` block. No inline styles or other
+higher-specificity rules override it. I also audited every other
+"desktop-only" class in the stylesheet for this same pattern
+(something styled only inside a desktop media query, no mobile-hide
+base rule) and found nothing else exhibiting the actual bug — a couple
+of superficially similar matches turned out to be safe, either nested
+inside an already-hidden parent or intentionally structured the other
+way around (hiding something on desktop, not exposing something
+desktop-only).
+
+Worth being transparent about the timeline: checking back across every
+snapshot from every round of this whole project, this specific fix
+doesn't appear in any of them except the one taken at the very start
+of this message — meaning the zip delivered in the previous round very
+likely still had this bug, and it's only present as fixed in what's
+in front of me right now. I can't fully account for exactly how or
+when that happened, but I verified rigorously that the current state
+is correct rather than just assuming so.
+
+No code changes were needed this round — just verification. Please
+deploy this exact zip and confirm the dropdown is gone on mobile; if
+it still shows up after that, let me know and I'll dig further with
+more specific repro details.
+
+## Follow-up: profile dropdown bug is transition-specific, not static CSS
+
+New reproduction detail: this only happens when a customer logs into
+Delivery first, then switches live to Marketplace (not on a fresh
+page load — and a manual refresh fixes it). That's an important
+distinction I didn't have last round.
+
+Given the CSS itself checks out as structurally correct (verified
+again), a bug that's wrong only during a live transition and fixes
+itself on reload points to either: a leftover JS toggle state that
+doesn't get reset cleanly when switching, or a mobile-browser layout
+quirk that only shows up mid-transition rather than on a fresh paint —
+a full reload naturally clears either.
+
+Added two defensive fixes to `setMarketplaceHeaderState()`, addressing
+both possibilities at once:
+- **Always reset the dropdown's own open/closed toggle** on every mode
+  entry, rather than leaving it to whatever state a prior session
+  (e.g. still being in Delivery mode) happened to leave it in.
+- **Force an immediate layout recalculation** right after the relevant
+  class change (`profileDropdown.offsetHeight` read, a standard,
+  side-effect-free way to force a browser to recompute layout
+  immediately rather than potentially leaving something stale
+  mid-transition).
+
+I want to be upfront: I can't fully confirm this is the exact root
+cause without live device testing, which I don't have here. Please
+test the specific flow — log into Delivery, switch to Marketplace,
+without refreshing — on this build. If it still reproduces, the most
+useful thing you could send next is whatever shows up in the browser's
+JavaScript console during that exact transition (if you're able to
+check) — that would tell me something static analysis can't.
+
+## Fixed: Manage Agent/Super Admin sidebar always took over the mobile screen
+
+Real bug, different root cause than it looked like: this wasn't a
+stuck default state — the mobile "hide the sidebar" mechanism never
+actually existed. The collapse toggle works by shrinking a desktop
+grid column to 0px width, but mobile switches to a single-column
+layout where the sidebar sat `position: static`, just stacking above
+the main content in normal document flow — completely unaffected by
+the collapsed/open state either way. The hamburger button was already
+wired correctly; there was just nothing for it to actually toggle on
+mobile.
+
+### What's built now
+
+- The sidebar is a real mobile overlay drawer: fixed position, off
+  the left edge of the screen by default (`translateX(-100%)`),
+  sliding in only when opened.
+- **Defaults to closed on mobile, open on desktop** — the same 960px
+  breakpoint the layout itself already switches on, so this isn't a
+  new arbitrary number.
+- A real backdrop appears behind the open drawer and closes it on tap
+  — a mobile drawer without a way to dismiss it by tapping outside
+  would feel broken regardless of the default-state fix.
+
+Scoped entirely to `#delivery-app` (Manage Agent / Super Admin) — the
+Vendor dashboard has its own separate sidebar, untouched by this.

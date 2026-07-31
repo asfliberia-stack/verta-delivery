@@ -151,6 +151,7 @@
            completely unaffected. */
         .desktop-layout-wrapper { display: block; }
         .desktop-sidebar { display: none; }
+        .desktop-profile-dropdown { display: none; }
         @media (min-width: 1024px) {
             #home-screen .mobile-app-shell, #vendor-app .mobile-app-shell { max-width: none; flex: 1; min-height: 100vh; }
             #home-screen .mobile-app-shell { position: relative; }
@@ -210,6 +211,7 @@
                 cursor: pointer; font-size: 0.875rem; font-weight: 600; color: var(--slate); min-height: 44px;
             }
             .desktop-profile-menu button:hover { background: var(--bg-light); }
+            .desktop-profile-dropdown.mode-active { display: block; }
 
             /* Product Detail Page — desktop layout. Contained to the
                content area (not the whole viewport/sidebar, thanks to
@@ -1636,7 +1638,16 @@
 
         @media (max-width: 960px) {
             #delivery-app .admin-shell { grid-template-columns: 1fr; }
-            #delivery-app .admin-sidebar { position: static; min-height: auto; }
+            #delivery-app .admin-sidebar {
+                position: fixed; top: 0; left: 0; height: 100vh; width: 280px; max-width: 82vw;
+                z-index: 200; min-height: auto; transform: translateX(-100%);
+                transition: transform 0.25s ease; box-shadow: 0 0 40px rgba(0,0,0,0.35);
+            }
+            #delivery-app .admin-shell:not(.sidebar-collapsed) .admin-sidebar { transform: translateX(0); }
+            #delivery-app .admin-sidebar-backdrop {
+                display: none; position: fixed; inset: 0; background: rgba(15,23,42,0.55); z-index: 190;
+            }
+            #delivery-app .admin-shell:not(.sidebar-collapsed) .admin-sidebar-backdrop { display: block; }
             #delivery-app .admin-main { padding: 1.5rem; }
             #delivery-app .sidebar-toggle-btn { left: auto; right: 1.25rem; }
             #delivery-app .admin-shell.sidebar-collapsed .sidebar-toggle-btn { left: auto; right: 1.25rem; }
@@ -1922,7 +1933,7 @@
                 </button>
 
                 <!-- Desktop profile dropdown (customer only) -->
-                <div class="desktop-profile-dropdown" id="desktop-profile-dropdown" style="display:none;">
+                <div class="desktop-profile-dropdown" id="desktop-profile-dropdown">
                     <button type="button" class="desktop-profile-trigger" id="desktop-profile-trigger">
                         <span class="user-avatar" id="desktop-profile-avatar" style="width:2.25rem;height:2.25rem;font-size:0.875rem;">V</span>
                         <span class="desktop-profile-text">
@@ -2372,6 +2383,7 @@
             <button type="button" class="sidebar-toggle-btn" id="sidebar-toggle-btn" aria-label="Toggle sidebar">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
             </button>
+            <div class="admin-sidebar-backdrop" id="admin-sidebar-backdrop"></div>
             <aside class="admin-sidebar">
                 <div class="admin-sidebar-logo">
                     <img src="assets/logo.png" alt="Verta Delivery Service">
@@ -2748,7 +2760,7 @@
             </button>
 
             <!-- Desktop profile dropdown -->
-            <div class="desktop-profile-dropdown" id="vendor-profile-dropdown" style="display:none;">
+            <div class="desktop-profile-dropdown" id="vendor-profile-dropdown">
                 <button type="button" class="desktop-profile-trigger" id="vendor-profile-trigger">
                     <span class="user-avatar" id="vendor-profile-avatar-desktop" style="width:2.25rem;height:2.25rem;font-size:0.875rem;">V</span>
                     <span class="desktop-profile-text">
@@ -3899,7 +3911,11 @@
         // sender view since the elements they target only exist inside
         // #delivery-app.
         // ============================================================
-        let isSidebarOpen = true;
+        // Open by default on desktop (persistent sidebar), closed by
+        // default on mobile (should only appear via the hamburger toggle,
+        // never take over the screen on every load/refresh). Same 960px
+        // breakpoint the grid layout itself already switches on.
+        let isSidebarOpen = window.innerWidth > 960;
 
         function setIsSidebarOpen(open) {
             isSidebarOpen = open;
@@ -3910,7 +3926,10 @@
         function wireSidebarToggle() {
             const btn = document.getElementById('sidebar-toggle-btn');
             if (!btn) return;
+            setIsSidebarOpen(isSidebarOpen); // apply the correct initial state to the DOM on load
             btn.addEventListener('click', () => setIsSidebarOpen(!isSidebarOpen));
+            const backdrop = document.getElementById('admin-sidebar-backdrop');
+            if (backdrop) backdrop.addEventListener('click', () => setIsSidebarOpen(false));
         }
 
         let lastScrollY = window.scrollY;
@@ -4528,11 +4547,24 @@
             // Desktop profile dropdown — customer only (guests get the
             // Login pill; a vendor previewing has their own banner instead).
             const profileDropdown = document.getElementById('desktop-profile-dropdown');
-            profileDropdown.style.display = mode === 'customer' ? 'block' : 'none';
+            profileDropdown.classList.toggle('mode-active', mode === 'customer');
+            // Always close the dropdown's own open/closed toggle on every
+            // mode entry — never leave it to whatever state a previous
+            // session (e.g. Delivery, before switching apps) happened to
+            // leave it in.
+            document.getElementById('desktop-profile-menu').classList.remove('open');
             if (mode === 'customer' && currentUser) {
                 document.getElementById('desktop-profile-name').textContent = currentUser.businessName;
                 document.getElementById('desktop-profile-avatar').textContent = currentUser.businessName.charAt(0).toUpperCase();
             }
+            // Force an immediate layout recalculation right after this
+            // class change. Some mobile browsers can leave a toggled
+            // display/class change in a stale layout state when it
+            // happens mid-transition (switching apps live) rather than on
+            // a fresh page load, which a full reload naturally clears —
+            // reading offsetHeight forces the browser to recompute layout
+            // immediately instead of leaving anything stale on screen.
+            void profileDropdown.offsetHeight;
         }
 
         // Bottom nav tab switching — Home and Categories share the same
@@ -4852,7 +4884,7 @@
                 document.getElementById('vendor-store-name-hero').textContent = currentUser.businessName;
                 document.getElementById('vendor-profile-name-desktop').textContent = currentUser.businessName;
                 document.getElementById('vendor-profile-avatar-desktop').textContent = currentUser.businessName.charAt(0).toUpperCase();
-                document.getElementById('vendor-profile-dropdown').style.display = 'block';
+                document.getElementById('vendor-profile-dropdown').classList.add('mode-active');
                 const impersonationBanner = document.getElementById('impersonation-banner');
                 if (currentUser.impersonating) {
                     document.getElementById('impersonation-vendor-name').textContent = `${currentUser.businessName}'s`;
