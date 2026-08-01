@@ -2565,3 +2565,40 @@ zips aren't always carrying forward every previous fix — possibly from
 working across different local copies. Worth deploying from whichever
 zip I hand you most recently each time, rather than mixing in an
 older local copy, so fixes don't get silently reverted like this.
+
+## Login/logout shared across Delivery and Marketplace — verified and hardened
+
+### The login modal itself
+
+Matches your reference screenshot exactly already — "Welcome back",
+email/password, "Remember for 30 days", "Forgot password?", Login,
+"Sign in with Google", and the sign-up link. Nothing to change there.
+
+### Login sharing — already correct
+
+There's only ever one login screen, one `/api/auth/login` call, and
+one shared session (`currentUser`/`authToken` are global, not scoped
+to "Delivery" or "Marketplace" separately). Logging in from either
+side's "Login / Sign Up" button already logs you into both — this was
+already true by how the app is built, not something that needed a
+fix.
+
+### Logout sharing — found and fixed a real reliability gap
+
+Every logout button *did* correctly clear the shared session (all 11
+of them call the same `clearAuth()`), so this was never completely
+broken. But `clearAuth()` is an `async` function — it awaits clearing
+persistent storage and disconnecting the socket — and every single
+call site was calling it without `await`. That meant the in-memory
+session cleared immediately (so the UI looked right away), but the
+actual persisted copy in storage and the live socket connection could
+still be mid-cleanup for a brief moment after the button was clicked.
+In that narrow window, a refresh or closed tab could theoretically
+leave a stale session behind.
+
+Fixed all 11 call sites to properly `await clearAuth()` before moving
+on (a few needed their enclosing handler converted to `async` to do
+this), and removed several redundant manual `currentUser = null` lines
+that were papering over the same gap without actually closing it.
+Logout is now reliably complete — on either side — before anything
+else happens next.

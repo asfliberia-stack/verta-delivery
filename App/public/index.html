@@ -4283,11 +4283,11 @@
                 el.textContent = 'Reconnecting…';
                 el.className = 'offline';
             });
-            socket.on('connect_error', (err) => {
+            socket.on('connect_error', async (err) => {
                 console.error('Socket connection error', err.message);
                 if (err.message === 'unauthorized') {
                     // Token expired/invalid — force back to login.
-                    clearAuth();
+                    await clearAuth();
                     showAuthScreen();
                 }
             });
@@ -4489,7 +4489,7 @@
                     await enterApp();
                     return;
                 } catch (err) {
-                    clearAuth();
+                    await clearAuth();
                 }
             }
             // Guest (or an expired/invalid session) — the App Chooser is
@@ -4729,8 +4729,7 @@
 
             document.getElementById('choose-delivery-btn').addEventListener('click', () => chooseAppMode('delivery'));
             document.getElementById('vendor-pending-logout-btn').addEventListener('click', async () => {
-                clearAuth();
-                currentUser = null;
+                await clearAuth();
                 showAppChooser();
             });
             document.getElementById('choose-marketplace-btn').addEventListener('click', () => chooseAppMode('marketplace'));
@@ -4748,8 +4747,7 @@
             document.getElementById('delivery-back-to-chooser-btn').addEventListener('click', showAppChooser);
             document.getElementById('delivery-guest-login-btn-2').addEventListener('click', showAuthScreen);
             document.getElementById('delivery-sender-logout-btn').addEventListener('click', async () => {
-                clearAuth();
-                currentUser = null;
+                await clearAuth();
                 await chooseAppMode('delivery');
             });
 
@@ -4762,8 +4760,7 @@
 
             // Marketplace top-bar Logout
             document.getElementById('mp-topbar-logout-btn').addEventListener('click', async () => {
-                clearAuth();
-                currentUser = null;
+                await clearAuth();
                 showAppChooser();
             });
 
@@ -4779,8 +4776,7 @@
             });
             document.getElementById('desktop-logout-btn').addEventListener('click', async () => {
                 if (currentUser) {
-                    clearAuth();
-                    currentUser = null;
+                    await clearAuth();
                     showAppChooser();
                 } else {
                     showAuthScreen();
@@ -4803,8 +4799,7 @@
                 btn.addEventListener('click', () => { setMarketplaceTab(btn.dataset.mpTab); profileMenu.classList.remove('open'); });
             });
             document.getElementById('desktop-profile-logout-btn').addEventListener('click', async () => {
-                clearAuth();
-                currentUser = null;
+                await clearAuth();
                 showAppChooser();
             });
 
@@ -5232,8 +5227,8 @@
                 }
             });
 
-            document.getElementById('admin-logout-btn').addEventListener('click', () => {
-                clearAuth();
+            document.getElementById('admin-logout-btn').addEventListener('click', async () => {
+                await clearAuth();
                 showAuthScreen();
             });
         }
@@ -5647,8 +5642,8 @@
                 }
             });
 
-            document.getElementById('logout-this-device-btn').addEventListener('click', () => {
-                clearAuth();
+            document.getElementById('logout-this-device-btn').addEventListener('click', async () => {
+                await clearAuth();
                 showAuthScreen();
             });
 
@@ -5870,8 +5865,7 @@
             const backToChooserBtn = document.getElementById('admin-back-to-chooser-btn');
             if (backToChooserBtn) {
                 backToChooserBtn.addEventListener('click', async () => {
-                    clearAuth();
-                    currentUser = null;
+                    await clearAuth();
                     showAppChooser();
                 });
             }
@@ -8310,8 +8304,7 @@
             if (currentUser && currentUser.impersonating) {
                 await exitVendorImpersonation();
             } else {
-                clearAuth();
-                currentUser = null;
+                await clearAuth();
                 showAppChooser();
             }
         }
