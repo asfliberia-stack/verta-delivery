@@ -2511,3 +2511,44 @@ visible is consistent with normal mobile layout (greeting card on top,
 still showing something wrong on mobile after this fix specifically,
 let me know exactly what and I'll dig into that one directly rather
 than guess.
+
+## Mobile dashboard redesign — Super Admin Platform Overview (and Manage Agent Overview, same components)
+
+Implemented the concrete list of 10 fixes, using real CSS/Grid/Flexbox
+(this is a web app, not Flutter/React Native — translated the
+responsive-design principles to their web equivalents: CSS Grid
+instead of Expanded/Flexible, media queries instead of LayoutBuilder).
+Desktop is confirmed unchanged — every mobile change is scoped inside
+existing breakpoints, and I verified the `≥768px` overrides restore
+the exact original padding/font-size values.
+
+1. **Greeting header height** — reduced title to 28px (from 30px),
+   tightened margins/padding around it, reduced the sticky header's
+   own padding — combined, meaningfully shorter without losing any
+   information.
+2. **Stat card padding** — 32px → 16px on mobile (real 8-point spacing,
+   not just visually "less"), value text 40px → 28px, label 16px → 13px.
+3. **2 columns on larger phones, 1 on smaller** — the grid was
+   previously `minmax(220px, ...)`, which never actually fit 2 columns
+   on any real phone width. Now explicitly 2 columns by default, 1
+   column under 380px, reverting to the original auto-fit behavior on
+   tablet/desktop.
+4. **16px screen padding** — was 24px, now matches the spec exactly.
+5. **"Live" badge no longer overlaps content** — added real bottom
+   clearance to the mobile dashboard's content area (so scrolled
+   content never sits behind it) and safe-area-inset-bottom support
+   for notched devices, since this badge is global (appears across the
+   whole app, not just this one dashboard).
+6. **Cards never exceed viewport width** — confirmed `box-sizing:
+   border-box` is already global, added `min-width: 0` to stat cards
+   (a real, common Grid/Flexbox overflow cause — without it, a card
+   with unbreakable content can force its column wider than the grid
+   track allows).
+7. **Typography scaled for mobile** — greeting title reduced as above.
+8. **Safe-area support** — added `env(safe-area-inset-top)` to the
+   sticky header and `env(safe-area-inset-bottom)` to the floating
+   status badge.
+9. **Consistent vertical rhythm** — 12px gaps between cards, ~20px
+   between sections, applied via the same breakpoint.
+10. **No fixed widths causing overflow** — audited the affected
+    components; nothing found beyond what's already fixed above.
