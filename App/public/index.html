@@ -151,6 +151,7 @@
            completely unaffected. */
         .desktop-layout-wrapper { display: block; }
         .desktop-sidebar { display: none; }
+        .desktop-profile-dropdown { display: none; }
         @media (min-width: 1024px) {
             #home-screen .mobile-app-shell, #vendor-app .mobile-app-shell { max-width: none; flex: 1; min-height: 100vh; }
             #home-screen .mobile-app-shell { position: relative; }
@@ -192,6 +193,7 @@
             .mp-topbar-divider { display: block; }
 
             .desktop-profile-dropdown { position: relative; }
+            .desktop-profile-dropdown.mode-active { display: block; }
             .desktop-profile-trigger {
                 display: flex; align-items: center; gap: 0.625rem; background: none; border: 1px solid var(--border);
                 border-radius: 9999px; padding: 0.25rem 0.875rem 0.25rem 0.25rem; cursor: pointer; min-height: 44px;
@@ -1932,7 +1934,7 @@
                 </button>
 
                 <!-- Desktop profile dropdown (customer only) -->
-                <div class="desktop-profile-dropdown" id="desktop-profile-dropdown" style="display:none;">
+                <div class="desktop-profile-dropdown" id="desktop-profile-dropdown">
                     <button type="button" class="desktop-profile-trigger" id="desktop-profile-trigger">
                         <span class="user-avatar" id="desktop-profile-avatar" style="width:2.25rem;height:2.25rem;font-size:0.875rem;">V</span>
                         <span class="desktop-profile-text">
@@ -2761,7 +2763,7 @@
             </button>
 
             <!-- Desktop profile dropdown -->
-            <div class="desktop-profile-dropdown" id="vendor-profile-dropdown" style="display:none;">
+            <div class="desktop-profile-dropdown" id="vendor-profile-dropdown">
                 <button type="button" class="desktop-profile-trigger" id="vendor-profile-trigger">
                     <span class="user-avatar" id="vendor-profile-avatar-desktop" style="width:2.25rem;height:2.25rem;font-size:0.875rem;">V</span>
                     <span class="desktop-profile-text">
@@ -4578,12 +4580,19 @@
 
             // Desktop profile dropdown — customer only (guests get the
             // Login pill; a vendor previewing has their own banner instead).
+            // A CSS class (not inline style) so this only ever shows on
+            // desktop — an inline style would win over any CSS media
+            // query regardless of screen size, which is the actual cause
+            // of this rendering full-size and unstyled on mobile.
             const profileDropdown = document.getElementById('desktop-profile-dropdown');
-            profileDropdown.style.display = mode === 'customer' ? 'block' : 'none';
+            profileDropdown.classList.toggle('mode-active', mode === 'customer');
+            const profileMenuEl = document.getElementById('desktop-profile-menu');
+            if (profileMenuEl) profileMenuEl.classList.remove('open');
             if (mode === 'customer' && currentUser) {
                 document.getElementById('desktop-profile-name').textContent = currentUser.businessName;
                 document.getElementById('desktop-profile-avatar').textContent = currentUser.businessName.charAt(0).toUpperCase();
             }
+            void profileDropdown.offsetHeight;
         }
 
         // Bottom nav tab switching — Home and Categories share the same
@@ -4906,7 +4915,7 @@
                 document.getElementById('vendor-store-name-hero').textContent = currentUser.businessName;
                 document.getElementById('vendor-profile-name-desktop').textContent = currentUser.businessName;
                 document.getElementById('vendor-profile-avatar-desktop').textContent = currentUser.businessName.charAt(0).toUpperCase();
-                document.getElementById('vendor-profile-dropdown').style.display = 'block';
+                document.getElementById('vendor-profile-dropdown').classList.add('mode-active');
                 const impersonationBanner = document.getElementById('impersonation-banner');
                 if (currentUser.impersonating) {
                     document.getElementById('impersonation-vendor-name').textContent = `${currentUser.businessName}'s`;

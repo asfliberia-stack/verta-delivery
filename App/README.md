@@ -2539,3 +2539,29 @@ guest-specific top bar clutter was removed.
 Cleaned up properly rather than just hiding it: removed the actual
 button element, its dead click listener, and the now-unnecessary
 display toggle, instead of leaving unreachable code behind.
+
+## Re-fixed: profile dropdown regression (same root cause as before)
+
+This is the same bug I fixed a few rounds back — it had regressed in
+this particular uploaded zip. Confirmed the exact cause again before
+touching anything: the dropdown's visibility was being set with a
+direct inline style (`element.style.display = 'block'`), which always
+overrides CSS regardless of media queries — so no CSS fix could ever
+have worked here; the inline style would keep winning on any screen
+size, which is why it rendered full-size and unstyled on mobile.
+
+Fixed the same way as before: switched both the customer and vendor
+dashboard's profile dropdown to a real CSS class toggle instead of an
+inline style, added the missing base `display: none` rule (hidden
+everywhere by default, with the desktop-only re-enable properly
+confined inside the desktop media query), removed the now-redundant
+inline styles from the HTML, and carried over the defensive fixes from
+before (resetting the dropdown's own open/closed state on every mode
+entry, plus a forced layout recalculation).
+
+**Worth flagging directly**: this is the second time this exact bug
+has reappeared after being fixed, which suggests different uploaded
+zips aren't always carrying forward every previous fix — possibly from
+working across different local copies. Worth deploying from whichever
+zip I hand you most recently each time, rather than mixing in an
+older local copy, so fixes don't get silently reverted like this.
