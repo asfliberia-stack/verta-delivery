@@ -10,6 +10,7 @@ const cors = require('cors');
 const { Server } = require('socket.io');
 const db = require('./db');
 const { notifyNewOrder, sendMessage } = require('./notify');
+const { OAuth2Client } = require('google-auth-library');
 const {
   hashPassword,
   comparePassword,
@@ -25,6 +26,12 @@ const {
 } = require('./auth');
 
 const PORT = process.env.PORT || 3000;
+
+// Sign in with Google — optional, same graceful-degradation pattern as
+// Twilio below. Unset means the feature simply isn't available yet;
+// nothing else in the app depends on it.
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';
+const googleClient = GOOGLE_CLIENT_ID ? new OAuth2Client(GOOGLE_CLIENT_ID) : null;
 
 // The admin side keeps a single shared password (as in the original app),
 // rather than per-admin email+password — set ADMIN_PASSWORD in Railway's
@@ -468,6 +475,59 @@ app.post('/api/auth/login', authLimiter, async (req, res) => {
   } catch (err) {
     console.error('login failed', err);
     res.status(500).json({ error: 'Login failed' });
+  }
+});
+
+// Public, non-secret config the frontend needs — safe to expose since
+// a Google Client ID is meant to be embedded in frontend code (unlike
+// a client secret, which this flow never uses or stores).
+app.get('/api/config', (req, res) => {
+  res.json({ googleClientId: GOOGLE_CLIENT_ID || null });
+});
+
+// Sign in with Google — verifies the ID token Google's own frontend
+// library hands back, server-side, using Google's public keys (no
+// client secret involved). Finds an existing account by email, or
+// creates a new customer account if this is a first-time sign-in.
+app.post('/api/auth/google', authLimiter, async (req, res) => {
+  if (!googleClient) {
+    return res.status(501).json({ error: 'Google Sign-In is not configured on this server yet.' });
+  }
+  const { credential } = req.body || {};
+  if (!credential) return res.status(400).json({ error: 'Missing Google credential' });
+  try {
+    const ticket = await googleClient.verifyIdToken({ idToken: credential, audience: GOOGLE_CLIENT_ID });
+    const payload = ticket.getPayload();
+    if (!payload || !payload.email_verified) {
+      return res.status(401).json({ error: "This Google account's email isn't verified" });
+    }
+
+    let user = await db.getUserByEmail(payload.email);
+    if (!user) {
+      // First time signing in with this email — create a real customer
+      // account. No phone number (Google doesn't provide one) — same
+      // nullable-phone state existing senders can already be in; they
+      // can add one later via Settings. Password is a random, never-
+      // shown value (this account simply signs in via Google going
+      // forward, unless they later use "Forgot password" to set a real one).
+      const randomPassword = crypto.randomBytes(32).toString('hex');
+      const passwordHash = await hashPassword(randomPassword);
+      user = await db.createUser({
+        id: crypto.randomUUID(),
+        businessName: payload.name || payload.email.split('@')[0],
+        email: payload.email,
+        phone: null,
+        passwordHash,
+        role: 'sender',
+      });
+    }
+
+    const sessionId = await recordLoginHistory(req, user.id);
+    const token = signToken(user, sessionId);
+    res.json({ token, user: { id: user.id, businessName: user.businessName, email: user.email, phone: user.phone, storeAddress: user.storeAddress, role: user.role, approvalStatus: user.approvalStatus } });
+  } catch (err) {
+    console.error('Google sign-in failed', err);
+    res.status(401).json({ error: 'Google sign-in failed — the token could not be verified' });
   }
 });
 

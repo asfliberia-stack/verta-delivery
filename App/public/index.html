@@ -151,8 +151,6 @@
            completely unaffected. */
         .desktop-layout-wrapper { display: block; }
         .desktop-sidebar { display: none; }
-        .desktop-profile-dropdown { display: none; }
-        #delivery-app .admin-sidebar-backdrop { display: none; }
         @media (min-width: 1024px) {
             #home-screen .mobile-app-shell, #vendor-app .mobile-app-shell { max-width: none; flex: 1; min-height: 100vh; }
             #home-screen .mobile-app-shell { position: relative; }
@@ -194,7 +192,6 @@
             .mp-topbar-divider { display: block; }
 
             .desktop-profile-dropdown { position: relative; }
-            .desktop-profile-dropdown.mode-active { display: block; }
             .desktop-profile-trigger {
                 display: flex; align-items: center; gap: 0.625rem; background: none; border: 1px solid var(--border);
                 border-radius: 9999px; padding: 0.25rem 0.875rem 0.25rem 0.25rem; cursor: pointer; min-height: 44px;
@@ -294,6 +291,7 @@
         .store-card {
             display: flex; flex-direction: column; align-items: center; gap: 0.375rem;
             background: white; border-radius: 1rem; padding: 1rem 0.5rem; border: 1px solid var(--border); box-shadow: var(--shadow-sm);
+            position: relative;
         }
         .store-card-avatar {
             width: 48px; height: 48px; border-radius: 50%; background: var(--golib-navy); color: white;
@@ -301,6 +299,14 @@
         }
         .store-card-name { font-weight: 700; font-size: 0.8125rem; color: var(--slate); text-align: center; }
         .store-card-rating { font-size: 0.75rem; color: var(--accent); font-weight: 700; }
+        .store-card-address { font-size: 0.6875rem; color: var(--slate-lighter); text-align: center; line-height: 1.3; }
+        .store-card-follow-btn {
+            position: absolute; top: 0.5rem; right: 0.5rem; width: 26px; height: 26px; border-radius: 50%;
+            background: var(--bg-light); border: 1px solid var(--border); color: var(--slate-lighter);
+            display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0;
+        }
+        .store-card-follow-btn svg { width: 13px; height: 13px; }
+        .store-card-follow-btn.following { background: var(--golib-red); border-color: var(--golib-red); color: white; }
 
         .address-card {
             background: white; border: 1px solid var(--border); border-radius: 1rem; padding: 1rem;
@@ -691,50 +697,15 @@
         .timeline-title { font-weight: 700; font-size: 1rem; }
         .timeline-date { font-size: 0.875rem; color: var(--slate-light); margin-top: 0.25rem; }
 
-        .stats-grid {
-            display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px;
-        }
-        @media (max-width: 380px) {
-            .stats-grid { grid-template-columns: 1fr; }
-        }
-        /* Fixed column counts (not auto-fit) — deliberately not letting
-           the grid recalculate its column count based on how much width
-           the sidebar happens to be taking up. auto-fit would reflow
-           between e.g. 4 and 5 columns purely because the sidebar
-           collapsed/expanded, which — with 7 stat cards, a number that
-           doesn't divide evenly into either — left a different-sized
-           empty gap in the last row every time you toggled the sidebar.
-           A fixed count means the same card always lands in the same
-           column regardless of sidebar state. */
-        @media (min-width: 768px) and (max-width: 1279px) {
-            .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 1.5rem; }
-        }
-        @media (min-width: 1280px) {
-            .stats-grid { grid-template-columns: repeat(4, 1fr); gap: 1.5rem; }
-        }
-
         .stat-card {
-            background: white; padding: 16px; border-radius: 16px; box-shadow: 0 1px 3px rgba(15,23,42,0.08);
+            background: white; padding: 2rem; border-radius: 1.25rem; box-shadow: var(--shadow-sm);
             border: 1px solid var(--border); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            position: relative; overflow: hidden; min-width: 0;
-        }
-        @media (min-width: 768px) {
-            .stat-card { padding: 2rem; border-radius: 1.25rem; box-shadow: var(--shadow-sm); }
+            position: relative; overflow: hidden;
         }
         .stat-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 5px; background: linear-gradient(90deg, var(--primary), var(--secondary)); }
         .stat-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-lg); border-color: var(--primary-light); }
-        .stat-card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 0.5rem; }
-        .stat-card h4 {
-            color: var(--slate-light); font-weight: 600; margin-bottom: 0.5rem; font-size: 0.8125rem;
-            line-height: 1.3; overflow-wrap: break-word;
-        }
-        @media (min-width: 768px) {
-            .stat-card h4 { font-size: 1rem; margin-bottom: 0.75rem; }
-        }
-        .stat-card p { font-size: 1.75rem; font-weight: 800; color: var(--primary); letter-spacing: -0.03em; overflow-wrap: break-word; }
-        @media (min-width: 768px) {
-            .stat-card p { font-size: 2.5rem; letter-spacing: -0.05em; }
-        }
+        .stat-card h4 { color: var(--slate-light); font-weight: 600; margin-bottom: 0.75rem; font-size: 1rem; }
+        .stat-card p { font-size: 2.5rem; font-weight: 800; color: var(--primary); letter-spacing: -0.05em; }
         .stat-card.success p { color: var(--secondary); }
         .stat-card.warning p { color: var(--accent); }
         .stat-card.pending p { color: var(--slate-light); }
@@ -751,7 +722,7 @@
         .order-checkbox { width: 1.5rem; height: 1.5rem; cursor: pointer; accent-color: var(--primary); }
 
         #connection-status {
-            position: fixed; bottom: calc(1rem + env(safe-area-inset-bottom)); right: 1rem; padding: 0.5rem 1rem; border-radius: 9999px;
+            position: fixed; bottom: 1rem; right: 1rem; padding: 0.5rem 1rem; border-radius: 9999px;
             font-size: 0.8125rem; font-weight: 700; z-index: 2000; box-shadow: var(--shadow-md); transition: all 0.2s;
         }
         #connection-status.online { background: #d1fae5; color: #065f46; border: 1px solid #6ee7b7; }
@@ -1674,28 +1645,13 @@
 
         @media (max-width: 960px) {
             #delivery-app .admin-shell { grid-template-columns: 1fr; }
-            #delivery-app .admin-sidebar {
-                position: fixed; top: 0; left: 0; height: 100vh; width: 280px; max-width: 82vw;
-                z-index: 200; min-height: auto; transform: translateX(-100%);
-                transition: transform 0.25s ease; box-shadow: 0 0 40px rgba(0,0,0,0.35);
-            }
-            #delivery-app .admin-shell:not(.sidebar-collapsed) .admin-sidebar { transform: translateX(0); }
-            #delivery-app .admin-sidebar-backdrop {
-                display: none; position: fixed; inset: 0; background: rgba(15,23,42,0.55); z-index: 190;
-            }
-            #delivery-app .admin-shell:not(.sidebar-collapsed) .admin-sidebar-backdrop { display: block; }
-            #delivery-app .admin-main { padding: 1rem 1rem calc(1rem + 64px); }
-            #delivery-app .admin-main > header {
-                padding-top: env(safe-area-inset-top); padding-bottom: 1rem; margin-bottom: 0.25rem;
-            }
-            #delivery-app .admin-welcome-title { font-size: 1.75rem; margin-bottom: 0.125rem; }
-            #delivery-app .admin-welcome-eyebrow { font-size: 0.75rem; margin-bottom: 0.125rem; }
-            #delivery-app .admin-topbar-row { gap: 0.75rem; }
-            #delivery-app .admin-section-label { margin: 1.25rem 0 0.75rem; }
+            #delivery-app .admin-sidebar { position: static; min-height: auto; }
+            #delivery-app .admin-main { padding: 1.5rem; }
             #delivery-app .sidebar-toggle-btn { left: auto; right: 1.25rem; }
             #delivery-app .admin-shell.sidebar-collapsed .sidebar-toggle-btn { left: auto; right: 1.25rem; }
         }
     </style>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
     <div id="connection-status" class="offline" style="display:none;">Connecting…</div>
@@ -1976,7 +1932,7 @@
                 </button>
 
                 <!-- Desktop profile dropdown (customer only) -->
-                <div class="desktop-profile-dropdown" id="desktop-profile-dropdown">
+                <div class="desktop-profile-dropdown" id="desktop-profile-dropdown" style="display:none;">
                     <button type="button" class="desktop-profile-trigger" id="desktop-profile-trigger">
                         <span class="user-avatar" id="desktop-profile-avatar" style="width:2.25rem;height:2.25rem;font-size:0.875rem;">V</span>
                         <span class="desktop-profile-text">
@@ -2036,7 +1992,11 @@
             <!-- Stores -->
             <div id="mp-view-stores" style="display:none;">
                 <div id="mp-stores-real-content" class="mobile-section" style="margin-top:0;">
-                    <div class="mobile-section-header"><div class="mobile-section-title">All Stores</div></div>
+                    <div class="mobile-section-header"><div class="mobile-section-title">Stores</div></div>
+                    <div style="display:flex; gap:0.5rem; margin-bottom:1rem;" id="mp-stores-filter-row">
+                        <button type="button" class="category-item active-category store-filter-btn" data-filter="all">All Stores</button>
+                        <button type="button" class="category-item store-filter-btn" data-filter="following">Following</button>
+                    </div>
                     <div id="mp-stores-full-list" class="store-grid-full"></div>
                 </div>
             </div>
@@ -2392,7 +2352,6 @@
                 </div>
                 <div class="quick-access-btns">
                     <button class="quick-access-btn secondary" id="delivery-back-to-chooser-btn" title="Switch app">⇄ Switch</button>
-                    <button class="quick-access-btn primary" id="delivery-guest-login-btn" style="display:none;">Login / Sign Up</button>
                     <div class="user-info" id="delivery-user-info" style="display:none;">
                         <div class="user-avatar" id="delivery-sender-avatar">V</div>
                         <div class="user-name" id="delivery-sender-display-name">—</div>
@@ -2426,7 +2385,6 @@
             <button type="button" class="sidebar-toggle-btn" id="sidebar-toggle-btn" aria-label="Toggle sidebar">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
             </button>
-            <div class="admin-sidebar-backdrop" id="admin-sidebar-backdrop"></div>
             <aside class="admin-sidebar">
                 <div class="admin-sidebar-logo">
                     <img src="assets/logo.png" alt="Verta Delivery Service">
@@ -2530,7 +2488,7 @@
                 <div id="admin-operational-view">
                 <div class="admin-section-label">TODAY'S SNAPSHOT</div>
                 <section class="stats-section" style="margin-bottom: 1.5rem;">
-                    <div class="stats-grid">
+                    <div class="stats-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.5rem;">
                         <div class="stat-card">
                             <div class="stat-card-top"><h4>Total Orders</h4><div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7h-9m9 5h-9m9 5h-9M4 7h1m-1 5h1m-1 5h1"></path><rect x="3" y="4" width="4" height="16" rx="1"></rect></svg></div></div>
                             <p id="total-orders-delivery">0</p>
@@ -2667,7 +2625,7 @@
                 <div id="super-admin-overview-view" style="display:none;">
                     <div class="admin-section-label">PLATFORM OVERVIEW</div>
                     <section class="stats-section" style="margin-bottom: 1.5rem;">
-                        <div class="stats-grid">
+                        <div class="stats-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.5rem;">
                             <div class="stat-card">
                                 <div class="stat-card-top"><h4>Total Vendors</h4><div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg></div></div>
                                 <p id="sa-total-vendors">0</p>
@@ -2803,7 +2761,7 @@
             </button>
 
             <!-- Desktop profile dropdown -->
-            <div class="desktop-profile-dropdown" id="vendor-profile-dropdown">
+            <div class="desktop-profile-dropdown" id="vendor-profile-dropdown" style="display:none;">
                 <button type="button" class="desktop-profile-trigger" id="vendor-profile-trigger">
                     <span class="user-avatar" id="vendor-profile-avatar-desktop" style="width:2.25rem;height:2.25rem;font-size:0.875rem;">V</span>
                     <span class="desktop-profile-text">
@@ -3954,11 +3912,7 @@
         // sender view since the elements they target only exist inside
         // #delivery-app.
         // ============================================================
-        // Open by default on desktop (persistent sidebar), closed by
-        // default on mobile (should only appear via the hamburger toggle,
-        // never take over the screen on every load/refresh). Same 960px
-        // breakpoint the grid layout itself already switches on.
-        let isSidebarOpen = window.innerWidth > 960;
+        let isSidebarOpen = true;
 
         function setIsSidebarOpen(open) {
             isSidebarOpen = open;
@@ -3969,10 +3923,7 @@
         function wireSidebarToggle() {
             const btn = document.getElementById('sidebar-toggle-btn');
             if (!btn) return;
-            setIsSidebarOpen(isSidebarOpen); // apply the correct initial state to the DOM on load
             btn.addEventListener('click', () => setIsSidebarOpen(!isSidebarOpen));
-            const backdrop = document.getElementById('admin-sidebar-backdrop');
-            if (backdrop) backdrop.addEventListener('click', () => setIsSidebarOpen(false));
         }
 
         let lastScrollY = window.scrollY;
@@ -4239,6 +4190,43 @@
             }
         }
 
+        // Sign in with Google — only turns on if the server reports a
+        // real Client ID configured (GET /api/config). Until then the
+        // button stays exactly as it is today: disabled, with its
+        // existing "isn't set up yet" tooltip.
+        async function initGoogleSignIn() {
+            const btn = document.getElementById('auth-google-btn');
+            if (!btn) return;
+            try {
+                const config = await apiFetch('/api/config');
+                if (!config.googleClientId || typeof google === 'undefined' || !google.accounts) return;
+                google.accounts.id.initialize({
+                    client_id: config.googleClientId,
+                    callback: handleGoogleCredentialResponse,
+                });
+                btn.disabled = false;
+                btn.title = 'Sign in with Google';
+                btn.addEventListener('click', () => google.accounts.id.prompt());
+            } catch (err) {
+                console.error('Google Sign-In did not initialize', err);
+            }
+        }
+
+        async function handleGoogleCredentialResponse(response) {
+            const btn = document.getElementById('auth-google-btn');
+            const errorEl = document.getElementById('login-error');
+            try {
+                const data = await apiFetch('/api/auth/google', {
+                    method: 'POST',
+                    body: JSON.stringify({ credential: response.credential }),
+                });
+                await saveAuth(data.token, data.user);
+                await enterApp();
+            } catch (err) {
+                if (errorEl) { errorEl.textContent = err.message; errorEl.style.display = 'block'; }
+            }
+        }
+
         async function clearAuth() {
             authToken = null;
             currentUser = null;
@@ -4476,6 +4464,7 @@
             wireAppEvents();
             wireSidebarToggle();
             setupScrollReactiveHeader();
+            initGoogleSignIn();
             wireSettingsEvents();
             wireTopbarEvents();
             wireVendorEvents();
@@ -4589,28 +4578,12 @@
 
             // Desktop profile dropdown — customer only (guests get the
             // Login pill; a vendor previewing has their own banner instead).
-            // A CSS class (not inline style) so this only ever shows on
-            // desktop — an inline style would win over any CSS media
-            // query regardless of screen size, which was the actual
-            // cause of this rendering full-size and unstyled on mobile.
             const profileDropdown = document.getElementById('desktop-profile-dropdown');
-            profileDropdown.classList.toggle('mode-active', mode === 'customer');
-            // Always close the dropdown's own open/closed toggle on every
-            // mode entry — never leave it to whatever state a previous
-            // session (e.g. switching apps live rather than a fresh page
-            // load) happened to leave it in.
-            const profileMenuEl = document.getElementById('desktop-profile-menu');
-            if (profileMenuEl) profileMenuEl.classList.remove('open');
+            profileDropdown.style.display = mode === 'customer' ? 'block' : 'none';
             if (mode === 'customer' && currentUser) {
                 document.getElementById('desktop-profile-name').textContent = currentUser.businessName;
                 document.getElementById('desktop-profile-avatar').textContent = currentUser.businessName.charAt(0).toUpperCase();
             }
-            // Force an immediate layout recalculation right after this
-            // class change — a defensive measure against any mobile
-            // browser leaving a toggled class in a stale layout state
-            // mid-transition (switching apps live) rather than on a fresh
-            // page load, which a full reload naturally clears.
-            void profileDropdown.offsetHeight;
         }
 
         // Bottom nav tab switching — Home and Categories share the same
@@ -4661,6 +4634,7 @@
             renderSkeletonCards(document.getElementById('storefront-products-container'));
             await loadStorefront();
             await loadWishlistIds();
+            await loadFollowedVendorIds();
             if (currentUser && currentUser.role === 'sender') {
                 apiFetch('/api/conversations').then(data => {
                     conversationsCache = data.conversations || [];
@@ -4688,12 +4662,15 @@
         // (original indigo branding), a separate product from the
         // ONLib marketplace, not a tab within it.
         function setDeliveryHeaderState(mode) {
-            document.getElementById('delivery-guest-login-btn').style.display = mode === 'guest' ? 'flex' : 'none';
             document.getElementById('delivery-guest-prompt').style.display = mode === 'guest' ? 'block' : 'none';
             document.getElementById('delivery-user-info').style.display = mode === 'customer' ? 'flex' : 'none';
             document.getElementById('delivery-sender-logout-btn').style.display = mode === 'customer' ? 'flex' : 'none';
             document.getElementById('hero-section').style.display = mode === 'customer' ? 'block' : 'none';
             document.getElementById('your-orders-section').style.display = mode === 'customer' ? 'block' : 'none';
+            // Guests get the cleaner content-area prompt below instead —
+            // the top bar's own "Switch" and "Login / Sign Up" controls
+            // are redundant with it and just add clutter before login.
+            document.getElementById('delivery-back-to-chooser-btn').style.display = mode === 'guest' ? 'none' : 'flex';
         }
 
         async function enterDeliveryMode(headerMode) {
@@ -4760,7 +4737,6 @@
             });
 
             document.getElementById('delivery-back-to-chooser-btn').addEventListener('click', showAppChooser);
-            document.getElementById('delivery-guest-login-btn').addEventListener('click', showAuthScreen);
             document.getElementById('delivery-guest-login-btn-2').addEventListener('click', showAuthScreen);
             document.getElementById('delivery-sender-logout-btn').addEventListener('click', async () => {
                 clearAuth();
@@ -4930,7 +4906,7 @@
                 document.getElementById('vendor-store-name-hero').textContent = currentUser.businessName;
                 document.getElementById('vendor-profile-name-desktop').textContent = currentUser.businessName;
                 document.getElementById('vendor-profile-avatar-desktop').textContent = currentUser.businessName.charAt(0).toUpperCase();
-                document.getElementById('vendor-profile-dropdown').classList.add('mode-active');
+                document.getElementById('vendor-profile-dropdown').style.display = 'block';
                 const impersonationBanner = document.getElementById('impersonation-banner');
                 if (currentUser.impersonating) {
                     document.getElementById('impersonation-vendor-name').textContent = `${currentUser.businessName}'s`;
@@ -8578,23 +8554,46 @@
                 container.innerHTML = '<p style="grid-column: 1 / -1; text-align:center; color:var(--slate-light); font-size:0.875rem;">No stores yet.</p>';
                 return;
             }
+            const canFollow = currentUser && currentUser.role === 'sender';
             container.innerHTML = stores.map(s => `
                 <div class="store-card">
+                    ${canFollow ? `
+                        <button type="button" class="store-card-follow-btn ${followedVendorIds.has(s.id) ? 'following' : ''}" data-id="${s.id}" aria-label="Follow store" title="${followedVendorIds.has(s.id) ? 'Following' : 'Follow this store'}">
+                            <svg viewBox="0 0 24 24" fill="${followedVendorIds.has(s.id) ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
+                        </button>
+                    ` : ''}
                     <div class="store-card-avatar">${s.businessName.charAt(0).toUpperCase()}</div>
                     <div class="store-card-name">${s.businessName}</div>
                     <div class="store-card-rating">${s.reviewCount > 0 ? '★ ' + s.avgRating.toFixed(1) : 'New'}</div>
+                    ${s.storeAddress ? `<div class="store-card-address">${s.storeAddress}</div>` : ''}
                 </div>
             `).join('');
         }
+
+        let storefrontStoresCache = [];
+        let storesFilter = 'all';
 
         async function loadStoresDirectory() {
             const container = document.getElementById('mp-stores-full-list');
             try {
                 const data = await apiFetch('/api/marketplace/stores');
-                renderStoreCards(container, data.stores || []);
+                storefrontStoresCache = data.stores || [];
+                renderStoresView();
             } catch (err) {
                 container.innerHTML = `<p style="grid-column: 1 / -1; text-align:center; color:#dc2626;">${err.message}</p>`;
             }
+        }
+
+        function renderStoresView() {
+            const container = document.getElementById('mp-stores-full-list');
+            const filtered = storesFilter === 'following'
+                ? storefrontStoresCache.filter(s => followedVendorIds.has(s.id))
+                : storefrontStoresCache;
+            if (storesFilter === 'following' && filtered.length === 0) {
+                container.innerHTML = '<p style="grid-column: 1 / -1; text-align:center; color:var(--slate-light); font-size:0.875rem;">You\'re not following any stores yet — tap the heart on a store to follow it.</p>';
+                return;
+            }
+            renderStoreCards(container, filtered);
         }
 
         // Real wishlist — tracked as a Set of product ids so the PDP's
@@ -8619,6 +8618,45 @@
                 badge.textContent = count;
                 badge.style.display = count > 0 ? 'flex' : 'none';
             });
+        }
+
+        // Real Follow-a-Store — same pattern as the wishlist above, just
+        // for vendors instead of products.
+        let followedVendorIds = new Set();
+
+        async function loadFollowedVendorIds() {
+            if (!currentUser || currentUser.role !== 'sender') { followedVendorIds = new Set(); return; }
+            try {
+                const data = await apiFetch('/api/store-follows/ids');
+                followedVendorIds = new Set(data.vendorIds || []);
+            } catch (err) {
+                console.error('Failed to load followed store ids', err);
+            }
+        }
+
+        async function toggleFollowStore(vendorId) {
+            if (!currentUser || currentUser.role !== 'sender') {
+                showToast('Log in to follow a store.', 'info');
+                return;
+            }
+            const isFollowing = followedVendorIds.has(vendorId);
+            try {
+                if (isFollowing) {
+                    await apiFetch(`/api/store-follows/${vendorId}`, { method: 'DELETE' });
+                    followedVendorIds.delete(vendorId);
+                    showToast('Unfollowed store', 'success');
+                } else {
+                    await apiFetch(`/api/store-follows/${vendorId}`, { method: 'POST' });
+                    followedVendorIds.add(vendorId);
+                    showToast('Following store', 'success');
+                }
+                // Re-render whichever stores view is currently visible so
+                // the button's state and (if applicable) the "Following"
+                // filter both reflect the change immediately.
+                if (storefrontStoresCache.length) renderStoresView();
+            } catch (err) {
+                showToast(err.message, 'error');
+            }
         }
 
         async function toggleWishlist(productId) {
@@ -9165,6 +9203,27 @@
         }
 
         function wireStorefrontEvents() {
+            // ---- Stores / Follow-a-Store ----
+            document.getElementById('mp-stores-filter-row').addEventListener('click', (e) => {
+                const btn = e.target.closest('.store-filter-btn');
+                if (!btn) return;
+                document.querySelectorAll('.store-filter-btn').forEach(b => b.classList.remove('active-category'));
+                btn.classList.add('active-category');
+                storesFilter = btn.dataset.filter;
+                renderStoresView();
+            });
+            document.getElementById('mp-stores-full-list').addEventListener('click', (e) => {
+                const btn = e.target.closest('.store-card-follow-btn');
+                if (btn) toggleFollowStore(btn.dataset.id);
+            });
+            const popularStoresPreview = document.getElementById('mp-popular-stores-preview');
+            if (popularStoresPreview) {
+                popularStoresPreview.addEventListener('click', (e) => {
+                    const btn = e.target.closest('.store-card-follow-btn');
+                    if (btn) toggleFollowStore(btn.dataset.id);
+                });
+            }
+
             // ---- Your Orders (Marketplace purchase history) ----
             document.getElementById('mp-orders-grid').addEventListener('click', (e) => {
                 const btn = e.target.closest('.track-purchase-delivery-btn');

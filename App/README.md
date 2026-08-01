@@ -2440,141 +2440,102 @@ Settings → Business Profile in the admin dashboard, update those two
 fields to the new values, and Save — that's the real, correct way to
 change this (and it already works).
 
-## Sidebar + Profile Dropdown — both fixed for real this time
+## Follow-a-Store — real frontend built on the existing backend
 
-### Mobile admin sidebar
+The backend for this (schema, `followStore`/`unfollowStore`/
+`getFollowedStoreIds`, all 3 endpoints) was already fully built and
+correct — this was purely about finishing the missing frontend.
 
-Same fix as identified before: default now closed on mobile / open on
-desktop (960px breakpoint, matching the layout's own existing
-breakpoint), real overlay drawer behavior instead of `position: static`
-ignoring the toggle state, and a real backdrop that closes it on tap.
+Also found while checking: **Store Physical Address was already fully
+built** in this uploaded zip (settings field + real checkout auto-fill
+from an earlier round) — nothing needed there, so this pass focused
+entirely on Follow-a-Store.
 
-### Profile dropdown — found something different this time
+### What's real now
 
-This turned out to be a different (and more direct) bug than the
-version of this file I'd looked at before. This codebase was setting
-the dropdown's visibility with a **direct inline style**
-(`element.style.display = 'block'`), on both the customer and vendor
-dashboards. Inline styles set via JavaScript always override CSS
-rules regardless of media queries — so no matter what CSS I added, it
-would never have mattered; the inline style would keep winning
-unconditionally on every screen size. That's the actual reason it
-rendered full-size and completely unstyled on mobile.
+- A real follow/unfollow heart button on every store card — in both
+  the full Stores directory and the "Popular Stores" preview on the
+  marketplace home tab (same shared card component, both wired).
+- **All Stores / Following filter** in the Stores tab — a real toggle,
+  not decorative; switching to "Following" actually filters the list
+  to only the vendors you've followed, with an honest empty state if
+  you haven't followed any yet.
+- Followed-store state loads proactively when the marketplace opens
+  (same pattern as the wishlist), so the heart always shows the
+  correct filled/unfilled state immediately, no flash of wrong state.
+- Bonus, since the data was already there and unused: store cards now
+  show the vendor's real physical address when they've set one in
+  Settings (the same field this round confirmed was already built).
 
-Fixed by switching both to a real CSS class toggle
-(`classList.toggle('mode-active', ...)`) instead of an inline style,
-matching the safe pattern already used successfully elsewhere in this
-app. Also:
-- Added the missing base `display: none` rule so the dropdown is
-  hidden by default everywhere, with the desktop-only re-enable
-  properly confined inside the desktop media query.
-- Removed the now-redundant inline `style="display:none"` from both
-  dropdowns' HTML, since the class-based system fully owns visibility
-  now.
-- Carried over the two defensive fixes from the earlier "wrong during
-  a live app-switch, fine after refresh" investigation: resetting the
-  dropdown's own open/closed state on every mode entry, and forcing an
-  immediate layout recalculation right after the class change.
+Guests see the store cards without a follow button at all (rather than
+one that silently fails) — following requires a customer account, same
+restriction as the wishlist.
 
-Checked the vendor dashboard's equivalent dropdown too, since it
-shared the identical bug — fixed both together rather than just the
-one that was reported.
+## Google Sign-In — full integration built, gated on one env var
 
-## Fixed a real regression from last round's sidebar fix — desktop grid scrambled
+The entire feature is built and ready. The only remaining step is
+yours: register a Google OAuth app and set one environment variable.
+Once that's done, the button on the login screen activates
+automatically — no further code changes needed.
 
-Confirmed root cause: the backdrop element added last round
-(`#admin-sidebar-backdrop`) had no desktop-scoped CSS at all — only a
-mobile-specific rule. On desktop, with no `display` override, it
-defaulted to a normal in-flow `<div>` — and since it's a direct child
-of `.admin-shell` (a CSS Grid container with 2 explicit columns), it
-silently became an extra grid item. That pushed the real sidebar (with
-its nav links) into the second (wide) column instead of the first
-(272px) one, and pushed the main content's greeting/hero section into
-an implicit second row's first column — exactly matching the scrambled
-layout in the screenshot, where nav items appeared full-width and the
-greeting was squeezed into a narrow strip.
+### What you need to do
 
-Fixed with one rule: the backdrop now has an explicit `display: none`
-at the base (unscoped) level, so it's completely out of the picture on
-desktop, only appearing via its existing mobile-specific rules when the
-drawer is actually open on a small screen. Verified no other direct
-child of `.admin-shell` has this same gap.
+1. Go to https://console.cloud.google.com/apis/credentials
+2. Create a project (or use an existing one)
+3. Create Credentials → OAuth client ID → Application type: **Web application**
+4. Under "Authorized JavaScript origins", add your real deployed URL
+   (e.g. `https://verta-delivery-production.up.railway.app`)
+5. Copy the Client ID it gives you (looks like
+   `123456789-abc...xyz.apps.googleusercontent.com`)
+6. Set it as `GOOGLE_CLIENT_ID` in Railway's Variables tab (or in
+   `server/.env` for local testing)
 
-### On the mobile screenshot specifically
+No client secret is needed — this flow (Google Identity Services)
+only requires the Client ID; the server verifies the token's signature
+directly against Google's own public keys.
 
-I looked closely at this one too, but couldn't confirm a second,
-separate bug from it — the "Reconnecting…" badge visible suggests this
-was captured while the page was still finishing its initial
-connection, and the narrow greeting panel with the hamburger icon
-visible is consistent with normal mobile layout (greeting card on top,
-"Platform Overview" section below it), not obviously broken. If it's
-still showing something wrong on mobile after this fix specifically,
-let me know exactly what and I'll dig into that one directly rather
-than guess.
+### What's built
 
-## Mobile dashboard redesign — Super Admin Platform Overview (and Manage Agent Overview, same components)
+- `GET /api/config` — a small public endpoint exposing the Client ID
+  to the frontend (safe to expose; unlike a client secret, a Client ID
+  is meant to be embedded in frontend code).
+- `POST /api/auth/google` — verifies the Google ID token server-side
+  using the official `google-auth-library` package, then finds an
+  existing account by email or creates a new customer account on
+  first sign-in (no phone number, since Google doesn't provide one —
+  same nullable-phone state existing accounts can already be in).
+- The frontend loads Google's script, checks `/api/config` on load,
+  and only activates the button if a real Client ID is configured —
+  until then it stays exactly as it is today: disabled, with its
+  existing tooltip.
 
-Implemented the concrete list of 10 fixes, using real CSS/Grid/Flexbox
-(this is a web app, not Flutter/React Native — translated the
-responsive-design principles to their web equivalents: CSS Grid
-instead of Expanded/Flexible, media queries instead of LayoutBuilder).
-Desktop is confirmed unchanged — every mobile change is scoped inside
-existing breakpoints, and I verified the `≥768px` overrides restore
-the exact original padding/font-size values.
+### One honest limitation
 
-1. **Greeting header height** — reduced title to 28px (from 30px),
-   tightened margins/padding around it, reduced the sticky header's
-   own padding — combined, meaningfully shorter without losing any
-   information.
-2. **Stat card padding** — 32px → 16px on mobile (real 8-point spacing,
-   not just visually "less"), value text 40px → 28px, label 16px → 13px.
-3. **2 columns on larger phones, 1 on smaller** — the grid was
-   previously `minmax(220px, ...)`, which never actually fit 2 columns
-   on any real phone width. Now explicitly 2 columns by default, 1
-   column under 380px, reverting to the original auto-fit behavior on
-   tablet/desktop.
-4. **16px screen padding** — was 24px, now matches the spec exactly.
-5. **"Live" badge no longer overlaps content** — added real bottom
-   clearance to the mobile dashboard's content area (so scrolled
-   content never sits behind it) and safe-area-inset-bottom support
-   for notched devices, since this badge is global (appears across the
-   whole app, not just this one dashboard).
-6. **Cards never exceed viewport width** — confirmed `box-sizing:
-   border-box` is already global, added `min-width: 0` to stat cards
-   (a real, common Grid/Flexbox overflow cause — without it, a card
-   with unbreakable content can force its column wider than the grid
-   track allows).
-7. **Typography scaled for mobile** — greeting title reduced as above.
-8. **Safe-area support** — added `env(safe-area-inset-top)` to the
-   sticky header and `env(safe-area-inset-bottom)` to the floating
-   status badge.
-9. **Consistent vertical rhythm** — 12px gaps between cards, ~20px
-   between sections, applied via the same breakpoint.
-10. **No fixed widths causing overflow** — audited the affected
-    components; nothing found beyond what's already fixed above.
+My sandbox has no network access, so I couldn't run `npm install` here
+or make a live call to Google's servers to test this end to end. What
+I *can* say with confidence: the syntax is valid, the code follows the
+official `google-auth-library` API exactly as documented, and it
+mirrors this app's existing login pattern precisely (same session
+handling, same response shape, same `saveAuth`/`enterApp` flow every
+other login method already uses). Real-world testing once you deploy
+with actual credentials is the genuine last step here — please test
+the full sign-in flow after setting the environment variable, and let
+me know if anything doesn't behave as expected.
 
-## Fixed: the actual root cause of the shifting empty space (sidebar toggle)
+## Removed the redundant top bar for guests on the Delivery app
 
-You correctly diagnosed this — the stat card grid used `auto-fit`,
-which recalculates how many columns fit based on however much width
-happens to be available. Collapsing the sidebar makes the content area
-wider, so the grid jumped from 4 columns to 5. With exactly 7 stat
-cards — a number that doesn't divide evenly into 4 *or* 5 — the last
-row always has leftover empty space, and critically, **a different
-amount of it** depending on whether the sidebar was open or closed.
-That's the "space that opens and closes" you were seeing.
+The guest Delivery view had two separate "Login / Sign Up" prompts
+stacked on top of each other — one in the top header bar (next to a
+"Switch" button), and another cleaner one below it ("Log in to send a
+package and track your orders." + button). Removed the top one
+entirely, along with "Switch" for guests specifically, keeping the
+logo and the content-area prompt as the single, real entry point.
 
-Fixed by locking the column count to a **fixed number tied only to
-overall viewport width**, not to how much space the sidebar is
-currently taking up:
-- ≥1280px: always exactly 4 columns (so 4 cards on row one, 3 on row
-  two), regardless of whether the sidebar is expanded or collapsed.
-- 768–1279px: 2 columns.
-- Mobile stays as already fixed in the previous round.
+Logged-in customers still get "Switch" in the header (they need it to
+move to Marketplace, and that flow already correctly keeps them logged
+in), plus their own avatar and Logout — none of that changed. Only the
+guest-specific top bar clutter was removed.
 
-There will still be some empty space in that last row (7 cards in 4
-columns always leaves one column-width empty — that's just what 7
-divided by 4 looks like), but it will now be the **same** every time,
-never shifting based on the sidebar toggle. That was the actual bug —
-not that empty space existed, but that it changed size when you
-clicked the hamburger.
+Cleaned up properly rather than just hiding it: removed the actual
+button element, its dead click listener, and the now-unnecessary
+display toggle, instead of leaving unreachable code behind.
