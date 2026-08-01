@@ -697,8 +697,20 @@
         @media (max-width: 380px) {
             .stats-grid { grid-template-columns: 1fr; }
         }
-        @media (min-width: 768px) {
-            .stats-grid { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.5rem; }
+        /* Fixed column counts (not auto-fit) — deliberately not letting
+           the grid recalculate its column count based on how much width
+           the sidebar happens to be taking up. auto-fit would reflow
+           between e.g. 4 and 5 columns purely because the sidebar
+           collapsed/expanded, which — with 7 stat cards, a number that
+           doesn't divide evenly into either — left a different-sized
+           empty gap in the last row every time you toggled the sidebar.
+           A fixed count means the same card always lands in the same
+           column regardless of sidebar state. */
+        @media (min-width: 768px) and (max-width: 1279px) {
+            .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 1.5rem; }
+        }
+        @media (min-width: 1280px) {
+            .stats-grid { grid-template-columns: repeat(4, 1fr); gap: 1.5rem; }
         }
 
         .stat-card {

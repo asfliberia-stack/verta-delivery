@@ -2552,3 +2552,29 @@ the exact original padding/font-size values.
    between sections, applied via the same breakpoint.
 10. **No fixed widths causing overflow** — audited the affected
     components; nothing found beyond what's already fixed above.
+
+## Fixed: the actual root cause of the shifting empty space (sidebar toggle)
+
+You correctly diagnosed this — the stat card grid used `auto-fit`,
+which recalculates how many columns fit based on however much width
+happens to be available. Collapsing the sidebar makes the content area
+wider, so the grid jumped from 4 columns to 5. With exactly 7 stat
+cards — a number that doesn't divide evenly into 4 *or* 5 — the last
+row always has leftover empty space, and critically, **a different
+amount of it** depending on whether the sidebar was open or closed.
+That's the "space that opens and closes" you were seeing.
+
+Fixed by locking the column count to a **fixed number tied only to
+overall viewport width**, not to how much space the sidebar is
+currently taking up:
+- ≥1280px: always exactly 4 columns (so 4 cards on row one, 3 on row
+  two), regardless of whether the sidebar is expanded or collapsed.
+- 768–1279px: 2 columns.
+- Mobile stays as already fixed in the previous round.
+
+There will still be some empty space in that last row (7 cards in 4
+columns always leaves one column-width empty — that's just what 7
+divided by 4 looks like), but it will now be the **same** every time,
+never shifting based on the sidebar toggle. That was the actual bug —
+not that empty space existed, but that it changed size when you
+clicked the hamburger.
