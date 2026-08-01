@@ -2440,21 +2440,42 @@ Settings → Business Profile in the admin dashboard, update those two
 fields to the new values, and Save — that's the real, correct way to
 change this (and it already works).
 
-## Re-applied: mobile sidebar fix (from the previously uploaded APP_NEW.zip)
+## Sidebar + Profile Dropdown — both fixed for real this time
 
-You uploaded a version that predates last round's mobile sidebar fix —
-confirmed by checking it directly (it had every other recent feature,
-just not that one specifically). Set it as the new base per your
-instructions and re-applied the exact same fix on top of it:
+### Mobile admin sidebar
 
-- Sidebar now closed by default on mobile, open by default on desktop
-  (960px breakpoint, matching the layout's own existing breakpoint).
-- Real overlay drawer behavior on mobile (slides in from off-screen)
-  instead of the old `position: static` that ignored the open/closed
-  state entirely.
-- A real backdrop behind the open drawer, tap to close.
+Same fix as identified before: default now closed on mobile / open on
+desktop (960px breakpoint, matching the layout's own existing
+breakpoint), real overlay drawer behavior instead of `position: static`
+ignoring the toggle state, and a real backdrop that closes it on tap.
 
-Re-verified against the actual files this time before packaging —
-confirmed only `index.html` changed, backend untouched, and the fix
-only applies within `#delivery-app` (Manage Agent / Super Admin),
-leaving the Vendor dashboard's own sidebar alone.
+### Profile dropdown — found something different this time
+
+This turned out to be a different (and more direct) bug than the
+version of this file I'd looked at before. This codebase was setting
+the dropdown's visibility with a **direct inline style**
+(`element.style.display = 'block'`), on both the customer and vendor
+dashboards. Inline styles set via JavaScript always override CSS
+rules regardless of media queries — so no matter what CSS I added, it
+would never have mattered; the inline style would keep winning
+unconditionally on every screen size. That's the actual reason it
+rendered full-size and completely unstyled on mobile.
+
+Fixed by switching both to a real CSS class toggle
+(`classList.toggle('mode-active', ...)`) instead of an inline style,
+matching the safe pattern already used successfully elsewhere in this
+app. Also:
+- Added the missing base `display: none` rule so the dropdown is
+  hidden by default everywhere, with the desktop-only re-enable
+  properly confined inside the desktop media query.
+- Removed the now-redundant inline `style="display:none"` from both
+  dropdowns' HTML, since the class-based system fully owns visibility
+  now.
+- Carried over the two defensive fixes from the earlier "wrong during
+  a live app-switch, fine after refresh" investigation: resetting the
+  dropdown's own open/closed state on every mode entry, and forcing an
+  immediate layout recalculation right after the class change.
+
+Checked the vendor dashboard's equivalent dropdown too, since it
+shared the identical bug — fixed both together rather than just the
+one that was reported.
