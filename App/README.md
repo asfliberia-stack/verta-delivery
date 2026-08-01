@@ -2602,3 +2602,18 @@ this), and removed several redundant manual `currentUser = null` lines
 that were papering over the same gap without actually closing it.
 Logout is now reliably complete — on either side — before anything
 else happens next.
+
+## Added: "Back to service selector" for guests, matching the requested layout
+
+Two rounds ago, removing the top bar's "Switch" button for guests
+also removed their only way back to the App Chooser without logging
+in first — a real gap I'd flagged as a risk at the time. Added it
+back here, in the content area next to "Login / Sign Up" as
+requested, using the same wording style as the equivalent buttons
+already used elsewhere (Marketplace, Admin, Vendor), rather than the
+"⇄ Switch" wording the old top-bar version used.
+
+Real button, not decorative — wired to the same `showAppChooser()`
+function every other "Back to service selector" button in the app
+already uses. Sits side by side with "Login / Sign Up" on both mobile
+and desktop, matching the reference image.
