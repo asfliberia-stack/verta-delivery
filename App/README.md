@@ -2479,3 +2479,35 @@ app. Also:
 Checked the vendor dashboard's equivalent dropdown too, since it
 shared the identical bug — fixed both together rather than just the
 one that was reported.
+
+## Fixed a real regression from last round's sidebar fix — desktop grid scrambled
+
+Confirmed root cause: the backdrop element added last round
+(`#admin-sidebar-backdrop`) had no desktop-scoped CSS at all — only a
+mobile-specific rule. On desktop, with no `display` override, it
+defaulted to a normal in-flow `<div>` — and since it's a direct child
+of `.admin-shell` (a CSS Grid container with 2 explicit columns), it
+silently became an extra grid item. That pushed the real sidebar (with
+its nav links) into the second (wide) column instead of the first
+(272px) one, and pushed the main content's greeting/hero section into
+an implicit second row's first column — exactly matching the scrambled
+layout in the screenshot, where nav items appeared full-width and the
+greeting was squeezed into a narrow strip.
+
+Fixed with one rule: the backdrop now has an explicit `display: none`
+at the base (unscoped) level, so it's completely out of the picture on
+desktop, only appearing via its existing mobile-specific rules when the
+drawer is actually open on a small screen. Verified no other direct
+child of `.admin-shell` has this same gap.
+
+### On the mobile screenshot specifically
+
+I looked closely at this one too, but couldn't confirm a second,
+separate bug from it — the "Reconnecting…" badge visible suggests this
+was captured while the page was still finishing its initial
+connection, and the narrow greeting panel with the hamburger icon
+visible is consistent with normal mobile layout (greeting card on top,
+"Platform Overview" section below it), not obviously broken. If it's
+still showing something wrong on mobile after this fix specifically,
+let me know exactly what and I'll dig into that one directly rather
+than guess.
