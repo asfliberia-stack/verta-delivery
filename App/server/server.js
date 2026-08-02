@@ -481,8 +481,23 @@ app.post('/api/auth/login', authLimiter, async (req, res) => {
 // Public, non-secret config the frontend needs — safe to expose since
 // a Google Client ID is meant to be embedded in frontend code (unlike
 // a client secret, which this flow never uses or stores).
-app.get('/api/config', (req, res) => {
-  res.json({ googleClientId: GOOGLE_CLIENT_ID || null });
+// Public, non-secret config the frontend needs before a person is
+// even logged in — Google Client ID, and the real Privacy Policy /
+// Terms of Service content, since guests need to be able to read
+// these too (e.g. from the App Chooser or before creating an
+// account), not just users who are already signed in.
+app.get('/api/config', async (req, res) => {
+  try {
+    const settings = await db.getSettings();
+    res.json({
+      googleClientId: GOOGLE_CLIENT_ID || null,
+      privacyPolicy: settings.privacyPolicy || null,
+      termsOfService: settings.termsOfService || null,
+    });
+  } catch (err) {
+    console.error('GET /api/config failed', err);
+    res.json({ googleClientId: GOOGLE_CLIENT_ID || null, privacyPolicy: null, termsOfService: null });
+  }
 });
 
 // Sign in with Google — verifies the ID token Google's own frontend

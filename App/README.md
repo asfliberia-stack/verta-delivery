@@ -2693,3 +2693,58 @@ normal Gmail login password, which won't work here.
 
 Set all of these together in Railway's Variables tab, redeploy, and
 both SMS and email notifications should be live at once.
+
+## Privacy Policy / Terms of Service — expanded into real, structured content
+
+Replaced the 4-bullet-point template with proper, sectioned policies
+(9 sections for Privacy, 10 for Terms), removed the "placeholder" amber
+warning banner from the modal since these are now meant to be the real
+content, and pulled the contact details dynamically from the real
+configured Business Email/Phone instead of a hardcoded fallback.
+
+The content itself draws on what's actually true about this app —
+what data really gets collected (account info, orders, purchases,
+reviews, wishlist, follows, messages), that SMS/WhatsApp notifications
+are transactional and tied to your own orders, that orders are
+currently pay-on-delivery, and the real vendor/delivery-agent
+relationship structure — rather than generic filler that doesn't match
+what the app actually does.
+
+## Privacy Policy / Terms of Service — now real, Super-Admin-editable content
+
+### Answering the actual question: yes, now they can
+
+Added `privacy_policy`/`terms_of_service` columns to the settings
+table, extended the existing `upsertSettings`/`getSettings` functions
+(they're generic — adding two entries to a column map was all that
+was needed there), and built a real editing UI in Settings → About,
+visible only when `currentUser.role === 'super_admin'`. Two
+textareas, a Save button, wired to the same `/api/admin/settings`
+endpoint every other business setting already uses.
+
+### A real gap I caught while building this
+
+Guests browsing the App Chooser — before creating any account — need
+to be able to read these too, but every place `settings` gets loaded
+requires being logged in first. Fixed by extending the already-public
+`/api/config` endpoint (previously just used for the Google Sign-In
+Client ID) to also expose the real Privacy Policy/Terms content, and
+loading it during boot regardless of login state. `openLegalModal()`
+now prefers a real saved admin version (checking both the
+authenticated and public sources) and only falls back to the built-in
+default content if nothing's been customized yet.
+
+Custom content is rendered as escaped plain text with paragraph
+breaks, not raw HTML — since it comes from a plain textarea, not a
+rich editor, treating it as literal HTML would be a real injection
+risk.
+
+### Also fixed: this exact zip had regressed on prior work
+
+Checked directly before touching anything, and found this specific
+upload was missing several things from earlier rounds: the Settings
+About panel's Support Contact and Privacy/Terms rows were back to
+their old, stale, hardcoded state, and the registration form's real
+"By creating an account, you agree to..." disclaimer with working
+links was gone entirely. Restored all of it in the same pass as
+building the new editing feature.

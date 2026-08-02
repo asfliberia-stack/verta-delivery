@@ -71,6 +71,12 @@ CREATE TABLE IF NOT EXISTS settings (
     updated_at         TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- Real, Super-Admin-editable Privacy Policy / Terms of Service text.
+-- NULL until customized — the app falls back to sensible default
+-- content until an admin actually edits and saves their own.
+ALTER TABLE settings ADD COLUMN IF NOT EXISTS privacy_policy TEXT;
+ALTER TABLE settings ADD COLUMN IF NOT EXISTS terms_of_service TEXT;
+
 -- Real login history — logged on every successful login (sender or
 -- admin). Device/browser are parsed from the request's User-Agent
 -- header; there's no city/location field because that needs a paid

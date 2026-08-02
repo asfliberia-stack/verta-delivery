@@ -1794,6 +1794,9 @@
                     <input type="password" class="form-input" id="register-confirm-password" placeholder="Re-enter your password" required minlength="8">
                 </div>
                 <div class="auth-error" id="register-error"></div>
+                <p style="font-size: 0.8125rem; color: var(--slate-light); text-align: center; margin-bottom: 1rem;">
+                    By creating an account, you agree to our <a id="register-privacy-link" style="color: var(--primary); font-weight: 600; cursor: pointer;">Privacy Policy</a> and <a id="register-terms-link" style="color: var(--primary); font-weight: 600; cursor: pointer;">Terms of Service</a>.
+                </p>
                 <button type="submit" class="btn-primary auth-submit-btn" id="register-submit-btn">Create Account</button>
                 <p class="auth-switch-line">Already have an account? <a id="switch-to-login-link" class="auth-inline-link">Login</a></p>
             </form>
@@ -2339,8 +2342,9 @@
         </div>
     </div>
 
-    <!-- Privacy Policy / Terms of Service — generic template content;
-         review with counsel before relying on this for a real launch. -->
+    <!-- Privacy Policy / Terms of Service — real content covering this
+         app's actual data practices and service terms (see
+         openLegalModal() in the script below). -->
     <div class="modal-overlay" id="legal-modal">
         <div class="modal" style="max-width: 640px; max-height: 80vh; overflow-y: auto;">
             <div class="modal-header">
@@ -3684,12 +3688,28 @@
                     <div class="settings-panel" id="settings-panel-about" style="display:none;">
                         <h4 class="settings-section-title">Application Information</h4>
                         <div class="settings-about-row"><span>App Name</span><strong>Verta Delivery Services</strong></div>
-                        <div class="settings-about-row"><span>Current Version</span><strong>v26.4.6</strong></div>
+                        <div class="settings-about-row"><span>Current Version</span><strong>v26.5.1</strong></div>
                         <div class="settings-about-row"><span>Last Update</span><strong>July 18, 2026</strong></div>
-                        <div class="settings-about-row"><span>Support Contact</span><strong>support@verta.com<br>+231-886-165-524</strong></div>
+                        <div class="settings-about-row"><span>Support Contact</span><strong id="settings-about-support-contact">—</strong></div>
                         <h4 class="settings-section-title">Links</h4>
-                        <div class="settings-about-row"><span>Privacy Policy</span><span class="settings-link-pending">Not published yet</span></div>
-                        <div class="settings-about-row"><span>Terms of Service</span><span class="settings-link-pending">Not published yet</span></div>
+                        <div class="settings-about-row"><span>Privacy Policy</span><a id="settings-about-privacy-link" style="color: var(--primary); font-weight: 700; cursor: pointer;">View</a></div>
+                        <div class="settings-about-row"><span>Terms of Service</span><a id="settings-about-terms-link" style="color: var(--primary); font-weight: 700; cursor: pointer;">View</a></div>
+
+                        <!-- Super Admin only — edit the real legal content -->
+                        <div id="settings-legal-edit-section" style="display:none;">
+                            <h4 class="settings-section-title">Legal Content (Super Admin)</h4>
+                            <p class="settings-hint">Leave either field blank to use the built-in default content instead.</p>
+                            <div class="form-group">
+                                <label class="form-label">Privacy Policy</label>
+                                <textarea class="form-input" id="settings-privacy-textarea" rows="8" placeholder="Leave blank to use the default Privacy Policy content"></textarea>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Terms of Service</label>
+                                <textarea class="form-input" id="settings-terms-textarea" rows="8" placeholder="Leave blank to use the default Terms of Service content"></textarea>
+                            </div>
+                            <button type="button" class="btn-small btn-success" id="save-legal-content-btn">Save Legal Content</button>
+                            <span id="save-legal-content-status" style="font-size:0.8125rem; color:var(--secondary); margin-left:0.75rem; display:none;">Saved</span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -4251,6 +4271,22 @@
         // real Client ID configured (GET /api/config). Until then the
         // button stays exactly as it is today: disabled, with its
         // existing "isn't set up yet" tooltip.
+        // Real Privacy Policy / Terms of Service content, editable by an
+        // admin (Settings -> Legal Content) and stored server-side.
+        // Loaded from the PUBLIC /api/config endpoint specifically (not
+        // the authenticated /api/state one) so guests can read these
+        // too, before ever creating an account.
+        let publicLegalContent = { privacyPolicy: null, termsOfService: null };
+
+        async function loadPublicConfig() {
+            try {
+                const config = await apiFetch('/api/config');
+                publicLegalContent = { privacyPolicy: config.privacyPolicy, termsOfService: config.termsOfService };
+            } catch (err) {
+                console.error('Failed to load public config', err);
+            }
+        }
+
         async function initGoogleSignIn() {
             const btn = document.getElementById('auth-google-btn');
             if (!btn) return;
@@ -4522,6 +4558,7 @@
             wireSidebarToggle();
             setupScrollReactiveHeader();
             initGoogleSignIn();
+            loadPublicConfig();
             wireSettingsEvents();
             wireTopbarEvents();
             wireVendorEvents();
@@ -4795,6 +4832,33 @@
             });
             document.getElementById('chooser-privacy-link').addEventListener('click', () => openLegalModal('privacy'));
             document.getElementById('chooser-terms-link').addEventListener('click', () => openLegalModal('terms'));
+            document.getElementById('register-privacy-link').addEventListener('click', () => openLegalModal('privacy'));
+            document.getElementById('register-terms-link').addEventListener('click', () => openLegalModal('terms'));
+            document.getElementById('settings-about-privacy-link').addEventListener('click', () => openLegalModal('privacy'));
+            document.getElementById('settings-about-terms-link').addEventListener('click', () => openLegalModal('terms'));
+            document.getElementById('save-legal-content-btn').addEventListener('click', async () => {
+                const btn = document.getElementById('save-legal-content-btn');
+                const statusEl = document.getElementById('save-legal-content-status');
+                const privacyPolicy = document.getElementById('settings-privacy-textarea').value.trim();
+                const termsOfService = document.getElementById('settings-terms-textarea').value.trim();
+                btn.disabled = true;
+                btn.textContent = 'Saving…';
+                statusEl.style.display = 'none';
+                try {
+                    const data = await apiFetch('/api/admin/settings', {
+                        method: 'PUT',
+                        body: JSON.stringify({ privacyPolicy, termsOfService }),
+                    });
+                    settings = data.settings;
+                    statusEl.style.display = 'inline';
+                    setTimeout(() => { statusEl.style.display = 'none'; }, 3000);
+                } catch (err) {
+                    showToast(err.message, 'error');
+                } finally {
+                    btn.disabled = false;
+                    btn.textContent = 'Save Legal Content';
+                }
+            });
             document.getElementById('close-legal-modal').addEventListener('click', () => {
                 document.getElementById('legal-modal').classList.remove('active');
             });
@@ -5375,6 +5439,18 @@
                 populateSettingsProfileForm();
                 loadLoginHistory();
                 renderPricePresetsList();
+                const contactEl = document.getElementById('settings-about-support-contact');
+                if (contactEl) {
+                    const email = settings.businessEmail || 'onlib231@gmail.com';
+                    const phone = settings.businessPhone || '+231880465612';
+                    contactEl.innerHTML = `${email}<br>${phone}`;
+                }
+                const legalEditSection = document.getElementById('settings-legal-edit-section');
+                if (legalEditSection) {
+                    legalEditSection.style.display = (currentUser && currentUser.role === 'super_admin') ? 'block' : 'none';
+                    document.getElementById('settings-privacy-textarea').value = settings.privacyPolicy || '';
+                    document.getElementById('settings-terms-textarea').value = settings.termsOfService || '';
+                }
             });
             document.getElementById('close-settings-modal').addEventListener('click', () => {
                 document.getElementById('settings-modal').classList.remove('active');
@@ -6417,25 +6493,107 @@
         // Generic template content — not legal advice, and not specific
         // to any jurisdiction or the real particulars of this business.
         // Have an actual lawyer review/replace this before relying on it.
+        // Renders admin-edited plain-text content safely — escapes HTML
+        // (this text comes from a plain textarea, not a rich editor, so
+        // it must never be trusted as raw HTML) and turns blank-line-
+        // separated paragraphs into real <p> tags.
+        function renderPlainTextAsHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            const escaped = div.innerHTML;
+            return escaped.split(/\n\s*\n/).map(para => `<p>${para.replace(/\n/g, '<br>')}</p>`).join('');
+        }
+
         function openLegalModal(kind) {
             const titleEl = document.getElementById('legal-modal-title');
             const contentEl = document.getElementById('legal-modal-content');
-            const notice = '<p style="background:#fef3c7; color:#92400e; padding:0.75rem 1rem; border-radius:0.625rem; font-size:0.8125rem; margin-bottom:1.25rem;">Template placeholder text — not reviewed by a lawyer. Replace with real terms before launch.</p>';
+            const contactEmail = settings.businessEmail || 'onlib231@gmail.com';
+            const contactPhone = settings.businessPhone || '+231880465612';
+            const lastUpdated = 'August 1, 2026';
+
+            // A real admin-saved version always wins over the built-in
+            // default — settings (if this session has it loaded) is
+            // freshest, publicLegalContent covers guests who never load
+            // settings at all.
+            const customText = kind === 'privacy'
+                ? (settings.privacyPolicy || publicLegalContent.privacyPolicy)
+                : (settings.termsOfService || publicLegalContent.termsOfService);
+
+            if (customText) {
+                titleEl.textContent = kind === 'privacy' ? 'Privacy Policy' : 'Terms of Service';
+                contentEl.innerHTML = renderPlainTextAsHtml(customText);
+                document.getElementById('legal-modal').classList.add('active');
+                return;
+            }
+
             if (kind === 'privacy') {
                 titleEl.textContent = 'Privacy Policy';
-                contentEl.innerHTML = notice + `
-                    <p><strong>What we collect:</strong> account details you provide (business name, email, phone), order and purchase records, and device/browser information needed to operate the app.</p>
-                    <p><strong>How we use it:</strong> to process delivery and marketplace orders, communicate order updates (including by SMS/WhatsApp), and improve the service.</p>
-                    <p><strong>Sharing:</strong> order details are shared with the delivery agent assigned to fulfill it, and with the relevant vendor for marketplace purchases. We don't sell personal data to third parties.</p>
-                    <p><strong>Your choices:</strong> you can request account deletion or data export by contacting support below.</p>
+                contentEl.innerHTML = `
+                    <p style="color:var(--slate-lighter); font-size:0.8125rem; margin-bottom:1.25rem;">Last updated: ${lastUpdated}</p>
+                    <p>This Privacy Policy explains how Verta Delivery Service and the ONLib Marketplace ("we," "us") collect, use, and protect your information when you use our delivery and marketplace services.</p>
+
+                    <p><strong>1. Information We Collect</strong></p>
+                    <p>Account information you provide when registering: business/customer name, email address, and phone number. For vendors, this may also include a business registration document, a government-issued ID, and a store address. Order and purchase records, including pickup/dropoff addresses, item descriptions, and payment amounts. Product reviews, wishlist items, and stores you follow, if you use those features. Messages you send to vendors or delivery agents through the app. Basic device and browser information needed to operate the app securely.</p>
+
+                    <p><strong>2. How We Use Your Information</strong></p>
+                    <p>To create and manage your account, process delivery and marketplace orders, connect you with the right delivery agent or vendor, send order status updates (including by SMS or WhatsApp where you've provided a phone number), respond to support requests, and maintain the security and reliability of the service.</p>
+
+                    <p><strong>3. How We Share Your Information</strong></p>
+                    <p>We share order details with the delivery agent assigned to fulfill it, and with the relevant vendor for marketplace purchases, since fulfilling your order requires it. We do not sell your personal information to third parties. We may disclose information if required by law or to protect the safety of our users.</p>
+
+                    <p><strong>4. SMS and WhatsApp Communications</strong></p>
+                    <p>If you provide a phone number, we may send order-related notifications by SMS or WhatsApp. These are transactional messages tied to your own orders, not marketing.</p>
+
+                    <p><strong>5. Data Retention</strong></p>
+                    <p>We keep account and order records for as long as your account is active, and as needed to meet legal, accounting, or dispute-resolution obligations after that.</p>
+
+                    <p><strong>6. Your Rights</strong></p>
+                    <p>You can review and update your account details at any time from Settings. To request account deletion or a copy of your data, contact us using the details below.</p>
+
+                    <p><strong>7. Children's Privacy</strong></p>
+                    <p>Our services are not directed to children under 18, and we do not knowingly collect information from them.</p>
+
+                    <p><strong>8. Changes to This Policy</strong></p>
+                    <p>We may update this policy from time to time. Continued use of the service after a change means you accept the updated policy.</p>
+
+                    <p><strong>9. Contact Us</strong></p>
+                    <p>Questions about this policy can be sent to ${contactEmail} or ${contactPhone}.</p>
                 `;
             } else {
                 titleEl.textContent = 'Terms of Service';
-                contentEl.innerHTML = notice + `
-                    <p><strong>Using the service:</strong> you agree to provide accurate information and use Verta Delivery and ONLib Marketplace only for lawful purposes.</p>
-                    <p><strong>Orders and payment:</strong> delivery and marketplace orders are currently pay-on-delivery; prices and availability are set by vendors/agents and may change.</p>
-                    <p><strong>Vendor conduct:</strong> vendors are responsible for the accuracy of their own product listings and fulfilling orders in good faith.</p>
-                    <p><strong>Liability:</strong> the service is provided as-is; see a qualified lawyer to draft enforceable liability terms for your jurisdiction before relying on this section.</p>
+                contentEl.innerHTML = `
+                    <p style="color:var(--slate-lighter); font-size:0.8125rem; margin-bottom:1.25rem;">Last updated: ${lastUpdated}</p>
+                    <p>These Terms of Service govern your use of Verta Delivery Service and the ONLib Marketplace (together, "the service"). By creating an account or using the service, you agree to these terms.</p>
+
+                    <p><strong>1. Accounts</strong></p>
+                    <p>You agree to provide accurate information when registering and to keep your account credentials secure. You're responsible for activity that happens under your account.</p>
+
+                    <p><strong>2. The Service</strong></p>
+                    <p>Verta Delivery lets you request package deliveries, tracked from pickup to dropoff. ONLib Marketplace lets independent vendors list and sell products, delivered through the same delivery network. Availability, pricing, and delivery times are set by vendors and agents and may change without notice.</p>
+
+                    <p><strong>3. Orders and Payment</strong></p>
+                    <p>Orders are currently pay-on-delivery. You agree to be present (or to have arranged payment) at the time of delivery. Prices shown at checkout reflect the vendor's or agent's current pricing at that time.</p>
+
+                    <p><strong>4. Vendor Responsibilities</strong></p>
+                    <p>Vendors are responsible for the accuracy of their own product listings, for having the right to sell what they list, and for fulfilling orders in good faith. We review vendor applications before approval but don't independently verify every listing.</p>
+
+                    <p><strong>5. Cancellations</strong></p>
+                    <p>Orders can be cancelled while still pending, before a delivery agent accepts them. Once accepted, cancellation may not be possible — contact support if something's gone wrong.</p>
+
+                    <p><strong>6. Prohibited Conduct</strong></p>
+                    <p>You agree not to use the service for anything unlawful, to list or request delivery of illegal or prohibited items, to harass other users, or to attempt to interfere with the security or normal operation of the app.</p>
+
+                    <p><strong>7. Limitation of Liability</strong></p>
+                    <p>The service is provided "as is." To the fullest extent permitted by law, we aren't liable for indirect or incidental damages arising from your use of the service, including delays, lost items, or vendor disputes — though we'll work in good faith to help resolve issues raised through support.</p>
+
+                    <p><strong>8. Termination</strong></p>
+                    <p>We may suspend or terminate accounts that violate these terms. You can stop using the service and request account deletion at any time.</p>
+
+                    <p><strong>9. Changes to These Terms</strong></p>
+                    <p>We may update these terms from time to time. Continued use of the service after a change means you accept the updated terms.</p>
+
+                    <p><strong>10. Contact Us</strong></p>
+                    <p>Questions about these terms can be sent to ${contactEmail} or ${contactPhone}.</p>
                 `;
             }
             document.getElementById('legal-modal').classList.add('active');

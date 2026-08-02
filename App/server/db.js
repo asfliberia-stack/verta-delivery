@@ -105,6 +105,8 @@ function rowToSettings(r) {
     openDays: r.open_days || [],
     currency: r.currency,
     timezone: r.timezone,
+    privacyPolicy: r.privacy_policy,
+    termsOfService: r.terms_of_service,
     updatedAt: r.updated_at,
   };
 }
@@ -397,6 +399,8 @@ const db = {
       openDays: 'open_days',
       currency: 'currency',
       timezone: 'timezone',
+      privacyPolicy: 'privacy_policy',
+      termsOfService: 'terms_of_service',
     };
     const sets = [];
     const values = [];
