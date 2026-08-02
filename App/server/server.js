@@ -9,7 +9,7 @@ const http = require('http');
 const cors = require('cors');
 const { Server } = require('socket.io');
 const db = require('./db');
-const { notifyNewOrder, sendMessage } = require('./notify');
+const { notifyNewOrder, sendMessage, notifyNewVendorApplication } = require('./notify');
 const { OAuth2Client } = require('google-auth-library');
 const {
   hashPassword,
@@ -442,11 +442,11 @@ app.post('/api/auth/register-vendor', authLimiter, async (req, res) => {
       appliedAt: new Date().toISOString(),
     });
 
-    // Real notification attempt — logged clearly rather than faked.
-    // This app has no email service configured (no SMTP/SendGrid/etc),
-    // so an actual email to onlib231@gmail.com can't be sent yet; once
-    // one is wired in, this is the one place that needs to change.
-    console.log(`[vendor-application] New vendor application from "${businessName}" (${email}) — would notify onlib231@gmail.com if an email service were configured. Review via the database (users table, approval_status='pending') until the Super Admin approval UI is built.`);
+    // Real notification attempt — fire-and-forget, never blocks the
+    // response. If SMTP isn't configured yet, notify.js quietly no-ops
+    // and this line just doesn't do anything; nothing else depends on it.
+    notifyNewVendorApplication(businessName, email);
+    console.log(`[vendor-application] New vendor application from "${businessName}" (${email}) — review via the Super Admin console under Vendors.`);
 
     const sessionId = await recordLoginHistory(req, user.id);
     const token = signToken(user, sessionId);
@@ -898,6 +898,39 @@ app.get('/api/super-admin/vendors', requireAuth, requireSuperAdmin, async (req, 
   } catch (err) {
     console.error('GET /api/super-admin/vendors failed', err);
     res.status(500).json({ error: 'Failed to load vendors' });
+  }
+});
+
+// Super Admin creating a vendor account directly — no business/ID
+// documents required, unlike public self-registration, since the
+// Super Admin creating this account IS the approval. Skips the
+// pending-review queue entirely.
+app.post('/api/super-admin/vendors', requireAuth, requireSuperAdmin, async (req, res) => {
+  const { businessName, email, phone, password } = req.body || {};
+  if (!businessName || !email || !password) {
+    return res.status(400).json({ error: 'Business name, email, and password are required' });
+  }
+  if (password.length < 8) {
+    return res.status(400).json({ error: 'Password must be at least 8 characters' });
+  }
+  try {
+    const existing = await db.getUserByEmail(email);
+    if (existing) return res.status(409).json({ error: 'An account with that email already exists' });
+
+    const passwordHash = await hashPassword(password);
+    const vendor = await db.createUser({
+      id: crypto.randomUUID(),
+      businessName,
+      email,
+      phone: phone || null,
+      passwordHash,
+      role: 'vendor',
+      approvalStatus: 'approved',
+    });
+    res.json({ vendor });
+  } catch (err) {
+    console.error('POST /api/super-admin/vendors failed', err);
+    res.status(500).json({ error: 'Failed to create vendor' });
   }
 });
 

@@ -96,4 +96,81 @@ async function sendMessage(toNumber, message) {
   }
 }
 
-module.exports = { notifyNewOrder, sendMessage, isConfigured };
+// ---- Email (generic SMTP, via nodemailer) ---------------------------
+// Works with Gmail, a custom business domain, or a dedicated
+// transactional service (SendGrid, Resend, etc.) — anything that
+// speaks SMTP, rather than locking this app into one specific vendor.
+//
+// WHERE TO ADD YOUR CREDENTIALS:
+// Set these in server/.env (local) or Railway's Variables tab
+// (production). Same graceful-no-op pattern as the SMS/WhatsApp
+// section above — leave unset and emails just quietly don't send,
+// nothing else in the app breaks.
+//
+//   SMTP_HOST       — e.g. smtp.gmail.com
+//   SMTP_PORT       — e.g. 587 (defaults to 587 if unset)
+//   SMTP_USER       — the account you're sending FROM
+//   SMTP_PASS       — that account's password (for Gmail specifically,
+//                     this must be a 16-character "App Password", not
+//                     your normal login password — see README)
+//   EMAIL_FROM      — the "From" address shown to recipients (defaults
+//                     to SMTP_USER if unset)
+//   NOTIFY_EMAIL_TO — where business notifications (e.g. new vendor
+//                     applications) get sent (defaults to
+//                     onlib231@gmail.com, same as elsewhere in this app)
+
+const nodemailer = require('nodemailer');
+
+const SMTP_HOST = process.env.SMTP_HOST;
+const SMTP_PORT = Number(process.env.SMTP_PORT) || 587;
+const SMTP_USER = process.env.SMTP_USER;
+const SMTP_PASS = process.env.SMTP_PASS;
+const EMAIL_FROM = process.env.EMAIL_FROM || SMTP_USER;
+const NOTIFY_EMAIL_TO = process.env.NOTIFY_EMAIL_TO || 'onlib231@gmail.com';
+
+const isEmailConfigured = Boolean(SMTP_HOST && SMTP_USER && SMTP_PASS);
+
+let transporter = null;
+if (isEmailConfigured) {
+  transporter = nodemailer.createTransport({
+    host: SMTP_HOST,
+    port: SMTP_PORT,
+    secure: SMTP_PORT === 465, // 465 = implicit TLS; 587 (the common default) uses STARTTLS instead
+    auth: { user: SMTP_USER, pass: SMTP_PASS },
+  });
+} else {
+  console.log(
+    '[notify] SMTP credentials not set — email notifications are disabled. ' +
+    'Set SMTP_HOST, SMTP_USER, and SMTP_PASS to enable them (see README).'
+  );
+}
+
+// Generic send — usable for anything that needs to email an arbitrary
+// address, same role sendMessage() plays for SMS/WhatsApp above.
+async function sendEmail(to, subject, text) {
+  if (!isEmailConfigured) return false;
+  if (!to) return false;
+  try {
+    await transporter.sendMail({ from: EMAIL_FROM, to, subject, text });
+    console.log(`[notify] Sent email to ${to}: "${subject}"`);
+    return true;
+  } catch (err) {
+    console.error('[notify] Failed to send email', err);
+    return false;
+  }
+}
+
+// The one place in this app that currently just logs to console instead
+// of actually notifying anyone — a new vendor application.
+async function notifyNewVendorApplication(businessName, email) {
+  if (!isEmailConfigured) return;
+  const subject = `New vendor application: ${businessName}`;
+  const text =
+    `A new vendor application was submitted.\n\n` +
+    `Business: ${businessName}\n` +
+    `Email: ${email}\n\n` +
+    `Review it in the Super Admin console under Vendors.`;
+  await sendEmail(NOTIFY_EMAIL_TO, subject, text);
+}
+
+module.exports = { notifyNewOrder, sendMessage, isConfigured, sendEmail, notifyNewVendorApplication, isEmailConfigured };

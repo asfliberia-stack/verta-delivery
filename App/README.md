@@ -2617,3 +2617,79 @@ Real button, not decorative — wired to the same `showAppChooser()`
 function every other "Back to service selector" button in the app
 already uses. Sits side by side with "Login / Sign Up" on both mobile
 and desktop, matching the reference image.
+
+## Super Admin can now create a Vendor directly
+
+Real end-to-end feature, not a shortcut on top of the existing
+approval workflow.
+
+### How it's different from public vendor self-registration
+
+Public registration requires a business registration document and a
+government ID, and lands in the pending-review queue for a Super
+Admin to approve later. This is deliberately simpler: business name,
+email, phone (optional), and a temporary password — no documents
+required, and the account is **immediately approved**, since the
+Super Admin creating it directly is itself the approval. Makes sense
+for onboarding a real, already-known business partner without making
+them go through the public application flow.
+
+### What's real
+
+- `POST /api/super-admin/vendors` — validates, checks the email isn't
+  already taken, creates a real approved vendor account.
+- "+ Add Vendor" button in the Vendors panel opens a real form; on
+  success it closes, shows a toast, and refreshes the vendor list —
+  the new vendor shows up immediately, no manual refresh needed.
+- The vendor can log in right away with the email/password the Super
+  Admin set. Since there's no automated email to deliver it (still
+  blocked on SMTP credentials, unchanged from before), the form is
+  explicit about this: share the password with them directly.
+
+## Email notifications — built for real (generic SMTP)
+
+Mirrors the exact pattern already proven out for SMS/WhatsApp: fully
+implemented, gracefully does nothing until real credentials are set,
+nothing else in the app depends on it either way.
+
+### What's real
+
+- Added `nodemailer` and built a complete SMTP-based email sender in
+  `notify.js` — works with Gmail, a custom business domain, or a
+  dedicated transactional service, not locked to one vendor.
+- Wired it into the one place that was still just logging to console
+  instead of actually notifying anyone: new vendor applications now
+  trigger a real email attempt to `NOTIFY_EMAIL_TO`.
+- Also corrected a stale comment in that code — it referenced the
+  Super Admin approval UI as "not yet built," which was outdated;
+  that's been real and working for a while now.
+
+### One consolidated env var list — everything to set at once
+
+**SMS / WhatsApp (Twilio)** — already fully implemented, just needs credentials:
+```
+TWILIO_ACCOUNT_SID=
+TWILIO_AUTH_TOKEN=
+TWILIO_FROM_NUMBER=
+NOTIFY_TO_NUMBER=+231881405696
+NOTIFY_CHANNEL=whatsapp
+```
+
+**Email (SMTP)** — newly built this round:
+```
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=
+SMTP_PASS=
+EMAIL_FROM=
+NOTIFY_EMAIL_TO=onlib231@gmail.com
+```
+
+If using Gmail specifically for `SMTP_USER`/`SMTP_PASS`: go to
+https://myaccount.google.com/apppasswords (requires 2-Step
+Verification turned on for that account first), generate an "App
+Password," and use that 16-character code as `SMTP_PASS` — not the
+normal Gmail login password, which won't work here.
+
+Set all of these together in Railway's Variables tab, redeploy, and
+both SMS and email notifications should be live at once.
