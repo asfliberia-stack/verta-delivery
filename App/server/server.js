@@ -9,7 +9,7 @@ const http = require('http');
 const cors = require('cors');
 const { Server } = require('socket.io');
 const db = require('./db');
-const { notifyNewOrder, sendMessage, notifyNewVendorApplication } = require('./notify');
+const { notifyNewOrder, sendMessage, notifyNewVendorApplication, sendEmail } = require('./notify');
 const { OAuth2Client } = require('google-auth-library');
 const {
   hashPassword,
@@ -561,21 +561,41 @@ app.post('/api/auth/forgot-password', authLimiter, async (req, res) => {
   if (!email) return res.status(400).json({ error: 'Email is required' });
   try {
     const user = await db.getUserByEmail(email);
-    if (user && user.phone) {
+    if (user) {
       const code = crypto.randomInt(100000, 1000000).toString(); // 6 digits
       const codeHash = await hashPassword(code);
       const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
       await db.createPasswordReset({ id: crypto.randomUUID(), userId: user.id, codeHash, expiresAt });
 
-      const sent = await sendMessage(
-        user.phone,
-        `Your Verta Delivery Service password reset code is: ${code}\nIt expires in 10 minutes. If you didn't request this, ignore this message.`
-      );
-      if (!sent) {
-        console.warn(`[forgot-password] Could not deliver reset code to ${user.phone} — is Twilio configured? (see server/notify.js)`);
+      const messageBody = `Your Verta Delivery Service password reset code is: ${code}\nIt expires in 10 minutes. If you didn't request this, ignore this message.`;
+
+      // Two independent delivery paths — SMS (if a phone is on file)
+      // and email (always, since email is the account identifier and
+      // is always present, unlike phone — accounts created via Google
+      // Sign-In in particular never have a phone number on file at
+      // all). Either one succeeding gets the user their code; both are
+      // attempted regardless of the other.
+      const deliveryAttempts = [];
+      if (user.phone) {
+        deliveryAttempts.push(
+          sendMessage(user.phone, messageBody).then(sent => {
+            if (!sent) console.warn(`[forgot-password] Could not deliver reset code by SMS/WhatsApp to ${user.phone} — is Twilio configured? (see server/notify.js)`);
+            return sent;
+          })
+        );
+      } else {
+        console.warn(`[forgot-password] ${email} has no phone on file — skipping SMS, trying email instead`);
       }
-    } else if (user && !user.phone) {
-      console.warn(`[forgot-password] ${email} has no phone on file — cannot send a reset code`);
+      deliveryAttempts.push(
+        sendEmail(email, 'Your Verta Delivery Service password reset code', messageBody).then(sent => {
+          if (!sent) console.warn(`[forgot-password] Could not deliver reset code by email to ${email} — is SMTP configured? (see server/notify.js)`);
+          return sent;
+        })
+      );
+      const results = await Promise.all(deliveryAttempts);
+      if (!results.some(Boolean)) {
+        console.warn(`[forgot-password] Neither SMS nor email delivered a reset code to ${email} — check TWILIO_* and SMTP_* environment variables are actually set.`);
+      }
     }
     // Same response either way — see comment above.
     res.json(GENERIC_FORGOT_PASSWORD_RESPONSE);

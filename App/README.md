@@ -2748,3 +2748,44 @@ their old, stale, hardcoded state, and the registration form's real
 "By creating an account, you agree to..." disclaimer with working
 links was gone entirely. Restored all of it in the same pass as
 building the new editing feature.
+
+## Fixed a real gap: Forgot Password had no email path at all
+
+Found the actual cause of "not receiving email/sms for forgot
+password" — this endpoint only ever attempted SMS/WhatsApp via
+Twilio. If the account had no phone number on file (which happens for
+every account created via Google Sign-In, since Google doesn't
+provide one), it did nothing at all — no email fallback existed in
+the code, regardless of whether Brevo was configured.
+
+### What's fixed
+
+The reset code is now sent through **two independent channels**:
+email (always, since email is the account identifier and is always
+present) and SMS/WhatsApp (if a phone number is on file). Either one
+succeeding gets the user their code — this isn't "email OR SMS
+depending on what's available," both are genuinely attempted every
+time, in parallel.
+
+Updated the three places in the UI that described the old SMS-only
+behavior (the Forgot Password screen's own text, the Help & Support
+FAQ, and the Settings About hint) so they now accurately describe
+both channels.
+
+### One important thing this doesn't fix
+
+This makes the code correctly *attempt* both channels — it can't make
+either one succeed if the underlying credentials aren't actually set
+in your live Railway deployment. If you're still not receiving
+anything after this deploys, check Railway's Variables tab
+specifically:
+- `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM_NUMBER` — for SMS
+- `SMTP_HOST`, `SMTP_USER`, `SMTP_PASS` — for email (the Brevo values
+  from a few rounds back)
+
+If those aren't actually set (or were set locally but never added to
+Railway's own Variables tab, which is a separate place from your local
+`.env` file), neither channel will send — that's a configuration gap,
+not a code bug. Check your Railway deploy logs for lines starting with
+`[notify]` — they'll tell you plainly whether each channel thinks it's
+configured or not.

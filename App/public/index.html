@@ -1801,9 +1801,9 @@
                 <p class="auth-switch-line">Already have an account? <a id="switch-to-login-link" class="auth-inline-link">Login</a></p>
             </form>
 
-            <!-- Forgot password: step 1 (request a code via SMS/WhatsApp) -->
+            <!-- Forgot password: step 1 (request a code via SMS/WhatsApp and/or email) -->
             <form id="forgot-password-request-form" style="display:none;">
-                <p style="margin-bottom: 1.25rem; color: var(--slate-light);">Enter the email on your account — if it has a phone number on file, we'll text a reset code to it.</p>
+                <p style="margin-bottom: 1.25rem; color: var(--slate-light);">Enter the email on your account — we'll send a reset code to that email, and also by text if there's a phone number on file.</p>
                 <div class="form-group">
                     <label class="form-label">Email</label>
                     <input type="email" class="form-input" id="forgot-password-email" required>
@@ -3585,7 +3585,7 @@
                         </form>
 
                         <h4 class="settings-section-title">Account Recovery</h4>
-                        <p class="settings-hint">If you forget your password, "Forgot password?" on the login screen texts a real verification code to the phone number on this account before letting you set a new one — that's the account-security check this app actually has.</p>
+                        <p class="settings-hint">If you forget your password, "Forgot password?" on the login screen sends a real verification code to the email on the account, and also by text if there's a phone number on file, before letting you set a new one — that's the account-security check this app actually has.</p>
 
                         <h4 class="settings-section-title">Login History</h4>
                         <p class="settings-hint">"Logout All Devices" above ends every session at once. Use "Sign out this device" on any row below to end just that one specific session instead.</p>
@@ -6463,14 +6463,14 @@
                 { q: 'What does "On Duty / Off Duty" mean for an agent?', a: 'It\'s a status you set manually — this app doesn\'t track agents\' live location or connection, so it\'s a simple flag you toggle, not automatic presence.' },
                 { q: 'How do I cancel an order?', a: 'Senders can cancel their own order while it\'s still Pending (before an agent accepts it) from their dashboard. Admins can delete any order via "Select" + "Delete Selected".' },
                 { q: 'How do I generate a monthly report?', a: 'Open Monthly Report in the sidebar, choose "Business (All Customers)" or a specific customer, then a month and year.' },
-                { q: 'I forgot my password — what do I do?', a: 'Use "Forgot password?" on the login screen. A reset code is sent by SMS/WhatsApp to the phone number on your account.' },
+                { q: 'I forgot my password — what do I do?', a: 'Use "Forgot password?" on the login screen. A reset code is sent to the email on your account, and also by SMS/WhatsApp if there\'s a phone number on file.' },
             ];
             const customerFaqs = [
                 { q: 'What\'s the difference between Verta Delivery and ONLib Marketplace?', a: 'Verta Delivery sends a package you already have from one place to another. ONLib Marketplace is for buying products from real vendors — checkout automatically creates a real delivery order to get it to you.' },
                 { q: 'Do I need separate accounts?', a: 'No — one account works for both. Use the ⇄ Switch control in either app to move between them anytime.' },
                 { q: 'How do I track my order?', a: 'Log in and open "Your Orders" in Verta Delivery — every order, including ones placed through the Marketplace, shows its live status there.' },
                 { q: 'How do I pay?', a: 'Pay on delivery — there\'s no online payment step at checkout today.' },
-                { q: 'I forgot my password — what do I do?', a: 'Use "Forgot password?" on the login screen. A reset code is sent by SMS/WhatsApp to the phone number on your account.' },
+                { q: 'I forgot my password — what do I do?', a: 'Use "Forgot password?" on the login screen. A reset code is sent to the email on your account, and also by SMS/WhatsApp if there\'s a phone number on file.' },
             ];
             const faqs = context === 'customer' ? customerFaqs : adminFaqs;
             container.innerHTML = `
