@@ -2868,3 +2868,17 @@ changes too.
 
 Same "share this directly" messaging as Add Customer's password field,
 since there's still no automated email delivery for credentials.
+
+## New Platform Overview stat card: "New Customers (7 Days)"
+
+Real, time-bounded metric — a count of customer accounts created in
+the last 7 days, distinct from the existing static "Total Customers"
+count. Computed from data the overview endpoint was already fetching
+(the full customer list, which already includes `createdAt`), so this
+didn't need a new database query — just filtering what's already
+there.
+
+Small bonus from this specific addition: the stat grid now has exactly
+8 cards instead of 7, which fills the 4-column layout evenly (4+4)
+instead of leaving the awkward 4+3 gap from a few rounds back. Not the
+reason for adding it, but a nice side effect.

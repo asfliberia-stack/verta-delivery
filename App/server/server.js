@@ -983,6 +983,8 @@ app.get('/api/super-admin/overview', requireAuth, requireSuperAdmin, async (req,
     const deliveryRevenue = deliveryOrders
       .filter(o => o.status === 'delivered')
       .reduce((sum, o) => sum + (o.amount || 0), 0);
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const newCustomersLast7Days = customers.filter(c => new Date(c.createdAt) >= sevenDaysAgo).length;
     res.json({
       vendorCounts: {
         total: vendors.length,
@@ -991,6 +993,7 @@ app.get('/api/super-admin/overview', requireAuth, requireSuperAdmin, async (req,
         rejected: vendors.filter(v => v.approvalStatus === 'rejected').length,
       },
       totalCustomers: customers.length,
+      newCustomersLast7Days,
       marketplace: marketplaceStats,
       delivery: {
         totalOrders: deliveryOrders.length,

@@ -2658,6 +2658,10 @@
                                 <p id="sa-total-customers">0</p>
                             </div>
                             <div class="stat-card success">
+                                <div class="stat-card-top"><h4>New Customers (7 Days)</h4><div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline></svg></div></div>
+                                <p id="sa-new-customers-7d">0</p>
+                            </div>
+                            <div class="stat-card success">
                                 <div class="stat-card-top"><h4>Marketplace Orders</h4><div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path><line x1="3" y1="6" x2="21" y2="6"></line><path d="M16 10a4 4 0 0 1-8 0"></path></svg></div></div>
                                 <p id="sa-marketplace-orders">0</p>
                             </div>
@@ -6048,6 +6052,7 @@
                 document.getElementById('sa-marketplace-orders').textContent = totals.totalMarketplaceOrders;
                 document.getElementById('sa-marketplace-revenue').textContent = `$${totals.totalMarketplaceRevenue.toFixed(2)}`;
                 document.getElementById('sa-total-customers').textContent = overviewData.totalCustomers;
+                document.getElementById('sa-new-customers-7d').textContent = overviewData.newCustomersLast7Days;
                 document.getElementById('sa-delivery-orders').textContent = overviewData.delivery.totalOrders;
                 document.getElementById('sa-delivery-revenue').textContent = `$${overviewData.delivery.totalRevenue.toFixed(2)}`;
 
