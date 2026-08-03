@@ -592,6 +592,32 @@ const db = {
     }));
   },
 
+  // Super Admin editing a customer's own account details directly —
+  // scoped to role = 'sender' so this can never be pointed at a
+  // vendor or admin account by accident.
+  async updateCustomerByAdmin(id, { businessName, email, phone }) {
+    const { rows } = await pool.query(
+      `UPDATE users SET business_name = $1, email = $2, phone = $3
+       WHERE id = $4 AND role = 'sender' RETURNING *`,
+      [businessName, email.toLowerCase(), phone || null, id]
+    );
+    return rowToUser(rows[0]);
+  },
+
+  // Real delete — cascades to the customer's own orders, purchases,
+  // reviews, wishlist, addresses, conversations, and messages (all
+  // foreign keys to users.id are ON DELETE CASCADE). This is genuinely
+  // destructive and irreversible; the caller is responsible for real
+  // confirmation before calling this. Scoped to role = 'sender' so
+  // this endpoint can never delete a vendor or admin account.
+  async deleteCustomer(id) {
+    const { rows } = await pool.query(
+      `DELETE FROM users WHERE id = $1 AND role = 'sender' RETURNING id`,
+      [id]
+    );
+    return rows.length > 0;
+  },
+
   // ---- Vendors (real vendor accounts — Super Admin oversight) --------
   // NOTE: this app is still single-tenant for ORDER data — there is no
   // per-vendor isolation of orders/agents/expenses yet, those stay one

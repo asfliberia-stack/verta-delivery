@@ -3451,6 +3451,67 @@
         </div>
     </div>
 
+    <!-- Add/Edit Customer (Super Admin only) -->
+    <div class="modal-overlay" id="customer-form-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 id="customer-form-modal-title">+ Add Customer</h3>
+                <button class="close-btn" id="close-customer-form-modal">&times;</button>
+            </div>
+            <form id="customer-form">
+                <div class="form-group">
+                    <label class="form-label">Name</label>
+                    <input type="text" class="form-input" id="customer-form-name-input" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Email</label>
+                    <input type="email" class="form-input" id="customer-form-email-input" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Phone</label>
+                    <div class="phone-input-row">
+                        <select class="form-input country-code-select" id="customer-form-phone-country"></select>
+                        <input type="tel" class="form-input" id="customer-form-phone-input" placeholder="881405696">
+                    </div>
+                </div>
+                <div class="form-group" id="customer-form-password-group">
+                    <label class="form-label">Temporary Password</label>
+                    <input type="text" class="form-input" id="customer-form-password-input" minlength="8" placeholder="At least 8 characters">
+                    <p class="settings-hint">Share this with the customer directly — there's no automated email to send it for you.</p>
+                </div>
+                <div id="customer-form-error" style="color: #dc2626; font-size: 0.875rem; margin-bottom: 1rem; display: none;"></div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-small btn-secondary" id="cancel-customer-form">Cancel</button>
+                    <button type="submit" class="btn-small btn-success" id="customer-form-submit-btn">Create Customer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Reset Customer Password (Super Admin only) — deliberately its
+         own action, separate from the general Edit Customer form. -->
+    <div class="modal-overlay" id="reset-customer-password-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>Reset Password</h3>
+                <button class="close-btn" id="close-reset-customer-password-modal">&times;</button>
+            </div>
+            <p style="color: var(--slate-light); margin-bottom: 1.25rem;" id="reset-customer-password-target-name"></p>
+            <form id="reset-customer-password-form">
+                <div class="form-group">
+                    <label class="form-label">New Password</label>
+                    <input type="text" class="form-input" id="reset-customer-password-input" required minlength="8" placeholder="At least 8 characters">
+                    <p class="settings-hint">This immediately replaces their current password. Share the new one with them directly — there's no automated email to send it for you.</p>
+                </div>
+                <div id="reset-customer-password-error" style="color: #dc2626; font-size: 0.875rem; margin-bottom: 1rem; display: none;"></div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-small btn-secondary" id="cancel-reset-customer-password">Cancel</button>
+                    <button type="submit" class="btn-small" style="background:#dc2626; color:white;" id="reset-customer-password-submit-btn">Reset Password</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <div class="modal-overlay" id="settings-modal">
         <div class="modal" style="max-width: 1100px; width: 95%; max-height: 90vh; overflow-y: auto; padding: 0;">
             <div class="modal-header" style="padding: 1.5rem 2rem; position: sticky; top: 0; background: white; z-index: 5; margin-bottom: 0;">
@@ -3735,7 +3796,10 @@
         <div class="modal" style="max-width: 1000px; width: 95%; max-height: 85vh; overflow-y: auto;">
             <div class="modal-header">
                 <h3>👥 Customers</h3>
-                <button class="close-btn" id="close-customers-modal">&times;</button>
+                <div style="display:flex; gap:0.5rem; align-items:center;">
+                    <button type="button" class="btn-small btn-success" id="open-add-customer-btn" style="display:none;">+ Add Customer</button>
+                    <button class="close-btn" id="close-customers-modal">&times;</button>
+                </div>
             </div>
             <div id="customers-modal-content">
                 <p style="text-align: center; color: var(--slate-light); padding: 2rem 0;">Loading…</p>
@@ -6097,6 +6161,23 @@
                 document.getElementById('customers-modal').classList.remove('active');
             });
 
+            // ---- Add/Edit/Delete Customer (Super Admin only) ----
+            document.getElementById('open-add-customer-btn').addEventListener('click', openAddCustomerModal);
+            document.getElementById('close-customer-form-modal').addEventListener('click', closeCustomerFormModal);
+            document.getElementById('cancel-customer-form').addEventListener('click', closeCustomerFormModal);
+            document.getElementById('customer-form').addEventListener('submit', handleCustomerFormSubmit);
+            document.getElementById('customers-modal-content').addEventListener('click', (e) => {
+                const editBtn = e.target.closest('.edit-customer-btn');
+                if (editBtn) { openEditCustomerModal(editBtn.dataset.id); return; }
+                const resetBtn = e.target.closest('.reset-customer-password-btn');
+                if (resetBtn) { openResetCustomerPasswordModal(resetBtn.dataset.id, resetBtn.dataset.name); return; }
+                const deleteBtn = e.target.closest('.delete-customer-btn');
+                if (deleteBtn) { deleteCustomerWithConfirm(deleteBtn.dataset.id, deleteBtn.dataset.name); return; }
+            });
+            document.getElementById('close-reset-customer-password-modal').addEventListener('click', closeResetCustomerPasswordModal);
+            document.getElementById('cancel-reset-customer-password').addEventListener('click', closeResetCustomerPasswordModal);
+            document.getElementById('reset-customer-password-form').addEventListener('submit', handleResetCustomerPasswordSubmit);
+
             // ---- Vendors (Super Admin only) ----
             document.getElementById('open-vendors-btn').addEventListener('click', () => {
                 document.getElementById('vendors-modal').classList.add('active');
@@ -6277,6 +6358,9 @@
         // ============================================================
         async function loadCustomers() {
             const container = document.getElementById('customers-modal-content');
+            const addBtn = document.getElementById('open-add-customer-btn');
+            const isSuperAdmin = currentUser && currentUser.role === 'super_admin';
+            if (addBtn) addBtn.style.display = isSuperAdmin ? 'inline-flex' : 'none';
             try {
                 const data = await apiFetch('/api/admin/customers');
                 customersCache = data.customers || [];
@@ -6286,6 +6370,7 @@
                 }
                 let html = '<div style="overflow-x: auto;"><table class="settings-table"><thead><tr>' +
                     '<th>Business</th><th>Email</th><th>Phone</th><th>Orders</th><th>Total Spent</th><th>Last Order</th>' +
+                    (isSuperAdmin ? '<th>Actions</th>' : '') +
                     '</tr></thead><tbody>';
                 customersCache.forEach(c => {
                     html += `<tr>
@@ -6295,12 +6380,149 @@
                         <td>${c.totalOrders}</td>
                         <td style="font-weight:700; color: var(--primary);">$${c.totalSpent.toFixed(2)}</td>
                         <td>${c.lastOrderAt ? new Date(c.lastOrderAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Never'}</td>
+                        ${isSuperAdmin ? `
+                        <td>
+                            <div style="display:flex; gap:0.5rem;">
+                                <button type="button" class="btn-small btn-secondary edit-customer-btn" data-id="${c.id}">Edit</button>
+                                <button type="button" class="btn-small reset-customer-password-btn" data-id="${c.id}" data-name="${c.businessName.replace(/"/g, '&quot;')}">Reset Password</button>
+                                <button type="button" class="btn-small delete-customer-btn" style="background:#fee2e2; color:#991b1b;" data-id="${c.id}" data-name="${c.businessName.replace(/"/g, '&quot;')}">Delete</button>
+                            </div>
+                        </td>` : ''}
                     </tr>`;
                 });
                 html += '</tbody></table></div>';
                 container.innerHTML = html;
             } catch (err) {
                 container.innerHTML = `<p style="text-align: center; color: #dc2626; padding: 2rem 0;">${err.message}</p>`;
+            }
+        }
+
+        // ---- Add/Edit/Delete Customer (Super Admin only) ----
+        let editingCustomerId = null;
+
+        function openAddCustomerModal() {
+            editingCustomerId = null;
+            document.getElementById('customer-form-modal-title').textContent = '+ Add Customer';
+            document.getElementById('customer-form-submit-btn').textContent = 'Create Customer';
+            document.getElementById('customer-form').reset();
+            document.getElementById('customer-form-error').style.display = 'none';
+            document.getElementById('customer-form-password-group').style.display = 'block';
+            document.getElementById('customer-form-password-input').required = true;
+            populateCountryCodeSelects();
+            document.getElementById('customer-form-modal').classList.add('active');
+        }
+
+        function openEditCustomerModal(id) {
+            const customer = customersCache.find(c => c.id === id);
+            if (!customer) return;
+            editingCustomerId = id;
+            document.getElementById('customer-form-modal-title').textContent = 'Edit Customer';
+            document.getElementById('customer-form-submit-btn').textContent = 'Save Changes';
+            document.getElementById('customer-form-error').style.display = 'none';
+            document.getElementById('customer-form-name-input').value = customer.businessName;
+            document.getElementById('customer-form-email-input').value = customer.email;
+            populateCountryCodeSelects();
+            splitPhoneNumber(customer.phone, 'customer-form-phone-country', 'customer-form-phone-input');
+            // Editing an existing customer never touches their password —
+            // that's a separate, more sensitive action a Super Admin
+            // shouldn't casually do from an inline edit form.
+            document.getElementById('customer-form-password-group').style.display = 'none';
+            document.getElementById('customer-form-password-input').required = false;
+            document.getElementById('customer-form-password-input').value = '';
+            document.getElementById('customer-form-modal').classList.add('active');
+        }
+
+        function closeCustomerFormModal() {
+            document.getElementById('customer-form-modal').classList.remove('active');
+            editingCustomerId = null;
+        }
+
+        async function handleCustomerFormSubmit(e) {
+            e.preventDefault();
+            const errorEl = document.getElementById('customer-form-error');
+            const submitBtn = document.getElementById('customer-form-submit-btn');
+            errorEl.style.display = 'none';
+            submitBtn.disabled = true;
+            submitBtn.textContent = editingCustomerId ? 'Saving…' : 'Creating…';
+            try {
+                const businessName = document.getElementById('customer-form-name-input').value.trim();
+                const email = document.getElementById('customer-form-email-input').value.trim();
+                const phone = combinePhoneNumber('customer-form-phone-country', 'customer-form-phone-input');
+                if (editingCustomerId) {
+                    await apiFetch(`/api/super-admin/customers/${editingCustomerId}`, {
+                        method: 'PUT',
+                        body: JSON.stringify({ businessName, email, phone }),
+                    });
+                    showToast('Customer updated', 'success');
+                } else {
+                    const password = document.getElementById('customer-form-password-input').value;
+                    await apiFetch('/api/super-admin/customers', {
+                        method: 'POST',
+                        body: JSON.stringify({ businessName, email, phone, password }),
+                    });
+                    showToast('Customer created — share the password with them directly', 'success');
+                }
+                closeCustomerFormModal();
+                await loadCustomers();
+            } catch (err) {
+                errorEl.textContent = err.message;
+                errorEl.style.display = 'block';
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = editingCustomerId ? 'Save Changes' : 'Create Customer';
+            }
+        }
+
+        async function deleteCustomerWithConfirm(id, name) {
+            const confirmed = confirm(
+                `Permanently delete "${name}"?\n\nThis deletes their entire account — every order, purchase, review, wishlist item, message, and saved address. This cannot be undone.`
+            );
+            if (!confirmed) return;
+            try {
+                await apiFetch(`/api/super-admin/customers/${id}`, { method: 'DELETE' });
+                showToast('Customer deleted', 'success');
+                await loadCustomers();
+            } catch (err) {
+                showToast(err.message, 'error');
+            }
+        }
+
+        let resetPasswordTargetId = null;
+
+        function openResetCustomerPasswordModal(id, name) {
+            resetPasswordTargetId = id;
+            document.getElementById('reset-customer-password-target-name').textContent = `Set a new password for ${name}.`;
+            document.getElementById('reset-customer-password-form').reset();
+            document.getElementById('reset-customer-password-error').style.display = 'none';
+            document.getElementById('reset-customer-password-modal').classList.add('active');
+        }
+
+        function closeResetCustomerPasswordModal() {
+            document.getElementById('reset-customer-password-modal').classList.remove('active');
+            resetPasswordTargetId = null;
+        }
+
+        async function handleResetCustomerPasswordSubmit(e) {
+            e.preventDefault();
+            const errorEl = document.getElementById('reset-customer-password-error');
+            const submitBtn = document.getElementById('reset-customer-password-submit-btn');
+            errorEl.style.display = 'none';
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Resetting…';
+            try {
+                const password = document.getElementById('reset-customer-password-input').value;
+                await apiFetch(`/api/super-admin/customers/${resetPasswordTargetId}/password`, {
+                    method: 'PUT',
+                    body: JSON.stringify({ password }),
+                });
+                showToast('Password reset — share the new one with the customer directly', 'success');
+                closeResetCustomerPasswordModal();
+            } catch (err) {
+                errorEl.textContent = err.message;
+                errorEl.style.display = 'block';
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Reset Password';
             }
         }
 

@@ -2821,3 +2821,50 @@ Deliberately did *not* add a matching timeout to the frontend's shared
 app, and a timeout tuned for this one endpoint could incorrectly cut
 off other, legitimately slower requests elsewhere. The backend fix
 already bounds the real problem at its source.
+
+## Super Admin: full customer account management (Add, Edit, Delete)
+
+Real CRUD, not just the read-only list that existed before. Scoped
+specifically to Super Admin, per the request — Manage Agent still sees
+the same customer list as before (view-only, unchanged).
+
+### What's real
+
+- **Add**: real form (name, email, phone, temporary password) creating
+  an actual customer account directly — same reasoning as Add Vendor
+  from a few rounds back: no email delivery exists yet, so the Super
+  Admin sets a password and shares it directly.
+- **Edit**: updates a customer's real name/email/phone. Deliberately
+  does *not* touch their password from this form — that's a separate,
+  more sensitive action that shouldn't happen casually from an inline
+  edit.
+- **Delete**: real, permanent, cascading deletion — a customer's
+  orders, purchases, reviews, wishlist, messages, and saved addresses
+  are all tied to their account via `ON DELETE CASCADE`, so deleting
+  the account genuinely deletes all of it. Confirmed with a clear
+  warning naming exactly what's being lost before it happens, since
+  this is irreversible.
+
+All three new endpoints are `requireSuperAdmin` specifically, and the
+delete/update functions are scoped to `role = 'sender'` in the SQL
+itself — so even if these endpoints were somehow called with a
+vendor's or admin's ID, they can't touch those accounts.
+
+## Customer password reset — its own real, separate action
+
+Built exactly as described: not folded into the general Edit Customer
+form, but its own dedicated modal and endpoint
+(`PUT /api/super-admin/customers/:id/password`), reached via its own
+"Reset Password" button in the customer row.
+
+The endpoint reuses the existing `updateUserPassword` function (the
+same one the customer's own self-service password change and the
+forgot-password flow already use), but adds an explicit role check at
+the endpoint level first — confirms the target account is genuinely a
+customer (`role = 'sender'`) before touching it, without adding a role
+restriction to the shared function itself, since that same function is
+relied on elsewhere for legitimate non-admin-initiated password
+changes too.
+
+Same "share this directly" messaging as Add Customer's password field,
+since there's still no automated email delivery for credentials.

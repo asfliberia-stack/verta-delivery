@@ -880,6 +880,92 @@ app.get('/api/admin/customers', requireAuth, requireAdmin, async (req, res) => {
   }
 });
 
+// Super Admin creating a customer account directly — same reasoning
+// as Add Vendor: no documents needed, immediately usable, useful for
+// onboarding someone (e.g. over the phone) without making them
+// self-register.
+app.post('/api/super-admin/customers', requireAuth, requireSuperAdmin, async (req, res) => {
+  const { businessName, email, phone, password } = req.body || {};
+  if (!businessName || !email || !password) {
+    return res.status(400).json({ error: 'Name, email, and password are required' });
+  }
+  if (password.length < 8) {
+    return res.status(400).json({ error: 'Password must be at least 8 characters' });
+  }
+  try {
+    const existing = await db.getUserByEmail(email);
+    if (existing) return res.status(409).json({ error: 'An account with that email already exists' });
+
+    const passwordHash = await hashPassword(password);
+    const customer = await db.createUser({
+      id: crypto.randomUUID(),
+      businessName,
+      email,
+      phone: phone || null,
+      passwordHash,
+      role: 'sender',
+    });
+    res.json({ customer });
+  } catch (err) {
+    console.error('POST /api/super-admin/customers failed', err);
+    res.status(500).json({ error: 'Failed to create customer' });
+  }
+});
+
+app.put('/api/super-admin/customers/:id', requireAuth, requireSuperAdmin, async (req, res) => {
+  const { businessName, email, phone } = req.body || {};
+  if (!businessName || !email) {
+    return res.status(400).json({ error: 'Name and email are required' });
+  }
+  try {
+    const existing = await db.getUserByEmail(email);
+    if (existing && existing.id !== req.params.id) {
+      return res.status(409).json({ error: 'Another account already uses that email' });
+    }
+    const updated = await db.updateCustomerByAdmin(req.params.id, { businessName, email, phone });
+    if (!updated) return res.status(404).json({ error: 'Customer not found' });
+    res.json({ customer: updated });
+  } catch (err) {
+    console.error('PUT /api/super-admin/customers/:id failed', err);
+    res.status(500).json({ error: 'Failed to update customer' });
+  }
+});
+
+// Real, irreversible delete — cascades to the customer's entire order
+// and purchase history. requireSuperAdmin only; the frontend requires
+// a typed confirmation before ever calling this.
+app.delete('/api/super-admin/customers/:id', requireAuth, requireSuperAdmin, async (req, res) => {
+  try {
+    const deleted = await db.deleteCustomer(req.params.id);
+    if (!deleted) return res.status(404).json({ error: 'Customer not found' });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('DELETE /api/super-admin/customers/:id failed', err);
+    res.status(500).json({ error: 'Failed to delete customer' });
+  }
+});
+
+// A real, deliberately separate action from the general edit endpoint
+// above — resetting someone's password is more sensitive than
+// updating their name/phone, so it gets its own explicit confirmation
+// step on the frontend rather than being bundled into casual editing.
+app.put('/api/super-admin/customers/:id/password', requireAuth, requireSuperAdmin, async (req, res) => {
+  const { password } = req.body || {};
+  if (!password || password.length < 8) {
+    return res.status(400).json({ error: 'Password must be at least 8 characters' });
+  }
+  try {
+    const target = await db.getUserById(req.params.id);
+    if (!target || target.role !== 'sender') return res.status(404).json({ error: 'Customer not found' });
+    const passwordHash = await hashPassword(password);
+    await db.updateUserPassword(req.params.id, passwordHash);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('PUT /api/super-admin/customers/:id/password failed', err);
+    res.status(500).json({ error: 'Failed to reset password' });
+  }
+});
+
 // ============================================================
 // Super Admin only — platform-wide Overview. Genuinely cross-cutting
 // data (vendors, customers, marketplace AND delivery totals) — this is
