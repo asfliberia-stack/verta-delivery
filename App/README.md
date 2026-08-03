@@ -2789,3 +2789,35 @@ Railway's own Variables tab, which is a separate place from your local
 not a code bug. Check your Railway deploy logs for lines starting with
 `[notify]` — they'll tell you plainly whether each channel thinks it's
 configured or not.
+
+## Fixed: forgot-password request hanging indefinitely on "Sending…"
+
+Real bug, different from — but related to — the earlier email/SMS
+issues. Neither the SMTP connection (nodemailer) nor the Twilio
+request (`fetch`) had any explicit timeout set. If either provider
+was slow to respond, or if outbound traffic on that specific port was
+silently blocked by the hosting network (a real, common restriction —
+several major cloud providers block outbound SMTP by default), the
+connection attempt would just hang with no response and no error,
+rather than failing with something the code could catch. Since the
+forgot-password endpoint waits for both attempts before responding,
+that meant the whole request — and the "Sending…" button — could hang
+indefinitely.
+
+Fixed by giving both a hard 10-second timeout: `connectionTimeout` /
+`greetingTimeout` / `socketTimeout` on the SMTP transporter, and an
+`AbortController`-based timeout on the Twilio `fetch` call (which has
+no timeout by default at all). Since both are attempted in parallel,
+not sequentially, the worst case is now bounded to about 10 seconds
+total, not 10+10 stacked, and definitely not indefinite.
+
+Also made the failure logs specifically identify a timeout when that's
+what happened (rather than a generic error), since that's exactly the
+kind of detail that matters for diagnosing outbound network
+restrictions versus a credentials problem.
+
+Deliberately did *not* add a matching timeout to the frontend's shared
+`apiFetch()` function — that's used by every API call in the entire
+app, and a timeout tuned for this one endpoint could incorrectly cut
+off other, legitimately slower requests elsewhere. The backend fix
+already bounds the real problem at its source.

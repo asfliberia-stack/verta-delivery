@@ -75,14 +75,26 @@ async function sendMessage(toNumber, message) {
   });
 
   try {
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        Authorization: 'Basic ' + Buffer.from(`${ACCOUNT_SID}:${AUTH_TOKEN}`).toString('base64'),
-      },
-      body,
-    });
+    // fetch() has no default timeout — without this, a slow or
+    // unresponsive network path to Twilio can hang indefinitely rather
+    // than failing with a clear error. Same reasoning as the SMTP
+    // timeouts above.
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
+    let res;
+    try {
+      res = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          Authorization: 'Basic ' + Buffer.from(`${ACCOUNT_SID}:${AUTH_TOKEN}`).toString('base64'),
+        },
+        body,
+        signal: controller.signal,
+      });
+    } finally {
+      clearTimeout(timeoutId);
+    }
     if (!res.ok) {
       const errText = await res.text();
       console.error(`[notify] Twilio send failed (${res.status}):`, errText);
@@ -91,7 +103,11 @@ async function sendMessage(toNumber, message) {
     console.log(`[notify] Sent ${CHANNEL} message to ${toNumber}`);
     return true;
   } catch (err) {
-    console.error('[notify] Failed to send message', err);
+    if (err.name === 'AbortError') {
+      console.error('[notify] Twilio request timed out after 10s — check for network/firewall restrictions on outbound HTTPS from this host');
+    } else {
+      console.error('[notify] Failed to send message', err);
+    }
     return false;
   }
 }
@@ -137,6 +153,15 @@ if (isEmailConfigured) {
     port: SMTP_PORT,
     secure: SMTP_PORT === 465, // 465 = implicit TLS; 587 (the common default) uses STARTTLS instead
     auth: { user: SMTP_USER, pass: SMTP_PASS },
+    // Without explicit timeouts, a blocked or unresponsive SMTP
+    // connection (some hosting providers restrict outbound SMTP by
+    // default) can hang indefinitely rather than failing with a clear
+    // error — which from the user's side just looks like a request
+    // that never finishes. 10 seconds is generous for a real SMTP
+    // handshake; anything slower than that is effectively not working.
+    connectionTimeout: 10000,
+    greetingTimeout: 10000,
+    socketTimeout: 10000,
   });
 } else {
   console.log(
@@ -155,7 +180,11 @@ async function sendEmail(to, subject, text) {
     console.log(`[notify] Sent email to ${to}: "${subject}"`);
     return true;
   } catch (err) {
-    console.error('[notify] Failed to send email', err);
+    if (err.code === 'ETIMEDOUT' || err.code === 'ESOCKET') {
+      console.error(`[notify] SMTP connection to ${SMTP_HOST}:${SMTP_PORT} timed out — check for network/firewall restrictions on outbound SMTP from this host, or that the port is actually open.`);
+    } else {
+      console.error('[notify] Failed to send email', err);
+    }
     return false;
   }
 }
