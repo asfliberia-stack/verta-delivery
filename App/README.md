@@ -2882,3 +2882,48 @@ Small bonus from this specific addition: the stat grid now has exactly
 8 cards instead of 7, which fills the 4-column layout evenly (4+4)
 instead of leaving the awkward 4+3 gap from a few rounds back. Not the
 reason for adding it, but a nice side effect.
+
+## Marketplace Account hub — redesigned to match the reference, real data only
+
+The old Account tab was essentially a placeholder — an avatar, a name,
+and a hint about where to find Switch/Logout. Rebuilt to match the
+visual style of the reference image: hero card, stat row, overview
+cards, and a real menu list.
+
+### What I deliberately left out, and why
+
+The reference includes a "Silver Member" tier badge, Rewards points
+(350 PTS), and a Credit balance ($25.00). None of those correspond to
+any real feature in this app — there's no membership tier system, no
+loyalty points, no store credit. Rather than fabricate numbers for
+features that don't exist, I left them out entirely instead of
+building a version of this page that lies about what the account
+actually has.
+
+### What's real
+
+- **Hero card**: real customer name, real initial-letter avatar
+  (matching the avatar style already used everywhere else in the app
+  — there's no photo upload feature, so no photo).
+- **Orders / Wishlist / Addresses** — three real counts, fetched fresh
+  every time the tab opens (addresses specifically aren't cached
+  anywhere else proactively, so a stale count would otherwise show 0
+  even with real saved addresses).
+- **Account Menu** — every item routes to something real: My Orders,
+  Wishlist, and Addresses switch to their existing real tabs;
+  Payment Methods links to the existing honest "Coming Soon" screen
+  (already built, not new); Help & Support opens the real FAQ modal;
+  Settings switches to the real, already-editable settings tab; Switch
+  and Logout reuse the exact same functions the topbar versions
+  already call.
+- Left out "Rewards & Coupons" entirely — no such system exists
+  anywhere in this app, and it was never part of any previous
+  discussion the way Payment Methods was.
+
+### A real bug I caught and fixed along the way
+
+The old markup used `sender-avatar`/`sender-display-name` IDs that
+were also referenced by other JS elsewhere. Removing the old markup
+without checking would have silently broken those other references —
+found all 4 call sites and pointed them at the new, better-named
+elements instead of leaving orphaned references behind.

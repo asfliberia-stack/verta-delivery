@@ -1047,6 +1047,58 @@
         .mp-purchase-total { font-weight: 800; color: var(--slate); font-size: 1rem; }
         .mp-purchase-total span { font-weight: 500; color: var(--slate-light); font-size: 0.8125rem; margin-right: 0.375rem; }
 
+        /* Account hub — hero card, overview cards, menu list */
+        .mp-account-hero {
+            background: linear-gradient(135deg, var(--golib-red), #991b1b);
+            border-radius: 1.25rem; padding: 1.5rem; color: white; margin-bottom: 1.25rem;
+        }
+        .mp-account-hero-top { display: flex; align-items: center; gap: 1rem; margin-bottom: 1.25rem; }
+        .mp-account-hero-avatar {
+            width: 56px; height: 56px; border-radius: 50%; background: rgba(255,255,255,0.2);
+            display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 1.375rem;
+            flex-shrink: 0; border: 2px solid rgba(255,255,255,0.4);
+        }
+        .mp-account-hero-name { font-size: 1.25rem; font-weight: 800; }
+        .mp-account-hero-sub { font-size: 0.875rem; opacity: 0.85; }
+        .mp-account-hero-stats {
+            display: flex; justify-content: space-between; padding-top: 1.125rem; border-top: 1px solid rgba(255,255,255,0.25);
+        }
+        .mp-account-hero-stat { text-align: center; }
+        .mp-account-hero-stat-label { font-size: 0.75rem; opacity: 0.8; margin-bottom: 0.25rem; }
+        .mp-account-hero-stat-value { font-size: 1.25rem; font-weight: 800; }
+
+        .mp-account-overview-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; margin-bottom: 1.5rem; }
+        .mp-account-overview-card {
+            background: white; border-radius: 1rem; padding: 1.125rem 0.5rem; text-align: center;
+            border: 1px solid var(--border); box-shadow: var(--shadow-sm);
+        }
+        .mp-account-overview-icon {
+            width: 44px; height: 44px; border-radius: 50%; margin: 0 auto 0.625rem;
+            display: flex; align-items: center; justify-content: center; background: #fef2f2; color: var(--golib-red);
+        }
+        .mp-account-overview-icon svg { width: 20px; height: 20px; }
+        .mp-account-overview-label { font-size: 0.75rem; color: var(--slate-light); font-weight: 600; margin-bottom: 0.125rem; }
+        .mp-account-overview-value { font-size: 1.125rem; font-weight: 800; color: var(--slate); }
+
+        .mp-account-menu {
+            background: white; border-radius: 1rem; border: 1px solid var(--border); box-shadow: var(--shadow-sm); overflow: hidden;
+        }
+        .mp-account-menu-item {
+            display: flex; align-items: center; gap: 0.875rem; padding: 1rem 1.125rem;
+            border-bottom: 1px solid var(--border); cursor: pointer; background: none; width: 100%; text-align: left;
+        }
+        .mp-account-menu-item:last-child { border-bottom: none; }
+        .mp-account-menu-item:disabled { cursor: not-allowed; opacity: 0.6; }
+        .mp-account-menu-icon {
+            width: 40px; height: 40px; border-radius: 50%; flex-shrink: 0;
+            display: flex; align-items: center; justify-content: center; background: #fef2f2; color: var(--golib-red);
+        }
+        .mp-account-menu-icon svg { width: 19px; height: 19px; }
+        .mp-account-menu-title { font-weight: 700; color: var(--slate); font-size: 0.9375rem; }
+        .mp-account-menu-sub { font-size: 0.8125rem; color: var(--slate-light); margin-top: 0.0625rem; }
+        .mp-account-menu-chevron { margin-left: auto; color: var(--slate-lighter); flex-shrink: 0; }
+        .mp-account-menu-chevron svg { width: 18px; height: 18px; }
+
         @media (max-width: 720px) {
             .settings-layout { flex-direction: column; }
             .settings-nav { width: 100%; flex-direction: row; overflow-x: auto; border-right: none; border-bottom: 1px solid var(--border); }
@@ -2144,14 +2196,90 @@
 
                 <!-- Logged-in customer -->
                 <div id="mp-account-customer" style="display:none;">
-                    <div class="mobile-section" style="margin-top:0; display:flex; align-items:center; gap:0.875rem;">
-                        <div class="user-avatar" id="sender-avatar" style="width:3rem; height:3rem; font-size:1.25rem;">V</div>
-                        <div>
-                            <div style="font-weight:800; font-size:1.0625rem;" id="sender-display-name">—</div>
-                            <div style="font-size:0.8125rem; color:var(--slate-light);">Customer Account</div>
+                    <div class="mp-account-hero">
+                        <div class="mp-account-hero-top">
+                            <div class="mp-account-hero-avatar" id="mp-account-hero-avatar">V</div>
+                            <div>
+                                <div class="mp-account-hero-name" id="mp-account-hero-name">Hello!</div>
+                                <div class="mp-account-hero-sub">Welcome back</div>
+                            </div>
+                        </div>
+                        <div class="mp-account-hero-stats">
+                            <div class="mp-account-hero-stat">
+                                <div class="mp-account-hero-stat-label">Orders</div>
+                                <div class="mp-account-hero-stat-value" id="mp-account-hero-orders">—</div>
+                            </div>
+                            <div class="mp-account-hero-stat">
+                                <div class="mp-account-hero-stat-label">Wishlist</div>
+                                <div class="mp-account-hero-stat-value" id="mp-account-hero-wishlist">—</div>
+                            </div>
+                            <div class="mp-account-hero-stat">
+                                <div class="mp-account-hero-stat-label">Addresses</div>
+                                <div class="mp-account-hero-stat-value" id="mp-account-hero-addresses">—</div>
+                            </div>
                         </div>
                     </div>
-                    <p style="color: var(--slate-light); font-size: 0.875rem; margin-top: 1.25rem;">Use the ⇄ Switch button at the top of the screen to move to Verta Delivery, or Logout up there too.</p>
+
+                    <div class="mp-account-overview-grid">
+                        <div class="mp-account-overview-card">
+                            <div class="mp-account-overview-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path><line x1="3" y1="6" x2="21" y2="6"></line><path d="M16 10a4 4 0 0 1-8 0"></path></svg></div>
+                            <div class="mp-account-overview-label">Orders</div>
+                            <div class="mp-account-overview-value" id="mp-account-overview-orders">—</div>
+                        </div>
+                        <div class="mp-account-overview-card">
+                            <div class="mp-account-overview-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg></div>
+                            <div class="mp-account-overview-label">Wishlist</div>
+                            <div class="mp-account-overview-value" id="mp-account-overview-wishlist">—</div>
+                        </div>
+                        <div class="mp-account-overview-card">
+                            <div class="mp-account-overview-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg></div>
+                            <div class="mp-account-overview-label">Addresses</div>
+                            <div class="mp-account-overview-value" id="mp-account-overview-addresses">—</div>
+                        </div>
+                    </div>
+
+                    <div class="mobile-section-header" style="margin-bottom:0.75rem;"><div class="mobile-section-title">Account Menu</div></div>
+                    <div class="mp-account-menu">
+                        <button type="button" class="mp-account-menu-item" id="mp-account-menu-orders">
+                            <div class="mp-account-menu-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg></div>
+                            <div><div class="mp-account-menu-title">My Orders</div><div class="mp-account-menu-sub">Track and view your orders</div></div>
+                            <div class="mp-account-menu-chevron"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg></div>
+                        </button>
+                        <button type="button" class="mp-account-menu-item" id="mp-account-menu-wishlist">
+                            <div class="mp-account-menu-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg></div>
+                            <div><div class="mp-account-menu-title">Wishlist</div><div class="mp-account-menu-sub">View items you saved</div></div>
+                            <div class="mp-account-menu-chevron"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg></div>
+                        </button>
+                        <button type="button" class="mp-account-menu-item" id="mp-account-menu-addresses">
+                            <div class="mp-account-menu-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg></div>
+                            <div><div class="mp-account-menu-title">Addresses</div><div class="mp-account-menu-sub">Manage your delivery addresses</div></div>
+                            <div class="mp-account-menu-chevron"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg></div>
+                        </button>
+                        <button type="button" class="mp-account-menu-item" id="mp-account-menu-payment">
+                            <div class="mp-account-menu-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg></div>
+                            <div><div class="mp-account-menu-title">Payment Methods</div><div class="mp-account-menu-sub">Coming soon — pay on delivery for now</div></div>
+                            <div class="mp-account-menu-chevron"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg></div>
+                        </button>
+                        <button type="button" class="mp-account-menu-item" id="mp-account-menu-help">
+                            <div class="mp-account-menu-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg></div>
+                            <div><div class="mp-account-menu-title">Help &amp; Support</div><div class="mp-account-menu-sub">Get help and contact support</div></div>
+                            <div class="mp-account-menu-chevron"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg></div>
+                        </button>
+                        <button type="button" class="mp-account-menu-item" id="mp-account-menu-settings">
+                            <div class="mp-account-menu-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg></div>
+                            <div><div class="mp-account-menu-title">Settings</div><div class="mp-account-menu-sub">Manage your account settings</div></div>
+                            <div class="mp-account-menu-chevron"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg></div>
+                        </button>
+                        <button type="button" class="mp-account-menu-item" id="mp-account-menu-switch">
+                            <div class="mp-account-menu-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"></polyline><path d="M3 11V9a4 4 0 0 1 4-4h14"></path><polyline points="7 23 3 19 7 15"></polyline><path d="M21 13v2a4 4 0 0 1-4 4H3"></path></svg></div>
+                            <div><div class="mp-account-menu-title">Switch to Verta Delivery</div><div class="mp-account-menu-sub">Same account, same session</div></div>
+                            <div class="mp-account-menu-chevron"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg></div>
+                        </button>
+                        <button type="button" class="mp-account-menu-item" id="mp-account-menu-logout">
+                            <div class="mp-account-menu-icon" style="background:#f1f5f9; color:var(--slate-light);"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg></div>
+                            <div><div class="mp-account-menu-title">Logout</div></div>
+                        </button>
+                    </div>
                 </div>
 
                 <!-- Vendor previewing "as customer" -->
@@ -4790,6 +4918,8 @@
                 document.getElementById('mp-settings-name-input').value = currentUser.businessName || '';
                 splitPhoneNumber(currentUser.phone, 'mp-settings-phone-country', 'mp-settings-phone-input');
                 document.getElementById('mp-settings-email').value = currentUser.email || '';
+            } else if (tab === 'account' && currentUser && currentUser.role === 'sender') {
+                loadAccountOverview();
             }
         }
 
@@ -4886,6 +5016,22 @@
             document.getElementById('close-auth-screen-btn').addEventListener('click', closeAuthScreen);
             document.getElementById('switch-to-marketplace-btn').addEventListener('click', showMarketplaceAsVendorPreview);
             document.getElementById('back-to-store-dashboard-btn').addEventListener('click', showVendorDashboardView);
+
+            // ---- Account Menu (mobile Account hub) ----
+            document.getElementById('mp-account-menu-orders').addEventListener('click', () => setMarketplaceTab('orders'));
+            document.getElementById('mp-account-menu-wishlist').addEventListener('click', () => setMarketplaceTab('wishlist'));
+            document.getElementById('mp-account-menu-addresses').addEventListener('click', () => setMarketplaceTab('addresses'));
+            document.getElementById('mp-account-menu-payment').addEventListener('click', () => setMarketplaceTab('payment-methods'));
+            document.getElementById('mp-account-menu-help').addEventListener('click', () => {
+                renderHelpSupport('customer');
+                document.getElementById('help-support-modal').classList.add('active');
+            });
+            document.getElementById('mp-account-menu-settings').addEventListener('click', () => setMarketplaceTab('settings'));
+            document.getElementById('mp-account-menu-switch').addEventListener('click', () => chooseAppMode('delivery'));
+            document.getElementById('mp-account-menu-logout').addEventListener('click', async () => {
+                await clearAuth();
+                showAppChooser();
+            });
 
             document.getElementById('choose-delivery-btn').addEventListener('click', () => chooseAppMode('delivery'));
             document.getElementById('vendor-pending-logout-btn').addEventListener('click', async () => {
@@ -5116,8 +5262,8 @@
                 // if they've never picked (routing rule 1.3/3, split per
                 // this round's feedback: the two products stay distinct
                 // rather than merged into one screen).
-                document.getElementById('sender-display-name').textContent = currentUser.businessName;
-                document.getElementById('sender-avatar').textContent = currentUser.businessName.charAt(0).toUpperCase();
+                document.getElementById('mp-account-hero-name').textContent = `Hello, ${currentUser.businessName}!`;
+                document.getElementById('mp-account-hero-avatar').textContent = currentUser.businessName.charAt(0).toUpperCase();
                 document.getElementById('delivery-sender-display-name').textContent = currentUser.businessName;
                 document.getElementById('delivery-sender-avatar').textContent = currentUser.businessName.charAt(0).toUpperCase();
 
@@ -7755,6 +7901,37 @@
             }
         }
 
+        // Account hub overview stats — real counts, fetched fresh each
+        // time the Account tab opens (addresses in particular aren't
+        // proactively cached elsewhere, so a stale/never-loaded count
+        // would otherwise show 0 even when real addresses exist).
+        async function loadAccountOverview() {
+            if (currentUser) {
+                document.getElementById('mp-account-hero-name').textContent = `Hello, ${currentUser.businessName}!`;
+                document.getElementById('mp-account-hero-avatar').textContent = currentUser.businessName.charAt(0).toUpperCase();
+            }
+            try {
+                const [purchasesData, addressesData] = await Promise.all([
+                    apiFetch('/api/marketplace/my-purchases'),
+                    apiFetch('/api/addresses'),
+                ]);
+                const ordersCount = (purchasesData.purchases || []).length;
+                const wishlistCount = wishlistedProductIds.size;
+                const addressesCount = (addressesData.addresses || []).length;
+                savedAddressesCache = addressesData.addresses || [];
+
+                document.getElementById('mp-account-hero-orders').textContent = ordersCount;
+                document.getElementById('mp-account-hero-wishlist').textContent = wishlistCount;
+                document.getElementById('mp-account-hero-addresses').textContent = addressesCount;
+                document.getElementById('mp-account-overview-orders').textContent = ordersCount;
+                document.getElementById('mp-account-overview-wishlist').textContent = wishlistCount;
+                document.getElementById('mp-account-overview-addresses').textContent = addressesCount;
+            } catch (err) {
+                console.error('Failed to load account overview', err);
+            }
+        }
+
+
         function getDayLabel(date) {
             const today = new Date();
             const orderDate = new Date(date);
@@ -9787,8 +9964,8 @@
                     });
                     currentUser.businessName = data.user.businessName;
                     currentUser.phone = data.user.phone;
-                    document.getElementById('sender-display-name').textContent = currentUser.businessName;
-                    document.getElementById('sender-avatar').textContent = currentUser.businessName.charAt(0).toUpperCase();
+                    document.getElementById('mp-account-hero-name').textContent = `Hello, ${currentUser.businessName}!`;
+                    document.getElementById('mp-account-hero-avatar').textContent = currentUser.businessName.charAt(0).toUpperCase();
                     document.getElementById('desktop-profile-name').textContent = currentUser.businessName;
                     document.getElementById('desktop-profile-avatar').textContent = currentUser.businessName.charAt(0).toUpperCase();
                     showToast('Profile updated', 'success');
