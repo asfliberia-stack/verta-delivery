@@ -42,12 +42,11 @@ const DEFAULT_ADMIN_EMAIL = 'admin@vertadelivery.com';
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || DEFAULT_ADMIN_EMAIL;
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '1Nigeria@';
 
-// Verta's own delivery_company account — reuses the ORIGINAL admin
-// email/password (admin@vertadelivery.com), since the Manage Agent
-// account is meant to move to a new email (service@vertadelivery.com,
-// via ADMIN_EMAIL) to free this one up. See
-// seedVertaDeliveryCompanyIfPossible() below for the full sequencing.
-const VERTA_DC_EMAIL = process.env.VERTA_DC_EMAIL || 'admin@vertadelivery.com';
+// Verta's own delivery_company account — reuses ADMIN_PASSWORD's
+// default password for consistency, but a genuinely distinct email
+// from Manage Agent's, so it can be created immediately with no
+// rename dependency.
+const VERTA_DC_EMAIL = process.env.VERTA_DC_EMAIL || 'verta.dc@vertadelivery.com';
 const VERTA_DC_PASSWORD = process.env.VERTA_DC_PASSWORD || '1Nigeria@';
 
 // Extra confirmation step for destructive actions (bulk order delete,
@@ -2112,36 +2111,14 @@ async function migrateAgentsToDeliveryCompany() {
 
 // Verta's own delivery_company account — "one of the delivery service
 // providers," separate from the Manage Agent account, which continues
-// to exist (at a new email) for business-level oversight: Reports,
-// Order History, Expenses, Business Profile.
-//
-// SEQUENCING, since VERTA_DC_EMAIL reuses the ORIGINAL admin email:
-//   1. This only creates the account once that email is actually free
-//      — i.e., once the Manage Agent account has been renamed away
-//      from it (Settings > Security > Change Email to
-//      service@vertadelivery.com, with ADMIN_EMAIL updated to match
-//      in Railway's Variables tab so the two seed functions agree on
-//      where the Manage Agent account now lives).
-//   2. Until that rename happens, this safely no-ops on every boot —
-//      it does NOT create a duplicate or conflicting account.
-//   3. The moment the email frees up and this creates the account, it
-//      also moves the existing fleet (agents + their order history)
-//      from the Manage Agent account over to this new one — the fleet
-//      itself now belongs to Verta Delivery Service the company, not
-//      Manage Agent.
+// to exist for business-level oversight: Reports, Order History,
+// Expenses, Business Profile. Uses its own distinct email — no
+// conflict with Manage Agent's existing email, no rename required
+// first, no waiting for anything to free up. Creates immediately on
+// the next restart.
 async function seedVertaDeliveryCompanyIfPossible() {
   const existing = await db.getUserByEmail(VERTA_DC_EMAIL);
-  if (existing && existing.role === 'delivery_company') return; // already done
-
-  if (existing && existing.role !== 'delivery_company') {
-    console.log(
-      `[seed] Verta Delivery Service (delivery_company) not created yet — ${VERTA_DC_EMAIL} is ` +
-      `still used by the Manage Agent account. Rename it to service@vertadelivery.com ` +
-      `(Settings > Security > Change Email), set ADMIN_EMAIL=service@vertadelivery.com in ` +
-      `Railway, then restart the server.`
-    );
-    return;
-  }
+  if (existing) return; // already seeded
 
   const passwordHash = await hashPassword(VERTA_DC_PASSWORD);
   const company = await db.createUser({
@@ -2154,9 +2131,14 @@ async function seedVertaDeliveryCompanyIfPossible() {
   });
   console.log(`[seed] Created Verta Delivery Service (delivery_company) account for ${VERTA_DC_EMAIL}`);
 
-  const renamedManageAgent = await db.getUserByEmail(ADMIN_EMAIL);
-  if (renamedManageAgent && renamedManageAgent.id !== company.id) {
-    const { agentsMoved, ordersMoved } = await db.reassignFleetToCompany(renamedManageAgent.id, company.id);
+  // Moves the existing fleet (agents + their order history) from
+  // whoever currently holds the Manage Agent account over to this new
+  // one — works whether or not Manage Agent has been renamed to a
+  // different email, since this looks up ADMIN_EMAIL's current holder
+  // either way.
+  const manageAgent = await db.getUserByEmail(ADMIN_EMAIL);
+  if (manageAgent && manageAgent.id !== company.id) {
+    const { agentsMoved, ordersMoved } = await db.reassignFleetToCompany(manageAgent.id, company.id);
     if (agentsMoved > 0 || ordersMoved > 0) {
       console.log(`[seed] Moved ${agentsMoved} agent(s) and ${ordersMoved} order(s) from Manage Agent to Verta Delivery Service.`);
     }

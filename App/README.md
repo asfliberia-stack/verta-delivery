@@ -3215,3 +3215,28 @@ that role just works immediately.
 
 Both emails are configurable via `ADMIN_EMAIL` and `VERTA_DC_EMAIL` if
 you want different addresses than the ones described above.
+
+## Simplified: Verta Delivery Service account no longer needs a rename first
+
+The previous approach reused the original admin email, which meant it
+only worked after a specific manual sequence (rename Manage Agent's
+email, update an env var, redeploy) — real friction, and the likely
+source of the issues encountered.
+
+Fixed by giving the new account its own genuinely distinct email
+instead of trying to reuse the old one. No rename dependency, no
+waiting for anything to free up — it's created on the very next
+restart, unconditionally.
+
+**Login for Verta Delivery Service (delivery_company):**
+```
+Email: verta.dc@vertadelivery.com
+Password: 1Nigeria@
+```
+
+Both are configurable via `VERTA_DC_EMAIL` / `VERTA_DC_PASSWORD` if you
+want different values. The fleet migration (moving existing agents and
+their order history from Manage Agent to this new account) still
+happens automatically and correctly — it looks up whoever currently
+holds the Manage Agent account via `ADMIN_EMAIL`, so it works whether
+or not that account's email has ever been changed.
