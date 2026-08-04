@@ -1240,6 +1240,39 @@ app.get('/api/super-admin/delivery-companies', requireAuth, requireSuperAdmin, a
   }
 });
 
+// Super Admin creating a delivery company account directly — no
+// business/ID documents required, unlike public self-registration,
+// since the Super Admin creating this account IS the approval. Same
+// reasoning as Add Vendor and Add Customer.
+app.post('/api/super-admin/delivery-companies', requireAuth, requireSuperAdmin, async (req, res) => {
+  const { businessName, email, phone, password } = req.body || {};
+  if (!businessName || !email || !password) {
+    return res.status(400).json({ error: 'Business name, email, and password are required' });
+  }
+  if (password.length < 8) {
+    return res.status(400).json({ error: 'Password must be at least 8 characters' });
+  }
+  try {
+    const existing = await db.getUserByEmail(email);
+    if (existing) return res.status(409).json({ error: 'An account with that email already exists' });
+
+    const passwordHash = await hashPassword(password);
+    const deliveryCompany = await db.createUser({
+      id: crypto.randomUUID(),
+      businessName,
+      email,
+      phone: phone || null,
+      passwordHash,
+      role: 'delivery_company',
+      approvalStatus: 'approved',
+    });
+    res.json({ deliveryCompany });
+  } catch (err) {
+    console.error('POST /api/super-admin/delivery-companies failed', err);
+    res.status(500).json({ error: 'Failed to create delivery company' });
+  }
+});
+
 app.get('/api/super-admin/delivery-companies/:id/documents', requireAuth, requireSuperAdmin, async (req, res) => {
   try {
     const docs = await db.getDeliveryCompanyApplicationDocuments(req.params.id);

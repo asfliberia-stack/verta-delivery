@@ -3823,6 +3823,44 @@
         </div>
     </div>
 
+    <!-- Add Delivery Company (Super Admin only) — creates a real,
+         immediately-approved account directly, mirroring Add Vendor. -->
+    <div class="modal-overlay" id="add-delivery-company-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>+ Add Delivery Company</h3>
+                <button class="close-btn" id="close-add-delivery-company-modal">&times;</button>
+            </div>
+            <form id="add-delivery-company-form">
+                <div class="form-group">
+                    <label class="form-label">Company Name</label>
+                    <input type="text" class="form-input" id="add-delivery-company-name-input" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Email</label>
+                    <input type="email" class="form-input" id="add-delivery-company-email-input" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Phone</label>
+                    <div class="phone-input-row">
+                        <select class="form-input country-code-select" id="add-delivery-company-phone-country"></select>
+                        <input type="tel" class="form-input" id="add-delivery-company-phone-input" placeholder="881405696">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Temporary Password</label>
+                    <input type="text" class="form-input" id="add-delivery-company-password-input" required minlength="8" placeholder="At least 8 characters">
+                    <p class="settings-hint">Share this with the company directly — there's no automated email to send it for you. They can change it later from their own Settings.</p>
+                </div>
+                <div id="add-delivery-company-form-error" style="color: #dc2626; font-size: 0.875rem; margin-bottom: 1rem; display: none;"></div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-small btn-secondary" id="cancel-add-delivery-company-form">Cancel</button>
+                    <button type="submit" class="btn-small btn-success" id="add-delivery-company-form-submit-btn">Create Delivery Company</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- Add/Edit Customer (Super Admin only) -->
     <div class="modal-overlay" id="customer-form-modal">
         <div class="modal">
@@ -4214,12 +4252,15 @@
         <div class="modal" style="max-width: 900px; width: 95%; max-height: 85vh; overflow-y: auto;">
             <div class="modal-header">
                 <h3>🚚 Delivery Companies</h3>
-                <button class="close-btn" id="close-delivery-companies-modal">&times;</button>
+                <div style="display:flex; gap:0.5rem; align-items:center;">
+                    <button type="button" class="btn-small btn-success" id="open-add-delivery-company-btn">+ Add Delivery Company</button>
+                    <button class="close-btn" id="close-delivery-companies-modal">&times;</button>
+                </div>
             </div>
             <p style="color: var(--slate-light); margin-bottom: 1.5rem; font-size: 0.875rem;">
                 Each approved company manages its own fleet and sees only its own orders — real data
-                separation, not just a label. Verta Delivery Service's own fleet (Fleet Directory under
-                Manage Agent) is company #1 in this same system.
+                separation, not just a label. Verta Delivery Service has its own account here too,
+                on equal footing with any other company.
             </p>
             <div id="delivery-companies-modal-content">
                 <p style="text-align: center; color: var(--slate-light); padding: 2rem 0;">Loading…</p>
@@ -6370,6 +6411,11 @@
             document.getElementById('close-add-vendor-modal').addEventListener('click', closeAddVendorModal);
             document.getElementById('cancel-add-vendor-form').addEventListener('click', closeAddVendorModal);
             document.getElementById('add-vendor-form').addEventListener('submit', handleAddVendorFormSubmit);
+
+            document.getElementById('open-add-delivery-company-btn').addEventListener('click', openAddDeliveryCompanyModal);
+            document.getElementById('close-add-delivery-company-modal').addEventListener('click', closeAddDeliveryCompanyModal);
+            document.getElementById('cancel-add-delivery-company-form').addEventListener('click', closeAddDeliveryCompanyModal);
+            document.getElementById('add-delivery-company-form').addEventListener('submit', handleAddDeliveryCompanyFormSubmit);
             document.getElementById('agent-contacts-container').addEventListener('click', (e) => {
                 if (e.target.classList.contains('edit-agent-btn')) openAgentModal(e.target.dataset.id);
                 const dutyBtn = e.target.closest('.agent-duty-toggle');
@@ -6636,6 +6682,45 @@
             } finally {
                 submitBtn.disabled = false;
                 submitBtn.textContent = 'Create Vendor';
+            }
+        }
+
+        function openAddDeliveryCompanyModal() {
+            document.getElementById('add-delivery-company-form').reset();
+            document.getElementById('add-delivery-company-form-error').style.display = 'none';
+            populateCountryCodeSelects();
+            document.getElementById('add-delivery-company-modal').classList.add('active');
+        }
+
+        function closeAddDeliveryCompanyModal() {
+            document.getElementById('add-delivery-company-modal').classList.remove('active');
+        }
+
+        async function handleAddDeliveryCompanyFormSubmit(e) {
+            e.preventDefault();
+            const errorEl = document.getElementById('add-delivery-company-form-error');
+            const submitBtn = document.getElementById('add-delivery-company-form-submit-btn');
+            errorEl.style.display = 'none';
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Creating…';
+            try {
+                const businessName = document.getElementById('add-delivery-company-name-input').value.trim();
+                const email = document.getElementById('add-delivery-company-email-input').value.trim();
+                const password = document.getElementById('add-delivery-company-password-input').value;
+                const phone = combinePhoneNumber('add-delivery-company-phone-country', 'add-delivery-company-phone-input');
+                await apiFetch('/api/super-admin/delivery-companies', {
+                    method: 'POST',
+                    body: JSON.stringify({ businessName, email, phone, password }),
+                });
+                closeAddDeliveryCompanyModal();
+                showToast('Delivery company created — share the password with them directly', 'success');
+                await loadDeliveryCompaniesPanel();
+            } catch (err) {
+                errorEl.textContent = err.message;
+                errorEl.style.display = 'block';
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Create Delivery Company';
             }
         }
 

@@ -3240,3 +3240,23 @@ their order history from Manage Agent to this new account) still
 happens automatically and correctly — it looks up whoever currently
 holds the Manage Agent account via `ADMIN_EMAIL`, so it works whether
 or not that account's email has ever been changed.
+
+## Super Admin can now create Delivery Companies directly
+
+Mirrors Add Vendor / Add Customer exactly, same reasoning: no
+business/ID documents required, account is immediately approved,
+since the Super Admin creating it directly is itself the approval.
+Good for onboarding a real, already-known delivery company without
+making them go through public self-registration.
+
+`POST /api/super-admin/delivery-companies` — real endpoint, checks the
+email isn't already taken, creates a real approved `delivery_company`
+account. "+ Add Delivery Company" button in the Delivery Companies
+panel opens a real form; on success it refreshes the list immediately.
+
+Also fixed a small stale note while in that file — the panel's
+description used to say Verta's fleet was "company #1" tied to the
+Manage Agent account specifically. Since Verta now has its own
+distinct delivery_company account (from last round), updated the text
+to reflect that it's on equal footing with any other company, not a
+special case anymore.
