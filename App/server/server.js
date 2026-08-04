@@ -42,6 +42,14 @@ const DEFAULT_ADMIN_EMAIL = 'admin@vertadelivery.com';
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || DEFAULT_ADMIN_EMAIL;
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '1Nigeria@';
 
+// Verta's own delivery_company account — reuses the ORIGINAL admin
+// email/password (admin@vertadelivery.com), since the Manage Agent
+// account is meant to move to a new email (service@vertadelivery.com,
+// via ADMIN_EMAIL) to free this one up. See
+// seedVertaDeliveryCompanyIfPossible() below for the full sequencing.
+const VERTA_DC_EMAIL = process.env.VERTA_DC_EMAIL || 'admin@vertadelivery.com';
+const VERTA_DC_PASSWORD = process.env.VERTA_DC_PASSWORD || '1Nigeria@';
+
 // Extra confirmation step for destructive actions (bulk order delete,
 // expense delete) — required on top of already being logged in as admin.
 // Matches the original app's behavior. Set DELETE_PASSWORD to override.
@@ -131,10 +139,17 @@ io.use(socketAuth); // every socket connection must present a valid JWT
 //     browsers/devices sync with each other, and only see their own orders.
 //   - Every admin socket joins `admins` — admins see every order from every
 //     sender, live, across all their own devices too.
-// An order event is therefore always emitted to two rooms: the owning
-// sender's room, and `admins`.
+//   - Every delivery_company socket ALSO joins `pending-orders` — a
+//     deliberately separate room from `admins`, so companies get real-time
+//     visibility into new, unassigned orders (matching the "any approved
+//     company's agents can accept a pending order" design) without also
+//     receiving Manage Agent's other business events (expenses, price
+//     presets, settings) that `admins` carries and shouldn't leak to a
+//     third-party company.
+// An order event is therefore always emitted to: the owning sender's room,
+// `admins`, and `pending-orders`.
 function orderRooms(senderId) {
-  return [`user:${senderId}`, 'admins'];
+  return [`user:${senderId}`, 'admins', 'pending-orders'];
 }
 
 io.on('connection', (socket) => {
@@ -144,6 +159,9 @@ io.on('connection', (socket) => {
       ? `vendor:${socket.user.id}`
       : `user:${socket.user.id}`;
   socket.join(room);
+  if (socket.user.role === 'delivery_company') {
+    socket.join('pending-orders');
+  }
   console.log(`[socket] ${socket.user.role} connected: ${socket.user.email} (${socket.id})`);
 
   socket.on('disconnect', () => {
@@ -233,19 +251,28 @@ io.on('connection', (socket) => {
   });
 
   socket.on('order:accept', async ({ id, amount, acceptedBy, paymentMethod }, ack) => {
-    if (!isAdminLike(socket.user.role)) {
+    if (!isAdminLike(socket.user.role) && socket.user.role !== 'delivery_company') {
       return ack && ack({ ok: false, error: 'Only admins can accept orders' });
     }
     try {
       const agent = await db.getAgentByName(acceptedBy);
-      const order = await db.updateOrder(id, {
+      // A delivery company can only accept using one of its own
+      // agents — this is the real check, not just trusting whatever
+      // name the client sent.
+      if (socket.user.role === 'delivery_company') {
+        if (!agent || agent.deliveryCompanyId !== socket.user.id) {
+          return ack && ack({ ok: false, error: 'That agent does not belong to your company' });
+        }
+      }
+      const order = await db.acceptOrderAtomic(id, {
         amount,
         acceptedBy,
         paymentMethod: paymentMethod || null,
-        status: 'accepted',
-        acceptedAt: new Date().toISOString(),
         deliveryCompanyId: agent ? agent.deliveryCompanyId : null,
       });
+      if (!order) {
+        return ack && ack({ ok: false, error: 'This order was already accepted — someone got there first.' });
+      }
       orderRooms(order.senderId).forEach((r) => io.to(r).emit('order:updated', order));
       ack && ack({ ok: true, order });
     } catch (err) {
@@ -1478,6 +1505,16 @@ app.get('/api/delivery-company/orders', requireAuth, requireDeliveryCompany, asy
   }
 });
 
+app.get('/api/delivery-company/pending-orders', requireAuth, requireDeliveryCompany, async (req, res) => {
+  try {
+    const orders = await db.getPendingOrders();
+    res.json({ orders });
+  } catch (err) {
+    console.error('GET /api/delivery-company/pending-orders failed', err);
+    res.status(500).json({ error: 'Failed to load pending orders' });
+  }
+});
+
 app.get('/api/delivery-company/overview', requireAuth, requireDeliveryCompany, async (req, res) => {
   try {
     const [agents, orders] = await Promise.all([
@@ -2073,12 +2110,66 @@ async function migrateAgentsToDeliveryCompany() {
   }
 }
 
+// Verta's own delivery_company account — "one of the delivery service
+// providers," separate from the Manage Agent account, which continues
+// to exist (at a new email) for business-level oversight: Reports,
+// Order History, Expenses, Business Profile.
+//
+// SEQUENCING, since VERTA_DC_EMAIL reuses the ORIGINAL admin email:
+//   1. This only creates the account once that email is actually free
+//      — i.e., once the Manage Agent account has been renamed away
+//      from it (Settings > Security > Change Email to
+//      service@vertadelivery.com, with ADMIN_EMAIL updated to match
+//      in Railway's Variables tab so the two seed functions agree on
+//      where the Manage Agent account now lives).
+//   2. Until that rename happens, this safely no-ops on every boot —
+//      it does NOT create a duplicate or conflicting account.
+//   3. The moment the email frees up and this creates the account, it
+//      also moves the existing fleet (agents + their order history)
+//      from the Manage Agent account over to this new one — the fleet
+//      itself now belongs to Verta Delivery Service the company, not
+//      Manage Agent.
+async function seedVertaDeliveryCompanyIfPossible() {
+  const existing = await db.getUserByEmail(VERTA_DC_EMAIL);
+  if (existing && existing.role === 'delivery_company') return; // already done
+
+  if (existing && existing.role !== 'delivery_company') {
+    console.log(
+      `[seed] Verta Delivery Service (delivery_company) not created yet — ${VERTA_DC_EMAIL} is ` +
+      `still used by the Manage Agent account. Rename it to service@vertadelivery.com ` +
+      `(Settings > Security > Change Email), set ADMIN_EMAIL=service@vertadelivery.com in ` +
+      `Railway, then restart the server.`
+    );
+    return;
+  }
+
+  const passwordHash = await hashPassword(VERTA_DC_PASSWORD);
+  const company = await db.createUser({
+    id: crypto.randomUUID(),
+    businessName: 'Verta Delivery Service',
+    email: VERTA_DC_EMAIL,
+    passwordHash,
+    role: 'delivery_company',
+    approvalStatus: 'approved',
+  });
+  console.log(`[seed] Created Verta Delivery Service (delivery_company) account for ${VERTA_DC_EMAIL}`);
+
+  const renamedManageAgent = await db.getUserByEmail(ADMIN_EMAIL);
+  if (renamedManageAgent && renamedManageAgent.id !== company.id) {
+    const { agentsMoved, ordersMoved } = await db.reassignFleetToCompany(renamedManageAgent.id, company.id);
+    if (agentsMoved > 0 || ordersMoved > 0) {
+      console.log(`[seed] Moved ${agentsMoved} agent(s) and ${ordersMoved} order(s) from Manage Agent to Verta Delivery Service.`);
+    }
+  }
+}
+
 db.init()
   .then(seedAdminIfConfigured)
   .then(seedSuperAdminIfConfigured)
   .then(seedVendorIfConfigured)
   .then(seedAgentsIfEmpty)
   .then(migrateAgentsToDeliveryCompany)
+  .then(seedVertaDeliveryCompanyIfPossible)
   .then(() => {
     server.listen(PORT, () => console.log(`Verta Delivery server listening on :${PORT}`));
   })

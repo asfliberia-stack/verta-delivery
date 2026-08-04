@@ -267,6 +267,17 @@ const db = {
     return rows.map(rowToOrder);
   },
 
+  // Real, unassigned orders — visible to any approved delivery
+  // company, matching the "first company to accept it" design. Not
+  // scoped to a company, since by definition these don't belong to
+  // one yet.
+  async getPendingOrders() {
+    const { rows } = await pool.query(
+      "SELECT * FROM orders WHERE status = 'pending' ORDER BY created_at ASC"
+    );
+    return rows.map(rowToOrder);
+  },
+
   async getOrdersBySender(senderId) {
     const { rows } = await pool.query(
       'SELECT * FROM orders WHERE sender_id = $1 ORDER BY created_at DESC',
@@ -281,6 +292,25 @@ const db = {
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
        RETURNING *`,
       [order.id, order.senderId, order.senderName, order.pickupAddress, order.dropoffAddress, order.itemDescription, order.amount, order.status || 'pending', !!order.placedByAdmin]
+    );
+    return rowToOrder(rows[0]);
+  },
+
+  // Atomic accept — the WHERE status = 'pending' guard is the actual
+  // protection here, not just a nicety: now that multiple delivery
+  // companies can see and try to accept the same pending order at
+  // once, a plain UPDATE by id alone would let two acceptances both
+  // "succeed" and silently overwrite each other. This returns null if
+  // someone else's acceptance already changed the status first —
+  // whichever request's UPDATE runs first wins, the second one gets
+  // nothing to update and the caller can tell the user honestly that
+  // someone else got there first.
+  async acceptOrderAtomic(id, { amount, acceptedBy, paymentMethod, deliveryCompanyId }) {
+    const { rows } = await pool.query(
+      `UPDATE orders SET amount = $1, accepted_by = $2, payment_method = $3,
+       status = 'accepted', accepted_at = now(), delivery_company_id = $4
+       WHERE id = $5 AND status = 'pending' RETURNING *`,
+      [amount, acceptedBy, paymentMethod || null, deliveryCompanyId || null, id]
     );
     return rowToOrder(rows[0]);
   },
@@ -384,6 +414,22 @@ const db = {
       [companyId]
     );
     return rowCount;
+  },
+
+  // Moves an entire fleet — agents AND their order history — from one
+  // company to another. Used exactly once, when Verta's own
+  // delivery_company account is first created, to move the fleet that
+  // was previously linked to the Manage Agent account over to it.
+  async reassignFleetToCompany(fromCompanyId, toCompanyId) {
+    const agentsResult = await pool.query(
+      'UPDATE agents SET delivery_company_id = $1 WHERE delivery_company_id = $2',
+      [toCompanyId, fromCompanyId]
+    );
+    const ordersResult = await pool.query(
+      'UPDATE orders SET delivery_company_id = $1 WHERE delivery_company_id = $2',
+      [toCompanyId, fromCompanyId]
+    );
+    return { agentsMoved: agentsResult.rowCount, ordersMoved: ordersResult.rowCount };
   },
 
   async createAgent({ id, name, phone, deliveryCompanyId }) {

@@ -2527,6 +2527,7 @@
                 </div>
             </div>
             <div style="display:flex; gap:0.75rem;">
+                <button type="button" class="btn-small btn-secondary" id="dc-reports-btn">📊 Reports</button>
                 <button type="button" class="btn-small btn-secondary" id="dc-settings-btn">Settings</button>
                 <button type="button" class="btn-small btn-secondary" id="dc-logout-btn">Logout</button>
             </div>
@@ -2534,6 +2535,13 @@
 
         <div style="max-width:1100px; margin:0 auto; padding:1.5rem;">
             <!-- Overview -->
+            <!-- Pending Orders — real, unassigned orders any approved
+                 company can see and accept, live via Socket.io. -->
+            <div class="mobile-section" style="margin-top:0;">
+                <div class="mobile-section-header"><div class="mobile-section-title">Pending Orders</div></div>
+                <div id="dc-pending-orders-list"></div>
+            </div>
+
             <div id="dc-view-overview">
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
                     <div class="stat-card">
@@ -2584,9 +2592,10 @@
                 </form>
             </div>
 
-            <!-- Orders -->
+            <!-- Order History -->
             <div class="mobile-section">
-                <div class="mobile-section-header"><div class="mobile-section-title">Orders</div></div>
+                <div class="mobile-section-header"><div class="mobile-section-title">Order History</div></div>
+                <div id="dc-order-history-filters"></div>
                 <div id="dc-orders-list"></div>
             </div>
 
@@ -3606,6 +3615,70 @@
                 <button type="button" class="btn-small btn-secondary" id="cancel-monthly-report">Cancel</button>
                 <button type="button" class="btn-small btn-success" id="generate-monthly-report-btn">📥 Download PDF</button>
             </div>
+        </div>
+    </div>
+
+    <!-- Delivery Company's own Monthly Report — simpler than the one
+         above: no per-customer statement option, since that's a
+         Verta-specific concept (this account's orders are all it has). -->
+    <div class="modal-overlay" id="dc-report-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>📊 Monthly Report</h3>
+                <button class="close-btn" id="close-dc-report-modal">&times;</button>
+            </div>
+            <p style="margin-bottom: 1.5rem; color: var(--slate-light);">Choose a month and year to generate a real PDF report of your orders.</p>
+            <div class="form-group">
+                <label class="form-label">Year</label>
+                <select class="form-input" id="dc-report-year-select"></select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Month</label>
+                <select class="form-input" id="dc-report-month-select">
+                    <option value="1">January</option>
+                    <option value="2">February</option>
+                    <option value="3">March</option>
+                    <option value="4">April</option>
+                    <option value="5">May</option>
+                    <option value="6">June</option>
+                    <option value="7">July</option>
+                    <option value="8">August</option>
+                    <option value="9">September</option>
+                    <option value="10">October</option>
+                    <option value="11">November</option>
+                    <option value="12">December</option>
+                </select>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-small btn-secondary" id="cancel-dc-report">Cancel</button>
+                <button type="button" class="btn-small btn-success" id="generate-dc-report-btn">📥 Download PDF</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Accept Order (Delivery Company) -->
+    <div class="modal-overlay" id="dc-accept-order-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>Accept Order</h3>
+                <button class="close-btn" id="close-dc-accept-order-modal">&times;</button>
+            </div>
+            <p id="dc-accept-order-summary" style="color:var(--slate-light); margin-bottom:1.25rem;"></p>
+            <form id="dc-accept-order-form">
+                <div class="form-group">
+                    <label class="form-label">Assign to Agent</label>
+                    <select class="form-input" id="dc-accept-order-agent-select" required></select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Delivery Amount ($)</label>
+                    <input type="number" class="form-input" id="dc-accept-order-amount-input" min="0" step="0.01" required>
+                </div>
+                <div id="dc-accept-order-error" style="color:#dc2626; font-size:0.875rem; margin-bottom:1rem; display:none;"></div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-small btn-secondary" id="cancel-dc-accept-order">Cancel</button>
+                    <button type="submit" class="btn-small btn-success" id="dc-accept-order-submit">Accept Order</button>
+                </div>
+            </form>
         </div>
     </div>
 
@@ -4843,6 +4916,18 @@
 
             socket.on('order:created', (order) => {
                 const normalized = normalizeOrder(order);
+                if (currentUser && currentUser.role === 'delivery_company') {
+                    if (normalized.status === 'pending' && !deliveryCompanyPendingOrdersCache.some(o => o.id === normalized.id)) {
+                        deliveryCompanyPendingOrdersCache.unshift(normalized);
+                        renderDeliveryCompanyPendingOrders();
+                        sendLocalNotification('New order available', {
+                            body: `${normalized.pickupAddress} → ${normalized.dropoffAddress}`,
+                            requireInteraction: false,
+                            tag: `order-created-${normalized.id}`,
+                        });
+                    }
+                    return;
+                }
                 if (!orders.some(o => o.id === normalized.id)) {
                     orders.unshift(normalized);
                     refreshAllViews();
@@ -4863,6 +4948,17 @@
 
             socket.on('order:updated', (order) => {
                 const normalized = normalizeOrder(order);
+                if (currentUser && currentUser.role === 'delivery_company') {
+                    // Once accepted (by us or another company), it's no
+                    // longer pending — drop it from the live pending list.
+                    deliveryCompanyPendingOrdersCache = deliveryCompanyPendingOrdersCache.filter(o => o.id !== normalized.id);
+                    renderDeliveryCompanyPendingOrders();
+                    if (normalized.deliveryCompanyId === currentUser.id) {
+                        loadDeliveryCompanyOrders();
+                        loadDeliveryCompanyOverview();
+                    }
+                    return;
+                }
                 const idx = orders.findIndex(o => o.id === normalized.id);
                 if (idx !== -1) orders[idx] = normalized; else orders.unshift(normalized);
                 refreshAllViews();
@@ -5100,6 +5196,55 @@
             loadDeliveryCompanyOverview();
             loadDeliveryCompanyAgents();
             loadDeliveryCompanyOrders();
+            loadDeliveryCompanyPendingOrders();
+        }
+
+        let deliveryCompanyPendingOrdersCache = [];
+
+        async function loadDeliveryCompanyPendingOrders() {
+            try {
+                const data = await apiFetch('/api/delivery-company/pending-orders');
+                deliveryCompanyPendingOrdersCache = data.orders || [];
+                renderDeliveryCompanyPendingOrders();
+            } catch (err) {
+                console.error('Failed to load pending orders', err);
+            }
+        }
+
+        function renderDeliveryCompanyPendingOrders() {
+            const container = document.getElementById('dc-pending-orders-list');
+            if (!container) return;
+            if (deliveryCompanyPendingOrdersCache.length === 0) {
+                renderEmptyState(container, 'No pending orders right now — new ones will show up here automatically.');
+                return;
+            }
+            container.innerHTML = deliveryCompanyPendingOrdersCache.map(o => `
+                <div class="address-card">
+                    <div class="address-card-body">
+                        <div class="address-card-label-row"><span class="address-card-label">${o.id}</span></div>
+                        <div class="address-card-text">${o.pickupAddress} → ${o.dropoffAddress}</div>
+                        <div class="address-card-text">${o.itemDescription}</div>
+                    </div>
+                    <button type="button" class="btn-small btn-success dc-accept-order-btn" data-id="${o.id}">Accept</button>
+                </div>
+            `).join('');
+        }
+
+        function openDeliveryCompanyAcceptOrderModal(orderId) {
+            const order = deliveryCompanyPendingOrdersCache.find(o => o.id === orderId);
+            if (!order) return;
+            if (deliveryCompanyAgentsCache.length === 0) {
+                showToast('Add an agent to your fleet before accepting orders.', 'error');
+                return;
+            }
+            document.getElementById('dc-accept-order-modal').dataset.orderId = orderId;
+            document.getElementById('dc-accept-order-summary').textContent = `${order.pickupAddress} → ${order.dropoffAddress} · ${order.itemDescription}`;
+            document.getElementById('dc-accept-order-agent-select').innerHTML = deliveryCompanyAgentsCache
+                .map(a => `<option value="${a.name}">${a.name} (${a.dutyStatus === 'on_duty' ? 'On Duty' : 'Off Duty'})</option>`)
+                .join('');
+            document.getElementById('dc-accept-order-amount-input').value = '';
+            document.getElementById('dc-accept-order-error').style.display = 'none';
+            document.getElementById('dc-accept-order-modal').classList.add('active');
         }
 
         async function loadDeliveryCompanyOverview() {
@@ -5141,31 +5286,52 @@
             }
         }
 
+        let deliveryCompanyOrdersCache = [];
+        let dcSelectedYear = null, dcSelectedMonth = null, dcSelectedDay = null;
+
         async function loadDeliveryCompanyOrders() {
             const container = document.getElementById('dc-orders-list');
             try {
                 const data = await apiFetch('/api/delivery-company/orders');
-                const orders = data.orders || [];
-                if (orders.length === 0) {
+                deliveryCompanyOrdersCache = data.orders || [];
+                if (deliveryCompanyOrdersCache.length === 0) {
+                    document.getElementById('dc-order-history-filters').innerHTML = '';
                     renderEmptyState(container, 'No orders yet — they\'ll show up here once your agents start accepting them.');
                     return;
                 }
-                container.innerHTML = orders.slice(0, 50).map(o => {
-                    const statusClass = `status-${o.status.replace(' ', '-')}`;
-                    const statusText = o.status.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-                    return `
-                        <div class="address-card">
-                            <div class="address-card-body">
-                                <div class="address-card-label-row"><span class="address-card-label">${o.id}</span></div>
-                                <div class="address-card-text">${o.pickupAddress} → ${o.dropoffAddress} · Agent: ${o.acceptedBy || '—'}</div>
-                            </div>
-                            <span class="status-badge ${statusClass}">${statusText}</span>
-                        </div>
-                    `;
-                }).join('');
+                const now = new Date();
+                if (dcSelectedYear === null) { dcSelectedYear = now.getFullYear(); dcSelectedMonth = now.getMonth() + 1; }
+                renderDeliveryCompanyOrderHistory();
             } catch (err) {
                 container.innerHTML = `<p style="text-align:center; color:#dc2626;">${err.message}</p>`;
             }
+        }
+
+        function renderDeliveryCompanyOrderHistory() {
+            const filtersEl = document.getElementById('dc-order-history-filters');
+            const container = document.getElementById('dc-orders-list');
+            const orderYears = [...new Set(deliveryCompanyOrdersCache.map(o => new Date(o.createdAt).getFullYear()))].sort((a, b) => b - a);
+            if (orderYears.length === 0) orderYears.push(new Date().getFullYear());
+            filtersEl.innerHTML = renderDateFilterControls('dc-oh-year-select', 'dc-oh-month-select', 'dc-oh-day-select', orderYears, dcSelectedYear, dcSelectedMonth, dcSelectedDay);
+
+            const filtered = filterByDate(deliveryCompanyOrdersCache, o => o.createdAt, dcSelectedYear, dcSelectedMonth, dcSelectedDay);
+            if (filtered.length === 0) {
+                container.innerHTML = '<p style="text-align: center; color: var(--slate-light); padding: 1rem 0;">No orders found for the selected date.</p>';
+                return;
+            }
+            container.innerHTML = filtered.slice(0, 100).map(o => {
+                const statusClass = `status-${o.status.replace(' ', '-')}`;
+                const statusText = o.status.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+                return `
+                    <div class="address-card">
+                        <div class="address-card-body">
+                            <div class="address-card-label-row"><span class="address-card-label">${o.id}</span></div>
+                            <div class="address-card-text">${o.pickupAddress} → ${o.dropoffAddress} · Agent: ${o.acceptedBy || '—'}</div>
+                        </div>
+                        <span class="status-badge ${statusClass}">${statusText}</span>
+                    </div>
+                `;
+            }).join('');
         }
 
         function openDeliveryCompanyAgentForm(agentId) {
@@ -5285,6 +5451,81 @@
                     return;
                 }
                 await loadDeliveryCompanyOverview();
+            });
+
+            document.getElementById('dc-order-history-filters').addEventListener('change', (e) => {
+                if (e.target.id === 'dc-oh-year-select') { dcSelectedYear = parseInt(e.target.value); dcSelectedMonth = 1; dcSelectedDay = null; renderDeliveryCompanyOrderHistory(); }
+                else if (e.target.id === 'dc-oh-month-select') { dcSelectedMonth = parseInt(e.target.value); dcSelectedDay = null; renderDeliveryCompanyOrderHistory(); }
+                else if (e.target.id === 'dc-oh-day-select') { dcSelectedDay = e.target.value ? parseInt(e.target.value) : null; renderDeliveryCompanyOrderHistory(); }
+            });
+
+            document.getElementById('dc-reports-btn').addEventListener('click', () => {
+                const yearSelect = document.getElementById('dc-report-year-select');
+                const orderYears = [...new Set(deliveryCompanyOrdersCache.map(o => new Date(o.createdAt).getFullYear()))].sort((a, b) => b - a);
+                const now = new Date();
+                if (orderYears.length === 0) orderYears.push(now.getFullYear());
+                yearSelect.innerHTML = orderYears.map(y => `<option value="${y}" ${y === now.getFullYear() ? 'selected' : ''}>${y}</option>`).join('');
+                document.getElementById('dc-report-month-select').value = String(now.getMonth() + 1);
+                document.getElementById('dc-report-modal').classList.add('active');
+            });
+            document.getElementById('close-dc-report-modal').addEventListener('click', () => {
+                document.getElementById('dc-report-modal').classList.remove('active');
+            });
+            document.getElementById('cancel-dc-report').addEventListener('click', () => {
+                document.getElementById('dc-report-modal').classList.remove('active');
+            });
+            document.getElementById('generate-dc-report-btn').addEventListener('click', () => {
+                const year = parseInt(document.getElementById('dc-report-year-select').value);
+                const month = parseInt(document.getElementById('dc-report-month-select').value);
+                generateDeliveryCompanyMonthlyReportPDF(year, month, deliveryCompanyOrdersCache);
+            });
+
+            document.getElementById('dc-pending-orders-list').addEventListener('click', (e) => {
+                const btn = e.target.closest('.dc-accept-order-btn');
+                if (btn) openDeliveryCompanyAcceptOrderModal(btn.dataset.id);
+            });
+            document.getElementById('close-dc-accept-order-modal').addEventListener('click', () => {
+                document.getElementById('dc-accept-order-modal').classList.remove('active');
+            });
+            document.getElementById('cancel-dc-accept-order').addEventListener('click', () => {
+                document.getElementById('dc-accept-order-modal').classList.remove('active');
+            });
+            document.getElementById('dc-accept-order-form').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const errorEl = document.getElementById('dc-accept-order-error');
+                const submitBtn = document.getElementById('dc-accept-order-submit');
+                errorEl.style.display = 'none';
+                const orderId = document.getElementById('dc-accept-order-modal').dataset.orderId;
+                const acceptedBy = document.getElementById('dc-accept-order-agent-select').value;
+                const amount = parseFloat(document.getElementById('dc-accept-order-amount-input').value);
+                if (!acceptedBy || isNaN(amount) || amount < 0) {
+                    errorEl.textContent = 'Please choose an agent and enter a valid amount.';
+                    errorEl.style.display = 'block';
+                    return;
+                }
+                submitBtn.disabled = true;
+                submitBtn.textContent = 'Accepting…';
+                try {
+                    const result = await emitWithAck('order:accept', { id: orderId, amount, acceptedBy, paymentMethod: null });
+                    if (!result.ok) throw new Error(result.error || 'Failed to accept order');
+                    deliveryCompanyPendingOrdersCache = deliveryCompanyPendingOrdersCache.filter(o => o.id !== orderId);
+                    renderDeliveryCompanyPendingOrders();
+                    document.getElementById('dc-accept-order-modal').classList.remove('active');
+                    showToast('Order accepted', 'success');
+                    await loadDeliveryCompanyOrders();
+                    await loadDeliveryCompanyOverview();
+                } catch (err) {
+                    errorEl.textContent = err.message;
+                    errorEl.style.display = 'block';
+                    // Someone else may have just taken it — refresh the
+                    // list so this order disappears if it's no longer
+                    // actually pending, instead of leaving a stale Accept
+                    // button the person would just hit again.
+                    await loadDeliveryCompanyPendingOrders();
+                } finally {
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'Accept Order';
+                }
             });
         }
 
@@ -8240,6 +8481,124 @@
             }
 
             doc.save(`Verta-Delivery-Monthly-Report-${year}-${String(month).padStart(2, '0')}.pdf`);
+        }
+
+        // Delivery Company's own monthly report — adapted from
+        // generateMonthlyReportPDF above, not a copy: no expenses or
+        // commission sections, since those are specific to how Verta
+        // itself operates (expense tracking, a 30% agent commission
+        // rate) and aren't something to assume about a third-party
+        // company's own pay structure. Reuses the same shared helpers
+        // (filterByDate, groupByDay, cleanText) since those are generic.
+        function generateDeliveryCompanyMonthlyReportPDF(year, month, companyOrders) {
+            const monthOrders = filterByDate(companyOrders, o => o.createdAt, year, month, null);
+            const totalOrders = monthOrders.length;
+            const totalAmount = monthOrders.reduce((sum, o) => sum + (o.amount || 0), 0);
+            const deliveredCount = monthOrders.filter(o => o.status === 'delivered').length;
+            const monthName = new Date(year, month - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            let yPosition = 20;
+            const pageMargin = 14;
+            const pageWidth = doc.internal.pageSize.getWidth();
+
+            doc.setFontSize(20); doc.setFont('helvetica', 'bold');
+            doc.text(`${cleanText(currentUser.businessName)} Monthly Report`, pageWidth / 2, yPosition, { align: 'center' });
+            yPosition += 12;
+            doc.setFontSize(14); doc.text(monthName, pageWidth / 2, yPosition, { align: 'center' });
+            yPosition += 18;
+
+            doc.setFontSize(12); doc.setFont('helvetica', 'bold');
+            doc.text('Monthly Totals', pageMargin, yPosition); yPosition += 8;
+            doc.setFont('helvetica', 'normal');
+            doc.text(`• Total Orders: ${totalOrders}`, pageMargin, yPosition); yPosition += 7;
+            doc.text(`• Delivered Orders: ${deliveredCount}`, pageMargin, yPosition); yPosition += 7;
+            doc.text(`• Total Order Amount: $${totalAmount.toFixed(2)}`, pageMargin, yPosition); yPosition += 15;
+
+            if (yPosition > 255) { doc.addPage(); yPosition = 20; }
+            doc.setFontSize(14); doc.setFont('helvetica', 'bold');
+            doc.text('Agent Summary (Whole Month)', pageMargin, yPosition); yPosition += 12;
+
+            const agentTotals = {};
+            monthOrders.forEach(order => {
+                if (!order.acceptedBy) return;
+                if (!agentTotals[order.acceptedBy]) agentTotals[order.acceptedBy] = { count: 0, amount: 0 };
+                agentTotals[order.acceptedBy].count += 1;
+                agentTotals[order.acceptedBy].amount += (order.amount || 0);
+            });
+            const agentNames = Object.keys(agentTotals);
+            if (agentNames.length === 0) {
+                doc.setFont('helvetica', 'normal'); doc.setFontSize(11);
+                doc.text('No orders were assigned to an agent this month.', pageMargin, yPosition);
+                yPosition += 7;
+            } else {
+                const aCol1 = pageMargin, aCol2 = pageMargin + 95, aCol3 = pageMargin + 125;
+                doc.setFontSize(11); doc.setFont('helvetica', 'bold');
+                doc.text('Agent', aCol1, yPosition);
+                doc.text('Orders', aCol2, yPosition);
+                doc.text('Amount', aCol3, yPosition);
+                yPosition += 8;
+                doc.setFont('helvetica', 'normal');
+                agentNames.forEach(name => {
+                    const t = agentTotals[name];
+                    doc.text(cleanText(name), aCol1, yPosition);
+                    doc.text(String(t.count), aCol2, yPosition);
+                    doc.text(`$${t.amount.toFixed(2)}`, aCol3, yPosition);
+                    yPosition += 8;
+                    if (yPosition > 275) { doc.addPage(); yPosition = 20; }
+                });
+            }
+            yPosition += 8;
+
+            if (yPosition > 250) { doc.addPage(); yPosition = 20; }
+            doc.setFontSize(14); doc.setFont('helvetica', 'bold');
+            doc.text('Daily Breakdown', pageMargin, yPosition); yPosition += 10;
+            doc.setFont('helvetica', 'normal'); doc.setFontSize(10);
+
+            const groupedByDay = groupByDay(monthOrders, []);
+            const sortedDates = Object.keys(groupedByDay).sort((a, b) => a.localeCompare(b));
+
+            if (sortedDates.length === 0) {
+                doc.text('No orders recorded this month.', pageMargin, yPosition);
+            } else {
+                sortedDates.forEach(dateKey => {
+                    const dayOrders = groupedByDay[dateKey].orders;
+                    const dayAmount = dayOrders.reduce((sum, o) => sum + (o.amount || 0), 0);
+                    const dateObj = new Date(dateKey + 'T00:00:00');
+                    const formattedDay = dateObj.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+
+                    if (yPosition > 265) { doc.addPage(); yPosition = 20; }
+                    doc.setFont('helvetica', 'bold');
+                    doc.text(`${formattedDay} — Orders: ${dayOrders.length} ($${dayAmount.toFixed(2)})`, pageMargin, yPosition);
+                    yPosition += 8;
+                    doc.setFont('helvetica', 'normal');
+
+                    const oCol1 = pageMargin, oCol2 = pageMargin + 42, oCol3 = pageMargin + 92, oCol4 = pageMargin + 128, oCol5 = pageMargin + 152, oCol6 = pageMargin + 178;
+                    dayOrders.forEach(order => {
+                        const statusText = order.status.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+                        const senderLines = doc.splitTextToSize(cleanText(order.senderName || '—'), 48);
+                        const itemLines = doc.splitTextToSize(cleanText(order.itemDescription || '—'), 34);
+                        const maxLines = Math.max(1, senderLines.length, itemLines.length);
+                        for (let i = 0; i < maxLines; i++) {
+                            if (i === 0) doc.text(order.id, oCol1, yPosition);
+                            if (i < senderLines.length) doc.text(senderLines[i], oCol2, yPosition);
+                            if (i < itemLines.length) doc.text(itemLines[i], oCol3, yPosition);
+                            if (i === 0) {
+                                doc.text(order.amount !== null ? `$${order.amount.toFixed(2)}` : '-', oCol4, yPosition);
+                                doc.text(statusText, oCol5, yPosition);
+                                if (order.acceptedBy) doc.text(cleanText(order.acceptedBy), oCol6, yPosition);
+                            }
+                            yPosition += 5;
+                            if (yPosition > 275) { doc.addPage(); yPosition = 20; }
+                        }
+                    });
+                    yPosition += 4;
+                    if (yPosition > 275) { doc.addPage(); yPosition = 20; }
+                });
+            }
+
+            doc.save(`${currentUser.businessName.replace(/[^a-z0-9]+/gi, '-')}-Monthly-Report-${year}-${String(month).padStart(2, '0')}.pdf`);
         }
 
         // ---- Admin-only: one customer's monthly statement ----

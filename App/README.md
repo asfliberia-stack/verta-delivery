@@ -3078,3 +3078,140 @@ vendor dashboard region is byte-for-byte untouched.
   broadcast to a shared `admins` room — a company's browser could
   receive an event about another company's agent, though the REST API
   itself is properly scoped and won't return another company's data)
+
+## Delivery Company Dashboard: real Reports and Order History (with PDF)
+
+Built as requested, ahead of the eventual Verta migration. Both are
+genuinely new capability for third-party delivery companies, not
+placeholders.
+
+### Order History
+
+Real date filtering (year/month/day), reusing the same underlying
+filter/grouping utilities as Manage Agent's Order History
+(`filterByDate`, the shared date-picker controls) — not reinvented,
+just pointed at a company's own scoped order data instead of the
+global order list.
+
+### Reports (PDF)
+
+A real, adapted version of the Monthly Report PDF — same structure
+(Monthly Totals, Agent Summary, Daily Breakdown), generated with the
+same `jsPDF` library already used elsewhere in this app. Deliberately
+different from the Manage Agent version in one way: no expenses or
+30% commission section. Those are specific to how Verta itself
+operates internally — assuming every third-party company uses the
+same expense-tracking or pays their agents the same 30% commission
+rate would be presenting invented figures as real ones, so that
+section is left out entirely rather than filled with assumptions.
+
+### On the actual migration — still holding off, and here's the real reason
+
+Confirmed by re-checking the code directly: the new dashboard's Fleet
+and Order sections are solid, and now Reports/Order History are too.
+But Manage Agent's core operational function — the live order board
+where new orders arrive, get accepted, and move through
+pickup/delivery via real-time Socket.io updates — doesn't exist
+anywhere in the new dashboard yet. It only shows orders *after* an
+agent has already accepted them.
+
+If Verta's account moved onto this dashboard today, there would be no
+way to see or accept a brand new incoming order — a real, serious
+operational regression, not a cosmetic gap. That's a bigger, riskier
+piece of work than Reports/Order History, and worth its own focused
+round with your explicit sign-off before touching the actual routing
+switch that would move Verta's live account over.
+
+## Pending Orders — the actual missing piece for multi-provider to work
+
+Real, not a preview — this is the gap flagged last round, and it turned
+out to matter more broadly than just blocking Verta's migration: without
+it, *any* newly-approved delivery company had no way to ever receive an
+order at all, since they could never see a new, unassigned one.
+
+### The real fix, not just a UI addition
+
+- **A dedicated Socket.io room** (`pending-orders`) — delivery company
+  sockets now join it on connect. Deliberately *not* added to the
+  existing `admins` room, since that room also carries Manage Agent's
+  other business events (expenses, price presets, settings) that
+  shouldn't leak to a third-party company.
+- **A real race condition, caught and fixed**: multiple companies can
+  now see and try to accept the same pending order at once. Added
+  `acceptOrderAtomic()` — a `WHERE status = 'pending'` guard at the
+  database level, not just a client-side check — so exactly one
+  acceptance can ever succeed; the second gets a clear "someone else
+  got there first" instead of silently overwriting the first.
+- **Ownership verification**: a delivery company can only accept using
+  one of its own agents, checked server-side against the agent's real
+  `delivery_company_id` — not trusted from whatever the client sends.
+- Confirmed this doesn't change Manage Agent's existing behavior: both
+  places it opens the accept flow are already gated to
+  `status === 'pending'` in the UI, so the new atomic check is
+  consistent with what was already assumed, not a new restriction —
+  more of a latent gap closed as a side effect than a behavior change.
+
+### Live, not just fetch-on-load
+
+New pending orders appear in real time via the existing `order:created`
+event, now properly branched by role instead of assuming Manage Agent's
+DOM exists — the old handler would have silently done nothing useful
+for a delivery company session (not crashed, but not worked either).
+Accepting an order removes it from every other company's pending list
+in real time too, via the same `order:updated` event.
+
+### Where this leaves the Verta migration question
+
+This was the real blocker, not a nice-to-have — it's done now. Combined
+with Fleet, Order History, and Reports from the last two rounds, the
+new dashboard now has genuine operational parity with Manage Agent's
+core loop (see new orders, accept them, track them, report on them).
+Worth a final look before actually flipping Verta's account over, but
+the missing-piece list is much shorter now than "the whole live order
+board."
+
+## Verta Delivery Service — its own real delivery_company account
+
+Built per the new plan: Manage Agent stays exactly as it is (still
+helps Super Admin — Reports, Order History, Expenses, Business
+Profile, all unchanged), while Verta gets a genuinely separate account
+that operates as one of the delivery service providers, using the new
+dashboard, on equal footing with any other company that registers.
+
+### The real sequencing this depends on — read before deploying
+
+Since the new account reuses the *original* admin email
+(`admin@vertadelivery.com`), and emails must be unique, there's a real
+order of operations here — this can't just be flipped on with a
+deploy:
+
+1. **Log into Manage Agent** (still `admin@vertadelivery.com` /
+   `1Nigeria@` at this point) and go to **Settings → Security → Change
+   Email**. Change it to `service@vertadelivery.com`.
+2. **In Railway's Variables tab**, set `ADMIN_EMAIL=service@vertadelivery.com`
+   — this keeps the existing admin-seeding logic pointed at the
+   Manage Agent account's new email, so it doesn't try to recreate a
+   blank account at the old one.
+3. **Deploy this zip and restart.** On boot, the server checks whether
+   `admin@vertadelivery.com` is actually free yet. If it's still taken
+   by the (not-yet-renamed) Manage Agent account, it safely does
+   nothing and logs why — no duplicate accounts, no conflicts, just a
+   clear wait state.
+4. **Once the email is free**, the exact same restart automatically:
+   creates "Verta Delivery Service" as a real, already-approved
+   `delivery_company` account at `admin@vertadelivery.com` /
+   `1Nigeria@`, and moves the existing fleet — every agent *and* their
+   order history — from the Manage Agent account over to this new one.
+   This only ever runs once.
+
+### After that
+
+Log into `admin@vertadelivery.com` / `1Nigeria@` and you'll land
+straight on the real Delivery Company dashboard — Pending Orders,
+Fleet, Order History, Reports, all of it. No frontend changes were
+needed for this round at all; the routing for `delivery_company` role
+was already built in previous rounds, so a real seeded account with
+that role just works immediately.
+
+Both emails are configurable via `ADMIN_EMAIL` and `VERTA_DC_EMAIL` if
+you want different addresses than the ones described above.
