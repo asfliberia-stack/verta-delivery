@@ -390,7 +390,7 @@ app.post('/api/auth/register', authLimiter, async (req, res) => {
     });
     const sessionId = await recordLoginHistory(req, user.id);
     const token = signToken(user, sessionId);
-    res.json({ token, user: { id: user.id, businessName: user.businessName, email: user.email, phone: user.phone, storeAddress: user.storeAddress, role: user.role, approvalStatus: user.approvalStatus } });
+    res.json({ token, user: { id: user.id, businessName: user.businessName, email: user.email, phone: user.phone, storeAddress: user.storeAddress, profileImageUrl: user.profileImageUrl, role: user.role, approvalStatus: user.approvalStatus } });
   } catch (err) {
     console.error('register failed', err);
     res.status(500).json({ error: 'Registration failed' });
@@ -452,10 +452,65 @@ app.post('/api/auth/register-vendor', authLimiter, async (req, res) => {
     const token = signToken(user, sessionId);
     res.json({
       token,
-      user: { id: user.id, businessName: user.businessName, email: user.email, phone: user.phone, storeAddress: user.storeAddress, role: user.role, approvalStatus: user.approvalStatus },
+      user: { id: user.id, businessName: user.businessName, email: user.email, phone: user.phone, storeAddress: user.storeAddress, profileImageUrl: user.profileImageUrl, role: user.role, approvalStatus: user.approvalStatus },
     });
   } catch (err) {
     console.error('register-vendor failed', err);
+    res.status(500).json({ error: 'Registration failed' });
+  }
+});
+
+// Delivery company self-registration — same real approval workflow as
+// vendor registration above, mirrored exactly (same document
+// requirements, same pending-until-approved status), just scoped to
+// role = 'delivery_company'.
+app.post('/api/auth/register-delivery-company', authLimiter, async (req, res) => {
+  const { businessName, email, password, phone, businessRegistrationDoc, idDocumentType, idDocumentDoc } = req.body || {};
+  if (!businessName || !email || !password || !phone) {
+    return res.status(400).json({ error: 'Business name, email, phone, and password are required' });
+  }
+  if (password.length < 8) {
+    return res.status(400).json({ error: 'Password must be at least 8 characters' });
+  }
+  if (!businessRegistrationDoc || !idDocumentDoc || !idDocumentType) {
+    return res.status(400).json({ error: 'Business registration document and a government ID are required for delivery company applications' });
+  }
+  if (!VALID_ID_DOCUMENT_TYPES.includes(idDocumentType)) {
+    return res.status(400).json({ error: 'Invalid ID document type' });
+  }
+  if (businessRegistrationDoc.length > MAX_DOCUMENT_BYTES * 1.4 || idDocumentDoc.length > MAX_DOCUMENT_BYTES * 1.4) {
+    return res.status(400).json({ error: 'Each document must be under ~2MB — please use a smaller photo or scan.' });
+  }
+  try {
+    const existing = await db.getUserByEmail(email);
+    if (existing) return res.status(409).json({ error: 'An account with that email already exists' });
+
+    const passwordHash = await hashPassword(password);
+    const user = await db.createUser({
+      id: crypto.randomUUID(),
+      businessName,
+      email,
+      phone,
+      passwordHash,
+      role: 'delivery_company',
+      approvalStatus: 'pending',
+      businessRegistrationDoc,
+      idDocumentType,
+      idDocumentDoc,
+      appliedAt: new Date().toISOString(),
+    });
+
+    notifyNewVendorApplication(businessName, email, 'delivery_company');
+    console.log(`[delivery-company-application] New delivery company application from "${businessName}" (${email}) — review via the Super Admin console under Delivery Companies.`);
+
+    const sessionId = await recordLoginHistory(req, user.id);
+    const token = signToken(user, sessionId);
+    res.json({
+      token,
+      user: { id: user.id, businessName: user.businessName, email: user.email, phone: user.phone, storeAddress: user.storeAddress, profileImageUrl: user.profileImageUrl, role: user.role, approvalStatus: user.approvalStatus },
+    });
+  } catch (err) {
+    console.error('register-delivery-company failed', err);
     res.status(500).json({ error: 'Registration failed' });
   }
 });
@@ -471,7 +526,7 @@ app.post('/api/auth/login', authLimiter, async (req, res) => {
 
     const sessionId = await recordLoginHistory(req, user.id);
     const token = signToken(user, sessionId);
-    res.json({ token, user: { id: user.id, businessName: user.businessName, email: user.email, phone: user.phone, storeAddress: user.storeAddress, role: user.role, approvalStatus: user.approvalStatus } });
+    res.json({ token, user: { id: user.id, businessName: user.businessName, email: user.email, phone: user.phone, storeAddress: user.storeAddress, profileImageUrl: user.profileImageUrl, role: user.role, approvalStatus: user.approvalStatus } });
   } catch (err) {
     console.error('login failed', err);
     res.status(500).json({ error: 'Login failed' });
@@ -539,7 +594,7 @@ app.post('/api/auth/google', authLimiter, async (req, res) => {
 
     const sessionId = await recordLoginHistory(req, user.id);
     const token = signToken(user, sessionId);
-    res.json({ token, user: { id: user.id, businessName: user.businessName, email: user.email, phone: user.phone, storeAddress: user.storeAddress, role: user.role, approvalStatus: user.approvalStatus } });
+    res.json({ token, user: { id: user.id, businessName: user.businessName, email: user.email, phone: user.phone, storeAddress: user.storeAddress, profileImageUrl: user.profileImageUrl, role: user.role, approvalStatus: user.approvalStatus } });
   } catch (err) {
     console.error('Google sign-in failed', err);
     res.status(401).json({ error: 'Google sign-in failed — the token could not be verified' });
@@ -667,7 +722,7 @@ app.post('/api/auth/admin-login', authLimiter, async (req, res) => {
 app.get('/api/me', requireAuth, async (req, res) => {
   const user = await db.getUserById(req.user.id);
   if (!user) return res.status(401).json({ error: 'Account no longer exists' });
-  res.json({ user: { id: user.id, businessName: user.businessName, email: user.email, phone: user.phone, storeAddress: user.storeAddress, role: user.role, approvalStatus: user.approvalStatus } });
+  res.json({ user: { id: user.id, businessName: user.businessName, email: user.email, phone: user.phone, storeAddress: user.storeAddress, profileImageUrl: user.profileImageUrl, role: user.role, approvalStatus: user.approvalStatus } });
 });
 
 // Self-service profile edit — any authenticated user updating their own
@@ -720,6 +775,30 @@ app.get('/api/state', requireAuth, async (req, res) => {
 const MAX_LOGO_BYTES = 700 * 1024; // ~700KB — logo lives as a data URL in
 // Postgres (see schema.sql), so this keeps row size sane. A data URL is
 // ~33% larger than the raw file, so this allows roughly a 500KB image.
+
+const MAX_PROFILE_IMAGE_BYTES = 700 * 1024; // same reasoning as the logo above
+
+// Real profile photo upload — any authenticated role, always the
+// caller's own account (never takes a target user id in the URL).
+app.put('/api/me/profile-image', requireAuth, async (req, res) => {
+  const { imageDataUrl } = req.body || {};
+  if (imageDataUrl && imageDataUrl.length > MAX_PROFILE_IMAGE_BYTES) {
+    return res.status(400).json({ error: 'Image is too large — please use one under ~500KB.' });
+  }
+  try {
+    const updated = await db.updateProfileImage(req.user.id, imageDataUrl || null);
+    res.json({
+      user: {
+        id: updated.id, businessName: updated.businessName, email: updated.email, phone: updated.phone,
+        storeAddress: updated.storeAddress, profileImageUrl: updated.profileImageUrl,
+        role: updated.role, approvalStatus: updated.approvalStatus,
+      },
+    });
+  } catch (err) {
+    console.error('PUT /api/me/profile-image failed', err);
+    res.status(500).json({ error: 'Failed to update profile image' });
+  }
+});
 
 app.put('/api/admin/settings', requireAuth, requireAdmin, async (req, res) => {
   const fields = req.body || {};
@@ -1105,6 +1184,51 @@ app.post('/api/super-admin/vendors/:id/reject', requireAuth, requireSuperAdmin, 
   } catch (err) {
     console.error('POST vendor reject failed', err);
     res.status(500).json({ error: 'Failed to reject vendor' });
+  }
+});
+
+// Delivery Companies — Super Admin oversight, mirroring the Vendors
+// endpoints above exactly.
+app.get('/api/super-admin/delivery-companies', requireAuth, requireSuperAdmin, async (req, res) => {
+  try {
+    const deliveryCompanies = await db.getDeliveryCompanies();
+    res.json({ deliveryCompanies });
+  } catch (err) {
+    console.error('GET /api/super-admin/delivery-companies failed', err);
+    res.status(500).json({ error: 'Failed to load delivery companies' });
+  }
+});
+
+app.get('/api/super-admin/delivery-companies/:id/documents', requireAuth, requireSuperAdmin, async (req, res) => {
+  try {
+    const docs = await db.getDeliveryCompanyApplicationDocuments(req.params.id);
+    if (!docs) return res.status(404).json({ error: 'Delivery company not found' });
+    res.json(docs);
+  } catch (err) {
+    console.error('GET delivery company documents failed', err);
+    res.status(500).json({ error: 'Failed to load documents' });
+  }
+});
+
+app.post('/api/super-admin/delivery-companies/:id/approve', requireAuth, requireSuperAdmin, async (req, res) => {
+  try {
+    const company = await db.setDeliveryCompanyApprovalStatus(req.params.id, 'approved');
+    if (!company) return res.status(404).json({ error: 'Delivery company not found' });
+    res.json({ ok: true, deliveryCompany: { id: company.id, businessName: company.businessName, approvalStatus: company.approvalStatus } });
+  } catch (err) {
+    console.error('POST delivery company approve failed', err);
+    res.status(500).json({ error: 'Failed to approve delivery company' });
+  }
+});
+
+app.post('/api/super-admin/delivery-companies/:id/reject', requireAuth, requireSuperAdmin, async (req, res) => {
+  try {
+    const company = await db.setDeliveryCompanyApprovalStatus(req.params.id, 'rejected');
+    if (!company) return res.status(404).json({ error: 'Delivery company not found' });
+    res.json({ ok: true, deliveryCompany: { id: company.id, businessName: company.businessName, approvalStatus: company.approvalStatus } });
+  } catch (err) {
+    console.error('POST delivery company reject failed', err);
+    res.status(500).json({ error: 'Failed to reject delivery company' });
   }
 });
 
@@ -1870,11 +1994,29 @@ async function seedVendorIfConfigured() {
   console.log(`[seed] Created vendor account "Girlee Fashion" for ${VENDOR_EMAIL}`);
 }
 
+// Backward compatibility for the new multi-provider delivery system:
+// every agent that existed before this feature (or was added without
+// an explicit company) gets linked to the primary admin account —
+// Verta Delivery Service's own fleet becomes company #1 in a system
+// that now supports more than one, rather than a special case that
+// works differently from every company added after it. Safe to run
+// on every boot: only touches agents that don't already have a
+// delivery_company_id set.
+async function migrateAgentsToDeliveryCompany() {
+  const admin = await db.getUserByEmail(ADMIN_EMAIL);
+  if (!admin) return; // shouldn't happen — seedAdminIfConfigured runs first
+  const linkedCount = await db.linkOrphanedAgentsToCompany(admin.id);
+  if (linkedCount > 0) {
+    console.log(`[migrate] Linked ${linkedCount} existing agent(s) to Verta Delivery Service (${ADMIN_EMAIL}) as their delivery company.`);
+  }
+}
+
 db.init()
   .then(seedAdminIfConfigured)
   .then(seedSuperAdminIfConfigured)
   .then(seedVendorIfConfigured)
   .then(seedAgentsIfEmpty)
+  .then(migrateAgentsToDeliveryCompany)
   .then(() => {
     server.listen(PORT, () => console.log(`Verta Delivery server listening on :${PORT}`));
   })

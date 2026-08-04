@@ -150,6 +150,7 @@ function rowToUser(r) {
     appliedAt: r.applied_at,
     createdAt: r.created_at,
     storeAddress: r.store_address,
+    profileImageUrl: r.profile_image_url,
   };
 }
 
@@ -200,6 +201,17 @@ const db = {
          store_address = CASE WHEN $3 THEN $4 ELSE store_address END
        WHERE id = $5 RETURNING *`,
       [businessName, phone || null, touchingAddress, touchingAddress ? (storeAddress || null) : null, userId]
+    );
+    return rowToUser(rows[0]);
+  },
+
+  // Real profile photo update — any role, always the caller's own
+  // account (the endpoint never takes a target user id). Passing null
+  // removes the photo, falling back to the initial-letter avatar.
+  async updateProfileImage(userId, dataUrl) {
+    const { rows } = await pool.query(
+      'UPDATE users SET profile_image_url = $1 WHERE id = $2 RETURNING *',
+      [dataUrl || null, userId]
     );
     return rowToUser(rows[0]);
   },
@@ -323,6 +335,19 @@ const db = {
   async countAgents() {
     const { rows } = await pool.query('SELECT COUNT(*)::int AS count FROM agents');
     return rows[0].count;
+  },
+
+  // Backward-compat migration for the multi-provider delivery system —
+  // links every agent that doesn't yet have a delivery_company_id to
+  // the given company (the primary admin account, representing Verta
+  // Delivery Service's own fleet). Safe to call on every boot: only
+  // touches agents still missing one.
+  async linkOrphanedAgentsToCompany(companyId) {
+    const { rowCount } = await pool.query(
+      'UPDATE agents SET delivery_company_id = $1 WHERE delivery_company_id IS NULL',
+      [companyId]
+    );
+    return rowCount;
   },
 
   async createAgent({ id, name, phone }) {
@@ -639,6 +664,45 @@ const db = {
       appliedAt: r.applied_at,
       createdAt: r.created_at,
     }));
+  },
+
+  // ---- Delivery Companies (multi-provider fleets — same real
+  // self-registration + Super Admin approval workflow as vendors
+  // above, mirrored exactly, scoped to role = 'delivery_company'). ----
+  async getDeliveryCompanies() {
+    const { rows } = await pool.query(
+      "SELECT id, business_name, email, phone, approval_status, applied_at, created_at FROM users WHERE role = 'delivery_company' ORDER BY created_at DESC"
+    );
+    return rows.map(r => ({
+      id: r.id,
+      businessName: r.business_name,
+      email: r.email,
+      phone: r.phone,
+      approvalStatus: r.approval_status,
+      appliedAt: r.applied_at,
+      createdAt: r.created_at,
+    }));
+  },
+
+  async setDeliveryCompanyApprovalStatus(id, status) {
+    const { rows } = await pool.query(
+      "UPDATE users SET approval_status = $1 WHERE id = $2 AND role = 'delivery_company' RETURNING *",
+      [status, id]
+    );
+    return rowToUser(rows[0]);
+  },
+
+  async getDeliveryCompanyApplicationDocuments(id) {
+    const { rows } = await pool.query(
+      "SELECT business_registration_doc, id_document_type, id_document_doc FROM users WHERE id = $1 AND role = 'delivery_company'",
+      [id]
+    );
+    if (!rows[0]) return null;
+    return {
+      businessRegistrationDoc: rows[0].business_registration_doc,
+      idDocumentType: rows[0].id_document_type,
+      idDocumentDoc: rows[0].id_document_doc,
+    };
   },
 
   async getVendorApplicationDocuments(vendorId) {

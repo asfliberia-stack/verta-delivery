@@ -2161,6 +2161,14 @@
                 <div class="mobile-section" style="margin-top:0;">
                     <div class="mobile-section-header"><div class="mobile-section-title">Account Settings</div></div>
                     <form id="mp-settings-form" style="background:white; border-radius:1rem; padding:1.25rem; border:1px solid var(--border); box-shadow:var(--shadow-sm);">
+                        <div style="display:flex; align-items:center; gap:1rem; margin-bottom:1.5rem;">
+                            <div class="mp-account-hero-avatar" id="mp-settings-avatar-preview" style="width:64px; height:64px; font-size:1.5rem; background:var(--golib-red); color:white; border:none;">V</div>
+                            <div>
+                                <button type="button" class="btn-small btn-secondary" id="mp-settings-photo-btn">Change Photo</button>
+                                <input type="file" accept="image/*" id="mp-settings-photo-input" style="display:none;">
+                                <p style="font-size:0.75rem; color:var(--slate-lighter); margin-top:0.375rem;">JPG or PNG, under 500KB</p>
+                            </div>
+                        </div>
                         <div class="form-group">
                             <label class="form-label">Name</label>
                             <input type="text" class="form-input" id="mp-settings-name-input" required>
@@ -3145,6 +3153,14 @@
             <div id="vendor-view-settings" style="display:none;">
                 <div class="mobile-section-header" style="margin-top:0;"><div class="mobile-section-title">Store Settings</div></div>
                 <form id="vendor-settings-form" style="background:white; border-radius:1rem; padding:1.25rem; border:1px solid var(--border); box-shadow:var(--shadow-sm);">
+                    <div style="display:flex; align-items:center; gap:1rem; margin-bottom:1.5rem;">
+                        <div class="mp-account-hero-avatar" id="vendor-settings-avatar-preview" style="width:64px; height:64px; font-size:1.5rem; background:var(--primary); color:white; border:none;">V</div>
+                        <div>
+                            <button type="button" class="btn-small btn-secondary" id="vendor-settings-photo-btn">Change Photo</button>
+                            <input type="file" accept="image/*" id="vendor-settings-photo-input" style="display:none;">
+                            <p style="font-size:0.75rem; color:var(--slate-lighter); margin-top:0.375rem;">JPG or PNG, under 500KB</p>
+                        </div>
+                    </div>
                     <div class="form-group">
                         <label class="form-label">Store Name</label>
                         <input type="text" class="form-input" id="vendor-settings-name-input" required>
@@ -3746,6 +3762,14 @@
                     <!-- 2. Security -->
                     <div class="settings-panel" id="settings-panel-security" style="display:none;">
                         <h4 class="settings-section-title">Account</h4>
+                        <div style="display:flex; align-items:center; gap:1rem; margin-bottom:1.25rem;">
+                            <div class="mp-account-hero-avatar" id="admin-settings-avatar-preview" style="width:64px; height:64px; font-size:1.5rem; background:var(--primary); color:white; border:none;">A</div>
+                            <div>
+                                <button type="button" class="btn-small btn-secondary" id="admin-settings-photo-btn">Change Photo</button>
+                                <input type="file" accept="image/*" id="admin-settings-photo-input" style="display:none;">
+                                <p style="font-size:0.75rem; color:var(--slate-lighter); margin-top:0.375rem;">JPG or PNG, under 500KB</p>
+                            </div>
+                        </div>
                         <div style="display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 0.5rem;">
                             <button type="button" class="btn-small btn-secondary" id="toggle-change-email-btn">Change Email</button>
                             <button type="button" class="btn-small btn-secondary" id="toggle-change-password-btn">Change Password</button>
@@ -4450,6 +4474,74 @@
         // (default) persists the session via Platform.storage as before;
         // unchecked uses sessionStorage instead, so the session ends when
         // the tab/browser closes rather than surviving indefinitely.
+        // Applies (or clears) a real profile photo on an avatar element.
+        // These avatar circles are already styled with a background
+        // color + centered initial text; showing a real photo just
+        // swaps in a background-image over that same shape, rather than
+        // needing different markup for the photo vs. initial-letter case.
+        function applyAvatarImage(elementId, imageUrl) {
+            const el = document.getElementById(elementId);
+            if (!el) return;
+            if (imageUrl) {
+                el.style.backgroundImage = `url(${imageUrl})`;
+                el.style.backgroundSize = 'cover';
+                el.style.backgroundPosition = 'center';
+                el.textContent = '';
+            } else {
+                el.style.backgroundImage = '';
+                el.textContent = currentUser && currentUser.businessName ? currentUser.businessName.charAt(0).toUpperCase() : '';
+            }
+        }
+
+        // Every place "my own" avatar (not someone else's) currently
+        // renders — refreshed after login, after a role-specific view
+        // loads, and right after a new photo is uploaded.
+        function refreshMyAvatarDisplays() {
+            if (!currentUser) return;
+            ['desktop-profile-avatar', 'delivery-sender-avatar', 'user-avatar', 'topbar-user-avatar',
+             'vendor-avatar', 'vendor-profile-avatar-desktop', 'mp-account-hero-avatar',
+             'mp-settings-avatar-preview', 'vendor-settings-avatar-preview', 'admin-settings-avatar-preview']
+                .forEach(id => applyAvatarImage(id, currentUser.profileImageUrl));
+        }
+
+        // Reusable profile-photo upload wiring — used identically across
+        // every role's Settings area. Uploads immediately on selection
+        // (not staged for a later form submit), since a photo change is
+        // its own complete action.
+        function wireProfilePhotoUpload(btnId, inputId) {
+            const btn = document.getElementById(btnId);
+            const input = document.getElementById(inputId);
+            if (!btn || !input) return;
+            btn.addEventListener('click', () => input.click());
+            input.addEventListener('change', async () => {
+                const file = input.files[0];
+                if (!file) return;
+                if (!file.type.startsWith('image/')) {
+                    showToast('Please choose an image file.', 'error');
+                    return;
+                }
+                if (file.size > 700 * 1024) {
+                    showToast('Please choose an image under ~500KB.', 'error');
+                    return;
+                }
+                const reader = new FileReader();
+                reader.onload = async () => {
+                    try {
+                        const data = await apiFetch('/api/me/profile-image', {
+                            method: 'PUT',
+                            body: JSON.stringify({ imageDataUrl: reader.result }),
+                        });
+                        currentUser.profileImageUrl = data.user.profileImageUrl;
+                        refreshMyAvatarDisplays();
+                        showToast('Profile photo updated', 'success');
+                    } catch (err) {
+                        showToast(err.message, 'error');
+                    }
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+
         async function saveAuth(token, user, remember = true) {
             authToken = token;
             currentUser = user;
@@ -4755,6 +4847,9 @@
             setupScrollReactiveHeader();
             initGoogleSignIn();
             loadPublicConfig();
+            wireProfilePhotoUpload('mp-settings-photo-btn', 'mp-settings-photo-input');
+            wireProfilePhotoUpload('vendor-settings-photo-btn', 'vendor-settings-photo-input');
+            wireProfilePhotoUpload('admin-settings-photo-btn', 'admin-settings-photo-input');
             wireSettingsEvents();
             wireTopbarEvents();
             wireVendorEvents();
@@ -4879,6 +4974,7 @@
             if (mode === 'customer' && currentUser) {
                 document.getElementById('desktop-profile-name').textContent = currentUser.businessName;
                 document.getElementById('desktop-profile-avatar').textContent = currentUser.businessName.charAt(0).toUpperCase();
+                refreshMyAvatarDisplays();
             }
             void profileDropdown.offsetHeight;
         }
@@ -5186,6 +5282,7 @@
                 document.getElementById('user-avatar').textContent = (currentUser.businessName || roleLabel).charAt(0).toUpperCase();
                 document.getElementById('topbar-user-name').textContent = currentUser.businessName || roleLabel;
                 document.getElementById('topbar-user-avatar').textContent = (currentUser.businessName || roleLabel).charAt(0).toUpperCase();
+                refreshMyAvatarDisplays();
                 const topbarRoleEl = document.getElementById('topbar-user-role');
                 if (topbarRoleEl) topbarRoleEl.textContent = roleLabel;
                 const welcomeRoleEl = document.querySelector('.admin-welcome-role');
@@ -5245,6 +5342,7 @@
                 document.getElementById('vendor-profile-name-desktop').textContent = currentUser.businessName;
                 document.getElementById('vendor-profile-avatar-desktop').textContent = currentUser.businessName.charAt(0).toUpperCase();
                 document.getElementById('vendor-profile-dropdown').classList.add('mode-active');
+                refreshMyAvatarDisplays();
                 const impersonationBanner = document.getElementById('impersonation-banner');
                 if (currentUser.impersonating) {
                     document.getElementById('impersonation-vendor-name').textContent = `${currentUser.businessName}'s`;
@@ -5266,6 +5364,7 @@
                 document.getElementById('mp-account-hero-avatar').textContent = currentUser.businessName.charAt(0).toUpperCase();
                 document.getElementById('delivery-sender-display-name').textContent = currentUser.businessName;
                 document.getElementById('delivery-sender-avatar').textContent = currentUser.businessName.charAt(0).toUpperCase();
+                refreshMyAvatarDisplays();
 
                 try {
                     const data = await apiFetch('/api/state');
@@ -7909,6 +8008,7 @@
             if (currentUser) {
                 document.getElementById('mp-account-hero-name').textContent = `Hello, ${currentUser.businessName}!`;
                 document.getElementById('mp-account-hero-avatar').textContent = currentUser.businessName.charAt(0).toUpperCase();
+                refreshMyAvatarDisplays();
             }
             try {
                 const [purchasesData, addressesData] = await Promise.all([
@@ -9056,6 +9156,7 @@
                     document.getElementById('vendor-store-name-hero').textContent = currentUser.businessName;
                     document.getElementById('vendor-profile-name-desktop').textContent = currentUser.businessName;
                     document.getElementById('vendor-profile-avatar-desktop').textContent = currentUser.businessName.charAt(0).toUpperCase();
+                    refreshMyAvatarDisplays();
                     showToast('Store settings updated', 'success');
                 } catch (err) {
                     errorEl.textContent = err.message;
@@ -9968,6 +10069,7 @@
                     document.getElementById('mp-account-hero-avatar').textContent = currentUser.businessName.charAt(0).toUpperCase();
                     document.getElementById('desktop-profile-name').textContent = currentUser.businessName;
                     document.getElementById('desktop-profile-avatar').textContent = currentUser.businessName.charAt(0).toUpperCase();
+                    refreshMyAvatarDisplays();
                     showToast('Profile updated', 'success');
                 } catch (err) {
                     errorEl.textContent = err.message;

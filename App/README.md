@@ -2927,3 +2927,91 @@ were also referenced by other JS elsewhere. Removing the old markup
 without checking would have silently broken those other references —
 found all 4 call sites and pointed them at the new, better-named
 elements instead of leaving orphaned references behind.
+
+## Profile photo upload — real, for every role
+
+Complete now — all three settings areas wired: Marketplace Customer
+Settings, Vendor Settings, and the Manage Agent/Super Admin Settings
+modal (added to the Security tab's existing "Account" section, since
+that modal's main "Business Profile" tab is genuinely business-wide
+settings, not a personal account page — the photo belongs with the
+other personal-account actions like Change Email/Password that already
+live there).
+
+### What's real
+
+- `PUT /api/me/profile-image` — works identically for any authenticated
+  role, always operates on the caller's own account, same 500KB size
+  cap and data-URL storage pattern already proven out by the business
+  logo upload.
+- Uploads immediately on selection (not staged for a later form
+  submit) — a photo change is its own complete action, not something
+  that should require also hitting a separate "Save" button.
+- A shared `refreshMyAvatarDisplays()` function updates every place
+  "my own" avatar shows — 10 locations across the app — the moment a
+  photo is uploaded, immediately after login, and after profile-name
+  saves (carefully checked the *order* of these calls specifically, so
+  saving your name doesn't visually wipe out an already-uploaded photo
+  by resetting back to the initial-letter fallback).
+- Removing/clearing works too — `updateProfileImage` accepts `null`,
+  falling back cleanly to the initial-letter avatar.
+
+### Scope, restated clearly
+
+This shows each person their *own* photo wherever their own avatar
+appears. It does not yet propagate anyone's photo to places showing
+*other* people — a vendor's photo on their store card to customers,
+a customer's photo in a vendor's message thread, agent photos in
+Fleet Directory, and so on. Those all use separate backend queries
+that don't currently select `profile_image_url` at all. If you want
+that extended, it's a real, doable next step — just wanted this round
+scoped to something I could actually finish correctly rather than
+attempt everything at once.
+
+## Multi-provider delivery — foundation (schema, registration, approval)
+
+First of several staged rounds building toward multiple independent
+delivery companies on the platform, mirroring how Vendors already
+work. This round is deliberately backend-only — no UI yet, matching
+the step-by-step approach discussed before building anything.
+
+### What's real and done
+
+- **`role = 'delivery_company'`** — a new role, widening the existing
+  `users_role_check` constraint the same way `vendor`/`super_admin`
+  were added before it.
+- **Real self-registration**: `POST /api/auth/register-delivery-company`
+  — mirrors vendor registration exactly (business docs required,
+  lands in `pending` approval).
+- **Real Super Admin oversight**: list/approve/reject endpoints under
+  `/api/super-admin/delivery-companies`, mirroring the Vendors
+  endpoints exactly.
+- **Schema**: `agents.delivery_company_id` and
+  `orders.delivery_company_id`, both real foreign keys to `users.id`.
+- **Backward compatibility, handled carefully**: every existing agent
+  gets linked to the primary admin account (Verta Delivery Service
+  itself) on boot — a real migration, not just a column add. Verta's
+  own fleet becomes company #1 in a system that now supports more
+  than one, rather than a special case. Safe to run on every restart
+  (only touches agents still missing a company).
+
+### A real correctness issue found and deliberately deferred
+
+Checked how orders currently get assigned to an agent
+(`orders.accepted_by`) — it stores the agent's **name**, not their ID,
+since agents don't have logins and are picked from a dropdown. That's
+fine today with one company, but agent names aren't guaranteed unique,
+which becomes a real problem once multiple companies' fleets can
+overlap. This needs fixing before the order-routing logic is built —
+flagging it now rather than let it surface as a subtle bug later, but
+deliberately not touching it this round since it belongs with the
+order-acceptance logic, not the registration/approval foundation.
+
+### What's next (not built yet)
+
+- Delivery Company dashboard (mirrors the Vendor dashboard: own fleet,
+  own orders/revenue)
+- Super Admin "Delivery Companies" panel (mirrors the Vendors panel)
+- Delivery company registration form on the frontend
+- The order-acceptance fix above, plus actually populating
+  `orders.delivery_company_id` when an order is accepted

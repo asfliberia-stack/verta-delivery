@@ -191,14 +191,16 @@ async function sendEmail(to, subject, text) {
 
 // The one place in this app that currently just logs to console instead
 // of actually notifying anyone — a new vendor application.
-async function notifyNewVendorApplication(businessName, email) {
+async function notifyNewVendorApplication(businessName, email, applicationType = 'vendor') {
   if (!isEmailConfigured) return;
-  const subject = `New vendor application: ${businessName}`;
+  const label = applicationType === 'delivery_company' ? 'delivery company' : 'vendor';
+  const reviewLocation = applicationType === 'delivery_company' ? 'Delivery Companies' : 'Vendors';
+  const subject = `New ${label} application: ${businessName}`;
   const text =
-    `A new vendor application was submitted.\n\n` +
+    `A new ${label} application was submitted.\n\n` +
     `Business: ${businessName}\n` +
     `Email: ${email}\n\n` +
-    `Review it in the Super Admin console under Vendors.`;
+    `Review it in the Super Admin console under ${reviewLocation}.`;
   await sendEmail(NOTIFY_EMAIL_TO, subject, text);
 }
 

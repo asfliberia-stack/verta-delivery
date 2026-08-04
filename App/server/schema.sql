@@ -41,6 +41,14 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS applied_at TIMESTAMPTZ;
 ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check;
 ALTER TABLE users ADD CONSTRAINT users_role_check CHECK (role IN ('sender', 'admin', 'super_admin', 'vendor'));
 
+-- Multiple independent delivery companies (agents/fleets), same
+-- self-registration + Super Admin approval workflow already proven
+-- out for vendors above — reusing the exact same approval_status /
+-- business_registration_doc / id_document_* columns, not a parallel
+-- system.
+ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check;
+ALTER TABLE users ADD CONSTRAINT users_role_check CHECK (role IN ('sender', 'admin', 'super_admin', 'vendor', 'delivery_company'));
+
 -- Bumped whenever an admin uses "Logout All Devices" (Settings > Security).
 -- Every JWT embeds the token_version that was current when it was issued;
 -- requireAuth/socketAuth reject a token whose version doesn't match the
@@ -168,6 +176,17 @@ CREATE TABLE IF NOT EXISTS agents (
 -- data model itself, even though the UI may still show it as an
 -- Online/Offline-style badge.
 ALTER TABLE agents ADD COLUMN IF NOT EXISTS duty_status TEXT NOT NULL DEFAULT 'off_duty' CHECK (duty_status IN ('on_duty', 'off_duty'));
+
+-- Multi-provider delivery: which company (a user with role =
+-- 'delivery_company', OR the existing 'admin' account representing
+-- Verta Delivery Service's own in-house fleet — see the backward-
+-- compat migration in server.js) this agent belongs to, and which
+-- company actually fulfilled a given order. Nullable — existing
+-- agents get backfilled in server.js on boot (needs the real
+-- ADMIN_EMAIL value, which can be overridden per-deployment via an
+-- env var, so it can't be safely hardcoded in this static SQL file).
+ALTER TABLE agents ADD COLUMN IF NOT EXISTS delivery_company_id TEXT REFERENCES users(id);
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivery_company_id TEXT REFERENCES users(id);
 
 -- Pricing presets (Settings > Pricing) — named, reusable delivery price
 -- points an admin defines once (e.g. "Standard - $2.50"), offered as
@@ -346,6 +365,11 @@ CREATE INDEX IF NOT EXISTS idx_leads_vendor_id ON leads (vendor_id, created_at D
 -- this is real, separate infrastructure from leads above, not a
 -- duplicate of it.
 ALTER TABLE users ADD COLUMN IF NOT EXISTS store_address TEXT;
+
+-- Real profile photo, any role — stored as a data URL like the
+-- business logo already is (see MAX_PROFILE_IMAGE_BYTES in server.js
+-- for the size cap enforced on upload).
+ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_image_url TEXT;
 
 -- Real "follow a store" — same pattern as wishlist_items, just for
 -- stores instead of products.
