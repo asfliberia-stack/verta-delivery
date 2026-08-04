@@ -31,6 +31,7 @@ function rowToOrder(r) {
     acceptedAt: r.accepted_at,
     pickedUpAt: r.picked_up_at,
     deliveredAt: r.delivered_at,
+    deliveryCompanyId: r.delivery_company_id,
   };
 }
 
@@ -51,6 +52,7 @@ function rowToAgent(r) {
     name: r.name,
     phone: r.phone,
     dutyStatus: r.duty_status,
+    deliveryCompanyId: r.delivery_company_id,
   };
 }
 
@@ -248,6 +250,23 @@ const db = {
     return rows.map(rowToOrder);
   },
 
+  // ---- Delivery Company (multi-provider) scoped queries ----------------
+  async getAgentsByCompany(companyId) {
+    const { rows } = await pool.query(
+      'SELECT * FROM agents WHERE delivery_company_id = $1 ORDER BY created_at ASC',
+      [companyId]
+    );
+    return rows.map(rowToAgent);
+  },
+
+  async getOrdersByCompany(companyId) {
+    const { rows } = await pool.query(
+      'SELECT * FROM orders WHERE delivery_company_id = $1 ORDER BY created_at DESC',
+      [companyId]
+    );
+    return rows.map(rowToOrder);
+  },
+
   async getOrdersBySender(senderId) {
     const { rows } = await pool.query(
       'SELECT * FROM orders WHERE sender_id = $1 ORDER BY created_at DESC',
@@ -276,6 +295,7 @@ const db = {
       pickedUpAt: 'picked_up_at',
       deliveredAt: 'delivered_at',
       paymentMethod: 'payment_method',
+      deliveryCompanyId: 'delivery_company_id',
     };
     const sets = [];
     const values = [];
@@ -327,9 +347,25 @@ const db = {
 
   // ---- Agents (Fleet Directory) -------------------------------------
 
+  async getAgentById(id) {
+    const { rows } = await pool.query('SELECT * FROM agents WHERE id = $1', [id]);
+    return rowToAgent(rows[0]);
+  },
+
   async getAllAgents() {
     const { rows } = await pool.query('SELECT * FROM agents ORDER BY created_at ASC');
     return rows.map(rowToAgent);
+  },
+
+  // Used when an order is accepted, to derive which company fulfilled
+  // it from the agent's own delivery_company_id. Looks up by name,
+  // since that's what accepted_by currently stores (agents don't have
+  // logins) — matches the first agent with that name if there happen
+  // to be duplicates across companies, a known limitation flagged
+  // separately, not fully fixed here.
+  async getAgentByName(name) {
+    const { rows } = await pool.query('SELECT * FROM agents WHERE name = $1 LIMIT 1', [name]);
+    return rowToAgent(rows[0]);
   },
 
   async countAgents() {
@@ -350,10 +386,10 @@ const db = {
     return rowCount;
   },
 
-  async createAgent({ id, name, phone }) {
+  async createAgent({ id, name, phone, deliveryCompanyId }) {
     const { rows } = await pool.query(
-      `INSERT INTO agents (id, name, phone) VALUES ($1, $2, $3) RETURNING *`,
-      [id, name, phone]
+      `INSERT INTO agents (id, name, phone, delivery_company_id) VALUES ($1, $2, $3, $4) RETURNING *`,
+      [id, name, phone, deliveryCompanyId || null]
     );
     return rowToAgent(rows[0]);
   },

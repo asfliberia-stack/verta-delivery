@@ -1760,6 +1760,7 @@
                 <div class="auth-role-toggle" id="register-role-toggle">
                     <button type="button" class="auth-role-toggle-btn active" data-register-role="customer">Customer</button>
                     <button type="button" class="auth-role-toggle-btn" data-register-role="vendor">Vendor</button>
+                    <button type="button" class="auth-role-toggle-btn" data-register-role="delivery_company">Delivery Company</button>
                 </div>
 
                 <!-- Customer fields -->
@@ -1822,6 +1823,42 @@
                             <input type="file" accept="image/*,.pdf" id="register-vendor-id-doc-input" style="display:none;">
                             <button type="button" class="btn-small btn-secondary" id="register-vendor-id-doc-btn">Upload ID</button>
                             <span class="auth-upload-filename" id="register-vendor-id-doc-filename"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Delivery Company fields -->
+                <div id="register-delivery-company-fields" style="display:none;">
+                    <p class="auth-vendor-note">Delivery company accounts require Super Admin approval before your fleet can accept orders. We'll review your documents and follow up by email.</p>
+                    <div class="form-group">
+                        <label class="form-label">Company Name</label>
+                        <input type="text" class="form-input" id="register-delivery-company-name" placeholder="e.g. Speedy Riders Liberia">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Business Registration Document</label>
+                        <div class="auth-upload-row">
+                            <img id="register-delivery-company-biz-doc-preview" class="auth-upload-thumb" style="display:none;" alt="Preview">
+                            <input type="file" accept="image/*,.pdf" id="register-delivery-company-biz-doc-input" style="display:none;">
+                            <button type="button" class="btn-small btn-secondary" id="register-delivery-company-biz-doc-btn">Upload Document</button>
+                            <span class="auth-upload-filename" id="register-delivery-company-biz-doc-filename"></span>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">ID Type</label>
+                        <select class="form-input" id="register-delivery-company-id-type">
+                            <option value="">-- Select ID Type --</option>
+                            <option value="passport">Passport</option>
+                            <option value="national_id">National ID</option>
+                            <option value="drivers_license">Driver's License</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Identification Document</label>
+                        <div class="auth-upload-row">
+                            <img id="register-delivery-company-id-doc-preview" class="auth-upload-thumb" style="display:none;" alt="Preview">
+                            <input type="file" accept="image/*,.pdf" id="register-delivery-company-id-doc-input" style="display:none;">
+                            <button type="button" class="btn-small btn-secondary" id="register-delivery-company-id-doc-btn">Upload ID</button>
+                            <span class="auth-upload-filename" id="register-delivery-company-id-doc-filename"></span>
                         </div>
                     </div>
                 </div>
@@ -2478,6 +2515,116 @@
         </div>
     </div>
 
+    <!-- Delivery Company Dashboard — a company's own fleet + orders,
+         scoped entirely to their own account server-side. -->
+    <div id="delivery-company-app" style="display:none; min-height:100vh; background:var(--bg-light);">
+        <div style="background:white; border-bottom:1px solid var(--border); padding:1.25rem 1.5rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;">
+            <div style="display:flex; align-items:center; gap:0.875rem;">
+                <div class="mp-account-hero-avatar" id="dc-avatar" style="width:2.75rem; height:2.75rem; font-size:1.125rem; background:var(--primary); color:white; border:none;">D</div>
+                <div>
+                    <div style="font-weight:800; font-size:1.0625rem;" id="dc-company-name">—</div>
+                    <div style="font-size:0.8125rem; color:var(--slate-light);">Delivery Company</div>
+                </div>
+            </div>
+            <div style="display:flex; gap:0.75rem;">
+                <button type="button" class="btn-small btn-secondary" id="dc-settings-btn">Settings</button>
+                <button type="button" class="btn-small btn-secondary" id="dc-logout-btn">Logout</button>
+            </div>
+        </div>
+
+        <div style="max-width:1100px; margin:0 auto; padding:1.5rem;">
+            <!-- Overview -->
+            <div id="dc-view-overview">
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+                    <div class="stat-card">
+                        <div class="stat-card-top"><h4>Total Agents</h4></div>
+                        <p id="dc-stat-total-agents">0</p>
+                    </div>
+                    <div class="stat-card success">
+                        <div class="stat-card-top"><h4>On Duty</h4></div>
+                        <p id="dc-stat-on-duty">0</p>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-card-top"><h4>Total Orders</h4></div>
+                        <p id="dc-stat-total-orders">0</p>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-card-top"><h4>Revenue</h4></div>
+                        <p id="dc-stat-revenue">$0.00</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Fleet -->
+            <div class="mobile-section" style="margin-top:0;">
+                <div class="mobile-section-header">
+                    <div class="mobile-section-title">Fleet</div>
+                    <button type="button" class="btn-small btn-success" id="dc-add-agent-btn">+ Add Agent</button>
+                </div>
+                <div id="dc-agents-list"></div>
+            </div>
+
+            <!-- Add/Edit Agent form (inline, toggled) -->
+            <div class="mobile-section" id="dc-agent-form-section" style="display:none;">
+                <div class="mobile-section-header"><div class="mobile-section-title" id="dc-agent-form-title">Add Agent</div></div>
+                <form id="dc-agent-form" style="background:white; border-radius:1rem; padding:1.25rem; border:1px solid var(--border); box-shadow:var(--shadow-sm);">
+                    <div class="form-group">
+                        <label class="form-label">Name</label>
+                        <input type="text" class="form-input" id="dc-agent-name-input" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Phone</label>
+                        <input type="tel" class="form-input" id="dc-agent-phone-input" required>
+                    </div>
+                    <div id="dc-agent-form-error" style="color:#dc2626; font-size:0.875rem; margin-bottom:1rem; display:none;"></div>
+                    <div style="display:flex; gap:0.75rem;">
+                        <button type="button" class="btn-small btn-secondary" id="dc-agent-form-cancel">Cancel</button>
+                        <button type="submit" class="btn-small btn-success" id="dc-agent-form-submit">Save Agent</button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Orders -->
+            <div class="mobile-section">
+                <div class="mobile-section-header"><div class="mobile-section-title">Orders</div></div>
+                <div id="dc-orders-list"></div>
+            </div>
+
+            <!-- Settings -->
+            <div class="mobile-section" id="dc-view-settings" style="display:none;">
+                <div class="mobile-section-header"><div class="mobile-section-title">Company Settings</div></div>
+                <form id="dc-settings-form" style="background:white; border-radius:1rem; padding:1.25rem; border:1px solid var(--border); box-shadow:var(--shadow-sm);">
+                    <div style="display:flex; align-items:center; gap:1rem; margin-bottom:1.5rem;">
+                        <div class="mp-account-hero-avatar" id="dc-settings-avatar-preview" style="width:64px; height:64px; font-size:1.5rem; background:var(--primary); color:white; border:none;">D</div>
+                        <div>
+                            <button type="button" class="btn-small btn-secondary" id="dc-settings-photo-btn">Change Photo</button>
+                            <input type="file" accept="image/*" id="dc-settings-photo-input" style="display:none;">
+                            <p style="font-size:0.75rem; color:var(--slate-lighter); margin-top:0.375rem;">JPG or PNG, under 500KB</p>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Company Name</label>
+                        <input type="text" class="form-input" id="dc-settings-name-input" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Phone</label>
+                        <div class="phone-input-row">
+                            <select class="form-input country-code-select" id="dc-settings-phone-country"></select>
+                            <input type="tel" class="form-input" id="dc-settings-phone-input">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Email</label>
+                        <input type="email" class="form-input" id="dc-settings-email" disabled style="background:var(--bg-light); color:var(--slate-light);">
+                    </div>
+                    <div id="dc-settings-error" style="color:#dc2626; font-size:0.875rem; margin-bottom:1rem; display:none;"></div>
+                    <button type="submit" class="btn-small btn-success" id="dc-settings-submit">Save Changes</button>
+                    <button type="button" class="btn-small btn-secondary" id="dc-settings-back-btn">Back to Overview</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <!-- Privacy Policy / Terms of Service — real content covering this
          app's actual data practices and service terms (see
          openLegalModal() in the script below). -->
@@ -2576,6 +2723,10 @@
                     <button type="button" class="admin-nav-item" id="open-vendors-btn" style="display:none;">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
                         Vendors
+                    </button>
+                    <button type="button" class="admin-nav-item" id="open-delivery-companies-btn" style="display:none;">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13"></rect><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon><circle cx="5.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle></svg>
+                        Delivery Companies
                     </button>
                     <button type="button" class="admin-nav-item" id="open-settings-btn">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
@@ -3985,6 +4136,24 @@
         </div>
     </div>
 
+    <!-- Delivery Companies (Super Admin only) -->
+    <div class="modal-overlay" id="delivery-companies-modal">
+        <div class="modal" style="max-width: 900px; width: 95%; max-height: 85vh; overflow-y: auto;">
+            <div class="modal-header">
+                <h3>🚚 Delivery Companies</h3>
+                <button class="close-btn" id="close-delivery-companies-modal">&times;</button>
+            </div>
+            <p style="color: var(--slate-light); margin-bottom: 1.5rem; font-size: 0.875rem;">
+                Each approved company manages its own fleet and sees only its own orders — real data
+                separation, not just a label. Verta Delivery Service's own fleet (Fleet Directory under
+                Manage Agent) is company #1 in this same system.
+            </p>
+            <div id="delivery-companies-modal-content">
+                <p style="text-align: center; color: var(--slate-light); padding: 2rem 0;">Loading…</p>
+            </div>
+        </div>
+    </div>
+
     <!-- Vendor application review (Super Admin approval workflow) -->
     <div class="modal-overlay" id="vendor-review-modal">
         <div class="modal" style="max-width: 640px; max-height: 85vh; overflow-y: auto;">
@@ -4500,7 +4669,8 @@
             if (!currentUser) return;
             ['desktop-profile-avatar', 'delivery-sender-avatar', 'user-avatar', 'topbar-user-avatar',
              'vendor-avatar', 'vendor-profile-avatar-desktop', 'mp-account-hero-avatar',
-             'mp-settings-avatar-preview', 'vendor-settings-avatar-preview', 'admin-settings-avatar-preview']
+             'mp-settings-avatar-preview', 'vendor-settings-avatar-preview', 'admin-settings-avatar-preview',
+             'dc-avatar', 'dc-settings-avatar-preview']
                 .forEach(id => applyAvatarImage(id, currentUser.profileImageUrl));
         }
 
@@ -4850,9 +5020,11 @@
             wireProfilePhotoUpload('mp-settings-photo-btn', 'mp-settings-photo-input');
             wireProfilePhotoUpload('vendor-settings-photo-btn', 'vendor-settings-photo-input');
             wireProfilePhotoUpload('admin-settings-photo-btn', 'admin-settings-photo-input');
+            wireProfilePhotoUpload('dc-settings-photo-btn', 'dc-settings-photo-input');
             wireSettingsEvents();
             wireTopbarEvents();
             wireVendorEvents();
+            wireDeliveryCompanyEvents();
             wireStorefrontEvents();
             wireMarketplaceRoutingEvents();
 
@@ -4911,18 +5083,222 @@
             document.getElementById('delivery-app').style.display = 'none';
             document.getElementById('vendor-app').style.display = 'none';
             document.getElementById('vendor-pending-screen').style.display = 'none';
+            document.getElementById('delivery-company-app').style.display = 'none';
+        }
+
+        let deliveryCompanyAgentsCache = [];
+        let editingDeliveryCompanyAgentId = null;
+
+        function showDeliveryCompanyDashboard() {
+            hideAllTopLevelViews();
+            document.getElementById('dc-company-name').textContent = currentUser.businessName;
+            document.getElementById('dc-avatar').textContent = currentUser.businessName.charAt(0).toUpperCase();
+            refreshMyAvatarDisplays();
+            document.getElementById('delivery-company-app').style.display = 'block';
+            document.getElementById('dc-view-settings').style.display = 'none';
+            document.getElementById('dc-agent-form-section').style.display = 'none';
+            loadDeliveryCompanyOverview();
+            loadDeliveryCompanyAgents();
+            loadDeliveryCompanyOrders();
+        }
+
+        async function loadDeliveryCompanyOverview() {
+            try {
+                const data = await apiFetch('/api/delivery-company/overview');
+                document.getElementById('dc-stat-total-agents').textContent = data.totalAgents;
+                document.getElementById('dc-stat-on-duty').textContent = data.onDutyAgents;
+                document.getElementById('dc-stat-total-orders').textContent = data.totalOrders;
+                document.getElementById('dc-stat-revenue').textContent = `$${data.totalRevenue.toFixed(2)}`;
+            } catch (err) {
+                console.error('Failed to load delivery company overview', err);
+            }
+        }
+
+        async function loadDeliveryCompanyAgents() {
+            const container = document.getElementById('dc-agents-list');
+            try {
+                const data = await apiFetch('/api/delivery-company/agents');
+                deliveryCompanyAgentsCache = data.agents || [];
+                if (deliveryCompanyAgentsCache.length === 0) {
+                    renderEmptyState(container, 'No agents yet — add your first one above.');
+                    return;
+                }
+                container.innerHTML = deliveryCompanyAgentsCache.map(a => `
+                    <div class="address-card">
+                        <div class="address-card-body">
+                            <div class="address-card-label-row"><span class="address-card-label">${a.name}</span></div>
+                            <div class="address-card-text">${a.phone}</div>
+                        </div>
+                        <select class="form-input dc-agent-duty-select" data-id="${a.id}" style="max-width:130px; padding:0.375rem 0.5rem; font-size:0.8125rem;">
+                            <option value="off_duty" ${a.dutyStatus === 'off_duty' ? 'selected' : ''}>Off Duty</option>
+                            <option value="on_duty" ${a.dutyStatus === 'on_duty' ? 'selected' : ''}>On Duty</option>
+                        </select>
+                        <button type="button" class="btn-small btn-secondary dc-edit-agent-btn" data-id="${a.id}">Edit</button>
+                    </div>
+                `).join('');
+            } catch (err) {
+                container.innerHTML = `<p style="text-align:center; color:#dc2626;">${err.message}</p>`;
+            }
+        }
+
+        async function loadDeliveryCompanyOrders() {
+            const container = document.getElementById('dc-orders-list');
+            try {
+                const data = await apiFetch('/api/delivery-company/orders');
+                const orders = data.orders || [];
+                if (orders.length === 0) {
+                    renderEmptyState(container, 'No orders yet — they\'ll show up here once your agents start accepting them.');
+                    return;
+                }
+                container.innerHTML = orders.slice(0, 50).map(o => {
+                    const statusClass = `status-${o.status.replace(' ', '-')}`;
+                    const statusText = o.status.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+                    return `
+                        <div class="address-card">
+                            <div class="address-card-body">
+                                <div class="address-card-label-row"><span class="address-card-label">${o.id}</span></div>
+                                <div class="address-card-text">${o.pickupAddress} → ${o.dropoffAddress} · Agent: ${o.acceptedBy || '—'}</div>
+                            </div>
+                            <span class="status-badge ${statusClass}">${statusText}</span>
+                        </div>
+                    `;
+                }).join('');
+            } catch (err) {
+                container.innerHTML = `<p style="text-align:center; color:#dc2626;">${err.message}</p>`;
+            }
+        }
+
+        function openDeliveryCompanyAgentForm(agentId) {
+            editingDeliveryCompanyAgentId = agentId || null;
+            document.getElementById('dc-agent-form-error').style.display = 'none';
+            if (agentId) {
+                const agent = deliveryCompanyAgentsCache.find(a => a.id === agentId);
+                if (!agent) return;
+                document.getElementById('dc-agent-form-title').textContent = 'Edit Agent';
+                document.getElementById('dc-agent-name-input').value = agent.name;
+                document.getElementById('dc-agent-phone-input').value = agent.phone;
+            } else {
+                document.getElementById('dc-agent-form-title').textContent = 'Add Agent';
+                document.getElementById('dc-agent-name-input').value = '';
+                document.getElementById('dc-agent-phone-input').value = '';
+            }
+            document.getElementById('dc-agent-form-section').style.display = 'block';
+        }
+
+        function closeDeliveryCompanyAgentForm() {
+            document.getElementById('dc-agent-form-section').style.display = 'none';
+            editingDeliveryCompanyAgentId = null;
+        }
+
+        function wireDeliveryCompanyEvents() {
+            document.getElementById('dc-logout-btn').addEventListener('click', async () => {
+                await clearAuth();
+                showAppChooser();
+            });
+            document.getElementById('dc-settings-btn').addEventListener('click', () => {
+                document.getElementById('dc-settings-name-input').value = currentUser.businessName || '';
+                document.getElementById('dc-settings-email').value = currentUser.email || '';
+                populateCountryCodeSelects();
+                splitPhoneNumber(currentUser.phone, 'dc-settings-phone-country', 'dc-settings-phone-input');
+                document.getElementById('dc-view-settings').style.display = 'block';
+                document.getElementById('dc-view-settings').scrollIntoView({ behavior: 'smooth' });
+            });
+            document.getElementById('dc-settings-back-btn').addEventListener('click', () => {
+                document.getElementById('dc-view-settings').style.display = 'none';
+            });
+            document.getElementById('dc-settings-form').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const errorEl = document.getElementById('dc-settings-error');
+                const btn = document.getElementById('dc-settings-submit');
+                errorEl.style.display = 'none';
+                btn.disabled = true;
+                btn.textContent = 'Saving…';
+                try {
+                    const businessName = document.getElementById('dc-settings-name-input').value.trim();
+                    const phone = combinePhoneNumber('dc-settings-phone-country', 'dc-settings-phone-input');
+                    const data = await apiFetch('/api/me/profile', {
+                        method: 'PUT',
+                        body: JSON.stringify({ businessName, phone }),
+                    });
+                    currentUser.businessName = data.user.businessName;
+                    currentUser.phone = data.user.phone;
+                    document.getElementById('dc-company-name').textContent = currentUser.businessName;
+                    document.getElementById('dc-avatar').textContent = currentUser.businessName.charAt(0).toUpperCase();
+                    refreshMyAvatarDisplays();
+                    showToast('Settings updated', 'success');
+                } catch (err) {
+                    errorEl.textContent = err.message;
+                    errorEl.style.display = 'block';
+                } finally {
+                    btn.disabled = false;
+                    btn.textContent = 'Save Changes';
+                }
+            });
+
+            document.getElementById('dc-add-agent-btn').addEventListener('click', () => openDeliveryCompanyAgentForm(null));
+            document.getElementById('dc-agent-form-cancel').addEventListener('click', closeDeliveryCompanyAgentForm);
+            document.getElementById('dc-agent-form').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const errorEl = document.getElementById('dc-agent-form-error');
+                const btn = document.getElementById('dc-agent-form-submit');
+                errorEl.style.display = 'none';
+                const name = document.getElementById('dc-agent-name-input').value.trim();
+                const phone = document.getElementById('dc-agent-phone-input').value.trim();
+                if (!name || !phone) {
+                    errorEl.textContent = 'Name and phone are required.';
+                    errorEl.style.display = 'block';
+                    return;
+                }
+                btn.disabled = true;
+                btn.textContent = 'Saving…';
+                try {
+                    const event = editingDeliveryCompanyAgentId ? 'agent:update' : 'agent:create';
+                    const payload = editingDeliveryCompanyAgentId
+                        ? { id: editingDeliveryCompanyAgentId, name, phone }
+                        : { name, phone };
+                    const result = await emitWithAck(event, payload);
+                    if (!result.ok) throw new Error(result.error || 'Failed to save agent');
+                    closeDeliveryCompanyAgentForm();
+                    showToast('Agent saved', 'success');
+                    await loadDeliveryCompanyAgents();
+                    await loadDeliveryCompanyOverview();
+                } catch (err) {
+                    errorEl.textContent = err.message;
+                    errorEl.style.display = 'block';
+                } finally {
+                    btn.disabled = false;
+                    btn.textContent = 'Save Agent';
+                }
+            });
+
+            document.getElementById('dc-agents-list').addEventListener('click', (e) => {
+                const editBtn = e.target.closest('.dc-edit-agent-btn');
+                if (editBtn) openDeliveryCompanyAgentForm(editBtn.dataset.id);
+            });
+            document.getElementById('dc-agents-list').addEventListener('change', async (e) => {
+                const select = e.target.closest('.dc-agent-duty-select');
+                if (!select) return;
+                const result = await emitWithAck('agent:set-duty-status', { id: select.dataset.id, dutyStatus: select.value });
+                if (!result.ok) {
+                    showToast(result.error || 'Failed to update duty status', 'error');
+                    await loadDeliveryCompanyAgents();
+                    return;
+                }
+                await loadDeliveryCompanyOverview();
+            });
         }
 
         function showVendorPendingScreen() {
             hideAllTopLevelViews();
             const statusEl = document.getElementById('vendor-pending-status');
             const isRejected = currentUser.approvalStatus === 'rejected';
+            const roleLabel = currentUser.role === 'delivery_company' ? 'delivery company' : 'vendor';
             statusEl.textContent = isRejected
-                ? "Your vendor application wasn't approved."
-                : "Your vendor application is under review.";
+                ? `Your ${roleLabel} application wasn't approved.`
+                : `Your ${roleLabel} application is under review.`;
             document.getElementById('vendor-pending-detail').textContent = isRejected
                 ? "If you think this is a mistake, contact support to discuss next steps."
-                : "A Super Admin needs to review your business registration and ID before your store can go live. This usually doesn't take long — check back soon.";
+                : "A Super Admin needs to review your business registration and ID before your account can go live. This usually doesn't take long — check back soon.";
             document.getElementById('vendor-pending-screen').style.display = 'flex';
         }
 
@@ -5291,6 +5667,8 @@
                 if (sidebarLabelEl) sidebarLabelEl.textContent = roleLabel;
                 const vendorsNavBtn = document.getElementById('open-vendors-btn');
                 if (vendorsNavBtn) vendorsNavBtn.style.display = isSuperAdmin ? 'flex' : 'none';
+                const deliveryCompaniesNavBtn = document.getElementById('open-delivery-companies-btn');
+                if (deliveryCompaniesNavBtn) deliveryCompaniesNavBtn.style.display = isSuperAdmin ? 'flex' : 'none';
                 const platformOverviewNavBtn = document.getElementById('sa-platform-overview-nav-btn');
                 if (platformOverviewNavBtn) platformOverviewNavBtn.style.display = isSuperAdmin ? 'flex' : 'none';
                 document.getElementById('admin-overview-nav-label').textContent = isSuperAdmin ? 'Delivery Operations' : 'Overview';
@@ -5325,6 +5703,16 @@
                 } else {
                     setAdminMainView('operational');
                 }
+            } else if (currentUser.role === 'delivery_company') {
+                // Same pending-approval gate as vendor above — a
+                // not-yet-approved delivery company sees a status screen,
+                // not the real dashboard (server-side, requireDeliveryCompany
+                // blocks the actual endpoints either way).
+                if (currentUser.approvalStatus && currentUser.approvalStatus !== 'approved') {
+                    showVendorPendingScreen();
+                    return;
+                }
+                showDeliveryCompanyDashboard();
             } else if (currentUser.role === 'vendor') {
                 // Vendor login/session restore routes straight to the
                 // Store Dashboard — never the marketplace — per the
@@ -5519,7 +5907,8 @@
                     document.querySelectorAll('#register-role-toggle .auth-role-toggle-btn').forEach(b => b.classList.toggle('active', b === btn));
                     document.getElementById('register-customer-fields').style.display = registerRole === 'customer' ? 'block' : 'none';
                     document.getElementById('register-vendor-fields').style.display = registerRole === 'vendor' ? 'block' : 'none';
-                    document.getElementById('register-submit-btn').textContent = registerRole === 'vendor' ? 'Submit Application' : 'Create Account';
+                    document.getElementById('register-delivery-company-fields').style.display = registerRole === 'delivery_company' ? 'block' : 'none';
+                    document.getElementById('register-submit-btn').textContent = registerRole !== 'customer' ? 'Submit Application' : 'Create Account';
                 });
             });
 
@@ -5549,6 +5938,8 @@
             }
             wireDocUpload('register-vendor-biz-doc-btn', 'register-vendor-biz-doc-input', 'register-vendor-biz-doc-preview', 'register-vendor-biz-doc-filename', (url) => { pendingBizDocDataUrl = url; });
             wireDocUpload('register-vendor-id-doc-btn', 'register-vendor-id-doc-input', 'register-vendor-id-doc-preview', 'register-vendor-id-doc-filename', (url) => { pendingIdDocDataUrl = url; });
+            wireDocUpload('register-delivery-company-biz-doc-btn', 'register-delivery-company-biz-doc-input', 'register-delivery-company-biz-doc-preview', 'register-delivery-company-biz-doc-filename', (url) => { pendingBizDocDataUrl = url; });
+            wireDocUpload('register-delivery-company-id-doc-btn', 'register-delivery-company-id-doc-input', 'register-delivery-company-id-doc-preview', 'register-delivery-company-id-doc-filename', (url) => { pendingIdDocDataUrl = url; });
 
             loginForm.addEventListener('submit', async (e) => {
                 e.preventDefault();
@@ -5611,6 +6002,43 @@
                     btn.textContent = 'Submitting…';
                     try {
                         const data = await apiFetch('/api/auth/register-vendor', {
+                            method: 'POST',
+                            body: JSON.stringify({
+                                businessName, email, phone, password,
+                                businessRegistrationDoc: pendingBizDocDataUrl,
+                                idDocumentType,
+                                idDocumentDoc: pendingIdDocDataUrl,
+                            })
+                        });
+                        await saveAuth(data.token, data.user);
+                        await enterApp();
+                    } catch (err) {
+                        errorEl.textContent = err.message;
+                        errorEl.style.display = 'block';
+                    } finally {
+                        btn.disabled = false;
+                        btn.textContent = 'Submit Application';
+                    }
+                    return;
+                }
+
+                if (registerRole === 'delivery_company') {
+                    const businessName = document.getElementById('register-delivery-company-name').value.trim();
+                    const idDocumentType = document.getElementById('register-delivery-company-id-type').value;
+                    if (!businessName) {
+                        errorEl.textContent = 'Please enter your company name.';
+                        errorEl.style.display = 'block';
+                        return;
+                    }
+                    if (!pendingBizDocDataUrl || !pendingIdDocDataUrl || !idDocumentType) {
+                        errorEl.textContent = 'Please upload your business registration document and a government ID.';
+                        errorEl.style.display = 'block';
+                        return;
+                    }
+                    btn.disabled = true;
+                    btn.textContent = 'Submitting…';
+                    try {
+                        const data = await apiFetch('/api/auth/register-delivery-company', {
                             method: 'POST',
                             body: JSON.stringify({
                                 businessName, email, phone, password,
@@ -6450,6 +6878,18 @@
                 decideVendorApplication(e.target.dataset.id, 'reject');
             });
 
+            // ---- Delivery Companies (Super Admin only) ----
+            document.getElementById('open-delivery-companies-btn').addEventListener('click', () => {
+                document.getElementById('delivery-companies-modal').classList.add('active');
+                loadDeliveryCompaniesPanel();
+            });
+            document.getElementById('close-delivery-companies-modal').addEventListener('click', () => {
+                document.getElementById('delivery-companies-modal').classList.remove('active');
+            });
+            document.getElementById('delivery-companies-modal-content').addEventListener('click', (e) => {
+                if (e.target.classList.contains('review-delivery-company-btn')) openVendorReviewModal(e.target.dataset.id, 'delivery_company');
+            });
+
             // ---- Help & Support ----
             document.getElementById('open-help-support-btn').addEventListener('click', () => {
                 renderHelpSupport();
@@ -6841,27 +7281,84 @@
         }
 
         let vendorsCache = [];
+        let deliveryCompaniesCache = [];
+
+        async function loadDeliveryCompaniesPanel() {
+            const container = document.getElementById('delivery-companies-modal-content');
+            if (!container) return;
+            try {
+                const data = await apiFetch('/api/super-admin/delivery-companies');
+                const companies = data.deliveryCompanies || [];
+                deliveryCompaniesCache = companies;
+                const pendingCount = companies.filter(c => c.approvalStatus === 'pending').length;
+
+                let html = `
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+                        <div style="background: var(--bg-light); padding: 1rem; border-radius: 0.75rem; text-align: center;">
+                            <div style="font-size: 0.75rem; color: var(--slate-light); text-transform: uppercase; letter-spacing: 0.03em;">Total Companies</div>
+                            <div style="font-size: 1.5rem; font-weight: 800; color: var(--slate);">${companies.length}</div>
+                        </div>
+                        <div style="background: ${pendingCount > 0 ? '#fef3c7' : 'var(--bg-light)'}; padding: 1rem; border-radius: 0.75rem; text-align: center;">
+                            <div style="font-size: 0.75rem; color: ${pendingCount > 0 ? '#92400e' : 'var(--slate-light)'}; text-transform: uppercase; letter-spacing: 0.03em;">Pending Applications</div>
+                            <div style="font-size: 1.5rem; font-weight: 800; color: ${pendingCount > 0 ? '#92400e' : 'var(--slate)'};">${pendingCount}</div>
+                        </div>
+                    </div>
+                `;
+
+                if (companies.length === 0) {
+                    html += '<p style="text-align: center; color: var(--slate-light); padding: 1rem 0;">No delivery company accounts yet.</p>';
+                } else {
+                    const statusPill = (status) => {
+                        const map = {
+                            approved: '<span style="background:#dcfce7; color:#15803d; padding:0.1875rem 0.625rem; border-radius:9999px; font-size:0.75rem; font-weight:700;">Approved</span>',
+                            pending: '<span style="background:#fef3c7; color:#92400e; padding:0.1875rem 0.625rem; border-radius:9999px; font-size:0.75rem; font-weight:700;">Pending</span>',
+                            rejected: '<span style="background:#fee2e2; color:#b91c1c; padding:0.1875rem 0.625rem; border-radius:9999px; font-size:0.75rem; font-weight:700;">Rejected</span>',
+                        };
+                        return map[status] || status;
+                    };
+                    html += '<div style="overflow-x: auto;"><table class="settings-table"><thead><tr><th>Company</th><th>Email</th><th>Since</th><th>Status</th><th></th></tr></thead><tbody>';
+                    companies.forEach(c => {
+                        html += `<tr>
+                            <td style="font-weight:700;">${c.businessName}</td>
+                            <td>${c.email}</td>
+                            <td>${new Date(c.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</td>
+                            <td>${statusPill(c.approvalStatus)}</td>
+                            <td style="white-space:nowrap;">
+                                ${c.approvalStatus === 'pending' ? `<button type="button" class="btn-small btn-secondary review-delivery-company-btn" data-id="${c.id}">Review</button>` : ''}
+                            </td>
+                        </tr>`;
+                    });
+                    html += '</tbody></table></div>';
+                }
+                container.innerHTML = html;
+            } catch (err) {
+                container.innerHTML = `<p style="text-align: center; color: #dc2626; padding: 2rem 0;">${err.message}</p>`;
+            }
+        }
 
         // Review a pending vendor's submitted documents, with real
         // Approve/Reject actions — this is the review side of the
         // approval workflow that was previously missing entirely.
-        async function openVendorReviewModal(vendorId) {
-            const vendor = vendorsCache.find(v => v.id === vendorId);
-            if (!vendor) return;
-            document.getElementById('vendor-review-name').textContent = vendor.businessName;
-            document.getElementById('vendor-review-email').textContent = vendor.email;
-            document.getElementById('vendor-review-phone').textContent = vendor.phone || '—';
-            document.getElementById('vendor-review-applied').textContent = vendor.appliedAt
-                ? new Date(vendor.appliedAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+        async function openVendorReviewModal(id, type = 'vendor') {
+            const cache = type === 'delivery_company' ? deliveryCompaniesCache : vendorsCache;
+            const endpointBase = type === 'delivery_company' ? 'delivery-companies' : 'vendors';
+            const applicant = cache.find(v => v.id === id);
+            if (!applicant) return;
+            document.getElementById('vendor-review-modal').dataset.reviewType = type;
+            document.getElementById('vendor-review-name').textContent = applicant.businessName;
+            document.getElementById('vendor-review-email').textContent = applicant.email;
+            document.getElementById('vendor-review-phone').textContent = applicant.phone || '—';
+            document.getElementById('vendor-review-applied').textContent = applicant.appliedAt
+                ? new Date(applicant.appliedAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
                 : '—';
             document.getElementById('vendor-review-biz-doc').innerHTML = '<p style="color:var(--slate-light); font-size:0.875rem;">Loading…</p>';
             document.getElementById('vendor-review-id-doc').innerHTML = '';
-            document.getElementById('vendor-approve-btn').dataset.id = vendorId;
-            document.getElementById('vendor-reject-btn').dataset.id = vendorId;
+            document.getElementById('vendor-approve-btn').dataset.id = id;
+            document.getElementById('vendor-reject-btn').dataset.id = id;
             document.getElementById('vendor-review-modal').classList.add('active');
 
             try {
-                const docs = await apiFetch(`/api/super-admin/vendors/${vendorId}/documents`);
+                const docs = await apiFetch(`/api/super-admin/${endpointBase}/${id}/documents`);
                 const renderDoc = (dataUrl) => {
                     if (!dataUrl) return '<p style="color:var(--slate-light); font-size:0.875rem;">Not provided.</p>';
                     if (dataUrl.startsWith('data:application/pdf')) {
@@ -6878,14 +7375,17 @@
             }
         }
 
-        async function decideVendorApplication(vendorId, decision) {
+        async function decideVendorApplication(id, decision) {
+            const type = document.getElementById('vendor-review-modal').dataset.reviewType || 'vendor';
+            const endpointBase = type === 'delivery_company' ? 'delivery-companies' : 'vendors';
+            const label = type === 'delivery_company' ? 'delivery company' : 'vendor';
             const verb = decision === 'approve' ? 'approve' : 'reject';
-            if (!confirm(`Are you sure you want to ${verb} this vendor application?`)) return;
+            if (!confirm(`Are you sure you want to ${verb} this ${label} application?`)) return;
             try {
-                await apiFetch(`/api/super-admin/vendors/${vendorId}/${decision}`, { method: 'POST' });
-                showToast(`Vendor ${decision === 'approve' ? 'approved' : 'rejected'}`, 'success');
+                await apiFetch(`/api/super-admin/${endpointBase}/${id}/${decision}`, { method: 'POST' });
+                showToast(`${label.charAt(0).toUpperCase() + label.slice(1)} ${decision === 'approve' ? 'approved' : 'rejected'}`, 'success');
                 document.getElementById('vendor-review-modal').classList.remove('active');
-                loadVendors();
+                if (type === 'delivery_company') { loadDeliveryCompaniesPanel(); } else { loadVendors(); }
             } catch (err) {
                 showToast(err.message, 'error');
             }

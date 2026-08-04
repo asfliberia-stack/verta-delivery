@@ -21,6 +21,7 @@ const {
   requireAdmin,
   requireSuperAdmin,
   requireVendor,
+  requireDeliveryCompany,
   isAdminLike,
   socketAuth,
 } = require('./auth');
@@ -236,12 +237,14 @@ io.on('connection', (socket) => {
       return ack && ack({ ok: false, error: 'Only admins can accept orders' });
     }
     try {
+      const agent = await db.getAgentByName(acceptedBy);
       const order = await db.updateOrder(id, {
         amount,
         acceptedBy,
         paymentMethod: paymentMethod || null,
         status: 'accepted',
         acceptedAt: new Date().toISOString(),
+        deliveryCompanyId: agent ? agent.deliveryCompanyId : null,
       });
       orderRooms(order.senderId).forEach((r) => io.to(r).emit('order:updated', order));
       ack && ack({ ok: true, order });
@@ -308,14 +311,14 @@ io.on('connection', (socket) => {
   // ---- Fleet Directory (agents) — admin-managed, admin-only --------
 
   socket.on('agent:create', async ({ name, phone }, ack) => {
-    if (!isAdminLike(socket.user.role)) {
+    if (!isAdminLike(socket.user.role) && socket.user.role !== 'delivery_company') {
       return ack && ack({ ok: false, error: 'Only admins can add agents' });
     }
     if (!name || !name.trim() || !phone || !phone.trim()) {
       return ack && ack({ ok: false, error: 'Name and phone are required' });
     }
     try {
-      const agent = await db.createAgent({ id: crypto.randomUUID(), name: name.trim(), phone: phone.trim() });
+      const agent = await db.createAgent({ id: crypto.randomUUID(), name: name.trim(), phone: phone.trim(), deliveryCompanyId: socket.user.id });
       io.to('admins').emit('agent:created', agent);
       ack && ack({ ok: true, agent });
     } catch (err) {
@@ -325,13 +328,19 @@ io.on('connection', (socket) => {
   });
 
   socket.on('agent:update', async ({ id, name, phone }, ack) => {
-    if (!isAdminLike(socket.user.role)) {
+    if (!isAdminLike(socket.user.role) && socket.user.role !== 'delivery_company') {
       return ack && ack({ ok: false, error: 'Only admins can edit agents' });
     }
     if (!name || !name.trim() || !phone || !phone.trim()) {
       return ack && ack({ ok: false, error: 'Name and phone are required' });
     }
     try {
+      if (socket.user.role === 'delivery_company') {
+        const existing = await db.getAgentById(id);
+        if (!existing || existing.deliveryCompanyId !== socket.user.id) {
+          return ack && ack({ ok: false, error: 'Agent not found' });
+        }
+      }
       const agent = await db.updateAgent(id, { name: name.trim(), phone: phone.trim() });
       if (!agent) return ack && ack({ ok: false, error: 'Agent not found' });
       io.to('admins').emit('agent:updated', agent);
@@ -345,13 +354,19 @@ io.on('connection', (socket) => {
   // "On Duty / Off Duty" — explicitly admin-set, not automatic presence
   // (see the duty_status comment in schema.sql for why).
   socket.on('agent:set-duty-status', async ({ id, dutyStatus }, ack) => {
-    if (!isAdminLike(socket.user.role)) {
+    if (!isAdminLike(socket.user.role) && socket.user.role !== 'delivery_company') {
       return ack && ack({ ok: false, error: 'Only admins can change agent duty status' });
     }
     if (dutyStatus !== 'on_duty' && dutyStatus !== 'off_duty') {
       return ack && ack({ ok: false, error: 'Invalid duty status' });
     }
     try {
+      if (socket.user.role === 'delivery_company') {
+        const existing = await db.getAgentById(id);
+        if (!existing || existing.deliveryCompanyId !== socket.user.id) {
+          return ack && ack({ ok: false, error: 'Agent not found' });
+        }
+      }
       const agent = await db.updateAgentDutyStatus(id, dutyStatus);
       if (!agent) return ack && ack({ ok: false, error: 'Agent not found' });
       io.to('admins').emit('agent:updated', agent);
@@ -1436,6 +1451,53 @@ app.get('/api/vendor/daily-sales', requireAuth, requireVendor, async (req, res) 
     res.status(500).json({ error: 'Failed to load sales chart' });
   }
 });
+
+// ============================================================
+// Delivery Company (multi-provider) — a company's own dashboard.
+// Every route below is scoped to req.user.id, mirroring the vendor
+// pattern: a company can only ever see and manage its own fleet and
+// orders, never another company's.
+// ============================================================
+app.get('/api/delivery-company/agents', requireAuth, requireDeliveryCompany, async (req, res) => {
+  try {
+    const agents = await db.getAgentsByCompany(req.user.id);
+    res.json({ agents });
+  } catch (err) {
+    console.error('GET /api/delivery-company/agents failed', err);
+    res.status(500).json({ error: 'Failed to load fleet' });
+  }
+});
+
+app.get('/api/delivery-company/orders', requireAuth, requireDeliveryCompany, async (req, res) => {
+  try {
+    const orders = await db.getOrdersByCompany(req.user.id);
+    res.json({ orders });
+  } catch (err) {
+    console.error('GET /api/delivery-company/orders failed', err);
+    res.status(500).json({ error: 'Failed to load orders' });
+  }
+});
+
+app.get('/api/delivery-company/overview', requireAuth, requireDeliveryCompany, async (req, res) => {
+  try {
+    const [agents, orders] = await Promise.all([
+      db.getAgentsByCompany(req.user.id),
+      db.getOrdersByCompany(req.user.id),
+    ]);
+    const deliveredOrders = orders.filter(o => o.status === 'delivered');
+    res.json({
+      totalAgents: agents.length,
+      onDutyAgents: agents.filter(a => a.dutyStatus === 'on_duty').length,
+      totalOrders: orders.length,
+      deliveredOrders: deliveredOrders.length,
+      totalRevenue: deliveredOrders.reduce((sum, o) => sum + (o.amount || 0), 0),
+    });
+  } catch (err) {
+    console.error('GET /api/delivery-company/overview failed', err);
+    res.status(500).json({ error: 'Failed to load overview' });
+  }
+});
+
 
 app.get('/api/vendor/purchases', requireAuth, requireVendor, async (req, res) => {
   try {

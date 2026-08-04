@@ -131,6 +131,21 @@ async function requireVendor(req, res, next) {
   }
 }
 
+async function requireDeliveryCompany(req, res, next) {
+  if (!req.user || req.user.role !== 'delivery_company') {
+    return res.status(403).json({ error: 'Delivery company access required' });
+  }
+  try {
+    const user = await db.getUserById(req.user.id);
+    if (!user || user.approvalStatus !== 'approved') {
+      return res.status(403).json({ error: 'Your delivery company application is still pending approval', approvalStatus: user ? user.approvalStatus : 'pending' });
+    }
+    next();
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to verify delivery company status' });
+  }
+}
+
 // Socket.io middleware: expects the token at `socket.handshake.auth.token`
 // (set by the client when calling `io({ auth: { token } })`).
 async function socketAuth(socket, next) {
@@ -157,6 +172,7 @@ module.exports = {
   requireAdmin,
   requireSuperAdmin,
   requireVendor,
+  requireDeliveryCompany,
   isAdminLike,
   socketAuth,
 };

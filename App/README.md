@@ -3015,3 +3015,66 @@ order-acceptance logic, not the registration/approval foundation.
 - Delivery company registration form on the frontend
 - The order-acceptance fix above, plus actually populating
   `orders.delivery_company_id` when an order is accepted
+
+## Multi-provider delivery — Delivery Company Dashboard + Super Admin panel
+
+Second and final round of this feature (for now). Builds on last
+round's foundation (schema, registration, approval endpoints) with the
+three remaining pieces: order-routing correctness, a real Delivery
+Company dashboard, and the Super Admin "Delivery Companies" panel.
+
+### Order routing, made real
+
+- Creating an agent now records which company they belong to — the
+  socket handler passes the creator's own account ID automatically.
+- Editing an agent or changing their duty status now has a genuine
+  ownership check for delivery companies (not just a role check) — a
+  company can only touch its own agents, verified server-side against
+  the agent's actual `delivery_company_id`, not just trusted from the
+  request.
+- Accepting an order now looks up the accepting agent and stamps
+  `orders.delivery_company_id` automatically. The known limitation
+  flagged last round (agent lookup by name, not ID) still applies and
+  hasn't been fixed — deliberately deferred, same reasoning as before.
+
+### Delivery Company Dashboard — real, working, appropriately scoped
+
+Not a full mirror of the Vendor dashboard's complexity (no Products/
+Promotions/Leads equivalent — none of that applies here) — built as
+its own focused thing: real stats (agents, on-duty count, orders,
+revenue), real fleet management (add/edit agents, toggle duty status),
+a real order list, and Settings (name/phone/photo). Every endpoint is
+scoped server-side to the logged-in company's own `req.user.id` —
+`GET /api/delivery-company/agents`, `/orders`, `/overview`.
+
+### Super Admin "Delivery Companies" panel
+
+Mirrors the Vendors panel closely — stats, a real list, Review with
+document viewing, Approve/Reject. Rather than duplicate the vendor
+review modal, generalized it to handle both types via a parameter,
+since the structure was already identical. "Enter Dashboard"
+(impersonation) intentionally not included for delivery companies —
+that's separate infrastructure that would need its own careful build,
+kept out of scope for this round.
+
+### Two mistakes made and caught mid-session — noting both directly
+
+While editing, `str_replace` calls with too little surrounding context
+twice deleted adjacent, unrelated code: the `/api/vendor/purchases`
+endpoint's declaration, and the entire Privacy Policy/Terms modal
+wrapper. Both caught by checking occurrence counts after each edit
+rather than assuming success, both fixed, both re-verified. Final
+verification pass confirmed the admin dashboard region's diff is
+purely additive (0 lines removed, exactly the 4 intended) and the
+vendor dashboard region is byte-for-byte untouched.
+
+### What's still not done
+
+- The agent-identity fix (name → ID) across the 12+ existing display
+  call sites — real correctness work, deliberately deferred twice now,
+  worth prioritizing before this goes live with more than one company
+- "Enter Dashboard" impersonation for delivery companies, if wanted
+- Real-time Socket.io room scoping (agent/order events currently
+  broadcast to a shared `admins` room — a company's browser could
+  receive an event about another company's agent, though the REST API
+  itself is properly scoped and won't return another company's data)
