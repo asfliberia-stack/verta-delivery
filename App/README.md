@@ -3655,3 +3655,25 @@ Found the actual causes:
   the logo) is intentionally hidden before login — added a real logo
   header directly to the guest prompt itself so branding doesn't
   disappear entirely just because someone hasn't logged in yet.
+
+## Fixed: guest login prompt was shifted left instead of centered
+
+Found the real cause by checking the CSS directly rather than
+guessing: the guest prompt lives inside a grid layout designed for
+sidebar + content (272px reserved for the sidebar, the rest for main
+content). Hiding the sidebar *element* for guests didn't remove that
+272px the grid itself still reserved for it — so the content column
+started 272px from the left edge instead of the true left edge. On
+top of that, the content column had a max-width but no auto-centering,
+so on wide screens it stuck to the left of that column rather than
+centering within it. Two separate issues compounding into the same
+visual symptom.
+
+Fixed both: guest mode now collapses the sidebar's grid column to 0px
+(reusing the exact same class already used for the mobile
+sidebar-collapse, rather than inventing a new one), and the content
+area now actually centers itself when there's extra width to center
+within. Scoped this fix specifically to the customer container's own
+CSS rule — confirmed the Admin dashboard's identical-looking rule is
+completely untouched, so none of this affects how that dashboard
+already looks.

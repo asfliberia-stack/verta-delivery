@@ -1367,7 +1367,7 @@
         /* ---- Main content ---- */
         #delivery-app .admin-main { padding: 2rem 2.5rem 3rem; max-width: 1400px; }
         /* ---- Main content ---- */
-        #delivery-customer-app .admin-main { padding: 2rem 2.5rem 3rem; max-width: 1400px; }
+        #delivery-customer-app .admin-main { padding: 2rem 2.5rem 3rem; max-width: 1400px; margin: 0 auto; }
         #delivery-app .admin-main > header {
             position: sticky; top: 0; z-index: 40;
             background: var(--admin-bg);
@@ -6347,6 +6347,14 @@
             // control that does nothing for a guest.
             const toggleBtn = document.getElementById('dcust-sidebar-toggle-btn');
             if (toggleBtn) toggleBtn.style.display = mode === 'customer' ? 'flex' : 'none';
+            // Just hiding the sidebar element isn't enough — the grid
+            // itself still reserves its 272px column unless we also
+            // collapse the grid-template-columns, otherwise the guest
+            // prompt ends up shifted toward the left instead of truly
+            // centered. Reuses the same class the mobile sidebar-toggle
+            // already uses for exactly this purpose.
+            const shellEl = document.getElementById('dcust-shell');
+            if (shellEl) shellEl.classList.toggle('sidebar-collapsed', mode === 'guest');
         }
 
         async function enterDeliveryMode(headerMode) {
