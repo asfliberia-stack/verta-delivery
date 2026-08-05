@@ -3711,3 +3711,50 @@ see around the edges.
 Also added a real logo to this now-independent guest container
 directly (previously relied on the sidebar's logo, which is now
 hidden along with everything else for guests).
+
+## Real mobile layout for the customer Delivery dashboard
+
+Built to match your reference image's structure — not just squeezed
+the desktop sidebar smaller, but a genuine mobile-first layout with
+its own real navigation pattern.
+
+### What's real
+
+- **Bottom tab bar** — Dashboard, My Orders, a prominent raised center
+  "New Order" button, Addresses, and More. Reuses the app's own
+  already-established `.mobile-bottom-nav` pattern (the exact same
+  one Marketplace and the Vendor dashboard already use), not a newly
+  invented pattern just for this screen.
+- **Mobile topbar** — hamburger + logo + real notification bell,
+  shown only below the desktop breakpoint (1024px, matching the
+  breakpoint already used everywhere else in the app).
+- **"More" menu** — the sidebar items that don't fit in 5 bottom-bar
+  slots (Payment Methods, Support, Settings, Back to service
+  selector, Logout) live in a real menu here, same real destinations
+  as the desktop sidebar.
+- **Icon-badged stat cards** — colored circular icons matching each
+  stat's meaning (purple bag/orders, green check/delivered, blue
+  truck/in-transit, orange clock/pending, purple dollar/spent).
+- **A real, working notification bell** — not wired to the admin
+  dashboard's notification panel (which lives in a different, hidden
+  container and wouldn't have shown anything), but its own dedicated
+  modal reusing the same shared notification data.
+
+### A duplicate-ID bug caught and fixed mid-build
+
+Building the new mobile topbar's hamburger button reused the existing
+`dcust-sidebar-toggle-btn` ID for convenience (so existing JS wiring
+kept working) — but this created a real duplicate ID, since the
+original floating hamburger button (from an earlier round) was still
+sitting in the DOM. Caught it by checking occurrence counts
+immediately after the edit, found the old button, and removed it.
+
+### What's not built yet
+
+The reference image's detailed "Your Orders" card style — Order ID +
+status at top, then Route/Item/Amount/Agent rows with their own
+icons — isn't built. The dashboard's order preview still uses the
+existing table-based layout. This felt like its own separate, real
+piece of work rather than something to rush alongside the structural
+mobile-layout changes in this round. Happy to build it as a focused
+follow-up if you want that exact card style.

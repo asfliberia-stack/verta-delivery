@@ -140,6 +140,35 @@
             font-size: 0.5625rem; font-weight: 800; min-width: 15px; height: 15px; border-radius: 9999px;
             display: flex; align-items: center; justify-content: center; padding: 0 3px;
         }
+
+        /* Delivery customer dashboard — mobile-only topbar (hamburger +
+           logo + notifications), hidden on desktop where the real
+           sidebar shows instead. */
+        .dcust-mobile-topbar {
+            display: flex; align-items: center; justify-content: space-between;
+            margin-bottom: 1.25rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border);
+        }
+        .dcust-mobile-topbar .sidebar-toggle-btn { position: static; }
+        @media (min-width: 1024px) {
+            .dcust-mobile-topbar { display: none; }
+        }
+
+        /* The prominent, raised center button in the bottom tab bar —
+           used for "New Order", the single most common action. */
+        .mobile-nav-item-prominent {
+            background: var(--primary); color: white !important; border-radius: 50%;
+            width: 52px; height: 52px; margin-top: -22px; box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+            border: 4px solid white;
+        }
+        .mobile-nav-item-prominent svg { width: 24px; height: 24px; }
+
+        /* Real, icon-badged stat cards for the mobile dashboard —
+           colored circular icon matching each stat's meaning. */
+        .dcust-stat-icon {
+            width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+        }
+        .dcust-stat-icon svg { width: 19px; height: 19px; }
+
         .mobile-section { margin-top: 1.5rem; }
         .mobile-section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.875rem; }
         .mobile-section-title { font-size: 1.0625rem; font-weight: 800; color: var(--slate); }
@@ -189,6 +218,8 @@
             .desktop-sidebar-logout { color: #dc2626; }
 
             .mobile-bottom-nav { display: none; }
+            #delivery-customer-app .admin-shell { grid-template-columns: 272px 1fr; }
+            #delivery-customer-app .admin-sidebar { display: flex; }
             .mobile-topbar { padding: 1rem 2rem; flex-wrap: nowrap; }
             .desktop-hide-logo { display: none; }
             .mobile-search-bar { order: 0; flex: 1; max-width: 640px; margin: 0; }
@@ -1194,7 +1225,7 @@
         }
         #delivery-customer-app .admin-shell {
             display: grid;
-            grid-template-columns: 272px 1fr;
+            grid-template-columns: 1fr;
             min-height: 100vh;
             align-items: start;
             transition: grid-template-columns 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -1219,7 +1250,7 @@
             background: linear-gradient(180deg, var(--admin-sidebar-from) 0%, var(--admin-sidebar-to) 100%);
             min-height: 100vh;
             padding: 1.75rem 1.25rem;
-            display: flex;
+            display: none;
             flex-direction: column;
             position: sticky;
             top: 0;
@@ -2036,7 +2067,7 @@
             #delivery-app .admin-sidebar { position: static; min-height: auto; }
         #delivery-customer-app .admin-sidebar { position: static; min-height: auto; }
             #delivery-app .admin-main { padding: 1.5rem; }
-        #delivery-customer-app .admin-main { padding: 1.5rem; }
+        #delivery-customer-app .admin-main { padding: 1.5rem 1.5rem calc(5.5rem + env(safe-area-inset-bottom)); }
             #delivery-app .sidebar-toggle-btn { left: auto; right: 1.25rem; }
         #delivery-customer-app .sidebar-toggle-btn { left: auto; right: 1.25rem; }
             #delivery-app .admin-shell.sidebar-collapsed .sidebar-toggle-btn { left: auto; right: 1.25rem; }
@@ -3005,9 +3036,6 @@
         </div>
 
         <div class="admin-shell" id="dcust-shell">
-            <button type="button" class="sidebar-toggle-btn" id="dcust-sidebar-toggle-btn" aria-label="Toggle sidebar">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
-            </button>
             <aside class="admin-sidebar">
                 <div class="admin-sidebar-logo">
                     <img src="assets/logo.png" alt="ONLib Delivery">
@@ -3060,6 +3088,19 @@
             </aside>
 
             <main class="admin-main">
+                <!-- Mobile-only topbar — hidden on desktop (≥1024px),
+                     where the real sidebar shows instead. -->
+                <div class="dcust-mobile-topbar">
+                    <button type="button" class="sidebar-toggle-btn" id="dcust-sidebar-toggle-btn" aria-label="Toggle menu">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+                    </button>
+                    <img src="assets/logo.png" alt="ONLib Delivery" style="height: 32px; object-fit: contain;">
+                    <button type="button" class="mobile-icon-btn" id="dcust-mobile-notification-btn" aria-label="Notifications">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+                        <span class="mobile-icon-badge" id="dcust-mobile-notification-badge" style="display:none;">0</span>
+                    </button>
+                </div>
+
                 <div class="admin-topbar">
                     <div>
                         <div class="admin-welcome-role" id="dcust-welcome-name">Welcome!</div>
@@ -3071,23 +3112,38 @@
                 <div id="dcust-view-dashboard">
                     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
                         <div class="stat-card">
-                            <div class="stat-card-top"><h4>Total Orders</h4></div>
+                            <div class="stat-card-top">
+                                <h4>Total Orders</h4>
+                                <div class="dcust-stat-icon" style="background:#ede9fe; color:#7c3aed;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg></div>
+                            </div>
                             <p id="dcust-stat-total">0</p>
                         </div>
                         <div class="stat-card success">
-                            <div class="stat-card-top"><h4>Delivered</h4></div>
+                            <div class="stat-card-top">
+                                <h4>Delivered</h4>
+                                <div class="dcust-stat-icon" style="background:#dcfce7; color:#16a34a;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg></div>
+                            </div>
                             <p id="dcust-stat-delivered">0</p>
                         </div>
                         <div class="stat-card">
-                            <div class="stat-card-top"><h4>In Transit</h4></div>
+                            <div class="stat-card-top">
+                                <h4>In Transit</h4>
+                                <div class="dcust-stat-icon" style="background:#dbeafe; color:#2563eb;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13"></rect><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon><circle cx="5.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle></svg></div>
+                            </div>
                             <p id="dcust-stat-in-transit">0</p>
                         </div>
                         <div class="stat-card">
-                            <div class="stat-card-top"><h4>Pending</h4></div>
+                            <div class="stat-card-top">
+                                <h4>Pending</h4>
+                                <div class="dcust-stat-icon" style="background:#fef3c7; color:#d97706;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg></div>
+                            </div>
                             <p id="dcust-stat-pending">0</p>
                         </div>
                         <div class="stat-card">
-                            <div class="stat-card-top"><h4>Total Spent</h4></div>
+                            <div class="stat-card-top">
+                                <h4>Total Spent</h4>
+                                <div class="dcust-stat-icon" style="background:#ede9fe; color:#7c3aed;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="6" x2="12" y2="18"></line><path d="M15 9.5a3 3 0 0 0-3-1.5c-1.66 0-3 1-3 2.5s1.34 2.5 3 2.5 3 1 3 2.5-1.34 2.5-3 2.5a3 3 0 0 1-3-1.5"></path></svg></div>
+                            </div>
                             <p id="dcust-stat-spent">$0.00</p>
                         </div>
                     </div>
@@ -3111,6 +3167,27 @@
                     <div class="orders-grid" id="dcust-my-orders-grid"></div>
                 </div>
             </main>
+            <nav class="mobile-bottom-nav">
+                <button type="button" class="mobile-nav-item active" id="dcust-mnav-dashboard">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+                    Dashboard
+                </button>
+                <button type="button" class="mobile-nav-item" id="dcust-mnav-my-orders">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+                    My Orders
+                </button>
+                <button type="button" class="mobile-nav-item mobile-nav-item-prominent" id="dcust-mnav-new-order" aria-label="Create New Order">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                </button>
+                <button type="button" class="mobile-nav-item" id="dcust-mnav-addresses">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+                    Addresses
+                </button>
+                <button type="button" class="mobile-nav-item" id="dcust-mnav-more">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle><circle cx="5" cy="12" r="1"></circle></svg>
+                    More
+                </button>
+            </nav>
         </div>
     </div>
 
@@ -4852,6 +4929,54 @@
     <!-- Delivery customer: Payment Methods — same honest "Coming Soon"
          messaging already used on the Marketplace side, not a new
          placeholder invented for this screen. -->
+    <!-- Delivery customer: Notifications — reuses the same shared
+         notificationLog data as the admin bell, just its own real
+         rendering target since that one lives in a different,
+         hidden top-level container. -->
+    <div class="modal-overlay" id="dcust-notifications-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>🔔 Notifications</h3>
+                <button class="close-btn" id="close-dcust-notifications-modal">&times;</button>
+            </div>
+            <div id="dcust-notifications-list"></div>
+        </div>
+    </div>
+
+    <!-- Mobile-only "More" menu — remaining nav items that don't fit
+         in the 5-item bottom bar. Same real destinations as the
+         desktop sidebar, not new/different functionality. -->
+    <div class="modal-overlay" id="dcust-more-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>More</h3>
+                <button class="close-btn" id="close-dcust-more-modal">&times;</button>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:0.5rem;">
+                <button type="button" class="admin-nav-item" id="dcust-more-payment" style="width:100%; text-align:left;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
+                    Payment Methods
+                </button>
+                <button type="button" class="admin-nav-item" id="dcust-more-support" style="width:100%; text-align:left;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+                    Support
+                </button>
+                <button type="button" class="admin-nav-item" id="dcust-more-settings" style="width:100%; text-align:left;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                    Settings
+                </button>
+                <button type="button" class="admin-nav-item" id="dcust-more-back-to-chooser" style="width:100%; text-align:left;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+                    Back to service selector
+                </button>
+                <button type="button" class="admin-nav-item admin-logout" id="dcust-more-logout" style="width:100%; text-align:left;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+                    Logout
+                </button>
+            </div>
+        </div>
+    </div>
+
     <div class="modal-overlay" id="dcust-payment-modal">
         <div class="modal">
             <div class="modal-header">
@@ -5033,6 +5158,32 @@
             notificationLog.unshift({ title, body, time: new Date(), unread: true });
             if (notificationLog.length > 30) notificationLog.length = 30;
             renderNotificationCenter();
+            const unreadCount = notificationLog.filter(n => n.unread).length;
+            const mobileBadge = document.getElementById('dcust-mobile-notification-badge');
+            if (mobileBadge) {
+                mobileBadge.style.display = unreadCount > 0 ? 'flex' : 'none';
+                mobileBadge.textContent = unreadCount > 9 ? '9+' : String(unreadCount);
+            }
+        }
+
+        function renderDcustNotifications() {
+            notificationLog.forEach(n => { n.unread = false; });
+            const mobileBadge = document.getElementById('dcust-mobile-notification-badge');
+            if (mobileBadge) mobileBadge.style.display = 'none';
+            const list = document.getElementById('dcust-notifications-list');
+            if (notificationLog.length === 0) {
+                renderEmptyState(list, 'No notifications yet.');
+                return;
+            }
+            list.innerHTML = notificationLog.map(n => `
+                <div class="address-card">
+                    <div class="address-card-body">
+                        <div class="address-card-label-row"><span class="address-card-label">${n.title}</span></div>
+                        <div class="address-card-text">${n.body}</div>
+                        <div style="font-size:0.75rem; color:var(--slate-lighter); margin-top:0.25rem;">${new Date(n.time).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</div>
+                    </div>
+                </div>
+            `).join('');
         }
 
         function renderNotificationCenter() {
@@ -6406,6 +6557,8 @@
             document.getElementById('dcust-view-my-orders').style.display = view === 'my-orders' ? 'block' : 'none';
             document.getElementById('dcust-nav-dashboard').classList.toggle('active', view === 'dashboard');
             document.getElementById('dcust-nav-my-orders').classList.toggle('active', view === 'my-orders');
+            document.getElementById('dcust-mnav-dashboard').classList.toggle('active', view === 'dashboard');
+            document.getElementById('dcust-mnav-my-orders').classList.toggle('active', view === 'my-orders');
             if (view === 'my-orders') renderSenderOrdersTable('dcust-my-orders-grid');
         }
 
@@ -6678,6 +6831,44 @@
             document.getElementById('delivery-sender-logout-btn').addEventListener('click', async () => {
                 await clearAuth();
                 await chooseAppMode('delivery');
+            });
+
+            // ---- Mobile bottom nav ----
+            document.getElementById('dcust-mnav-dashboard').addEventListener('click', () => setDeliveryCustomerView('dashboard'));
+            document.getElementById('dcust-mnav-my-orders').addEventListener('click', () => setDeliveryCustomerView('my-orders'));
+            document.getElementById('dcust-mnav-new-order').addEventListener('click', openNewOrderModal);
+            document.getElementById('dcust-mnav-addresses').addEventListener('click', openDcustAddressesModal);
+            document.getElementById('dcust-mnav-more').addEventListener('click', () => {
+                document.getElementById('dcust-more-modal').classList.add('active');
+            });
+            document.getElementById('close-dcust-more-modal').addEventListener('click', () => {
+                document.getElementById('dcust-more-modal').classList.remove('active');
+            });
+            document.getElementById('dcust-more-payment').addEventListener('click', () => {
+                document.getElementById('dcust-more-modal').classList.remove('active');
+                document.getElementById('dcust-payment-modal').classList.add('active');
+            });
+            document.getElementById('dcust-more-support').addEventListener('click', () => {
+                document.getElementById('dcust-more-modal').classList.remove('active');
+                renderHelpSupport('customer');
+                document.getElementById('help-support-modal').classList.add('active');
+            });
+            document.getElementById('dcust-more-settings').addEventListener('click', () => {
+                document.getElementById('dcust-more-modal').classList.remove('active');
+                openDcustSettingsModal();
+            });
+            document.getElementById('dcust-more-back-to-chooser').addEventListener('click', showAppChooser);
+            document.getElementById('dcust-more-logout').addEventListener('click', async () => {
+                document.getElementById('dcust-more-modal').classList.remove('active');
+                await clearAuth();
+                await chooseAppMode('delivery');
+            });
+            document.getElementById('dcust-mobile-notification-btn').addEventListener('click', () => {
+                renderDcustNotifications();
+                document.getElementById('dcust-notifications-modal').classList.add('active');
+            });
+            document.getElementById('close-dcust-notifications-modal').addEventListener('click', () => {
+                document.getElementById('dcust-notifications-modal').classList.remove('active');
             });
 
             // Marketplace top-bar "Back to service selector" — returns to
