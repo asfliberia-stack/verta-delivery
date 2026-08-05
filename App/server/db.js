@@ -730,6 +730,17 @@ const db = {
     return rowToUser(rows[0]);
   },
 
+  // Super Admin editing the Manage Agent account directly — scoped to
+  // role = 'admin' so this can never be pointed at any other account.
+  async updateManageAgentAccount(id, { businessName, email, phone }) {
+    const { rows } = await pool.query(
+      `UPDATE users SET business_name = $1, email = $2, phone = $3
+       WHERE id = $4 AND role = 'admin' RETURNING *`,
+      [businessName, email.toLowerCase(), phone || null, id]
+    );
+    return rowToUser(rows[0]);
+  },
+
   // Real delete — cascades to the customer's own orders, purchases,
   // reviews, wishlist, addresses, conversations, and messages (all
   // foreign keys to users.id are ON DELETE CASCADE). This is genuinely

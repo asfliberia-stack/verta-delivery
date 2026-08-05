@@ -1195,10 +1195,62 @@ app.get('/api/super-admin/manage-agent', requireAuth, requireSuperAdmin, async (
   try {
     const admin = await db.getUserByEmail(ADMIN_EMAIL);
     if (!admin) return res.status(404).json({ error: 'Manage Agent account not found' });
-    res.json({ id: admin.id, businessName: admin.businessName, email: admin.email, createdAt: admin.createdAt, isDisabled: admin.isDisabled });
+    res.json({ id: admin.id, businessName: admin.businessName, email: admin.email, phone: admin.phone, createdAt: admin.createdAt, isDisabled: admin.isDisabled });
   } catch (err) {
     console.error('GET /api/super-admin/manage-agent failed', err);
     res.status(500).json({ error: 'Failed to load Manage Agent account' });
+  }
+});
+
+// Super Admin editing the Manage Agent account's name/email/phone
+// directly. IMPORTANT gotcha, surfaced to the frontend in the
+// response so it can warn the person: this account is found on every
+// server restart by looking up the ADMIN_EMAIL environment variable
+// (see seedAdminIfConfigured). If the email is changed here without
+// also updating ADMIN_EMAIL in Railway's Variables tab to match, the
+// next restart won't find an account at the old ADMIN_EMAIL value and
+// will create a brand new, blank one there — the same class of issue
+// documented around Verta Delivery Service's own account further up
+// this file.
+app.put('/api/super-admin/manage-agent/:id', requireAuth, requireSuperAdmin, async (req, res) => {
+  const { businessName, email, phone } = req.body || {};
+  if (!businessName || !email) {
+    return res.status(400).json({ error: 'Name and email are required' });
+  }
+  try {
+    const existing = await db.getUserByEmail(email);
+    if (existing && existing.id !== req.params.id) {
+      return res.status(409).json({ error: 'Another account already uses that email' });
+    }
+    const updated = await db.updateManageAgentAccount(req.params.id, { businessName, email, phone });
+    if (!updated) return res.status(404).json({ error: 'Manage Agent account not found' });
+    const emailChanged = updated.email.toLowerCase() !== ADMIN_EMAIL.toLowerCase();
+    res.json({
+      manageAgent: { id: updated.id, businessName: updated.businessName, email: updated.email, phone: updated.phone },
+      emailChangedWarning: emailChanged
+        ? `Remember to also update ADMIN_EMAIL=${updated.email} in Railway's Variables tab — otherwise the next server restart will create a new, blank Manage Agent account at the old address instead of finding this one.`
+        : null,
+    });
+  } catch (err) {
+    console.error('PUT /api/super-admin/manage-agent failed', err);
+    res.status(500).json({ error: 'Failed to update Manage Agent account' });
+  }
+});
+
+app.put('/api/super-admin/manage-agent/:id/password', requireAuth, requireSuperAdmin, async (req, res) => {
+  const { password } = req.body || {};
+  if (!password || password.length < 8) {
+    return res.status(400).json({ error: 'Password must be at least 8 characters' });
+  }
+  try {
+    const target = await db.getUserById(req.params.id);
+    if (!target || target.role !== 'admin') return res.status(404).json({ error: 'Manage Agent account not found' });
+    const passwordHash = await hashPassword(password);
+    await db.updateUserPassword(req.params.id, passwordHash);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('PUT /api/super-admin/manage-agent/:id/password failed', err);
+    res.status(500).json({ error: 'Failed to reset password' });
   }
 });
 

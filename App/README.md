@@ -3389,3 +3389,36 @@ Also added a real browser-tab favicon link (`<link rel="icon">`),
 which didn't exist before — the app only had an apple-touch-icon, no
 standard favicon tag. Now the new icon shows consistently everywhere:
 browser tab, iOS home screen, and installed PWA icon.
+
+## Super Admin can now edit the Manage Agent account (name, email, phone, password)
+
+Real endpoints, real UI — Edit and Reset Password buttons added to
+the Manage Agent card in Platform Overview, matching the same pattern
+already used for Customers (separate "Edit" and "Reset Password"
+actions, not bundled together).
+
+### A real gotcha, surfaced directly rather than left implicit
+
+The Manage Agent account is found on every server restart by looking
+up the `ADMIN_EMAIL` environment variable. If its email is changed
+through this new Edit form without also updating `ADMIN_EMAIL` in
+Railway's Variables tab to match, the next restart won't find an
+account at the old address and will create a new, blank one there
+instead of recognizing the existing one — the exact same class of
+issue documented around Verta Delivery Service's own account a few
+rounds back.
+
+Handled two ways: a warning is built directly into the edit form
+itself (not just this README), and the backend response includes an
+explicit warning message whenever the email actually changes, shown
+to the Super Admin immediately after saving — not something they'd
+have to know to look for.
+
+### A mistake made and caught this round — noting it directly
+
+While inserting the two new modals, a `str_replace` edit accidentally
+deleted the opening tags of the existing Settings modal entirely.
+Caught it by checking the occurrence count after the edit rather than
+assuming success, found the exact two missing lines, restored them,
+and re-verified the whole document's structure balances correctly
+before moving on.

@@ -2988,7 +2988,11 @@
                                 <div style="font-weight:700; color:var(--slate);" id="sa-manage-agent-name">—</div>
                                 <div style="font-size:0.875rem; color:var(--slate-light);" id="sa-manage-agent-email">—</div>
                             </div>
-                            <button type="button" class="btn-small toggle-disabled-btn" id="sa-manage-agent-toggle-btn">Disable</button>
+                            <div style="display:flex; gap:0.5rem;">
+                                <button type="button" class="btn-small btn-secondary" id="sa-manage-agent-edit-btn">Edit</button>
+                                <button type="button" class="btn-small" id="sa-manage-agent-reset-password-btn">Reset Password</button>
+                                <button type="button" class="btn-small toggle-disabled-btn" id="sa-manage-agent-toggle-btn">Disable</button>
+                            </div>
                         </div>
                     </section>
 
@@ -3933,6 +3937,63 @@
                 <div class="modal-footer">
                     <button type="button" class="btn-small btn-secondary" id="cancel-reset-customer-password">Cancel</button>
                     <button type="submit" class="btn-small" style="background:#dc2626; color:white;" id="reset-customer-password-submit-btn">Reset Password</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Edit Manage Agent (Super Admin only) -->
+    <div class="modal-overlay" id="edit-manage-agent-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>Edit Manage Agent</h3>
+                <button class="close-btn" id="close-edit-manage-agent-modal">&times;</button>
+            </div>
+            <form id="edit-manage-agent-form">
+                <div class="form-group">
+                    <label class="form-label">Name</label>
+                    <input type="text" class="form-input" id="edit-manage-agent-name-input" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Email</label>
+                    <input type="email" class="form-input" id="edit-manage-agent-email-input" required>
+                    <p class="settings-hint">If you change this, also update <code>ADMIN_EMAIL</code> in Railway's Variables tab to match — otherwise the next server restart creates a new, blank account at the old address instead of finding this one.</p>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Phone</label>
+                    <div class="phone-input-row">
+                        <select class="form-input country-code-select" id="edit-manage-agent-phone-country"></select>
+                        <input type="tel" class="form-input" id="edit-manage-agent-phone-input">
+                    </div>
+                </div>
+                <div id="edit-manage-agent-form-error" style="color: #dc2626; font-size: 0.875rem; margin-bottom: 1rem; display: none;"></div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-small btn-secondary" id="cancel-edit-manage-agent-form">Cancel</button>
+                    <button type="submit" class="btn-small btn-success" id="edit-manage-agent-form-submit-btn">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Reset Manage Agent Password (Super Admin only) — deliberately
+         its own separate action, same reasoning as the customer one. -->
+    <div class="modal-overlay" id="reset-manage-agent-password-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>Reset Password</h3>
+                <button class="close-btn" id="close-reset-manage-agent-password-modal">&times;</button>
+            </div>
+            <p style="color: var(--slate-light); margin-bottom: 1.25rem;">Set a new password for the Manage Agent account.</p>
+            <form id="reset-manage-agent-password-form">
+                <div class="form-group">
+                    <label class="form-label">New Password</label>
+                    <input type="text" class="form-input" id="reset-manage-agent-password-input" required minlength="8" placeholder="At least 8 characters">
+                    <p class="settings-hint">This immediately replaces the current password.</p>
+                </div>
+                <div id="reset-manage-agent-password-error" style="color: #dc2626; font-size: 0.875rem; margin-bottom: 1rem; display: none;"></div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-small btn-secondary" id="cancel-reset-manage-agent-password">Cancel</button>
+                    <button type="submit" class="btn-small" style="background:#dc2626; color:white;" id="reset-manage-agent-password-submit-btn">Reset Password</button>
                 </div>
             </form>
         </div>
@@ -7097,9 +7158,12 @@
             }
         }
 
+        let manageAgentAccountCache = null;
+
         async function loadManageAgentAccountCard() {
             try {
                 const admin = await apiFetch('/api/super-admin/manage-agent');
+                manageAgentAccountCache = admin;
                 document.getElementById('sa-manage-agent-name').textContent = admin.businessName;
                 document.getElementById('sa-manage-agent-email').textContent = admin.email + (admin.isDisabled ? ' — Disabled' : '');
                 const toggleBtn = document.getElementById('sa-manage-agent-toggle-btn');
@@ -7112,6 +7176,84 @@
                 document.getElementById('sa-manage-agent-card').style.opacity = admin.isDisabled ? '0.55' : '1';
             } catch (err) {
                 console.error('Failed to load Manage Agent account', err);
+            }
+        }
+
+        function openEditManageAgentModal() {
+            if (!manageAgentAccountCache) return;
+            document.getElementById('edit-manage-agent-name-input').value = manageAgentAccountCache.businessName;
+            document.getElementById('edit-manage-agent-email-input').value = manageAgentAccountCache.email;
+            document.getElementById('edit-manage-agent-form-error').style.display = 'none';
+            populateCountryCodeSelects();
+            splitPhoneNumber(manageAgentAccountCache.phone, 'edit-manage-agent-phone-country', 'edit-manage-agent-phone-input');
+            document.getElementById('edit-manage-agent-modal').classList.add('active');
+        }
+
+        function closeEditManageAgentModal() {
+            document.getElementById('edit-manage-agent-modal').classList.remove('active');
+        }
+
+        async function handleEditManageAgentFormSubmit(e) {
+            e.preventDefault();
+            const errorEl = document.getElementById('edit-manage-agent-form-error');
+            const submitBtn = document.getElementById('edit-manage-agent-form-submit-btn');
+            errorEl.style.display = 'none';
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Saving…';
+            try {
+                const businessName = document.getElementById('edit-manage-agent-name-input').value.trim();
+                const email = document.getElementById('edit-manage-agent-email-input').value.trim();
+                const phone = combinePhoneNumber('edit-manage-agent-phone-country', 'edit-manage-agent-phone-input');
+                const data = await apiFetch(`/api/super-admin/manage-agent/${manageAgentAccountCache.id}`, {
+                    method: 'PUT',
+                    body: JSON.stringify({ businessName, email, phone }),
+                });
+                closeEditManageAgentModal();
+                showToast('Manage Agent account updated', 'success');
+                if (data.emailChangedWarning) {
+                    showToast(data.emailChangedWarning, 'error');
+                }
+                await loadManageAgentAccountCard();
+            } catch (err) {
+                errorEl.textContent = err.message;
+                errorEl.style.display = 'block';
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Save Changes';
+            }
+        }
+
+        function openResetManageAgentPasswordModal() {
+            document.getElementById('reset-manage-agent-password-form').reset();
+            document.getElementById('reset-manage-agent-password-error').style.display = 'none';
+            document.getElementById('reset-manage-agent-password-modal').classList.add('active');
+        }
+
+        function closeResetManageAgentPasswordModal() {
+            document.getElementById('reset-manage-agent-password-modal').classList.remove('active');
+        }
+
+        async function handleResetManageAgentPasswordSubmit(e) {
+            e.preventDefault();
+            const errorEl = document.getElementById('reset-manage-agent-password-error');
+            const submitBtn = document.getElementById('reset-manage-agent-password-submit-btn');
+            errorEl.style.display = 'none';
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Resetting…';
+            try {
+                const password = document.getElementById('reset-manage-agent-password-input').value;
+                await apiFetch(`/api/super-admin/manage-agent/${manageAgentAccountCache.id}/password`, {
+                    method: 'PUT',
+                    body: JSON.stringify({ password }),
+                });
+                showToast('Password reset', 'success');
+                closeResetManageAgentPasswordModal();
+            } catch (err) {
+                errorEl.textContent = err.message;
+                errorEl.style.display = 'block';
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Reset Password';
             }
         }
 
@@ -7184,6 +7326,14 @@
             document.getElementById('sa-manage-agent-toggle-btn').addEventListener('click', (e) => {
                 toggleAccountDisabled(e.target.dataset.id, e.target.dataset.name, e.target.dataset.disabled === 'true', loadManageAgentAccountCard);
             });
+            document.getElementById('sa-manage-agent-edit-btn').addEventListener('click', openEditManageAgentModal);
+            document.getElementById('close-edit-manage-agent-modal').addEventListener('click', closeEditManageAgentModal);
+            document.getElementById('cancel-edit-manage-agent-form').addEventListener('click', closeEditManageAgentModal);
+            document.getElementById('edit-manage-agent-form').addEventListener('submit', handleEditManageAgentFormSubmit);
+            document.getElementById('sa-manage-agent-reset-password-btn').addEventListener('click', openResetManageAgentPasswordModal);
+            document.getElementById('close-reset-manage-agent-password-modal').addEventListener('click', closeResetManageAgentPasswordModal);
+            document.getElementById('cancel-reset-manage-agent-password').addEventListener('click', closeResetManageAgentPasswordModal);
+            document.getElementById('reset-manage-agent-password-form').addEventListener('submit', handleResetManageAgentPasswordSubmit);
             document.getElementById('sa-quick-customers-btn').addEventListener('click', () => {
                 document.getElementById('customers-modal').classList.add('active');
                 loadCustomers();
