@@ -375,6 +375,17 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_image_url TEXT;
 -- login attempts.
 ALTER TABLE users ADD COLUMN IF NOT EXISTS is_disabled BOOLEAN NOT NULL DEFAULT false;
 
+-- Granular per-feature permission control — Super Admin cutting off
+-- specific capabilities for a Manage Agent account, separate from
+-- disabling the whole account above. Deliberately excludes personal
+-- account security actions (change own password/email, view own
+-- login history) — those stay controllable by the account holder no
+-- matter what, since stripping them away could otherwise be used to
+-- prevent someone from securing their own account. Values are feature
+-- keys like 'fleet', 'expenses', 'business_settings', etc. — see the
+-- FEATURE_KEYS list in server.js for the authoritative set.
+ALTER TABLE users ADD COLUMN IF NOT EXISTS disabled_features TEXT[] NOT NULL DEFAULT '{}';
+
 -- Real "follow a store" — same pattern as wishlist_items, just for
 -- stores instead of products.
 CREATE TABLE IF NOT EXISTS store_follows (

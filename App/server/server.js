@@ -28,6 +28,51 @@ const {
 
 const PORT = process.env.PORT || 3000;
 
+// Granular, per-account feature permissions — Super Admin cutting off
+// specific capabilities for a Manage Agent account. This is the
+// authoritative list of what can be toggled; deliberately excludes
+// personal account security (own password/email/login history), which
+// stays available no matter what — see the schema.sql comment on
+// disabled_features for the full reasoning.
+const FEATURE_KEYS = {
+  new_order: 'Create New Order (on behalf of a customer)',
+  order_actions: 'Accept, update, and cancel orders',
+  fleet: 'Fleet Directory (add/edit agents, duty status)',
+  expenses: 'Expenses',
+  price_presets: 'Price Presets',
+  customers: 'Customers panel',
+  business_settings: 'Business Profile settings (logo, hours, currency)',
+  backup_restore: 'Export & Backup/Restore Database',
+};
+
+// REST middleware version — checked fresh against the database on
+// every request (not cached in the JWT), so a Super Admin's change
+// takes effect immediately, the same principle as is_disabled/
+// token_version elsewhere in this file. super_admin is always exempt
+// — these restrictions only ever apply to role = 'admin'.
+function requireFeature(featureKey) {
+  return async (req, res, next) => {
+    if (req.user.role === 'super_admin') return next();
+    try {
+      const disabled = await db.isFeatureDisabledForUser(req.user.id, featureKey);
+      if (disabled) {
+        return res.status(403).json({ error: `This feature has been turned off for your account by a Super Admin: ${FEATURE_KEYS[featureKey] || featureKey}` });
+      }
+      next();
+    } catch (err) {
+      console.error('requireFeature check failed', err);
+      res.status(500).json({ error: 'Failed to verify permissions' });
+    }
+  };
+}
+
+// Socket.io version — same check, callable inline inside a handler
+// since Socket.io events don't support Express-style middleware chains.
+async function checkFeatureEnabled(user, featureKey) {
+  if (user.role === 'super_admin') return true;
+  return !(await db.isFeatureDisabledForUser(user.id, featureKey));
+}
+
 // Sign in with Google — optional, same graceful-degradation pattern as
 // Twilio below. Unset means the feature simply isn't available yet;
 // nothing else in the app depends on it.
@@ -38,7 +83,13 @@ const googleClient = GOOGLE_CLIENT_ID ? new OAuth2Client(GOOGLE_CLIENT_ID) : nul
 // rather than per-admin email+password — set ADMIN_PASSWORD in Railway's
 // Variables tab to change it. Defaults to "1Nigeria@" so the app works
 // out of the box without any env config.
-const DEFAULT_ADMIN_EMAIL = 'admin@vertadelivery.com';
+// ONLib rebrand: Manage Agent is now ONLib's own operational account,
+// not Verta's — Verta operates as an ordinary delivery_company account
+// with no special access, same as any other company. LEGACY_ADMIN_EMAIL
+// is kept around specifically so the one-time migration below can find
+// and rename the existing account rather than create a duplicate.
+const LEGACY_ADMIN_EMAIL = 'admin@vertadelivery.com';
+const DEFAULT_ADMIN_EMAIL = 'onlib231@gmail.com';
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || DEFAULT_ADMIN_EMAIL;
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '1Nigeria@';
 
@@ -179,6 +230,9 @@ io.on('connection', (socket) => {
       let senderId = socket.user.id;
       let senderName = socket.user.businessName;
       if (isAdmin) {
+        if (!(await checkFeatureEnabled(socket.user, 'new_order'))) {
+          return ack && ack({ ok: false, error: `This feature has been turned off for your account by a Super Admin: ${FEATURE_KEYS.new_order}` });
+        }
         // Admin is placing this on a customer's behalf (phone/walk-in
         // order) — look up the real customer record rather than trusting
         // any name the client might send, same principle as everywhere
@@ -245,6 +299,9 @@ io.on('connection', (socket) => {
     if (!isAdminLike(socket.user.role)) {
       return ack && ack({ ok: false, error: 'Only admins can update orders' });
     }
+    if (!(await checkFeatureEnabled(socket.user, 'order_actions'))) {
+      return ack && ack({ ok: false, error: `This feature has been turned off for your account by a Super Admin: ${FEATURE_KEYS.order_actions}` });
+    }
     try {
       const order = await db.updateOrder(id, fields);
       orderRooms(order.senderId).forEach((r) => io.to(r).emit('order:updated', order));
@@ -258,6 +315,9 @@ io.on('connection', (socket) => {
   socket.on('order:accept', async ({ id, amount, acceptedBy, paymentMethod }, ack) => {
     if (!isAdminLike(socket.user.role) && socket.user.role !== 'delivery_company') {
       return ack && ack({ ok: false, error: 'Only admins can accept orders' });
+    }
+    if (isAdminLike(socket.user.role) && !(await checkFeatureEnabled(socket.user, 'order_actions'))) {
+      return ack && ack({ ok: false, error: `This feature has been turned off for your account by a Super Admin: ${FEATURE_KEYS.order_actions}` });
     }
     try {
       const agent = await db.getAgentByName(acceptedBy);
@@ -290,6 +350,9 @@ io.on('connection', (socket) => {
     if (!isAdminLike(socket.user.role)) {
       return ack && ack({ ok: false, error: 'Only admins can delete orders' });
     }
+    if (!(await checkFeatureEnabled(socket.user, 'order_actions'))) {
+      return ack && ack({ ok: false, error: `This feature has been turned off for your account by a Super Admin: ${FEATURE_KEYS.order_actions}` });
+    }
     if (!password || password !== DELETE_PASSWORD) {
       return ack && ack({ ok: false, error: 'Incorrect delete password' });
     }
@@ -313,6 +376,9 @@ io.on('connection', (socket) => {
     if (!isAdminLike(socket.user.role)) {
       return ack && ack({ ok: false, error: 'Only admins can add expenses' });
     }
+    if (!(await checkFeatureEnabled(socket.user, 'expenses'))) {
+      return ack && ack({ ok: false, error: `This feature has been turned off for your account by a Super Admin: ${FEATURE_KEYS.expenses}` });
+    }
     try {
       const expense = await db.createExpense({ ...payload, id: `expense-${Date.now()}` });
       io.to('admins').emit('expense:created', expense);
@@ -326,6 +392,9 @@ io.on('connection', (socket) => {
   socket.on('expense:delete', async ({ id, password }, ack) => {
     if (!isAdminLike(socket.user.role)) {
       return ack && ack({ ok: false, error: 'Only admins can delete expenses' });
+    }
+    if (!(await checkFeatureEnabled(socket.user, 'expenses'))) {
+      return ack && ack({ ok: false, error: `This feature has been turned off for your account by a Super Admin: ${FEATURE_KEYS.expenses}` });
     }
     if (!password || password !== DELETE_PASSWORD) {
       return ack && ack({ ok: false, error: 'Incorrect delete password' });
@@ -346,6 +415,9 @@ io.on('connection', (socket) => {
     if (!isAdminLike(socket.user.role) && socket.user.role !== 'delivery_company') {
       return ack && ack({ ok: false, error: 'Only admins can add agents' });
     }
+    if (isAdminLike(socket.user.role) && !(await checkFeatureEnabled(socket.user, 'fleet'))) {
+      return ack && ack({ ok: false, error: `This feature has been turned off for your account by a Super Admin: ${FEATURE_KEYS.fleet}` });
+    }
     if (!name || !name.trim() || !phone || !phone.trim()) {
       return ack && ack({ ok: false, error: 'Name and phone are required' });
     }
@@ -362,6 +434,9 @@ io.on('connection', (socket) => {
   socket.on('agent:update', async ({ id, name, phone }, ack) => {
     if (!isAdminLike(socket.user.role) && socket.user.role !== 'delivery_company') {
       return ack && ack({ ok: false, error: 'Only admins can edit agents' });
+    }
+    if (isAdminLike(socket.user.role) && !(await checkFeatureEnabled(socket.user, 'fleet'))) {
+      return ack && ack({ ok: false, error: `This feature has been turned off for your account by a Super Admin: ${FEATURE_KEYS.fleet}` });
     }
     if (!name || !name.trim() || !phone || !phone.trim()) {
       return ack && ack({ ok: false, error: 'Name and phone are required' });
@@ -388,6 +463,9 @@ io.on('connection', (socket) => {
   socket.on('agent:set-duty-status', async ({ id, dutyStatus }, ack) => {
     if (!isAdminLike(socket.user.role) && socket.user.role !== 'delivery_company') {
       return ack && ack({ ok: false, error: 'Only admins can change agent duty status' });
+    }
+    if (isAdminLike(socket.user.role) && !(await checkFeatureEnabled(socket.user, 'fleet'))) {
+      return ack && ack({ ok: false, error: `This feature has been turned off for your account by a Super Admin: ${FEATURE_KEYS.fleet}` });
     }
     if (dutyStatus !== 'on_duty' && dutyStatus !== 'off_duty') {
       return ack && ack({ ok: false, error: 'Invalid duty status' });
@@ -673,7 +751,7 @@ app.post('/api/auth/forgot-password', authLimiter, async (req, res) => {
       const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
       await db.createPasswordReset({ id: crypto.randomUUID(), userId: user.id, codeHash, expiresAt });
 
-      const messageBody = `Your Verta Delivery Service password reset code is: ${code}\nIt expires in 10 minutes. If you didn't request this, ignore this message.`;
+      const messageBody = `Your ONLib password reset code is: ${code}\nIt expires in 10 minutes. If you didn't request this, ignore this message.`;
 
       // Two independent delivery paths — SMS (if a phone is on file)
       // and email (always, since email is the account identifier and
@@ -693,7 +771,7 @@ app.post('/api/auth/forgot-password', authLimiter, async (req, res) => {
         console.warn(`[forgot-password] ${email} has no phone on file — skipping SMS, trying email instead`);
       }
       deliveryAttempts.push(
-        sendEmail(email, 'Your Verta Delivery Service password reset code', messageBody).then(sent => {
+        sendEmail(email, 'Your ONLib password reset code', messageBody).then(sent => {
           if (!sent) console.warn(`[forgot-password] Could not deliver reset code by email to ${email} — is SMTP configured? (see server/notify.js)`);
           return sent;
         })
@@ -803,10 +881,10 @@ app.get('/api/state', requireAuth, async (req, res) => {
   try {
     const settings = await db.getSettings();
     if (isAdminLike(req.user.role)) {
-      const [orders, expenses, agents, pricePresets] = await Promise.all([
-        db.getAllOrders(), db.getAllExpenses(), db.getAllAgents(), db.getAllPricePresets(),
+      const [orders, expenses, agents, pricePresets, currentUser] = await Promise.all([
+        db.getAllOrders(), db.getAllExpenses(), db.getAllAgents(), db.getAllPricePresets(), db.getUserById(req.user.id),
       ]);
-      res.json({ orders, expenses, agents, settings, pricePresets });
+      res.json({ orders, expenses, agents, settings, pricePresets, disabledFeatures: currentUser ? currentUser.disabledFeatures : [] });
     } else {
       const orders = await db.getOrdersBySender(req.user.id);
       res.json({ orders, expenses: [], agents: [], settings, pricePresets: [] });
@@ -851,7 +929,7 @@ app.put('/api/me/profile-image', requireAuth, async (req, res) => {
   }
 });
 
-app.put('/api/admin/settings', requireAuth, requireAdmin, async (req, res) => {
+app.put('/api/admin/settings', requireAuth, requireAdmin, requireFeature('business_settings'), async (req, res) => {
   const fields = req.body || {};
   if (fields.logoDataUrl && fields.logoDataUrl.length > MAX_LOGO_BYTES) {
     return res.status(400).json({ error: 'Logo image is too large — please use an image under ~500KB.' });
@@ -953,7 +1031,7 @@ app.post('/api/admin/logout-all-devices', requireAuth, requireAdmin, authLimiter
   }
 });
 
-app.get('/api/admin/export', requireAuth, requireAdmin, async (req, res) => {
+app.get('/api/admin/export', requireAuth, requireAdmin, requireFeature('backup_restore'), async (req, res) => {
   try {
     const data = await db.exportAllData();
     const filename = `verta-delivery-export-${new Date().toISOString().slice(0, 10)}.json`;
@@ -968,7 +1046,7 @@ app.get('/api/admin/export', requireAuth, requireAdmin, async (req, res) => {
 
 // Restore — dry-run validation only, changes nothing. Real execution is
 // a separate, explicit second step (see below).
-app.post('/api/admin/restore/validate', requireAuth, requireAdmin, async (req, res) => {
+app.post('/api/admin/restore/validate', requireAuth, requireAdmin, requireFeature('backup_restore'), async (req, res) => {
   try {
     const result = await db.validateRestorePayload(req.body);
     res.json(result);
@@ -981,7 +1059,7 @@ app.post('/api/admin/restore/validate', requireAuth, requireAdmin, async (req, r
 // Restore — actually applies it. Re-validates from scratch server-side
 // (never trusts that the client's earlier /validate call is still
 // accurate) before touching anything.
-app.post('/api/admin/restore/execute', requireAuth, requireAdmin, async (req, res) => {
+app.post('/api/admin/restore/execute', requireAuth, requireAdmin, requireFeature('backup_restore'), async (req, res) => {
   try {
     const validation = await db.validateRestorePayload(req.body);
     if (!validation.valid) {
@@ -1000,7 +1078,7 @@ app.post('/api/admin/restore/execute', requireAuth, requireAdmin, async (req, re
 // Customers page — real aggregated data (order counts, total spent)
 // per customer, joined from users + orders. Read-only.
 // ============================================================
-app.get('/api/admin/customers', requireAuth, requireAdmin, async (req, res) => {
+app.get('/api/admin/customers', requireAuth, requireAdmin, requireFeature('customers'), async (req, res) => {
   try {
     const customers = await db.getCustomers();
     res.json({ customers });
@@ -1195,7 +1273,7 @@ app.get('/api/super-admin/manage-agent', requireAuth, requireSuperAdmin, async (
   try {
     const admin = await db.getUserByEmail(ADMIN_EMAIL);
     if (!admin) return res.status(404).json({ error: 'Manage Agent account not found' });
-    res.json({ id: admin.id, businessName: admin.businessName, email: admin.email, phone: admin.phone, createdAt: admin.createdAt, isDisabled: admin.isDisabled });
+    res.json({ id: admin.id, businessName: admin.businessName, email: admin.email, phone: admin.phone, createdAt: admin.createdAt, isDisabled: admin.isDisabled, disabledFeatures: admin.disabledFeatures });
   } catch (err) {
     console.error('GET /api/super-admin/manage-agent failed', err);
     res.status(500).json({ error: 'Failed to load Manage Agent account' });
@@ -1251,6 +1329,36 @@ app.put('/api/super-admin/manage-agent/:id/password', requireAuth, requireSuperA
   } catch (err) {
     console.error('PUT /api/super-admin/manage-agent/:id/password failed', err);
     res.status(500).json({ error: 'Failed to reset password' });
+  }
+});
+
+// The authoritative feature list, for the Super Admin's permissions
+// toggle UI to render — so the frontend never has to hardcode this
+// list separately from the backend's actual enforcement.
+app.get('/api/super-admin/feature-keys', requireAuth, requireSuperAdmin, (req, res) => {
+  res.json({ featureKeys: FEATURE_KEYS });
+});
+
+// Super Admin cutting off (or restoring) specific features for a
+// Manage Agent account. Takes effect immediately — checked fresh
+// against the database on every gated request, not cached in a token.
+app.put('/api/super-admin/manage-agent/:id/features', requireAuth, requireSuperAdmin, async (req, res) => {
+  const { disabledFeatures } = req.body || {};
+  if (!Array.isArray(disabledFeatures) || !disabledFeatures.every(f => typeof f === 'string')) {
+    return res.status(400).json({ error: 'disabledFeatures must be a list of feature keys' });
+  }
+  const validKeys = Object.keys(FEATURE_KEYS);
+  const invalid = disabledFeatures.filter(f => !validKeys.includes(f));
+  if (invalid.length > 0) {
+    return res.status(400).json({ error: `Unknown feature key(s): ${invalid.join(', ')}` });
+  }
+  try {
+    const updated = await db.setDisabledFeatures(req.params.id, disabledFeatures);
+    if (!updated) return res.status(404).json({ error: 'Manage Agent account not found' });
+    res.json({ ok: true, disabledFeatures: updated.disabledFeatures });
+  } catch (err) {
+    console.error('PUT /api/super-admin/manage-agent/:id/features failed', err);
+    res.status(500).json({ error: 'Failed to update permissions' });
   }
 });
 
@@ -1430,7 +1538,7 @@ app.post('/api/super-admin/vendors/:id/impersonate', requireAuth, requireSuperAd
 // quick-select options in the Accept Order flow. Not an automatic
 // distance/zone calculator (no mapping data backs this app).
 // ============================================================
-app.post('/api/admin/price-presets', requireAuth, requireAdmin, async (req, res) => {
+app.post('/api/admin/price-presets', requireAuth, requireAdmin, requireFeature('price_presets'), async (req, res) => {
   const { label, amount } = req.body || {};
   if (!label || !label.trim() || amount === undefined || amount === null || isNaN(Number(amount)) || Number(amount) < 0) {
     return res.status(400).json({ error: 'A label and a valid non-negative amount are required' });
@@ -1445,7 +1553,7 @@ app.post('/api/admin/price-presets', requireAuth, requireAdmin, async (req, res)
   }
 });
 
-app.delete('/api/admin/price-presets/:id', requireAuth, requireAdmin, async (req, res) => {
+app.delete('/api/admin/price-presets/:id', requireAuth, requireAdmin, requireFeature('price_presets'), async (req, res) => {
   try {
     await db.deletePricePreset(req.params.id);
     io.to('admins').emit('price-preset:deleted', { id: req.params.id });
@@ -2135,19 +2243,42 @@ app.get('/health', (req, res) => res.json({ ok: true }));
 
 async function seedAdminIfConfigured() {
   // Always ensure the admin account exists — defaults to
-  // admin@vertadelivery.com / 1Nigeria@ unless overridden via env vars,
+  // onlib231@gmail.com / 1Nigeria@ unless overridden via env vars,
   // so the app works immediately with no Railway config required.
   const existing = await db.getUserByEmail(ADMIN_EMAIL);
   if (existing) return; // already seeded
   const passwordHash = await hashPassword(ADMIN_PASSWORD);
   await db.createUser({
     id: crypto.randomUUID(),
-    businessName: 'Verta Delivery Services',
+    businessName: 'ONLib',
     email: ADMIN_EMAIL,
     passwordHash,
     role: 'admin',
   });
   console.log(`[seed] Created admin account for ${ADMIN_EMAIL}`);
+}
+
+// ONLib rebrand — one-time migration for existing deployments. Verta
+// used to BE the Manage Agent account; now Manage Agent represents
+// ONLib's own operational staff, and Verta operates as an ordinary
+// delivery_company account with no special access (see
+// seedVertaDeliveryCompanyIfPossible further down — that's unaffected
+// by this, Verta keeps its own separate account). This runs before
+// seedAdminIfConfigured so that function finds the renamed account
+// already in place instead of creating a duplicate at the new email.
+async function migrateManageAgentToOnlib() {
+  const alreadyMigrated = await db.getUserByEmail(ADMIN_EMAIL);
+  if (alreadyMigrated) return; // nothing to do — already at the new email
+
+  const legacy = await db.getUserByEmail(LEGACY_ADMIN_EMAIL);
+  if (!legacy || legacy.role !== 'admin') return; // no old account to migrate
+
+  await db.updateManageAgentAccount(legacy.id, {
+    businessName: 'ONLib',
+    email: ADMIN_EMAIL,
+    phone: legacy.phone,
+  });
+  console.log(`[migrate] Renamed Manage Agent account from ${LEGACY_ADMIN_EMAIL} to ${ADMIN_EMAIL} (ONLib rebrand) — no manual steps required.`);
 }
 
 // Super Admin — a distinct role that oversees every Manage Agent
@@ -2266,6 +2397,7 @@ async function seedVertaDeliveryCompanyIfPossible() {
 }
 
 db.init()
+  .then(migrateManageAgentToOnlib)
   .then(seedAdminIfConfigured)
   .then(seedSuperAdminIfConfigured)
   .then(seedVendorIfConfigured)

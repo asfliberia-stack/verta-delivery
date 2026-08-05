@@ -3422,3 +3422,110 @@ Caught it by checking the occurrence count after the edit rather than
 assuming success, found the exact two missing lines, restored them,
 and re-verified the whole document's structure balances correctly
 before moving on.
+
+## Super Admin can now cut off specific functions for Manage Agent
+
+Real permissions system, not a cosmetic toggle — enforced on the
+backend (the actual security boundary), with matching UI hiding so a
+restricted admin doesn't see options that would just fail.
+
+### The 8 toggleable capabilities
+
+New Order (on behalf of a customer), Accept/Update/Cancel Orders,
+Fleet Directory, Expenses, Price Presets, Customers panel, Business
+Profile settings, and Backup/Restore. Deliberately does **not**
+include personal account security — a Manage Agent's own
+password/email/login history stay under their own control no matter
+what, since stripping those away could be used to prevent someone
+from securing their own account.
+
+### Real enforcement, checked fresh on every request
+
+Every one of the 8 areas is gated server-side — 7 REST endpoints via
+a new `requireFeature()` middleware, and 8 Socket.io events (new
+orders, order accept/update/bulk-delete, all three agent actions,
+both expense actions) via an equivalent inline check. Both check the
+database directly on every request rather than trusting anything
+cached in a JWT, so a Super Admin's change takes effect immediately —
+no re-login required, same principle already used for account
+disabling. Carefully scoped so this can never affect a delivery
+company's own actions (agent/order management) even though those
+share some of the same Socket.io events as Manage Agent.
+
+### The toggle UI
+
+A "Permissions" button on the Manage Agent card opens a real modal —
+checkboxes populated *dynamically* from the backend's own feature
+list rather than hardcoded in the frontend, so the UI can never drift
+out of sync with what's actually enforced.
+
+### What's real versus a known limitation
+
+Nav items and settings tabs for 6 of the 8 features are actually
+hidden when disabled (New Order, Fleet, Expenses, Customers, Business
+Profile, Backup/Restore). The 8th and most complex, `order_actions`,
+is enforced on the backend but not yet hidden per-button in the order
+board itself — that would mean touching the order-card rendering
+function directly, which felt like a larger, separate task. Right
+now a restricted admin would still see Accept/Update buttons on order
+cards, but clicking them fails with a clear message naming the
+feature that's been turned off, rather than silently doing nothing.
+
+## The ONLib rebrand — Verta is now just a delivery company, ONLib owns the platform
+
+Real, structural change confirmed across three conversations before
+any code was touched: Super Admin/Manage Agent now represent ONLib's
+own operational accounts, Business Profile represents ONLib's
+platform-level info, and the delivery product itself is renamed to
+"ONLib Delivery" (matching the existing "ONLib Marketplace" naming),
+not just the ownership layer.
+
+### Manage Agent's account — migrated automatically, no manual steps
+
+Learned from the friction the Verta Delivery Service account setup
+caused a few rounds back — this time, no "rename your own email first,
+then update an env var, then redeploy" dance. A real one-time
+migration (`migrateManageAgentToOnlib`) runs on the next boot, finds
+the existing account at the old `admin@vertadelivery.com` address, and
+renames it directly to `onlib231@gmail.com` with business name
+"ONLib" — automatically, safely, before the existing seed logic even
+checks whether an account exists at the new address. Password stays
+what it already was; only the email and name change.
+
+Super Admin (`asfliberia@gmail.com`) is unchanged — that was a
+deliberate choice discussed directly rather than inventing a new
+address that doesn't actually exist.
+
+### Verta's own account — completely untouched, as agreed
+
+`verta.dc@vertadelivery.com` and everything about Verta's own
+delivery-company dashboard, fleet, and orders stays exactly as it
+was. Verta now has zero special relationship to Manage Agent or Super
+Admin — it's an ordinary delivery_company account like any other, with
+the same access level as a brand new company that just signed up.
+
+### Product renaming — "Verta Delivery" → "ONLib Delivery"
+
+Updated everywhere it was the actual product name: the App Chooser
+card, the auth screen and topbar logo labels, the account menu's
+"Switch to X," the footer copyright, the FAQ, Privacy Policy and Terms
+of Service, all three PDF report titles, and the customer-facing
+SMS/WhatsApp order and password-reset messages. Left untouched
+everywhere it correctly refers to Verta the company specifically —
+its own account, its own fleet, its own commission/pay-structure
+reasoning in the delivery-company report generator.
+
+### Two things you'll need to do yourself, not something I overwrote silently
+
+1. **Business Profile's stored name** (Settings → Business Profile) is
+   real, user-editable data in your database — I don't know its
+   current live value, and I'm not going to silently overwrite
+   something you may have already customized. Go there and update the
+   business name to "ONLib" (or whatever you'd like it to say)
+   yourself.
+2. **The actual logo image file** (`assets/logo.png`) is still the
+   original Verta graphic — I updated every text label describing it
+   to say "ONLib Delivery," but I can't generate a new logo design out
+   of nothing. If you have a new ONLib logo image, send it over the
+   same way you did for the app icon a few rounds back and I'll swap
+   it in.

@@ -48,7 +48,7 @@ async function notifyNewOrder(order) {
   if (!isConfigured) return; // silently skip — nothing else in the app depends on this
 
   const message =
-    `New Verta Delivery order!\n` +
+    `New ONLib Delivery order!\n` +
     `Order: ${order.id}\n` +
     `From: ${order.senderName}\n` +
     `Pickup: ${order.pickupAddress}\n` +

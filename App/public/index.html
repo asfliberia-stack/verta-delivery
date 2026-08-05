@@ -1728,7 +1728,7 @@
         <div id="auth-screen-inner">
         <button type="button" id="close-auth-screen-btn" aria-label="Close">&times;</button>
         <div style="text-align:center; margin-bottom: 2rem;">
-            <img src="assets/logo.png" alt="Verta Delivery Service" style="height: 70px; max-width: 320px; object-fit: contain;">
+            <img src="assets/logo.png" alt="ONLib Delivery" style="height: 70px; max-width: 320px; object-fit: contain;">
         </div>
 
         <!-- Sender login/register card -->
@@ -2123,7 +2123,7 @@
                 </div>
             </div>
 
-            <!-- Orders — real data, same orders shown in Verta Delivery's
+            <!-- Orders — real data, same orders shown in ONLib Delivery's
                  "Your Orders" (marketplace checkouts create real delivery
                  orders, so this is the same underlying list). -->
             <div id="mp-view-orders" style="display:none;">
@@ -2322,7 +2322,7 @@
                         </button>
                         <button type="button" class="mp-account-menu-item" id="mp-account-menu-switch">
                             <div class="mp-account-menu-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"></polyline><path d="M3 11V9a4 4 0 0 1 4-4h14"></path><polyline points="7 23 3 19 7 15"></polyline><path d="M21 13v2a4 4 0 0 1-4 4H3"></path></svg></div>
-                            <div><div class="mp-account-menu-title">Switch to Verta Delivery</div><div class="mp-account-menu-sub">Same account, same session</div></div>
+                            <div><div class="mp-account-menu-title">Switch to ONLib Delivery</div><div class="mp-account-menu-sub">Same account, same session</div></div>
                             <div class="mp-account-menu-chevron"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg></div>
                         </button>
                         <button type="button" class="mp-account-menu-item" id="mp-account-menu-logout">
@@ -2443,7 +2443,7 @@
     <div id="app-chooser-screen" style="display:none;">
         <header class="chooser-header">
             <div class="chooser-header-logo">
-                <img src="assets/logo.png" alt="Verta Delivery Service">
+                <img src="assets/logo.png" alt="ONLib Delivery">
             </div>
             <button type="button" class="chooser-help-btn" id="chooser-help-btn">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
@@ -2462,10 +2462,10 @@
                 <div class="chooser-cards-row">
                     <button type="button" class="chooser-card chooser-card-delivery" id="choose-delivery-btn">
                         <div class="chooser-card-image chooser-card-image-delivery">
-                            <img src="assets/delivery-truck.png" alt="Verta Delivery">
+                            <img src="assets/delivery-truck.png" alt="ONLib Delivery">
                         </div>
                         <div class="chooser-card-body">
-                            <div class="chooser-card-title chooser-card-title-delivery">Verta Delivery</div>
+                            <div class="chooser-card-title chooser-card-title-delivery">ONLib Delivery</div>
                             <div class="chooser-card-desc">Send a package, on demand</div>
                             <span class="chooser-card-pill chooser-card-pill-delivery">⚡ Fast. Reliable. Secure.</span>
                         </div>
@@ -2499,7 +2499,7 @@
         </div>
 
         <footer class="chooser-footer">
-            <span class="chooser-footer-copyright">© 2026 Verta Delivery Service. All rights reserved.</span>
+            <span class="chooser-footer-copyright">© 2026 ONLib. All rights reserved.</span>
             <span class="chooser-footer-links">
                 <a id="chooser-privacy-link">Privacy Policy</a> <span>|</span> <a id="chooser-terms-link">Terms of Service</a>
             </span>
@@ -2658,7 +2658,7 @@
         <header>
             <div class="header-content">
                 <div class="logo-container">
-                    <img src="assets/logo.png" alt="Verta Delivery Service" style="height: 60px; max-width: 300px; object-fit: contain;">
+                    <img src="assets/logo.png" alt="ONLib Delivery" style="height: 60px; max-width: 300px; object-fit: contain;">
                 </div>
                 <div class="quick-access-btns">
                     <button class="quick-access-btn secondary" id="delivery-back-to-chooser-btn" title="Switch app">⇄ Switch</button>
@@ -2703,7 +2703,7 @@
             </button>
             <aside class="admin-sidebar">
                 <div class="admin-sidebar-logo">
-                    <img src="assets/logo.png" alt="Verta Delivery Service">
+                    <img src="assets/logo.png" alt="ONLib Delivery">
                 </div>
                 <nav class="admin-nav">
                     <button type="button" class="admin-nav-item" id="sa-platform-overview-nav-btn" style="display:none;">
@@ -2991,6 +2991,7 @@
                             <div style="display:flex; gap:0.5rem;">
                                 <button type="button" class="btn-small btn-secondary" id="sa-manage-agent-edit-btn">Edit</button>
                                 <button type="button" class="btn-small" id="sa-manage-agent-reset-password-btn">Reset Password</button>
+                                <button type="button" class="btn-small btn-secondary" id="sa-manage-agent-permissions-btn">Permissions</button>
                                 <button type="button" class="btn-small toggle-disabled-btn" id="sa-manage-agent-toggle-btn">Disable</button>
                             </div>
                         </div>
@@ -3999,6 +4000,27 @@
         </div>
     </div>
 
+    <!-- Manage Agent Permissions (Super Admin only) — checkboxes are
+         populated dynamically from the backend's FEATURE_KEYS list,
+         not hardcoded here, so this never drifts out of sync with
+         what's actually enforced server-side. -->
+    <div class="modal-overlay" id="manage-agent-permissions-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>Manage Agent Permissions</h3>
+                <button class="close-btn" id="close-manage-agent-permissions-modal">&times;</button>
+            </div>
+            <p style="color: var(--slate-light); margin-bottom: 1.25rem;">Uncheck anything you don't want this Manage Agent account to be able to do. This doesn't affect the account's own password/email/login history — those stay under their own control.</p>
+            <div id="manage-agent-permissions-list"></div>
+            <div id="manage-agent-permissions-error" style="color: #dc2626; font-size: 0.875rem; margin: 1rem 0; display: none;"></div>
+            <div class="modal-footer">
+                <button type="button" class="btn-small btn-secondary" id="cancel-manage-agent-permissions">Cancel</button>
+                <button type="button" class="btn-small btn-success" id="save-manage-agent-permissions-btn">Save Permissions</button>
+            </div>
+        </div>
+    </div>
+
+
     <div class="modal-overlay" id="settings-modal">
         <div class="modal" style="max-width: 1100px; width: 95%; max-height: 90vh; overflow-y: auto; padding: 0;">
             <div class="modal-header" style="padding: 1.5rem 2rem; position: sticky; top: 0; background: white; z-index: 5; margin-bottom: 0;">
@@ -4243,7 +4265,7 @@
                     <!-- 5. About -->
                     <div class="settings-panel" id="settings-panel-about" style="display:none;">
                         <h4 class="settings-section-title">Application Information</h4>
-                        <div class="settings-about-row"><span>App Name</span><strong>Verta Delivery Services</strong></div>
+                        <div class="settings-about-row"><span>App Name</span><strong>ONLib Delivery</strong></div>
                         <div class="settings-about-row"><span>Current Version</span><strong>v26.5.1</strong></div>
                         <div class="settings-about-row"><span>Last Update</span><strong>July 18, 2026</strong></div>
                         <div class="settings-about-row"><span>Support Contact</span><strong id="settings-about-support-contact">—</strong></div>
@@ -4430,6 +4452,7 @@
         let agentRecords = [];
         let settings = {}; // business profile / regional settings, from Settings > Business Profile
         let pricePresets = []; // admin-defined reference prices, from Settings > Pricing
+        let myDisabledFeatures = []; // this admin's own restricted features, set by a Super Admin
         let customersCache = []; // loaded on demand when the Customers page opens
         let vendorProducts = []; // this vendor's own product list
         let editingProductId = null; // null = "Add Product" mode
@@ -5220,6 +5243,29 @@
             }
         }
 
+        // Hides the UI entry points for anything a Super Admin has
+        // disabled for this Manage Agent account. The backend already
+        // rejects these actions regardless (the real security
+        // boundary) — this just matches the UI to it, so a restricted
+        // admin doesn't see buttons that only fail when clicked.
+        // Super Admin's own session always has an empty
+        // myDisabledFeatures, so nothing here ever affects them.
+        function applyMyFeatureRestrictions() {
+            const hide = (id) => { const el = document.getElementById(id); if (el) el.style.display = 'none'; };
+            if (myDisabledFeatures.includes('new_order')) hide('open-admin-new-order-btn');
+            if (myDisabledFeatures.includes('fleet')) hide('scroll-to-agents-btn');
+            if (myDisabledFeatures.includes('expenses')) hide('add-expense-btn');
+            if (myDisabledFeatures.includes('customers')) { hide('open-customers-btn'); hide('sa-quick-customers-btn'); }
+            document.querySelectorAll('.settings-tab-btn').forEach(btn => {
+                const tab = btn.dataset.settingsTab;
+                if ((tab === 'profile' && myDisabledFeatures.includes('business_settings')) ||
+                    (tab === 'pricing' && myDisabledFeatures.includes('price_presets')) ||
+                    (tab === 'backup' && myDisabledFeatures.includes('backup_restore'))) {
+                    btn.style.display = 'none';
+                }
+            });
+        }
+
         // ============================================================
         // Bootstrap: figure out logged-in state on page load
         // ============================================================
@@ -5788,9 +5834,9 @@
         }
 
         // Delivery app header/section visibility — mirrors the
-        // marketplace's guest/customer states, but this is Verta Delivery
+        // marketplace's guest/customer states, but this is ONLib Delivery
         // (original indigo branding), a separate product from the
-        // ONLib marketplace, not a tab within it.
+        // ONLib Marketplace, not a tab within it.
         function setDeliveryHeaderState(mode) {
             document.getElementById('delivery-guest-prompt').style.display = mode === 'guest' ? 'block' : 'none';
             document.getElementById('delivery-user-info').style.display = mode === 'customer' ? 'flex' : 'none';
@@ -6044,6 +6090,8 @@
                     setAgents(data.agents || []);
                     settings = data.settings || {};
                     pricePresets = data.pricePresets || [];
+                    myDisabledFeatures = data.disabledFeatures || [];
+                    applyMyFeatureRestrictions();
                 } catch (err) {
                     console.error('Failed to load initial state', err);
                     showToast('Could not load your data — check your connection and refresh.', 'error');
@@ -7257,6 +7305,58 @@
             }
         }
 
+        async function openManageAgentPermissionsModal() {
+            if (!manageAgentAccountCache) return;
+            const listEl = document.getElementById('manage-agent-permissions-list');
+            document.getElementById('manage-agent-permissions-error').style.display = 'none';
+            listEl.innerHTML = '<p style="color:var(--slate-light); text-align:center; padding:1rem 0;">Loading…</p>';
+            document.getElementById('manage-agent-permissions-modal').classList.add('active');
+            try {
+                const data = await apiFetch('/api/super-admin/feature-keys');
+                const currentlyDisabled = manageAgentAccountCache.disabledFeatures || [];
+                listEl.innerHTML = Object.entries(data.featureKeys).map(([key, label]) => `
+                    <label style="display:flex; align-items:center; gap:0.75rem; padding:0.625rem 0; border-bottom:1px solid var(--border); cursor:pointer;">
+                        <input type="checkbox" class="manage-agent-permission-checkbox" data-feature-key="${key}" ${currentlyDisabled.includes(key) ? '' : 'checked'} style="width:1.125rem; height:1.125rem;">
+                        <span style="font-size:0.9375rem; color:var(--slate);">${label}</span>
+                    </label>
+                `).join('');
+            } catch (err) {
+                listEl.innerHTML = `<p style="color:#dc2626; text-align:center; padding:1rem 0;">${err.message}</p>`;
+            }
+        }
+
+        function closeManageAgentPermissionsModal() {
+            document.getElementById('manage-agent-permissions-modal').classList.remove('active');
+        }
+
+        async function saveManageAgentPermissions() {
+            const errorEl = document.getElementById('manage-agent-permissions-error');
+            const saveBtn = document.getElementById('save-manage-agent-permissions-btn');
+            errorEl.style.display = 'none';
+            const checkboxes = document.querySelectorAll('.manage-agent-permission-checkbox');
+            const disabledFeatures = Array.from(checkboxes)
+                .filter(cb => !cb.checked)
+                .map(cb => cb.dataset.featureKey);
+            saveBtn.disabled = true;
+            saveBtn.textContent = 'Saving…';
+            try {
+                await apiFetch(`/api/super-admin/manage-agent/${manageAgentAccountCache.id}/features`, {
+                    method: 'PUT',
+                    body: JSON.stringify({ disabledFeatures }),
+                });
+                manageAgentAccountCache.disabledFeatures = disabledFeatures;
+                showToast('Permissions updated', 'success');
+                closeManageAgentPermissionsModal();
+            } catch (err) {
+                errorEl.textContent = err.message;
+                errorEl.style.display = 'block';
+            } finally {
+                saveBtn.disabled = false;
+                saveBtn.textContent = 'Save Permissions';
+            }
+        }
+
+
         function wireTopbarEvents() {
             const bell = document.getElementById('notification-bell-btn');
             const panel = document.getElementById('notification-panel');
@@ -7334,6 +7434,10 @@
             document.getElementById('close-reset-manage-agent-password-modal').addEventListener('click', closeResetManageAgentPasswordModal);
             document.getElementById('cancel-reset-manage-agent-password').addEventListener('click', closeResetManageAgentPasswordModal);
             document.getElementById('reset-manage-agent-password-form').addEventListener('submit', handleResetManageAgentPasswordSubmit);
+            document.getElementById('sa-manage-agent-permissions-btn').addEventListener('click', openManageAgentPermissionsModal);
+            document.getElementById('close-manage-agent-permissions-modal').addEventListener('click', closeManageAgentPermissionsModal);
+            document.getElementById('cancel-manage-agent-permissions').addEventListener('click', closeManageAgentPermissionsModal);
+            document.getElementById('save-manage-agent-permissions-btn').addEventListener('click', saveManageAgentPermissions);
             document.getElementById('sa-quick-customers-btn').addEventListener('click', () => {
                 document.getElementById('customers-modal').classList.add('active');
                 loadCustomers();
@@ -7990,9 +8094,9 @@
                 { q: 'I forgot my password — what do I do?', a: 'Use "Forgot password?" on the login screen. A reset code is sent to the email on your account, and also by SMS/WhatsApp if there\'s a phone number on file.' },
             ];
             const customerFaqs = [
-                { q: 'What\'s the difference between Verta Delivery and ONLib Marketplace?', a: 'Verta Delivery sends a package you already have from one place to another. ONLib Marketplace is for buying products from real vendors — checkout automatically creates a real delivery order to get it to you.' },
+                { q: 'What\'s the difference between ONLib Delivery and ONLib Marketplace?', a: 'ONLib Delivery sends a package you already have from one place to another. ONLib Marketplace is for buying products from real vendors — checkout automatically creates a real delivery order to get it to you.' },
                 { q: 'Do I need separate accounts?', a: 'No — one account works for both. Use the ⇄ Switch control in either app to move between them anytime.' },
-                { q: 'How do I track my order?', a: 'Log in and open "Your Orders" in Verta Delivery — every order, including ones placed through the Marketplace, shows its live status there.' },
+                { q: 'How do I track my order?', a: 'Log in and open "Your Orders" in ONLib Delivery — every order, including ones placed through the Marketplace, shows its live status there.' },
                 { q: 'How do I pay?', a: 'Pay on delivery — there\'s no online payment step at checkout today.' },
                 { q: 'I forgot my password — what do I do?', a: 'Use "Forgot password?" on the login screen. A reset code is sent to the email on your account, and also by SMS/WhatsApp if there\'s a phone number on file.' },
             ];
@@ -8054,7 +8158,7 @@
                 titleEl.textContent = 'Privacy Policy';
                 contentEl.innerHTML = `
                     <p style="color:var(--slate-lighter); font-size:0.8125rem; margin-bottom:1.25rem;">Last updated: ${lastUpdated}</p>
-                    <p>This Privacy Policy explains how Verta Delivery Service and the ONLib Marketplace ("we," "us") collect, use, and protect your information when you use our delivery and marketplace services.</p>
+                    <p>This Privacy Policy explains how ONLib Delivery and ONLib Marketplace ("we," "us") collect, use, and protect your information when you use our delivery and marketplace services.</p>
 
                     <p><strong>1. Information We Collect</strong></p>
                     <p>Account information you provide when registering: business/customer name, email address, and phone number. For vendors, this may also include a business registration document, a government-issued ID, and a store address. Order and purchase records, including pickup/dropoff addresses, item descriptions, and payment amounts. Product reviews, wishlist items, and stores you follow, if you use those features. Messages you send to vendors or delivery agents through the app. Basic device and browser information needed to operate the app securely.</p>
@@ -8087,13 +8191,13 @@
                 titleEl.textContent = 'Terms of Service';
                 contentEl.innerHTML = `
                     <p style="color:var(--slate-lighter); font-size:0.8125rem; margin-bottom:1.25rem;">Last updated: ${lastUpdated}</p>
-                    <p>These Terms of Service govern your use of Verta Delivery Service and the ONLib Marketplace (together, "the service"). By creating an account or using the service, you agree to these terms.</p>
+                    <p>These Terms of Service govern your use of ONLib Delivery and ONLib Marketplace (together, "the service"). By creating an account or using the service, you agree to these terms.</p>
 
                     <p><strong>1. Accounts</strong></p>
                     <p>You agree to provide accurate information when registering and to keep your account credentials secure. You're responsible for activity that happens under your account.</p>
 
                     <p><strong>2. The Service</strong></p>
-                    <p>Verta Delivery lets you request package deliveries, tracked from pickup to dropoff. ONLib Marketplace lets independent vendors list and sell products, delivered through the same delivery network. Availability, pricing, and delivery times are set by vendors and agents and may change without notice.</p>
+                    <p>ONLib Delivery lets you request package deliveries, tracked from pickup to dropoff. ONLib Marketplace lets independent vendors list and sell products, delivered through the same delivery network. Availability, pricing, and delivery times are set by vendors and agents and may change without notice.</p>
 
                     <p><strong>3. Orders and Payment</strong></p>
                     <p>Orders are currently pay-on-delivery. You agree to be present (or to have arranged payment) at the time of delivery. Prices shown at checkout reflect the vendor's or agent's current pricing at that time.</p>
@@ -8538,7 +8642,7 @@
             const maxWidth = pageWidth - (pageMargin * 2);
 
             doc.setFontSize(20); doc.setFont('helvetica', 'bold');
-            doc.text('Verta Delivery Service Daily Report', pageWidth / 2, yPosition, { align: 'center' });
+            doc.text('ONLib Delivery Daily Report', pageWidth / 2, yPosition, { align: 'center' });
             yPosition += 12;
             doc.setFontSize(14); doc.text(formattedDate, pageWidth / 2, yPosition, { align: 'center' });
             yPosition += 18;
@@ -8657,7 +8761,7 @@
             const maxWidth = pageWidth - (pageMargin * 2);
 
             doc.setFontSize(20); doc.setFont('helvetica', 'bold');
-            doc.text('Verta Delivery Service Monthly Report', pageWidth / 2, yPosition, { align: 'center' });
+            doc.text('ONLib Delivery Monthly Report', pageWidth / 2, yPosition, { align: 'center' });
             yPosition += 12;
             doc.setFontSize(14); doc.text(monthName, pageWidth / 2, yPosition, { align: 'center' });
             yPosition += 18;
@@ -8937,7 +9041,7 @@
             const pageWidth = doc.internal.pageSize.getWidth();
 
             doc.setFontSize(20); doc.setFont('helvetica', 'bold');
-            doc.text('Verta Delivery Service', pageWidth / 2, yPosition, { align: 'center' });
+            doc.text('ONLib Delivery', pageWidth / 2, yPosition, { align: 'center' });
             yPosition += 9;
             doc.setFontSize(14);
             doc.text('Monthly Statement', pageWidth / 2, yPosition, { align: 'center' });
@@ -9028,7 +9132,7 @@
             orders.forEach(order => grid.appendChild(createOrderCard(order, 'sender')));
         }
 
-        // Real sortable data table for the customer's own Verta Delivery
+        // Real sortable data table for the customer's own ONLib Delivery
         // order list — same underlying `orders` data as the card view
         // above (renderOrdersHome), just a denser table layout. Sorting
         // and every column here are genuinely wired, nothing decorative:

@@ -154,6 +154,7 @@ function rowToUser(r) {
     storeAddress: r.store_address,
     profileImageUrl: r.profile_image_url,
     isDisabled: r.is_disabled,
+    disabledFeatures: r.disabled_features || [],
   };
 }
 
@@ -244,6 +245,30 @@ const db = {
       await pool.query('UPDATE users SET token_version = token_version + 1 WHERE id = $1', [id]);
     }
     return rowToUser(rows[0]);
+  },
+
+  // Super Admin cutting off specific features for a Manage Agent
+  // account. Scoped away from super_admin for the same reason
+  // setUserDisabled is — this can never be pointed at a Super Admin
+  // account, including accidentally.
+  async setDisabledFeatures(id, features) {
+    const { rows } = await pool.query(
+      `UPDATE users SET disabled_features = $1 WHERE id = $2 AND role != 'super_admin' RETURNING *`,
+      [features, id]
+    );
+    return rowToUser(rows[0]);
+  },
+
+  // Fast permission check — used on every gated request, so this is
+  // intentionally a single small query rather than fetching the full
+  // user row. Takes effect immediately (no token/session dependency),
+  // same as is_disabled above.
+  async isFeatureDisabledForUser(id, featureKey) {
+    const { rows } = await pool.query(
+      'SELECT disabled_features @> ARRAY[$1]::text[] AS is_disabled FROM users WHERE id = $2',
+      [featureKey, id]
+    );
+    return rows[0] ? rows[0].is_disabled : false;
   },
 
   async getUserByEmail(email) {
