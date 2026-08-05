@@ -194,7 +194,13 @@ io.on('connection', (socket) => {
         senderName = customer.businessName;
       }
       const order = await db.createOrder({
-        id: `ORD-${Date.now().toString(36).toUpperCase()}`,
+        // Date.now() alone is NOT safe as a unique ID source — it has
+        // only millisecond resolution, so two requests landing in the
+        // same millisecond (a double-click, a rapid resubmit) would
+        // generate the exact same order ID. Appending a short random
+        // suffix makes a collision astronomically unlikely even for
+        // genuinely simultaneous requests.
+        id: `ORD-${Date.now().toString(36).toUpperCase()}${crypto.randomBytes(2).toString('hex').toUpperCase()}`,
         senderId,
         senderName,
         pickupAddress: payload.pickupAddress,

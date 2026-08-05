@@ -1123,7 +1123,11 @@
            the sender view keeps its original indigo header.
            ============================================================ */
         #delivery-app {
-            --primary: #4F46E5; /* scoped override — only affects the admin dashboard subtree; sender view/modals keep the original #6366f1 */
+            /* Unified with the rest of the app — previously #4F46E5, a
+               close-but-not-identical shade from an earlier redesign
+               pass. Same brand indigo everywhere now: guest/login
+               screens, the logged-in customer view, and the admin
+               dashboard all reference the exact same --primary value. */
             --admin-bg: #f8fafc;
             --admin-surface: #ffffff;
             --admin-surface-alt: #f1f5f9;

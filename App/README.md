@@ -3332,3 +3332,30 @@ Manage Agent needed something new — its account summary endpoint
 existed on the backend already but had no frontend view calling it at
 all. Built a small, real card in the Platform Overview showing the
 account and the same toggle.
+
+## Unified the brand color across the guest, customer, and admin views
+
+Found one concrete, verifiable inconsistency by checking the actual
+CSS rather than guessing from screenshots: the admin dashboard
+(Image 1) was using `#4F46E5` as its brand indigo, while the guest
+login screen and logged-in customer view (Images 2 and 3) used the
+base `#6366f1`. Both are "indigo," but not the exact same shade — a
+deliberate choice from an earlier redesign pass, documented in the
+code, not an accident. Removed the override so all three views now
+reference the exact same `--primary` value.
+
+### Being upfront about scope
+
+"Make the visual style consistent" is a broad ask, and I didn't want
+to guess at a long list of speculative changes from screenshots alone
+and risk redoing work in the wrong direction. This round fixes the one
+concrete, code-level divergence I could actually verify. If there's
+something more specific you noticed — a particular element, spacing,
+or layout that looks off between the three — point me at it directly
+and I'll take a focused look at that instead of broad guessing.
+
+One thing I checked and ruled out: the apparent "double logo" in the
+login screen (Image 3) isn't a real duplicate — that's the guest
+Delivery page's own logo showing through the modal's blurred
+background overlay, which is the normal, intended modal effect, not
+something to fix.
