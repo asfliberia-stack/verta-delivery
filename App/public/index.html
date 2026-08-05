@@ -5949,6 +5949,7 @@
                 const roleLabel = isSuperAdmin ? 'Super Admin' : 'Manage Agent';
                 document.getElementById('home-screen').style.display = 'none';
                 document.getElementById('vendor-app').style.display = 'none';
+                document.getElementById('delivery-customer-app').style.display = 'none';
                 document.getElementById('delivery-app').style.display = 'block';
                 document.getElementById('delivery-app').setAttribute('data-role', currentUser.role);
                 document.getElementById('user-name').textContent = currentUser.businessName || roleLabel;

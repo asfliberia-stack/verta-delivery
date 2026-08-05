@@ -3359,3 +3359,21 @@ login screen (Image 3) isn't a real duplicate — that's the guest
 Delivery page's own logo showing through the modal's blurred
 background overlay, which is the normal, intended modal effect, not
 something to fix.
+
+## Fixed a real bug: guest Delivery prompt stayed visible behind the admin dashboard
+
+Found the exact cause from your screenshot. When Manage Agent or
+Super Admin logs in, that branch of `enterApp()` manually hides
+`home-screen` and `vendor-app` before showing the admin dashboard —
+but it never hid `delivery-customer-app`, the container the guest
+"Log in to send a package..." prompt lives in. If someone was on the
+guest Delivery view right before logging in as admin, that container
+was already visible and just stayed that way, rendering underneath
+the real dashboard — exactly what showed up as two "Back to service
+selector" buttons in your screenshot.
+
+Fixed by adding the missing line. Then checked every other login
+branch (vendor, delivery company, customer) for the same pattern —
+all of them already route through the shared `hideAllTopLevelViews()`
+function instead of a manual list, so this was isolated to the one
+branch, not a repeated bug elsewhere.
