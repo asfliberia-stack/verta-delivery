@@ -3677,3 +3677,37 @@ within. Scoped this fix specifically to the customer container's own
 CSS rule — confirmed the Admin dashboard's identical-looking rule is
 completely untouched, so none of this affects how that dashboard
 already looks.
+
+## Guest login prompt — properly fixed this time with a structural change
+
+The previous round's fix (collapsing the sidebar's grid column) was a
+real improvement but didn't fully solve it, as your follow-up
+screenshot showed — the content was closer to centered but still
+visibly shifted. Rather than keep patching the grid-column approach
+with more CSS tweaks, made a more fundamental change: moved the guest
+prompt completely *out* of the sidebar/grid layout entirely.
+
+### Why the grid-column approach kept fighting itself
+
+The guest prompt lived inside a grid built specifically for
+dashboard content (sidebar + main). Even with the sidebar's column
+collapsed, anything inside that grid still inherited its column-based
+positioning logic — there was always some interaction between the
+grid's own behavior and true, viewport-level centering that a
+column-collapse trick doesn't fully eliminate.
+
+### The actual fix
+
+The guest prompt is now a fully independent element — a direct child
+of the Delivery app's outer container, not nested inside the sidebar
+grid at all. It has its own real `min-height: 100vh` flexbox container
+with `align-items: center` and `justify-content: center`, so it
+centers itself in the true viewport regardless of anything happening
+with the sidebar. For guests, the entire dashboard shell (sidebar,
+topbar, hamburger toggle) just hides as one unit — no grid-column
+tricks needed, no empty dashboard chrome left behind for a guest to
+see around the edges.
+
+Also added a real logo to this now-independent guest container
+directly (previously relied on the sidebar's logo, which is now
+hidden along with everything else for guests).

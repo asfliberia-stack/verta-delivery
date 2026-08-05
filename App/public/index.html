@@ -2981,6 +2981,29 @@
     <!-- ============== VERTA DELIVERY (standalone — original indigo
          branding, distinct from the ONLib marketplace) ============== -->
     <div id="delivery-customer-app" style="display:none;">
+        <!-- Guest state (not logged in) — deliberately a fully
+             independent, full-viewport flexbox-centered container, NOT
+             nested inside the sidebar/grid layout below. That grid is
+             built for dashboard content (sidebar + main), and no matter
+             how the sidebar's column gets collapsed, content trapped
+             inside that grid inherits its column-based positioning.
+             Keeping this completely separate guarantees true centering
+             regardless of any sidebar state, rather than depending on
+             grid-column tricks that partially fought the layout. -->
+        <div id="delivery-guest-prompt" style="display:none; min-height:100vh; align-items:center; justify-content:center; text-align:center; padding: 1.5rem;">
+            <div style="max-width: 420px; margin: 0 auto;">
+                <img src="assets/logo.png" alt="ONLib Delivery" style="height: 60px; max-width: 280px; object-fit: contain; margin-bottom: 2rem;">
+                <p style="color: var(--slate-light); margin-bottom: 1.25rem;">Log in to send a package and track your orders.</p>
+                <div class="delivery-guest-actions">
+                    <button type="button" class="delivery-guest-back-btn" id="delivery-guest-back-btn">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+                        Back to service selector
+                    </button>
+                    <button type="button" class="btn-primary" id="delivery-guest-login-btn-2">Login / Sign Up</button>
+                </div>
+            </div>
+        </div>
+
         <div class="admin-shell" id="dcust-shell">
             <button type="button" class="sidebar-toggle-btn" id="dcust-sidebar-toggle-btn" aria-label="Toggle sidebar">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
@@ -3043,19 +3066,6 @@
                         <div id="dcust-welcome-subtitle" style="font-size:0.875rem; color:var(--slate-light);">Here's what's happening with your deliveries.</div>
                     </div>
                 </div>
-
-                <!-- Guest state (not logged in) -->
-                <section class="orders-section" id="delivery-guest-prompt" style="display:none; text-align:center;">
-                    <img src="assets/logo.png" alt="ONLib Delivery" style="height: 60px; max-width: 280px; object-fit: contain; margin-bottom: 2rem;">
-                    <p style="color: var(--slate-light); margin-bottom: 1.25rem;">Log in to send a package and track your orders.</p>
-                    <div class="delivery-guest-actions">
-                        <button type="button" class="delivery-guest-back-btn" id="delivery-guest-back-btn">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
-                            Back to service selector
-                        </button>
-                        <button type="button" class="btn-primary" id="delivery-guest-login-btn-2">Login / Sign Up</button>
-                    </div>
-                </section>
 
                 <!-- Dashboard view -->
                 <div id="dcust-view-dashboard">
@@ -6336,25 +6346,16 @@
         // (original indigo branding), a separate product from the
         // ONLib Marketplace, not a tab within it.
         function setDeliveryHeaderState(mode) {
-            const sidebarEl = document.querySelector('#dcust-shell .admin-sidebar');
-            if (sidebarEl) sidebarEl.style.display = mode === 'customer' ? 'flex' : 'none';
-            document.getElementById('delivery-guest-prompt').style.display = mode === 'guest' ? 'block' : 'none';
+            // The guest prompt is a fully independent element (not
+            // nested in the sidebar/grid layout), so for guests the
+            // entire dashboard shell just hides — no grid-column
+            // tricks needed, no empty topbar left behind.
+            const shellEl = document.getElementById('dcust-shell');
+            if (shellEl) shellEl.style.display = mode === 'customer' ? 'grid' : 'none';
+            document.getElementById('delivery-guest-prompt').style.display = mode === 'guest' ? 'flex' : 'none';
             document.getElementById('dcust-view-dashboard').style.display = mode === 'customer' ? 'block' : 'none';
             document.getElementById('dcust-welcome-name').style.display = mode === 'customer' ? 'block' : 'none';
             document.getElementById('dcust-welcome-subtitle').style.display = mode === 'customer' ? 'block' : 'none';
-            // Nothing to toggle when there's no sidebar to show — hide
-            // the hamburger button too, rather than leave a confusing
-            // control that does nothing for a guest.
-            const toggleBtn = document.getElementById('dcust-sidebar-toggle-btn');
-            if (toggleBtn) toggleBtn.style.display = mode === 'customer' ? 'flex' : 'none';
-            // Just hiding the sidebar element isn't enough — the grid
-            // itself still reserves its 272px column unless we also
-            // collapse the grid-template-columns, otherwise the guest
-            // prompt ends up shifted toward the left instead of truly
-            // centered. Reuses the same class the mobile sidebar-toggle
-            // already uses for exactly this purpose.
-            const shellEl = document.getElementById('dcust-shell');
-            if (shellEl) shellEl.classList.toggle('sidebar-collapsed', mode === 'guest');
         }
 
         async function enterDeliveryMode(headerMode) {
