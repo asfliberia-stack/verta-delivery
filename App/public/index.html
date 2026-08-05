@@ -1192,7 +1192,15 @@
             align-items: start;
             transition: grid-template-columns 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
+        #delivery-customer-app .admin-shell {
+            display: grid;
+            grid-template-columns: 272px 1fr;
+            min-height: 100vh;
+            align-items: start;
+            transition: grid-template-columns 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
         #delivery-app .admin-shell.sidebar-collapsed { grid-template-columns: 0px 1fr; }
+        #delivery-customer-app .admin-shell.sidebar-collapsed { grid-template-columns: 0px 1fr; }
 
         /* ---- Sidebar ---- */
         #delivery-app .admin-sidebar {
@@ -1206,12 +1214,30 @@
             overflow: hidden;
             transition: padding 0.3s ease-in-out, opacity 0.2s ease-in-out;
         }
+        /* ---- Sidebar ---- */
+        #delivery-customer-app .admin-sidebar {
+            background: linear-gradient(180deg, var(--admin-sidebar-from) 0%, var(--admin-sidebar-to) 100%);
+            min-height: 100vh;
+            padding: 1.75rem 1.25rem;
+            display: flex;
+            flex-direction: column;
+            position: sticky;
+            top: 0;
+            overflow: hidden;
+            transition: padding 0.3s ease-in-out, opacity 0.2s ease-in-out;
+        }
         #delivery-app .admin-shell.sidebar-collapsed .admin-sidebar {
             padding-left: 0; padding-right: 0; opacity: 0; pointer-events: none;
         }
+        #delivery-customer-app .admin-shell.sidebar-collapsed .admin-sidebar {
+            padding-left: 0; padding-right: 0; opacity: 0; pointer-events: none;
+        }
         #delivery-app .admin-sidebar-logo { margin-bottom: 2rem; padding: 0 0.5rem; }
+        #delivery-customer-app .admin-sidebar-logo { margin-bottom: 2rem; padding: 0 0.5rem; }
         #delivery-app .admin-sidebar-logo img { height: 42px; max-width: 100%; object-fit: contain; }
+        #delivery-customer-app .admin-sidebar-logo img { height: 42px; max-width: 100%; object-fit: contain; }
         #delivery-app .admin-nav { display: flex; flex-direction: column; gap: 0.25rem; }
+        #delivery-customer-app .admin-nav { display: flex; flex-direction: column; gap: 0.25rem; }
         #delivery-app .admin-nav-item {
             display: flex; align-items: center; gap: 0.75rem;
             min-height: 44px;
@@ -1220,8 +1246,21 @@
             background: transparent; border: none; cursor: pointer; text-align: left;
             transition: background 0.15s ease, color 0.15s ease; width: 100%;
         }
+        #delivery-customer-app .admin-nav-item {
+            display: flex; align-items: center; gap: 0.75rem;
+            min-height: 44px;
+            padding: 0.625rem 0.875rem; border-radius: var(--admin-radius-sm);
+            color: var(--admin-sidebar-text); font-weight: 600; font-size: 0.875rem;
+            background: transparent; border: none; cursor: pointer; text-align: left;
+            transition: background 0.15s ease, color 0.15s ease; width: 100%;
+        }
         #delivery-app .admin-nav-item:hover { background: rgba(255,255,255,0.06); color: var(--admin-sidebar-text-hover); }
+        #delivery-customer-app .admin-nav-item:hover { background: rgba(255,255,255,0.06); color: var(--admin-sidebar-text-hover); }
         #delivery-app .admin-nav-item:focus-visible {
+            outline: 2px solid var(--primary); outline-offset: 2px;
+            background: rgba(255,255,255,0.06); color: var(--admin-sidebar-text-hover);
+        }
+        #delivery-customer-app .admin-nav-item:focus-visible {
             outline: 2px solid var(--primary); outline-offset: 2px;
             background: rgba(255,255,255,0.06); color: var(--admin-sidebar-text-hover);
         }
@@ -1230,24 +1269,47 @@
             box-shadow: 0 2px 8px rgba(99, 102, 241, 0.4);
             cursor: default;
         }
+        #delivery-customer-app .admin-nav-item.active {
+            background: var(--primary); color: white;
+            box-shadow: 0 2px 8px rgba(99, 102, 241, 0.4);
+            cursor: default;
+        }
         #delivery-app .admin-nav-item.active:hover { background: var(--primary); }
+        #delivery-customer-app .admin-nav-item.active:hover { background: var(--primary); }
         #delivery-app .admin-nav-item svg { width: 18px; height: 18px; flex-shrink: 0; }
+        #delivery-customer-app .admin-nav-item svg { width: 18px; height: 18px; flex-shrink: 0; }
         #delivery-app .admin-sidebar-spacer { flex: 1; }
+        #delivery-customer-app .admin-sidebar-spacer { flex: 1; }
         #delivery-app .admin-sidebar-footer {
             margin-top: 1.5rem; padding-top: 1.25rem;
             border-top: 1px solid rgba(255,255,255,0.08);
             display: flex; flex-direction: column; gap: 0.25rem;
         }
+        #delivery-customer-app .admin-sidebar-footer {
+            margin-top: 1.5rem; padding-top: 1.25rem;
+            border-top: 1px solid rgba(255,255,255,0.08);
+            display: flex; flex-direction: column; gap: 0.25rem;
+        }
         #delivery-app .admin-profile { display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem 0.875rem; }
+        #delivery-customer-app .admin-profile { display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem 0.875rem; }
         #delivery-app .admin-profile .user-avatar {
             width: 2.25rem; height: 2.25rem; border-radius: 50%;
             background: var(--primary); color: white;
             display: flex; align-items: center; justify-content: center;
             font-weight: 700; font-size: 0.9375rem; border: none; flex-shrink: 0;
         }
+        #delivery-customer-app .admin-profile .user-avatar {
+            width: 2.25rem; height: 2.25rem; border-radius: 50%;
+            background: var(--primary); color: white;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 700; font-size: 0.9375rem; border: none; flex-shrink: 0;
+        }
         #delivery-app .admin-profile-label { color: white; font-weight: 600; font-size: 0.875rem; }
+        #delivery-customer-app .admin-profile-label { color: white; font-weight: 600; font-size: 0.875rem; }
         #delivery-app .admin-logout { color: var(--admin-sidebar-text); }
+        #delivery-customer-app .admin-logout { color: var(--admin-sidebar-text); }
         #delivery-app .admin-logout:hover { background: rgba(255,255,255,0.06); color: var(--admin-sidebar-text-hover); }
+        #delivery-customer-app .admin-logout:hover { background: rgba(255,255,255,0.06); color: var(--admin-sidebar-text-hover); }
 
         /* ---- Sidebar toggle ---- */
         #delivery-app .sidebar-toggle-btn {
@@ -1265,10 +1327,36 @@
             cursor: pointer;
             transition: left 0.3s ease-in-out, background 0.15s, color 0.15s, border-color 0.15s;
         }
+        /* ---- Sidebar toggle ---- */
+        #delivery-customer-app .sidebar-toggle-btn {
+            position: fixed;
+            top: 1.5rem;
+            left: 236px;
+            z-index: 60;
+            width: 2.75rem;
+            height: 2.75rem;
+            border-radius: var(--admin-radius-sm);
+            display: flex; align-items: center; justify-content: center;
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,255,255,0.14);
+            color: white;
+            cursor: pointer;
+            transition: left 0.3s ease-in-out, background 0.15s, color 0.15s, border-color 0.15s;
+        }
         #delivery-app .sidebar-toggle-btn:hover { background: rgba(255,255,255,0.16); }
+        #delivery-customer-app .sidebar-toggle-btn:hover { background: rgba(255,255,255,0.16); }
         #delivery-app .sidebar-toggle-btn:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+        #delivery-customer-app .sidebar-toggle-btn:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
         #delivery-app .sidebar-toggle-btn svg { width: 20px; height: 20px; }
+        #delivery-customer-app .sidebar-toggle-btn svg { width: 20px; height: 20px; }
         #delivery-app .admin-shell.sidebar-collapsed .sidebar-toggle-btn {
+            left: 1.25rem;
+            background: var(--admin-surface);
+            color: var(--primary);
+            border-color: var(--admin-border);
+            box-shadow: var(--admin-shadow-md);
+        }
+        #delivery-customer-app .admin-shell.sidebar-collapsed .sidebar-toggle-btn {
             left: 1.25rem;
             background: var(--admin-surface);
             color: var(--primary);
@@ -1278,6 +1366,8 @@
 
         /* ---- Main content ---- */
         #delivery-app .admin-main { padding: 2rem 2.5rem 3rem; max-width: 1400px; }
+        /* ---- Main content ---- */
+        #delivery-customer-app .admin-main { padding: 2rem 2.5rem 3rem; max-width: 1400px; }
         #delivery-app .admin-main > header {
             position: sticky; top: 0; z-index: 40;
             background: var(--admin-bg);
@@ -1285,8 +1375,20 @@
             transition: transform 0.3s ease-in-out, opacity 0.3s ease-in-out;
             transform: translateY(0); opacity: 1;
         }
+        #delivery-customer-app .admin-main > header {
+            position: sticky; top: 0; z-index: 40;
+            background: var(--admin-bg);
+            padding-bottom: 1.5rem; margin-bottom: 0.5rem;
+            transition: transform 0.3s ease-in-out, opacity 0.3s ease-in-out;
+            transform: translateY(0); opacity: 1;
+        }
         #delivery-app .admin-main > header.header-hidden { transform: translateY(-120%); opacity: 0; }
+        #delivery-customer-app .admin-main > header.header-hidden { transform: translateY(-120%); opacity: 0; }
         #delivery-app .admin-welcome-eyebrow {
+            color: var(--admin-text-secondary); font-size: 0.875rem; font-weight: 500;
+            margin-bottom: 0.25rem; text-transform: uppercase; letter-spacing: 0.04em;
+        }
+        #delivery-customer-app .admin-welcome-eyebrow {
             color: var(--admin-text-secondary); font-size: 0.875rem; font-weight: 500;
             margin-bottom: 0.25rem; text-transform: uppercase; letter-spacing: 0.04em;
         }
@@ -1294,7 +1396,16 @@
             font-size: 1.875rem; font-weight: 700; color: var(--admin-text);
             letter-spacing: -0.02em; margin-bottom: 0.25rem;
         }
+        #delivery-customer-app .admin-welcome-title {
+            font-size: 1.875rem; font-weight: 700; color: var(--admin-text);
+            letter-spacing: -0.02em; margin-bottom: 0.25rem;
+        }
         #delivery-app .admin-welcome-role {
+            display: inline-block; color: var(--primary); background: #eef2ff;
+            font-weight: 600; font-size: 0.75rem; letter-spacing: 0.03em; text-transform: uppercase;
+            padding: 0.25rem 0.625rem; border-radius: 9999px;
+        }
+        #delivery-customer-app .admin-welcome-role {
             display: inline-block; color: var(--primary); background: #eef2ff;
             font-weight: 600; font-size: 0.75rem; letter-spacing: 0.03em; text-transform: uppercase;
             padding: 0.25rem 0.625rem; border-radius: 9999px;
@@ -1306,62 +1417,125 @@
             display: flex; align-items: flex-start; justify-content: space-between;
             gap: 1.5rem; flex-wrap: wrap; position: relative;
         }
+        /* Top bar: greeting/title on the left, date/time + notifications +
+           profile on the right */
+        #delivery-customer-app .admin-topbar-row {
+            display: flex; align-items: flex-start; justify-content: space-between;
+            gap: 1.5rem; flex-wrap: wrap; position: relative;
+        }
         #delivery-app .admin-topbar-right { display: flex; align-items: center; gap: 1.25rem; flex-wrap: wrap; }
+        #delivery-customer-app .admin-topbar-right { display: flex; align-items: center; gap: 1.25rem; flex-wrap: wrap; }
         #delivery-app .admin-topbar-datetime { text-align: right; }
+        #delivery-customer-app .admin-topbar-datetime { text-align: right; }
         #delivery-app .admin-topbar-date { font-size: 0.8125rem; font-weight: 600; color: var(--admin-text); }
+        #delivery-customer-app .admin-topbar-date { font-size: 0.8125rem; font-weight: 600; color: var(--admin-text); }
         #delivery-app .admin-topbar-time { font-size: 0.75rem; color: var(--admin-text-secondary); }
+        #delivery-customer-app .admin-topbar-time { font-size: 0.75rem; color: var(--admin-text-secondary); }
         #delivery-app .admin-back-to-chooser-btn {
             display: flex; align-items: center; gap: 0.5rem; min-height: 44px; padding: 0 1rem 0 0.875rem;
             border-radius: 9999px; border: 1px solid var(--admin-border); background: var(--admin-surface);
             color: var(--admin-text-secondary); cursor: pointer; font-weight: 600; font-size: 0.8125rem; white-space: nowrap;
         }
+        #delivery-customer-app .admin-back-to-chooser-btn {
+            display: flex; align-items: center; gap: 0.5rem; min-height: 44px; padding: 0 1rem 0 0.875rem;
+            border-radius: 9999px; border: 1px solid var(--admin-border); background: var(--admin-surface);
+            color: var(--admin-text-secondary); cursor: pointer; font-weight: 600; font-size: 0.8125rem; white-space: nowrap;
+        }
         #delivery-app .admin-back-to-chooser-btn:hover { background: var(--admin-surface-alt); color: var(--admin-text); }
+        #delivery-customer-app .admin-back-to-chooser-btn:hover { background: var(--admin-surface-alt); color: var(--admin-text); }
         #delivery-app .admin-back-to-chooser-btn svg { width: 16px; height: 16px; flex-shrink: 0; }
+        #delivery-customer-app .admin-back-to-chooser-btn svg { width: 16px; height: 16px; flex-shrink: 0; }
         @media (max-width: 640px) {
             #delivery-app .admin-back-to-chooser-btn span { display: none; }
+        #delivery-customer-app .admin-back-to-chooser-btn span { display: none; }
             #delivery-app .admin-back-to-chooser-btn { padding: 0; width: 44px; justify-content: center; }
+        #delivery-customer-app .admin-back-to-chooser-btn { padding: 0; width: 44px; justify-content: center; }
         }
         #delivery-app .admin-notification-bell {
             position: relative; width: 44px; height: 44px; border-radius: 50%;
             border: 1px solid var(--admin-border); background: var(--admin-surface); color: var(--admin-text-secondary);
             display: flex; align-items: center; justify-content: center; cursor: pointer;
         }
+        #delivery-customer-app .admin-notification-bell {
+            position: relative; width: 44px; height: 44px; border-radius: 50%;
+            border: 1px solid var(--admin-border); background: var(--admin-surface); color: var(--admin-text-secondary);
+            display: flex; align-items: center; justify-content: center; cursor: pointer;
+        }
         #delivery-app .admin-notification-bell:hover { background: var(--admin-surface-alt); color: var(--admin-text); }
+        #delivery-customer-app .admin-notification-bell:hover { background: var(--admin-surface-alt); color: var(--admin-text); }
         #delivery-app .admin-notification-bell:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+        #delivery-customer-app .admin-notification-bell:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
         #delivery-app .admin-notification-bell svg { width: 19px; height: 19px; }
+        #delivery-customer-app .admin-notification-bell svg { width: 19px; height: 19px; }
         #delivery-app .admin-notification-badge {
             position: absolute; top: -2px; right: -2px; background: #dc2626; color: white;
             font-size: 0.6875rem; font-weight: 700; min-width: 18px; height: 18px; border-radius: 9999px;
             display: flex; align-items: center; justify-content: center; padding: 0 4px; border: 2px solid var(--admin-bg);
         }
+        #delivery-customer-app .admin-notification-badge {
+            position: absolute; top: -2px; right: -2px; background: #dc2626; color: white;
+            font-size: 0.6875rem; font-weight: 700; min-width: 18px; height: 18px; border-radius: 9999px;
+            display: flex; align-items: center; justify-content: center; padding: 0 4px; border: 2px solid var(--admin-bg);
+        }
         #delivery-app .admin-topbar-profile { display: flex; align-items: center; gap: 0.625rem; }
+        #delivery-customer-app .admin-topbar-profile { display: flex; align-items: center; gap: 0.625rem; }
         #delivery-app .admin-topbar-profile .user-avatar {
             width: 2.5rem; height: 2.5rem; border-radius: 50%; background: var(--primary); color: white;
             display: flex; align-items: center; justify-content: center; font-weight: 700; flex-shrink: 0;
         }
+        #delivery-customer-app .admin-topbar-profile .user-avatar {
+            width: 2.5rem; height: 2.5rem; border-radius: 50%; background: var(--primary); color: white;
+            display: flex; align-items: center; justify-content: center; font-weight: 700; flex-shrink: 0;
+        }
         #delivery-app .admin-topbar-profile-name { font-size: 0.875rem; font-weight: 700; color: var(--admin-text); }
+        #delivery-customer-app .admin-topbar-profile-name { font-size: 0.875rem; font-weight: 700; color: var(--admin-text); }
         #delivery-app .admin-topbar-profile-role { font-size: 0.75rem; color: var(--admin-text-secondary); }
+        #delivery-customer-app .admin-topbar-profile-role { font-size: 0.75rem; color: var(--admin-text-secondary); }
         #delivery-app .admin-notification-panel {
             display: none; position: absolute; top: 56px; right: 0; width: 340px; max-height: 420px; overflow-y: auto;
             background: var(--admin-surface); border: 1px solid var(--admin-border); border-radius: var(--admin-radius-md);
             box-shadow: var(--admin-shadow-lg); z-index: 80;
         }
+        #delivery-customer-app .admin-notification-panel {
+            display: none; position: absolute; top: 56px; right: 0; width: 340px; max-height: 420px; overflow-y: auto;
+            background: var(--admin-surface); border: 1px solid var(--admin-border); border-radius: var(--admin-radius-md);
+            box-shadow: var(--admin-shadow-lg); z-index: 80;
+        }
         #delivery-app .admin-notification-panel.open { display: block; }
+        #delivery-customer-app .admin-notification-panel.open { display: block; }
         #delivery-app .admin-notification-panel-header {
             display: flex; justify-content: space-between; align-items: center;
             padding: 0.875rem 1.125rem; border-bottom: 1px solid var(--admin-border); font-size: 0.9375rem;
         }
+        #delivery-customer-app .admin-notification-panel-header {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 0.875rem 1.125rem; border-bottom: 1px solid var(--admin-border); font-size: 0.9375rem;
+        }
         #delivery-app .admin-notification-panel-header a { color: var(--primary); font-weight: 600; font-size: 0.8125rem; cursor: pointer; }
+        #delivery-customer-app .admin-notification-panel-header a { color: var(--primary); font-weight: 600; font-size: 0.8125rem; cursor: pointer; }
         #delivery-app .admin-notification-item {
             padding: 0.875rem 1.125rem; border-bottom: 1px solid var(--admin-border); font-size: 0.8125rem;
         }
+        #delivery-customer-app .admin-notification-item {
+            padding: 0.875rem 1.125rem; border-bottom: 1px solid var(--admin-border); font-size: 0.8125rem;
+        }
         #delivery-app .admin-notification-item:last-child { border-bottom: none; }
+        #delivery-customer-app .admin-notification-item:last-child { border-bottom: none; }
         #delivery-app .admin-notification-item-title { font-weight: 700; color: var(--admin-text); margin-bottom: 0.1875rem; }
+        #delivery-customer-app .admin-notification-item-title { font-weight: 700; color: var(--admin-text); margin-bottom: 0.1875rem; }
         #delivery-app .admin-notification-item-body { color: var(--admin-text-secondary); margin-bottom: 0.25rem; }
+        #delivery-customer-app .admin-notification-item-body { color: var(--admin-text-secondary); margin-bottom: 0.25rem; }
         #delivery-app .admin-notification-item-time { color: var(--admin-text-tertiary); font-size: 0.75rem; }
+        #delivery-customer-app .admin-notification-item-time { color: var(--admin-text-tertiary); font-size: 0.75rem; }
         #delivery-app .admin-notification-empty { padding: 2rem 1.125rem; text-align: center; color: var(--admin-text-secondary); font-size: 0.875rem; }
+        #delivery-customer-app .admin-notification-empty { padding: 2rem 1.125rem; text-align: center; color: var(--admin-text-secondary); font-size: 0.875rem; }
 
         #delivery-app .admin-section-label {
+            text-align: left; font-size: 0.8125rem; font-weight: 600;
+            color: var(--admin-text-secondary); text-transform: uppercase; letter-spacing: 0.05em;
+            margin: 2rem 0 1rem;
+        }
+        #delivery-customer-app .admin-section-label {
             text-align: left; font-size: 0.8125rem; font-weight: 600;
             color: var(--admin-text-secondary); text-transform: uppercase; letter-spacing: 0.05em;
             margin: 2rem 0 1rem;
@@ -1384,10 +1558,19 @@
         #delivery-app .order-filter-bar {
             display: flex; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 1.5rem;
         }
+        #delivery-customer-app .order-filter-bar {
+            display: flex; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 1.5rem;
+        }
         #delivery-app .order-filter-search {
             flex: 2; min-width: 220px; position: relative; display: flex; align-items: center;
         }
+        #delivery-customer-app .order-filter-search {
+            flex: 2; min-width: 220px; position: relative; display: flex; align-items: center;
+        }
         #delivery-app .order-filter-search svg {
+            position: absolute; left: 0.875rem; width: 16px; height: 16px; color: var(--admin-text-tertiary); pointer-events: none;
+        }
+        #delivery-customer-app .order-filter-search svg {
             position: absolute; left: 0.875rem; width: 16px; height: 16px; color: var(--admin-text-tertiary); pointer-events: none;
         }
         #delivery-app .order-filter-search input {
@@ -1395,32 +1578,63 @@
             border: 2px solid var(--admin-border); border-radius: 0.75rem; font-size: 0.9375rem;
             background: var(--admin-surface); color: var(--admin-text);
         }
+        #delivery-customer-app .order-filter-search input {
+            width: 100%; padding: 0.75rem 1rem 0.75rem 2.5rem; min-height: 44px;
+            border: 2px solid var(--admin-border); border-radius: 0.75rem; font-size: 0.9375rem;
+            background: var(--admin-surface); color: var(--admin-text);
+        }
         #delivery-app .order-filter-search input:focus { outline: none; border-color: var(--primary); }
+        #delivery-customer-app .order-filter-search input:focus { outline: none; border-color: var(--primary); }
         #delivery-app .order-filter-select { flex: 1; min-width: 150px; min-height: 44px; }
+        #delivery-customer-app .order-filter-select { flex: 1; min-width: 150px; min-height: 44px; }
 
         #delivery-app .admin-two-col { display: grid; grid-template-columns: 1fr 380px; gap: 1.75rem; align-items: start; }
+        #delivery-customer-app .admin-two-col { display: grid; grid-template-columns: 1fr 380px; gap: 1.75rem; align-items: start; }
         #delivery-app .admin-two-col-main, #delivery-app .admin-two-col-side { min-width: 0; }
+        #delivery-customer-app .admin-two-col-main, #delivery-customer-app .admin-two-col-side { min-width: 0; }
         #delivery-app .admin-charts-row { display: flex; gap: 1.5rem; flex-wrap: wrap; margin-top: 1.75rem; }
+        #delivery-customer-app .admin-charts-row { display: flex; gap: 1.5rem; flex-wrap: wrap; margin-top: 1.75rem; }
         #delivery-app .admin-chart-card { flex: 1; min-width: 260px; }
+        #delivery-customer-app .admin-chart-card { flex: 1; min-width: 260px; }
         #delivery-app .order-status-legend { display: flex; flex-direction: column; gap: 0.5rem; margin-top: 1rem; }
+        #delivery-customer-app .order-status-legend { display: flex; flex-direction: column; gap: 0.5rem; margin-top: 1rem; }
         #delivery-app .order-status-legend-item { display: flex; align-items: center; justify-content: space-between; font-size: 0.8125rem; }
+        #delivery-customer-app .order-status-legend-item { display: flex; align-items: center; justify-content: space-between; font-size: 0.8125rem; }
         #delivery-app .order-status-legend-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 0.5rem; }
+        #delivery-customer-app .order-status-legend-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 0.5rem; }
 
         #delivery-app .agent-duty-toggle {
             display: inline-flex; align-items: center; gap: 0.375rem;
             padding: 0.25rem 0.625rem; min-height: 28px; border-radius: 9999px; border: 1px solid transparent;
             font-size: 0.75rem; font-weight: 700; cursor: pointer; transition: all 0.15s;
         }
+        #delivery-customer-app .agent-duty-toggle {
+            display: inline-flex; align-items: center; gap: 0.375rem;
+            padding: 0.25rem 0.625rem; min-height: 28px; border-radius: 9999px; border: 1px solid transparent;
+            font-size: 0.75rem; font-weight: 700; cursor: pointer; transition: all 0.15s;
+        }
         #delivery-app .agent-duty-toggle.on-duty { background: #ecfdf5; color: #065f46; border-color: #6ee7b7; }
+        #delivery-customer-app .agent-duty-toggle.on-duty { background: #ecfdf5; color: #065f46; border-color: #6ee7b7; }
         #delivery-app .agent-duty-toggle.off-duty { background: #f3f4f6; color: #6b7280; border-color: #d1d5db; }
+        #delivery-customer-app .agent-duty-toggle.off-duty { background: #f3f4f6; color: #6b7280; border-color: #d1d5db; }
         #delivery-app .agent-duty-toggle:hover { filter: brightness(0.96); }
+        #delivery-customer-app .agent-duty-toggle:hover { filter: brightness(0.96); }
         #delivery-app .agent-duty-dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+        #delivery-customer-app .agent-duty-dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
 
         #delivery-app .agent-contact-card {
             background: var(--admin-surface); padding: 1.25rem; border-radius: var(--admin-radius-md);
             box-shadow: var(--admin-shadow-xs); border: 1px solid var(--admin-border);
         }
+        #delivery-customer-app .agent-contact-card {
+            background: var(--admin-surface); padding: 1.25rem; border-radius: var(--admin-radius-md);
+            box-shadow: var(--admin-shadow-xs); border: 1px solid var(--admin-border);
+        }
         #delivery-app .agent-contact-avatar {
+            width: 2.75rem; height: 2.75rem; border-radius: 50%; background: var(--primary); color: white;
+            display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 1.0625rem; flex-shrink: 0;
+        }
+        #delivery-customer-app .agent-contact-avatar {
             width: 2.75rem; height: 2.75rem; border-radius: 50%; background: var(--primary); color: white;
             display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 1.0625rem; flex-shrink: 0;
         }
@@ -1429,8 +1643,15 @@
             background: #eef2ff; color: var(--primary); display: flex; align-items: center; justify-content: center;
             transition: background 0.15s;
         }
+        #delivery-customer-app .agent-call-btn {
+            width: 2.25rem; height: 2.25rem; min-width: 44px; min-height: 44px; border-radius: 50%;
+            background: #eef2ff; color: var(--primary); display: flex; align-items: center; justify-content: center;
+            transition: background 0.15s;
+        }
         #delivery-app .agent-call-btn:hover { background: #e0e7ff; }
+        #delivery-customer-app .agent-call-btn:hover { background: #e0e7ff; }
         #delivery-app .agent-call-btn svg { width: 16px; height: 16px; }
+        #delivery-customer-app .agent-call-btn svg { width: 16px; height: 16px; }
 
         .price-preset-row { display: flex; gap: 0.5rem; flex-wrap: wrap; }
         .price-preset-btn {
@@ -1598,26 +1819,45 @@
         }
 
         #delivery-app .admin-view-all-link { color: var(--primary); font-weight: 700; font-size: 0.8125rem; cursor: pointer; }
+        #delivery-customer-app .admin-view-all-link { color: var(--primary); font-weight: 700; font-size: 0.8125rem; cursor: pointer; }
         #delivery-app .admin-view-all-link:hover { text-decoration: underline; }
+        #delivery-customer-app .admin-view-all-link:hover { text-decoration: underline; }
         #delivery-app .recent-delivery-row {
             display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 0;
             border-bottom: 1px solid var(--admin-border); cursor: pointer; min-height: 44px;
         }
+        #delivery-customer-app .recent-delivery-row {
+            display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 0;
+            border-bottom: 1px solid var(--admin-border); cursor: pointer; min-height: 44px;
+        }
         #delivery-app .recent-delivery-row:last-child { border-bottom: none; }
+        #delivery-customer-app .recent-delivery-row:last-child { border-bottom: none; }
         #delivery-app .recent-delivery-row:hover { background: var(--admin-surface-alt); margin: 0 -0.5rem; padding-left: 0.5rem; padding-right: 0.5rem; border-radius: 0.5rem; }
+        #delivery-customer-app .recent-delivery-row:hover { background: var(--admin-surface-alt); margin: 0 -0.5rem; padding-left: 0.5rem; padding-right: 0.5rem; border-radius: 0.5rem; }
         #delivery-app .recent-delivery-avatar {
             width: 2.25rem; height: 2.25rem; border-radius: 50%; background: var(--primary); color: white;
             display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.875rem; flex-shrink: 0;
         }
+        #delivery-customer-app .recent-delivery-avatar {
+            width: 2.25rem; height: 2.25rem; border-radius: 50%; background: var(--primary); color: white;
+            display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.875rem; flex-shrink: 0;
+        }
         #delivery-app .recent-delivery-main { flex: 1; min-width: 0; }
+        #delivery-customer-app .recent-delivery-main { flex: 1; min-width: 0; }
         #delivery-app .recent-delivery-name { font-weight: 700; font-size: 0.875rem; color: var(--admin-text); }
+        #delivery-customer-app .recent-delivery-name { font-weight: 700; font-size: 0.875rem; color: var(--admin-text); }
         #delivery-app .recent-delivery-sub { font-size: 0.75rem; color: var(--admin-text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        #delivery-customer-app .recent-delivery-sub { font-size: 0.75rem; color: var(--admin-text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         #delivery-app .recent-delivery-time { font-size: 0.75rem; color: var(--admin-text-tertiary); flex-shrink: 0; }
+        #delivery-customer-app .recent-delivery-time { font-size: 0.75rem; color: var(--admin-text-tertiary); flex-shrink: 0; }
         #delivery-app .recent-delivery-price { font-weight: 700; font-size: 0.875rem; color: var(--admin-text); flex-shrink: 0; }
+        #delivery-customer-app .recent-delivery-price { font-weight: 700; font-size: 0.875rem; color: var(--admin-text); flex-shrink: 0; }
         #delivery-app .recent-deliveries-count { text-align: right; font-size: 0.75rem; color: var(--admin-text-secondary); margin-top: 0.75rem; }
+        #delivery-customer-app .recent-deliveries-count { text-align: right; font-size: 0.75rem; color: var(--admin-text-secondary); margin-top: 0.75rem; }
 
         @media (max-width: 1100px) {
             #delivery-app .admin-two-col { grid-template-columns: 1fr; }
+        #delivery-customer-app .admin-two-col { grid-template-columns: 1fr; }
         }
 
         /* ---- KPI cards ---- */
@@ -1629,10 +1869,26 @@
             padding: 1.375rem 1.5rem;
             transition: box-shadow 0.2s ease, transform 0.2s ease;
         }
+        /* ---- KPI cards ---- */
+        #delivery-customer-app .stat-card {
+            background: var(--admin-surface);
+            border: 1px solid var(--admin-border);
+            border-radius: var(--admin-radius-lg);
+            box-shadow: var(--admin-shadow-xs);
+            padding: 1.375rem 1.5rem;
+            transition: box-shadow 0.2s ease, transform 0.2s ease;
+        }
         #delivery-app .stat-card::before { display: none; }
+        #delivery-customer-app .stat-card::before { display: none; }
         #delivery-app .stat-card:hover { transform: translateY(-2px); box-shadow: var(--admin-shadow-md); }
+        #delivery-customer-app .stat-card:hover { transform: translateY(-2px); box-shadow: var(--admin-shadow-md); }
         #delivery-app .stat-card-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.875rem; }
+        #delivery-customer-app .stat-card-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.875rem; }
         #delivery-app .stat-card h4 {
+            color: var(--admin-text-secondary); font-weight: 500; font-size: 0.8125rem;
+            text-transform: uppercase; letter-spacing: 0.03em; margin: 0;
+        }
+        #delivery-customer-app .stat-card h4 {
             color: var(--admin-text-secondary); font-weight: 500; font-size: 0.8125rem;
             text-transform: uppercase; letter-spacing: 0.03em; margin: 0;
         }
@@ -1641,30 +1897,58 @@
             display: flex; align-items: center; justify-content: center;
             background: #eef2ff; color: var(--primary); flex-shrink: 0;
         }
+        #delivery-customer-app .stat-icon {
+            width: 2rem; height: 2rem; border-radius: var(--admin-radius-sm);
+            display: flex; align-items: center; justify-content: center;
+            background: #eef2ff; color: var(--primary); flex-shrink: 0;
+        }
         #delivery-app .stat-icon svg { width: 16px; height: 16px; }
+        #delivery-customer-app .stat-icon svg { width: 16px; height: 16px; }
         #delivery-app .stat-card.success .stat-icon { background: #ecfdf5; color: var(--secondary); }
+        #delivery-customer-app .stat-card.success .stat-icon { background: #ecfdf5; color: var(--secondary); }
         #delivery-app .stat-card.warning .stat-icon { background: #fffbeb; color: var(--accent); }
+        #delivery-customer-app .stat-card.warning .stat-icon { background: #fffbeb; color: var(--accent); }
         #delivery-app .stat-card.pending .stat-icon { background: #f1f5f9; color: var(--admin-text-secondary); }
+        #delivery-customer-app .stat-card.pending .stat-icon { background: #f1f5f9; color: var(--admin-text-secondary); }
         #delivery-app .stat-card.cancelled .stat-icon { background: #f3f4f6; color: #9ca3af; }
+        #delivery-customer-app .stat-card.cancelled .stat-icon { background: #f3f4f6; color: #9ca3af; }
         #delivery-app .stat-card p {
             font-size: 2rem; font-weight: 700; color: var(--admin-text); letter-spacing: -0.02em;
             font-variant-numeric: tabular-nums;
         }
+        #delivery-customer-app .stat-card p {
+            font-size: 2rem; font-weight: 700; color: var(--admin-text); letter-spacing: -0.02em;
+            font-variant-numeric: tabular-nums;
+        }
         #delivery-app .stat-card.success p { color: var(--secondary); }
+        #delivery-customer-app .stat-card.success p { color: var(--secondary); }
         #delivery-app .stat-card.warning p { color: var(--accent); }
+        #delivery-customer-app .stat-card.warning p { color: var(--accent); }
         #delivery-app .stat-card.pending p { color: var(--admin-text-secondary); }
+        #delivery-customer-app .stat-card.pending p { color: var(--admin-text-secondary); }
         #delivery-app .stat-card.cancelled p { color: #9ca3af; }
+        #delivery-customer-app .stat-card.cancelled p { color: #9ca3af; }
         #delivery-app .stat-card.on-duty p { color: #0284c7; }
+        #delivery-customer-app .stat-card.on-duty p { color: #0284c7; }
         #delivery-app .weekly-revenue-card { cursor: pointer; }
+        #delivery-customer-app .weekly-revenue-card { cursor: pointer; }
         #delivery-app .weekly-revenue-card:hover { transform: translateY(-2px); box-shadow: var(--admin-shadow-md); border-color: var(--primary); }
+        #delivery-customer-app .weekly-revenue-card:hover { transform: translateY(-2px); box-shadow: var(--admin-shadow-md); border-color: var(--primary); }
         #delivery-app .weekly-revenue-card:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+        #delivery-customer-app .weekly-revenue-card:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
         #delivery-app .stat-trend { font-size: 0.8125rem; font-weight: 700; margin-top: 0.375rem; }
+        #delivery-customer-app .stat-trend { font-size: 0.8125rem; font-weight: 700; margin-top: 0.375rem; }
         #delivery-app .stat-trend.up { color: var(--secondary); }
+        #delivery-customer-app .stat-trend.up { color: var(--secondary); }
         #delivery-app .stat-trend.down { color: #dc2626; }
+        #delivery-customer-app .stat-trend.down { color: #dc2626; }
         #delivery-app .stat-trend.flat { color: var(--admin-text-secondary); }
+        #delivery-customer-app .stat-trend.flat { color: var(--admin-text-secondary); }
 
         /* ---- Order cards ---- */
         #delivery-app .section-title { font-size: 1.125rem; font-weight: 600; color: var(--admin-text); }
+        /* ---- Order cards ---- */
+        #delivery-customer-app .section-title { font-size: 1.125rem; font-weight: 600; color: var(--admin-text); }
         #delivery-app .order-card {
             background: var(--admin-surface);
             border: 1px solid var(--admin-border);
@@ -1673,14 +1957,32 @@
             padding: 1.375rem;
             transition: box-shadow 0.2s ease, border-color 0.2s ease;
         }
+        #delivery-customer-app .order-card {
+            background: var(--admin-surface);
+            border: 1px solid var(--admin-border);
+            border-radius: var(--admin-radius-lg);
+            box-shadow: var(--admin-shadow-xs);
+            padding: 1.375rem;
+            transition: box-shadow 0.2s ease, border-color 0.2s ease;
+        }
         #delivery-app .order-card::before { display: none; }
+        #delivery-customer-app .order-card::before { display: none; }
         #delivery-app .order-card:hover { transform: none; box-shadow: var(--admin-shadow-sm); border-color: var(--admin-border-strong); }
+        #delivery-customer-app .order-card:hover { transform: none; box-shadow: var(--admin-shadow-sm); border-color: var(--admin-border-strong); }
         #delivery-app .order-id { color: var(--admin-text-secondary); }
+        #delivery-customer-app .order-id { color: var(--admin-text-secondary); }
         #delivery-app .order-detail-label { color: var(--admin-text-tertiary); font-weight: 600; }
+        #delivery-customer-app .order-detail-label { color: var(--admin-text-tertiary); font-weight: 600; }
         #delivery-app .order-detail-value { color: var(--admin-text); }
+        #delivery-customer-app .order-detail-value { color: var(--admin-text); }
         #delivery-app .order-actions { border-top-color: var(--admin-border); }
+        #delivery-customer-app .order-actions { border-top-color: var(--admin-border); }
         #delivery-app .status-badge { display: inline-flex; align-items: center; gap: 0.375rem; }
+        #delivery-customer-app .status-badge { display: inline-flex; align-items: center; gap: 0.375rem; }
         #delivery-app .status-badge::before {
+            content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex-shrink: 0;
+        }
+        #delivery-customer-app .status-badge::before {
             content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex-shrink: 0;
         }
 
@@ -1690,11 +1992,26 @@
             gap: 0.75rem; padding: 3rem 1.5rem; width: 100%;
             color: var(--admin-text-secondary); text-align: center;
         }
+        /* ---- Empty states ---- */
+        #delivery-customer-app .admin-empty-state {
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            gap: 0.75rem; padding: 3rem 1.5rem; width: 100%;
+            color: var(--admin-text-secondary); text-align: center;
+        }
         #delivery-app .admin-empty-state svg { width: 40px; height: 40px; color: var(--admin-text-tertiary); }
+        #delivery-customer-app .admin-empty-state svg { width: 40px; height: 40px; color: var(--admin-text-tertiary); }
         #delivery-app .admin-empty-state span { font-size: 0.9375rem; font-weight: 500; }
+        #delivery-customer-app .admin-empty-state span { font-size: 0.9375rem; font-weight: 500; }
 
         /* ---- Loading skeletons ---- */
         #delivery-app .admin-skeleton {
+            background: linear-gradient(90deg, var(--admin-surface-alt) 25%, #e2e8f0 37%, var(--admin-surface-alt) 63%);
+            background-size: 400% 100%;
+            animation: admin-skeleton-shimmer 1.4s ease infinite;
+            border-radius: var(--admin-radius-md);
+        }
+        /* ---- Loading skeletons ---- */
+        #delivery-customer-app .admin-skeleton {
             background: linear-gradient(90deg, var(--admin-surface-alt) 25%, #e2e8f0 37%, var(--admin-surface-alt) 63%);
             background-size: 400% 100%;
             animation: admin-skeleton-shimmer 1.4s ease infinite;
@@ -1708,13 +2025,22 @@
             height: 210px; border: 1px solid var(--admin-border); border-radius: var(--admin-radius-lg);
             padding: 1.375rem; background-color: var(--admin-surface);
         }
+        #delivery-customer-app .admin-skeleton-card {
+            height: 210px; border: 1px solid var(--admin-border); border-radius: var(--admin-radius-lg);
+            padding: 1.375rem; background-color: var(--admin-surface);
+        }
 
         @media (max-width: 960px) {
             #delivery-app .admin-shell { grid-template-columns: 1fr; }
+        #delivery-customer-app .admin-shell { grid-template-columns: 1fr; }
             #delivery-app .admin-sidebar { position: static; min-height: auto; }
+        #delivery-customer-app .admin-sidebar { position: static; min-height: auto; }
             #delivery-app .admin-main { padding: 1.5rem; }
+        #delivery-customer-app .admin-main { padding: 1.5rem; }
             #delivery-app .sidebar-toggle-btn { left: auto; right: 1.25rem; }
+        #delivery-customer-app .sidebar-toggle-btn { left: auto; right: 1.25rem; }
             #delivery-app .admin-shell.sidebar-collapsed .sidebar-toggle-btn { left: auto; right: 1.25rem; }
+        #delivery-customer-app .admin-shell.sidebar-collapsed .sidebar-toggle-btn { left: auto; right: 1.25rem; }
         }
     </style>
     <script src="https://accounts.google.com/gsi/client" async defer></script>

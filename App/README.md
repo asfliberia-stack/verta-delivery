@@ -3591,3 +3591,39 @@ nothing at all. Fixed to recognize both.
 
 Confirmed via direct comparison that the Admin and Vendor dashboards
 are byte-for-byte untouched by any of this.
+
+## Fixed: customer Delivery sidebar was rendering completely unstyled
+
+Found the exact cause from your screenshot — this was a real mistake
+in how I built the sidebar last round. I reused the Admin dashboard's
+CSS class names (`.admin-shell`, `.admin-sidebar`, `.admin-nav-item`,
+etc.) assuming they'd bring their styling with them. They didn't:
+every single one of those 141 CSS rules was scoped specifically to
+`#delivery-app` (the Admin dashboard's own container) — none of them
+ever applied inside `#delivery-customer-app`, a completely different
+container. The result was exactly what your screenshot showed:
+unstyled browser-default buttons instead of a real sidebar.
+
+### Fixed properly, with a genuine mistake along the way
+
+My first fix attempt was also wrong — a naive script that duplicated
+each rule's *opening line* for the customer container, which silently
+broke multi-line CSS rules (the duplicate opened a block with no
+properties or closing brace of its own). Caught this immediately by
+checking the CSS brace count before considering it done, saw 853 open
+vs. 811 close, and knew something was broken before it ever reached
+you.
+
+Reverted that cleanly (since it had only ever *added* lines, removing
+them exactly undid it with no risk to the real sidebar work), then
+rebuilt the fix properly: a script that tracks brace depth to capture
+each *complete* rule — selector through matching closing brace, even
+across multiple lines — and duplicates the whole thing for
+`#delivery-customer-app`. Verified this against a multi-line rule
+directly (`.admin-shell`'s five real properties) and a nested
+media-query case, both duplicated correctly this time.
+
+Confirmed via direct comparison that every original Admin dashboard
+CSS rule still exists completely unmodified — this only *adds*
+matching rules for the customer sidebar, it doesn't touch the Admin
+dashboard's own styling at all.
