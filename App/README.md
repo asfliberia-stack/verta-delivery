@@ -3377,3 +3377,15 @@ branch (vendor, delivery company, customer) for the same pattern —
 all of them already route through the shared `hideAllTopLevelViews()`
 function instead of a manual list, so this was isolated to the one
 branch, not a repeated bug elsewhere.
+
+## New App Icon
+
+Replaced `assets/icon-192.png` and `assets/icon-512.png` with the new
+icon, resized from the high-resolution source (2124x2124, genuine
+transparency preserved) using high-quality resampling for both sizes.
+This is what shows as the installed PWA icon and on iOS home screens.
+
+Also added a real browser-tab favicon link (`<link rel="icon">`),
+which didn't exist before — the app only had an apple-touch-icon, no
+standard favicon tag. Now the new icon shows consistently everywhere:
+browser tab, iOS home screen, and installed PWA icon.
