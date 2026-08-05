@@ -3040,12 +3040,13 @@
                 <div class="admin-topbar">
                     <div>
                         <div class="admin-welcome-role" id="dcust-welcome-name">Welcome!</div>
-                        <div style="font-size:0.875rem; color:var(--slate-light);">Here's what's happening with your deliveries.</div>
+                        <div id="dcust-welcome-subtitle" style="font-size:0.875rem; color:var(--slate-light);">Here's what's happening with your deliveries.</div>
                     </div>
                 </div>
 
                 <!-- Guest state (not logged in) -->
                 <section class="orders-section" id="delivery-guest-prompt" style="display:none; text-align:center;">
+                    <img src="assets/logo.png" alt="ONLib Delivery" style="height: 60px; max-width: 280px; object-fit: contain; margin-bottom: 2rem;">
                     <p style="color: var(--slate-light); margin-bottom: 1.25rem;">Log in to send a package and track your orders.</p>
                     <div class="delivery-guest-actions">
                         <button type="button" class="delivery-guest-back-btn" id="delivery-guest-back-btn">
@@ -4808,7 +4809,33 @@
                 <h3>📍 Addresses</h3>
                 <button class="close-btn" id="close-dcust-addresses-modal">&times;</button>
             </div>
+            <button type="button" class="btn-small btn-success" id="dcust-add-address-btn" style="margin-bottom:1rem;">+ Add Address</button>
             <div id="dcust-addresses-list"></div>
+
+            <!-- Add/Edit form — shown inline, same real endpoints
+                 (/api/addresses) already used by Marketplace's own
+                 address management, just a separate form since the two
+                 live in different top-level app containers. -->
+            <form id="dcust-address-form" style="display:none; background:var(--bg-light); border-radius:1rem; padding:1.25rem; margin-top:1rem;">
+                <input type="hidden" id="dcust-address-form-id">
+                <div class="form-group">
+                    <label class="form-label">Label</label>
+                    <input type="text" class="form-input" id="dcust-address-form-label" placeholder="e.g. Home, Office" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Address</label>
+                    <textarea class="form-input" id="dcust-address-form-address" rows="3" placeholder="Street, city, landmark…" required></textarea>
+                </div>
+                <label class="auth-checkbox-label" style="margin-bottom: 1.25rem;">
+                    <input type="checkbox" id="dcust-address-form-default">
+                    Set as default
+                </label>
+                <div class="auth-error" id="dcust-address-form-error"></div>
+                <div style="display:flex; gap:0.75rem;">
+                    <button type="button" class="btn-small btn-secondary" id="dcust-address-form-cancel-btn" style="flex:1;">Cancel</button>
+                    <button type="submit" class="btn-primary" id="dcust-address-form-save-btn" style="flex:1;">Save Address</button>
+                </div>
+            </form>
         </div>
     </div>
 
@@ -6314,6 +6341,12 @@
             document.getElementById('delivery-guest-prompt').style.display = mode === 'guest' ? 'block' : 'none';
             document.getElementById('dcust-view-dashboard').style.display = mode === 'customer' ? 'block' : 'none';
             document.getElementById('dcust-welcome-name').style.display = mode === 'customer' ? 'block' : 'none';
+            document.getElementById('dcust-welcome-subtitle').style.display = mode === 'customer' ? 'block' : 'none';
+            // Nothing to toggle when there's no sidebar to show — hide
+            // the hamburger button too, rather than leave a confusing
+            // control that does nothing for a guest.
+            const toggleBtn = document.getElementById('dcust-sidebar-toggle-btn');
+            if (toggleBtn) toggleBtn.style.display = mode === 'customer' ? 'flex' : 'none';
         }
 
         async function enterDeliveryMode(headerMode) {
@@ -6370,12 +6403,13 @@
         async function openDcustAddressesModal() {
             const container = document.getElementById('dcust-addresses-list');
             container.innerHTML = '<p style="text-align:center; color:var(--slate-light);">Loading…</p>';
+            document.getElementById('dcust-address-form').style.display = 'none';
             document.getElementById('dcust-addresses-modal').classList.add('active');
             try {
                 const data = await apiFetch('/api/addresses');
                 savedAddressesCache = data.addresses || [];
                 if (savedAddressesCache.length === 0) {
-                    renderEmptyState(container, 'No saved addresses yet — add one from ONLib Marketplace\'s checkout, and it\'ll show up here too (same account, same addresses).');
+                    renderEmptyState(container, 'No saved addresses yet — add one above.');
                     return;
                 }
                 container.innerHTML = savedAddressesCache.map(a => `
@@ -6384,12 +6418,98 @@
                             <div class="address-card-label-row"><span class="address-card-label">${a.label}</span>${a.isDefault ? '<span style="background:#dcfce7; color:#15803d; padding:0.125rem 0.5rem; border-radius:9999px; font-size:0.6875rem; font-weight:700; margin-left:0.5rem;">Default</span>' : ''}</div>
                             <div class="address-card-text">${a.address}</div>
                         </div>
+                        <div style="display:flex; gap:0.5rem; flex-shrink:0;">
+                            ${!a.isDefault ? `<button type="button" class="btn-small btn-secondary dcust-set-default-address-btn" data-id="${a.id}">Set Default</button>` : ''}
+                            <button type="button" class="btn-small btn-secondary dcust-edit-address-btn" data-id="${a.id}">Edit</button>
+                            <button type="button" class="btn-small dcust-delete-address-btn" style="background:#fee2e2; color:#991b1b;" data-id="${a.id}">Delete</button>
+                        </div>
                     </div>
                 `).join('');
             } catch (err) {
                 container.innerHTML = `<p style="text-align:center; color:#dc2626;">${err.message}</p>`;
             }
         }
+
+        function openDcustAddressForm(addressId) {
+            const form = document.getElementById('dcust-address-form');
+            document.getElementById('dcust-address-form-error').style.display = 'none';
+            if (addressId) {
+                const addr = savedAddressesCache.find(a => a.id === addressId);
+                if (!addr) return;
+                document.getElementById('dcust-address-form-id').value = addr.id;
+                document.getElementById('dcust-address-form-label').value = addr.label;
+                document.getElementById('dcust-address-form-address').value = addr.address;
+                document.getElementById('dcust-address-form-default').checked = addr.isDefault;
+            } else {
+                document.getElementById('dcust-address-form-id').value = '';
+                document.getElementById('dcust-address-form-label').value = '';
+                document.getElementById('dcust-address-form-address').value = '';
+                document.getElementById('dcust-address-form-default').checked = false;
+            }
+            form.style.display = 'block';
+        }
+
+        function closeDcustAddressForm() {
+            document.getElementById('dcust-address-form').style.display = 'none';
+        }
+
+        async function deleteDcustAddress(addressId) {
+            if (!confirm('Delete this saved address?')) return;
+            try {
+                await apiFetch(`/api/addresses/${addressId}`, { method: 'DELETE' });
+                showToast('Address deleted', 'success');
+                await openDcustAddressesModal();
+            } catch (err) {
+                showToast(err.message, 'error');
+            }
+        }
+
+        async function setDcustDefaultAddress(addressId) {
+            const address = savedAddressesCache.find(a => a.id === addressId);
+            if (!address) return;
+            try {
+                await apiFetch(`/api/addresses/${addressId}`, {
+                    method: 'PUT',
+                    body: JSON.stringify({ label: address.label, address: address.address, isDefault: true }),
+                });
+                showToast('Default address updated', 'success');
+                await openDcustAddressesModal();
+            } catch (err) {
+                showToast(err.message, 'error');
+            }
+        }
+
+        async function handleDcustAddressFormSubmit(e) {
+            e.preventDefault();
+            const errorEl = document.getElementById('dcust-address-form-error');
+            const btn = document.getElementById('dcust-address-form-save-btn');
+            errorEl.style.display = 'none';
+            const id = document.getElementById('dcust-address-form-id').value;
+            const body = JSON.stringify({
+                label: document.getElementById('dcust-address-form-label').value.trim(),
+                address: document.getElementById('dcust-address-form-address').value.trim(),
+                isDefault: document.getElementById('dcust-address-form-default').checked,
+            });
+            btn.disabled = true;
+            btn.textContent = 'Saving…';
+            try {
+                if (id) {
+                    await apiFetch(`/api/addresses/${id}`, { method: 'PUT', body });
+                } else {
+                    await apiFetch('/api/addresses', { method: 'POST', body });
+                }
+                showToast('Address saved', 'success');
+                closeDcustAddressForm();
+                await openDcustAddressesModal();
+            } catch (err) {
+                errorEl.textContent = err.message;
+                errorEl.style.display = 'block';
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Save Address';
+            }
+        }
+
 
         function openDcustSettingsModal() {
             document.getElementById('dcust-settings-name-input').value = currentUser.businessName || '';
@@ -6517,6 +6637,17 @@
             document.getElementById('dcust-nav-addresses').addEventListener('click', openDcustAddressesModal);
             document.getElementById('close-dcust-addresses-modal').addEventListener('click', () => {
                 document.getElementById('dcust-addresses-modal').classList.remove('active');
+            });
+            document.getElementById('dcust-add-address-btn').addEventListener('click', () => openDcustAddressForm(null));
+            document.getElementById('dcust-address-form-cancel-btn').addEventListener('click', closeDcustAddressForm);
+            document.getElementById('dcust-address-form').addEventListener('submit', handleDcustAddressFormSubmit);
+            document.getElementById('dcust-addresses-list').addEventListener('click', (e) => {
+                const editBtn = e.target.closest('.dcust-edit-address-btn');
+                if (editBtn) { openDcustAddressForm(editBtn.dataset.id); return; }
+                const deleteBtn = e.target.closest('.dcust-delete-address-btn');
+                if (deleteBtn) { deleteDcustAddress(deleteBtn.dataset.id); return; }
+                const defaultBtn = e.target.closest('.dcust-set-default-address-btn');
+                if (defaultBtn) { setDcustDefaultAddress(defaultBtn.dataset.id); return; }
             });
             document.getElementById('dcust-nav-payment').addEventListener('click', () => {
                 document.getElementById('dcust-payment-modal').classList.add('active');

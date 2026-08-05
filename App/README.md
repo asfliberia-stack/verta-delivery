@@ -3627,3 +3627,31 @@ Confirmed via direct comparison that every original Admin dashboard
 CSS rule still exists completely unmodified — this only *adds*
 matching rules for the customer sidebar, it doesn't touch the Admin
 dashboard's own styling at all.
+
+## Customers can now Add/Edit/Delete Addresses from Delivery, and fixed the broken guest view
+
+### Real address management, not just viewing
+
+Built a full Add/Edit/Delete/Set Default form directly in the Delivery
+sidebar's Addresses modal — same real `/api/addresses` endpoints
+Marketplace already uses, not a new backend. Needed its own dedicated
+form rather than reusing Marketplace's existing one directly, since
+that form lives inside a completely different top-level app container
+(`#home-screen`) that's hidden while someone's using Delivery — calling
+it directly wouldn't have worked, it would've stayed invisible behind
+its own hidden parent.
+
+### Fixed the broken guest view from your screenshot
+
+Found the actual causes:
+- The "Here's what's happening with your deliveries" subtitle had no
+  ID at all, so it was never actually hidden for guests — it showed
+  regardless of login state, which is why it appeared above the
+  login prompt looking out of place.
+- The hamburger sidebar-toggle button stayed visible for guests even
+  though there's no sidebar to toggle when logged out — confusing,
+  now hidden along with the sidebar itself.
+- No logo showed for guests at all, since the sidebar (which holds
+  the logo) is intentionally hidden before login — added a real logo
+  header directly to the guest prompt itself so branding doesn't
+  disappear entirely just because someone hasn't logged in yet.
