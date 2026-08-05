@@ -35,17 +35,13 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS applied_at TIMESTAMPTZ;
 
 -- Existing databases already have a `role` CHECK constraint that only
 -- allows 'sender'/'admin' — CREATE TABLE IF NOT EXISTS above won't touch
--- it on an already-existing table, so this widens it explicitly to add
--- 'super_admin' (the Postgres-assigned default name for an inline column
--- CHECK constraint is `<table>_<column>_check`).
-ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check;
-ALTER TABLE users ADD CONSTRAINT users_role_check CHECK (role IN ('sender', 'admin', 'super_admin', 'vendor'));
-
--- Multiple independent delivery companies (agents/fleets), same
--- self-registration + Super Admin approval workflow already proven
--- out for vendors above — reusing the exact same approval_status /
--- business_registration_doc / id_document_* columns, not a parallel
--- system.
+-- it on an already-existing table, so this widens it explicitly to the
+-- full current set of roles in one step (the Postgres-assigned default
+-- name for an inline column CHECK constraint is `<table>_<column>_check`).
+-- IMPORTANT: this must always list every role the app currently uses.
+-- Narrowing this list on a live database with rows already using a role
+-- being removed will crash on boot — Postgres validates ADD CONSTRAINT
+-- against every existing row, not just new ones going forward.
 ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check;
 ALTER TABLE users ADD CONSTRAINT users_role_check CHECK (role IN ('sender', 'admin', 'super_admin', 'vendor', 'delivery_company'));
 

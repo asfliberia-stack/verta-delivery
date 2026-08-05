@@ -3260,3 +3260,40 @@ Manage Agent account specifically. Since Verta now has its own
 distinct delivery_company account (from last round), updated the text
 to reflect that it's on equal footing with any other company, not a
 special case anymore.
+
+## Fixed a real production crash: database failed to initialize on boot
+
+Found the exact cause from your deploy logs — `check constraint
+"users_role_check" ... is violated by some row`.
+
+### What actually happened
+
+`schema.sql` had two sequential `DROP CONSTRAINT` / `ADD CONSTRAINT`
+pairs for the same constraint — an older one (from when `vendor` was
+added) that only allowed `('sender', 'admin', 'super_admin', 'vendor')`,
+followed by a newer one that widened it to also include
+`'delivery_company'`. These run in order, every boot.
+
+That was fine when the database had no `delivery_company` rows yet.
+But once real delivery company accounts existed — which they do now,
+from the last couple of rounds — the *first*, narrower `ADD CONSTRAINT`
+would fail immediately: Postgres validates a new constraint against
+every existing row, not just future ones, and an existing
+`delivery_company` row violates a constraint that doesn't list it as
+allowed. The app crashed before ever reaching the second statement
+that would have fixed it.
+
+### The fix
+
+Consolidated both into one statement that lists every current role at
+once, and added an explicit warning comment for the future: this kind
+of constraint must always be widened in a single step on a live
+database, never narrowed-then-widened across two separate statements,
+since Postgres won't wait for the second one before validating the
+first.
+
+Audited the rest of `schema.sql` for the same pattern — this was the
+only constraint with this issue. The `approval_status` constraint
+nearby is safe by construction (`ADD COLUMN IF NOT EXISTS ... CHECK`
+only applies when the column doesn't exist yet, so it never
+re-validates against existing rows).
