@@ -3547,3 +3547,47 @@ new proportions correctly on its own.
 This is the actual image file now, not just the text labels updated
 last round — the app's visual branding genuinely matches "ONLib" now,
 not just what the alt text says.
+
+## Customer Delivery dashboard — redesigned around the reference image
+
+Rebuilt as the customer-facing dashboard (the person sending
+packages), not for delivery companies — that distinction got sorted
+out directly before any code was touched, since several elements in
+the reference (Create New Order, Payment Methods, Total Spent) are
+customer concepts, not things a delivery company does.
+
+### Real data throughout, reusing what already existed rather than duplicating it
+
+- **Stat cards** (Total Orders, Delivered, In Transit, Pending, Total
+  Spent) — computed directly from the same real `orders` array the
+  table renders from, using the exact same status-filtering logic
+  already proven correct elsewhere in the app.
+- **My Orders** — reuses `renderSenderOrdersTable()`, the same
+  existing function, not a rebuilt table.
+- **Create New Order** — wired to the same existing modal/form,
+  reachable from both the sidebar and the hero button.
+- **Addresses** — real data from the same `/api/addresses` endpoint
+  and `savedAddressesCache` already used by Marketplace checkout
+  (same account, same addresses). Kept as a real read-only list here
+  rather than duplicating the full add/edit UI that already exists on
+  the Marketplace side.
+- **Payment Methods** — the exact same honest "Coming Soon" message
+  already used on the Marketplace side, not a new placeholder
+  invented for this screen.
+- **Settings** — real, editable name/phone, same `/api/me/profile`
+  endpoint used everywhere else.
+- **Back to service selector** — included as asked, in the sidebar.
+
+### Real bugs caught and fixed while restructuring
+
+Removing the old header (`delivery-back-to-chooser-btn`,
+`delivery-user-info`) left three real broken references elsewhere in
+the code that would have thrown errors — found and fixed all three
+by searching for them directly rather than assuming the refactor was
+clean. Also found that the sidebar's collapse/expand function was
+hardcoded to only recognize the Admin dashboard's shell — without
+fixing that, the new sidebar's mobile toggle button would have done
+nothing at all. Fixed to recognize both.
+
+Confirmed via direct comparison that the Admin and Vendor dashboards
+are byte-for-byte untouched by any of this.
