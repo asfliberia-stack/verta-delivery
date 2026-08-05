@@ -3529,3 +3529,21 @@ reasoning in the delivery-company report generator.
    of nothing. If you have a new ONLib logo image, send it over the
    same way you did for the app icon a few rounds back and I'll swap
    it in.
+
+## New ONLib logo swapped in
+
+Replaced `assets/logo.png` with the real ONLib logo you sent — the
+same emblem used for the app icon a few rounds back, now paired with
+the "ONLib" wordmark and "(Shop & Delivery)" tagline. Confirmed
+genuine transparency (not a baked-in white background), so it
+displays correctly against both the light backgrounds (Marketplace,
+Settings) and the dark auth-screen gradient.
+
+Different aspect ratio than the old logo (wider, shorter) — no CSS
+changes needed, since every place this logo is used already scales it
+with `object-fit: contain` against a fixed height, which handles the
+new proportions correctly on its own.
+
+This is the actual image file now, not just the text labels updated
+last round — the app's visual branding genuinely matches "ONLib" now,
+not just what the alt text says.
