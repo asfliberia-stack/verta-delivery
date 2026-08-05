@@ -153,6 +153,7 @@ function rowToUser(r) {
     createdAt: r.created_at,
     storeAddress: r.store_address,
     profileImageUrl: r.profile_image_url,
+    isDisabled: r.is_disabled,
   };
 }
 
@@ -225,6 +226,23 @@ const db = {
       'UPDATE users SET token_version = token_version + 1 WHERE id = $1 RETURNING *',
       [userId]
     );
+    return rowToUser(rows[0]);
+  },
+
+  // Real account suspension — scoped away from role = 'super_admin' in
+  // the query itself, not just trusted from the caller, so this can
+  // never be used to disable a Super Admin account (including
+  // accidentally disabling your own). Disabling also bumps
+  // token_version so any already-active session is invalidated
+  // immediately on its very next request, not just future logins.
+  async setUserDisabled(id, disabled) {
+    const { rows } = await pool.query(
+      `UPDATE users SET is_disabled = $1 WHERE id = $2 AND role != 'super_admin' RETURNING *`,
+      [disabled, id]
+    );
+    if (rows[0] && disabled) {
+      await pool.query('UPDATE users SET token_version = token_version + 1 WHERE id = $1', [id]);
+    }
     return rowToUser(rows[0]);
   },
 
@@ -677,7 +695,7 @@ const db = {
   async getCustomers() {
     const { rows } = await pool.query(`
       SELECT
-        u.id, u.business_name, u.email, u.phone, u.created_at,
+        u.id, u.business_name, u.email, u.phone, u.created_at, u.is_disabled,
         COUNT(o.id)::int AS total_orders,
         COALESCE(SUM(o.amount) FILTER (WHERE o.status = 'delivered'), 0)::numeric AS total_spent,
         MAX(o.created_at) AS last_order_at
@@ -693,6 +711,7 @@ const db = {
       email: r.email,
       phone: r.phone,
       createdAt: r.created_at,
+      isDisabled: r.is_disabled,
       totalOrders: r.total_orders,
       totalSpent: Number(r.total_spent),
       lastOrderAt: r.last_order_at,
@@ -735,7 +754,7 @@ const db = {
   // real vendor accounts existed.
   async getVendors() {
     const { rows } = await pool.query(
-      "SELECT id, business_name, email, phone, approval_status, applied_at, created_at FROM users WHERE role = 'vendor' ORDER BY created_at DESC"
+      "SELECT id, business_name, email, phone, approval_status, applied_at, created_at, is_disabled FROM users WHERE role = 'vendor' ORDER BY created_at DESC"
     );
     return rows.map(r => ({
       id: r.id,
@@ -745,6 +764,7 @@ const db = {
       approvalStatus: r.approval_status,
       appliedAt: r.applied_at,
       createdAt: r.created_at,
+      isDisabled: r.is_disabled,
     }));
   },
 
@@ -753,7 +773,7 @@ const db = {
   // above, mirrored exactly, scoped to role = 'delivery_company'). ----
   async getDeliveryCompanies() {
     const { rows } = await pool.query(
-      "SELECT id, business_name, email, phone, approval_status, applied_at, created_at FROM users WHERE role = 'delivery_company' ORDER BY created_at DESC"
+      "SELECT id, business_name, email, phone, approval_status, applied_at, created_at, is_disabled FROM users WHERE role = 'delivery_company' ORDER BY created_at DESC"
     );
     return rows.map(r => ({
       id: r.id,
@@ -763,6 +783,7 @@ const db = {
       approvalStatus: r.approval_status,
       appliedAt: r.applied_at,
       createdAt: r.created_at,
+      isDisabled: r.is_disabled,
     }));
   },
 

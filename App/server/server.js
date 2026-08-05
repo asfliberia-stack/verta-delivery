@@ -564,6 +564,7 @@ app.post('/api/auth/login', authLimiter, async (req, res) => {
     if (!user) return res.status(401).json({ error: 'Invalid email or password' });
     const match = await comparePassword(password, user.passwordHash);
     if (!match) return res.status(401).json({ error: 'Invalid email or password' });
+    if (user.isDisabled) return res.status(403).json({ error: 'This account has been disabled. Contact support for help.' });
 
     const sessionId = await recordLoginHistory(req, user.id);
     const token = signToken(user, sessionId);
@@ -614,6 +615,9 @@ app.post('/api/auth/google', authLimiter, async (req, res) => {
     }
 
     let user = await db.getUserByEmail(payload.email);
+    if (user && user.isDisabled) {
+      return res.status(403).json({ error: 'This account has been disabled. Contact support for help.' });
+    }
     if (!user) {
       // First time signing in with this email — create a real customer
       // account. No phone number (Google doesn't provide one) — same
@@ -1185,7 +1189,7 @@ app.get('/api/super-admin/manage-agent', requireAuth, requireSuperAdmin, async (
   try {
     const admin = await db.getUserByEmail(ADMIN_EMAIL);
     if (!admin) return res.status(404).json({ error: 'Manage Agent account not found' });
-    res.json({ businessName: admin.businessName, email: admin.email, createdAt: admin.createdAt });
+    res.json({ id: admin.id, businessName: admin.businessName, email: admin.email, createdAt: admin.createdAt, isDisabled: admin.isDisabled });
   } catch (err) {
     console.error('GET /api/super-admin/manage-agent failed', err);
     res.status(500).json({ error: 'Failed to load Manage Agent account' });
@@ -1281,6 +1285,31 @@ app.get('/api/super-admin/delivery-companies/:id/documents', requireAuth, requir
   } catch (err) {
     console.error('GET delivery company documents failed', err);
     res.status(500).json({ error: 'Failed to load documents' });
+  }
+});
+
+// One generic endpoint covering Customers, Vendors, Delivery
+// Companies, and Manage Agent accounts — real account suspension, not
+// deletion. Blocks login and invalidates any already-active session
+// immediately (see setUserDisabled). Deliberately cannot target
+// role = 'super_admin' at all (enforced in the SQL itself, not just
+// here) — including preventing a Super Admin from disabling their own
+// account by accident.
+app.put('/api/super-admin/users/:id/disable-status', requireAuth, requireSuperAdmin, async (req, res) => {
+  const { disabled } = req.body || {};
+  if (typeof disabled !== 'boolean') {
+    return res.status(400).json({ error: 'disabled must be true or false' });
+  }
+  if (req.params.id === req.user.id) {
+    return res.status(400).json({ error: "You can't disable your own account" });
+  }
+  try {
+    const updated = await db.setUserDisabled(req.params.id, disabled);
+    if (!updated) return res.status(404).json({ error: 'Account not found, or it belongs to a Super Admin (not allowed)' });
+    res.json({ ok: true, user: { id: updated.id, businessName: updated.businessName, isDisabled: updated.isDisabled } });
+  } catch (err) {
+    console.error('PUT disable-status failed', err);
+    res.status(500).json({ error: 'Failed to update account status' });
   }
 });
 

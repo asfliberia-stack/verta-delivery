@@ -2976,6 +2976,17 @@
                         </div>
                     </section>
 
+                    <section class="orders-section" style="margin-bottom: 1.5rem;">
+                        <h2 class="section-title">Manage Agent Account</h2>
+                        <div id="sa-manage-agent-card" style="background:white; border-radius:1rem; padding:1.25rem; border:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;">
+                            <div>
+                                <div style="font-weight:700; color:var(--slate);" id="sa-manage-agent-name">—</div>
+                                <div style="font-size:0.875rem; color:var(--slate-light);" id="sa-manage-agent-email">—</div>
+                            </div>
+                            <button type="button" class="btn-small toggle-disabled-btn" id="sa-manage-agent-toggle-btn">Disable</button>
+                        </div>
+                    </section>
+
                     <section class="orders-section" id="sa-pending-section">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
                             <h2 class="section-title" style="margin:0;">Vendor Applications Needing Review</h2>
@@ -7073,9 +7084,28 @@
                         </div>
                     `).join('');
                 }
+                loadManageAgentAccountCard();
             } catch (err) {
                 console.error('Failed to load Super Admin overview', err);
                 showToast('Could not load the platform overview.', 'error');
+            }
+        }
+
+        async function loadManageAgentAccountCard() {
+            try {
+                const admin = await apiFetch('/api/super-admin/manage-agent');
+                document.getElementById('sa-manage-agent-name').textContent = admin.businessName;
+                document.getElementById('sa-manage-agent-email').textContent = admin.email + (admin.isDisabled ? ' — Disabled' : '');
+                const toggleBtn = document.getElementById('sa-manage-agent-toggle-btn');
+                toggleBtn.dataset.id = admin.id;
+                toggleBtn.dataset.name = admin.businessName;
+                toggleBtn.dataset.disabled = admin.isDisabled;
+                toggleBtn.textContent = admin.isDisabled ? 'Enable' : 'Disable';
+                toggleBtn.style.background = admin.isDisabled ? '#dcfce7' : '#fef3c7';
+                toggleBtn.style.color = admin.isDisabled ? '#15803d' : '#92400e';
+                document.getElementById('sa-manage-agent-card').style.opacity = admin.isDisabled ? '0.55' : '1';
+            } catch (err) {
+                console.error('Failed to load Manage Agent account', err);
             }
         }
 
@@ -7145,6 +7175,9 @@
                 document.getElementById('vendors-modal').classList.add('active');
                 loadVendors();
             });
+            document.getElementById('sa-manage-agent-toggle-btn').addEventListener('click', (e) => {
+                toggleAccountDisabled(e.target.dataset.id, e.target.dataset.name, e.target.dataset.disabled === 'true', loadManageAgentAccountCard);
+            });
             document.getElementById('sa-quick-customers-btn').addEventListener('click', () => {
                 document.getElementById('customers-modal').classList.add('active');
                 loadCustomers();
@@ -7175,6 +7208,11 @@
                 if (editBtn) { openEditCustomerModal(editBtn.dataset.id); return; }
                 const resetBtn = e.target.closest('.reset-customer-password-btn');
                 if (resetBtn) { openResetCustomerPasswordModal(resetBtn.dataset.id, resetBtn.dataset.name); return; }
+                const toggleBtn = e.target.closest('.toggle-disabled-btn');
+                if (toggleBtn) {
+                    toggleAccountDisabled(toggleBtn.dataset.id, toggleBtn.dataset.name, toggleBtn.dataset.disabled === 'true', loadCustomers);
+                    return;
+                }
                 const deleteBtn = e.target.closest('.delete-customer-btn');
                 if (deleteBtn) { deleteCustomerWithConfirm(deleteBtn.dataset.id, deleteBtn.dataset.name); return; }
             });
@@ -7193,6 +7231,9 @@
             document.getElementById('vendors-modal-content').addEventListener('click', (e) => {
                 if (e.target.classList.contains('review-vendor-btn')) openVendorReviewModal(e.target.dataset.id);
                 if (e.target.classList.contains('enter-vendor-dashboard-btn')) enterVendorImpersonation(e.target.dataset.id);
+                if (e.target.classList.contains('toggle-disabled-btn')) {
+                    toggleAccountDisabled(e.target.dataset.id, e.target.dataset.name, e.target.dataset.disabled === 'true', loadVendors);
+                }
             });
             document.getElementById('close-vendor-review-modal').addEventListener('click', () => {
                 document.getElementById('vendor-review-modal').classList.remove('active');
@@ -7214,6 +7255,9 @@
             });
             document.getElementById('delivery-companies-modal-content').addEventListener('click', (e) => {
                 if (e.target.classList.contains('review-delivery-company-btn')) openVendorReviewModal(e.target.dataset.id, 'delivery_company');
+                if (e.target.classList.contains('toggle-disabled-btn')) {
+                    toggleAccountDisabled(e.target.dataset.id, e.target.dataset.name, e.target.dataset.disabled === 'true', loadDeliveryCompaniesPanel);
+                }
             });
 
             // ---- Help & Support ----
@@ -7389,8 +7433,8 @@
                     (isSuperAdmin ? '<th>Actions</th>' : '') +
                     '</tr></thead><tbody>';
                 customersCache.forEach(c => {
-                    html += `<tr>
-                        <td style="font-weight:700;">${c.businessName}</td>
+                    html += `<tr${c.isDisabled ? ' style="opacity:0.55;"' : ''}>
+                        <td style="font-weight:700;">${c.businessName}${c.isDisabled ? ' <span style="background:#fee2e2; color:#991b1b; padding:0.125rem 0.5rem; border-radius:9999px; font-size:0.6875rem; font-weight:700;">Disabled</span>' : ''}</td>
                         <td>${c.email}</td>
                         <td>${c.phone || '—'}</td>
                         <td>${c.totalOrders}</td>
@@ -7401,6 +7445,7 @@
                             <div style="display:flex; gap:0.5rem;">
                                 <button type="button" class="btn-small btn-secondary edit-customer-btn" data-id="${c.id}">Edit</button>
                                 <button type="button" class="btn-small reset-customer-password-btn" data-id="${c.id}" data-name="${c.businessName.replace(/"/g, '&quot;')}">Reset Password</button>
+                                <button type="button" class="btn-small toggle-disabled-btn" data-id="${c.id}" data-name="${c.businessName.replace(/"/g, '&quot;')}" data-disabled="${c.isDisabled}" data-scope="customer" style="background:${c.isDisabled ? '#dcfce7' : '#fef3c7'}; color:${c.isDisabled ? '#15803d' : '#92400e'};">${c.isDisabled ? 'Enable' : 'Disable'}</button>
                                 <button type="button" class="btn-small delete-customer-btn" style="background:#fee2e2; color:#991b1b;" data-id="${c.id}" data-name="${c.businessName.replace(/"/g, '&quot;')}">Delete</button>
                             </div>
                         </td>` : ''}
@@ -7503,6 +7548,29 @@
             }
         }
 
+        // Shared by Customers, Vendors, Delivery Companies, and Manage
+        // Agent — real account suspension, not deletion. onSuccess
+        // refreshes whichever panel called it.
+        async function toggleAccountDisabled(id, name, currentlyDisabled, onSuccess) {
+            const action = currentlyDisabled ? 'enable' : 'disable';
+            const confirmed = confirm(
+                currentlyDisabled
+                    ? `Re-enable "${name}"? They'll be able to log in again immediately.`
+                    : `Disable "${name}"? They won't be able to log in until you re-enable the account — any device they're currently logged in on will be signed out immediately too.`
+            );
+            if (!confirmed) return;
+            try {
+                await apiFetch(`/api/super-admin/users/${id}/disable-status`, {
+                    method: 'PUT',
+                    body: JSON.stringify({ disabled: !currentlyDisabled }),
+                });
+                showToast(currentlyDisabled ? 'Account re-enabled' : 'Account disabled', 'success');
+                if (onSuccess) await onSuccess();
+            } catch (err) {
+                showToast(err.message, 'error');
+            }
+        }
+
         let resetPasswordTargetId = null;
 
         function openResetCustomerPasswordModal(id, name) {
@@ -7587,14 +7655,15 @@
                     };
                     html += '<div style="overflow-x: auto;"><table class="settings-table"><thead><tr><th>Business</th><th>Email</th><th>Since</th><th>Status</th><th></th></tr></thead><tbody>';
                     vendors.forEach(v => {
-                        html += `<tr>
-                            <td style="font-weight:700;">${v.businessName}</td>
+                        html += `<tr${v.isDisabled ? ' style="opacity:0.55;"' : ''}>
+                            <td style="font-weight:700;">${v.businessName}${v.isDisabled ? ' <span style="background:#fee2e2; color:#991b1b; padding:0.125rem 0.5rem; border-radius:9999px; font-size:0.6875rem; font-weight:700;">Disabled</span>' : ''}</td>
                             <td>${v.email}</td>
                             <td>${new Date(v.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</td>
                             <td>${statusPill(v.approvalStatus)}</td>
                             <td style="white-space:nowrap; display:flex; gap:0.5rem;">
                                 ${v.approvalStatus === 'pending' ? `<button type="button" class="btn-small btn-secondary review-vendor-btn" data-id="${v.id}">Review</button>` : ''}
                                 <button type="button" class="btn-small btn-secondary enter-vendor-dashboard-btn" data-id="${v.id}" title="Open this vendor's real dashboard for support/oversight">Enter Dashboard</button>
+                                <button type="button" class="btn-small toggle-disabled-btn" data-id="${v.id}" data-name="${v.businessName.replace(/"/g, '&quot;')}" data-disabled="${v.isDisabled}" style="background:${v.isDisabled ? '#dcfce7' : '#fef3c7'}; color:${v.isDisabled ? '#15803d' : '#92400e'};">${v.isDisabled ? 'Enable' : 'Disable'}</button>
                             </td>
                         </tr>`;
                     });
@@ -7644,13 +7713,14 @@
                     };
                     html += '<div style="overflow-x: auto;"><table class="settings-table"><thead><tr><th>Company</th><th>Email</th><th>Since</th><th>Status</th><th></th></tr></thead><tbody>';
                     companies.forEach(c => {
-                        html += `<tr>
-                            <td style="font-weight:700;">${c.businessName}</td>
+                        html += `<tr${c.isDisabled ? ' style="opacity:0.55;"' : ''}>
+                            <td style="font-weight:700;">${c.businessName}${c.isDisabled ? ' <span style="background:#fee2e2; color:#991b1b; padding:0.125rem 0.5rem; border-radius:9999px; font-size:0.6875rem; font-weight:700;">Disabled</span>' : ''}</td>
                             <td>${c.email}</td>
                             <td>${new Date(c.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</td>
                             <td>${statusPill(c.approvalStatus)}</td>
-                            <td style="white-space:nowrap;">
+                            <td style="white-space:nowrap; display:flex; gap:0.5rem;">
                                 ${c.approvalStatus === 'pending' ? `<button type="button" class="btn-small btn-secondary review-delivery-company-btn" data-id="${c.id}">Review</button>` : ''}
+                                <button type="button" class="btn-small toggle-disabled-btn" data-id="${c.id}" data-name="${c.businessName.replace(/"/g, '&quot;')}" data-disabled="${c.isDisabled}" style="background:${c.isDisabled ? '#dcfce7' : '#fef3c7'}; color:${c.isDisabled ? '#15803d' : '#92400e'};">${c.isDisabled ? 'Enable' : 'Disable'}</button>
                             </td>
                         </tr>`;
                     });

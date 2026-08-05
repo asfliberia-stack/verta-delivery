@@ -367,6 +367,14 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS store_address TEXT;
 -- for the size cap enforced on upload).
 ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_image_url TEXT;
 
+-- Real account suspension, any role — separate concept from
+-- approval_status (a rejected vendor never got approved; a disabled
+-- account was working fine and is now being suspended). Login is
+-- blocked while true; disabling also bumps token_version so any
+-- already-logged-in session is invalidated immediately, not just new
+-- login attempts.
+ALTER TABLE users ADD COLUMN IF NOT EXISTS is_disabled BOOLEAN NOT NULL DEFAULT false;
+
 -- Real "follow a store" — same pattern as wishlist_items, just for
 -- stores instead of products.
 CREATE TABLE IF NOT EXISTS store_follows (

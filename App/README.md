@@ -3297,3 +3297,38 @@ only constraint with this issue. The `approval_status` constraint
 nearby is safe by construction (`ADD COLUMN IF NOT EXISTS ... CHECK`
 only applies when the column doesn't exist yet, so it never
 re-validates against existing rows).
+
+## Super Admin can now disable accounts — Customers, Vendors, Delivery Companies, Manage Agent
+
+Real suspension, not deletion — the account and all its data stay
+intact, they just can't log in until re-enabled.
+
+### What's actually enforced, not just cosmetic
+
+- **Login blocked immediately** — checked in *two* places, not one:
+  the regular password login, and Google Sign-In. Checked the Google
+  flow directly and found it had no such check at all — a disabled
+  account could have signed back in through Google even with the
+  regular login blocked. Fixed both.
+- **Already-active sessions get cut off too**, not just new login
+  attempts — disabling bumps `token_version`, which `requireAuth`
+  already checks on every single request. So if someone's logged in on
+  their phone when you disable their account, their very next action
+  fails instead of continuing to work until they happen to log out.
+- **Can never target a Super Admin** — enforced in the SQL query
+  itself (`AND role != 'super_admin'`), not just left to the frontend
+  to prevent. Includes a direct check stopping a Super Admin from
+  disabling their own account by accident.
+
+### One generic endpoint, four real UIs
+
+`PUT /api/super-admin/users/:id/disable-status` covers all four types
+through one shared function (`toggleAccountDisabled()` on the
+frontend) — Customers, Vendors, and Delivery Companies each got a
+real Disable/Enable button in their existing panels, with a visual
+"Disabled" badge and dimmed row so it's obvious at a glance.
+
+Manage Agent needed something new — its account summary endpoint
+existed on the backend already but had no frontend view calling it at
+all. Built a small, real card in the Platform Overview showing the
+account and the same toggle.
