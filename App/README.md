@@ -4226,3 +4226,37 @@ order data on a running server — worth a quick manual check after
 deploying (file a report, resolve it with a refund, confirm the
 affected vendor/company's outstanding balance in the Payouts panel
 actually drops by that amount).
+
+## Fix: "Fleet Directory" looked disabled for Super Admin
+
+Reported bug: Super Admin clicking "Fleet Directory" in the sidebar
+appeared to do nothing — no modal, no navigation, nothing.
+
+Root cause: that button was never a real page — it just scrolls the
+already-visible dashboard down to the `agent-contacts-section` block.
+That's a safe assumption for Manage Agent, who only ever has one main
+view (Delivery Operations). Super Admin has two — Platform Overview
+(their default landing view after login) and Delivery Operations — and
+`agent-contacts-section` only exists inside the latter, which is
+`display:none` while Platform Overview is showing. So a Super Admin
+landing on Platform Overview and clicking Fleet Directory was asking
+the browser to scroll to a hidden element — a silent no-op that reads
+exactly like a disabled button, even though nothing was actually
+disabled (`myDisabledFeatures` — the per-staff-account restriction
+system — was empty, as it always is for Super Admin's own session).
+
+Fix: the Fleet Directory click handler now switches to the Delivery
+Operations view first (by reusing the exact click the "Delivery
+Operations" nav item already uses, so there's one code path, not two)
+and only then scrolls. Manage Agent's behavior is unchanged, since
+they're always already in that view. The same handler is shared by the
+mobile bottom-nav "Fleet" button and the "More" sheet's "Fleet
+Directory" item, so both pick up the fix automatically.
+
+Verified with a Playwright pass that simulates a Super Admin session
+starting on Platform Overview, clicks the button, and confirms the
+Delivery Operations view becomes visible, Platform Overview hides, the
+correct nav button gets the active state, and no page errors are
+thrown — then repeats the click from an already-active Delivery
+Operations view (Manage Agent's normal case) to confirm no regression
+there either.

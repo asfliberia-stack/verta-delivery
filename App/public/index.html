@@ -8944,6 +8944,16 @@
             document.getElementById('close-order-history').addEventListener('click', closeOrderHistoryModal);
 
             document.getElementById('scroll-to-agents-btn').addEventListener('click', () => {
+                // Fleet Directory lives inside the Delivery Operations view.
+                // Manage Agent is always in that view, so this used to be a
+                // plain scroll. Super Admin's default landing view is
+                // Platform Overview instead — a separate, hidden section —
+                // so scrolling to a hidden element was a silent no-op that
+                // looked like the button was disabled. Switch views first
+                // (reusing the exact same click the "Delivery Operations"
+                // nav item uses) so the section is actually visible.
+                const overviewBtn = document.getElementById('admin-overview-nav-btn');
+                if (overviewBtn && !overviewBtn.classList.contains('active')) overviewBtn.click();
                 const section = document.getElementById('agent-contacts-section');
                 if (section) section.scrollIntoView({ behavior: 'smooth', block: 'start' });
             });
