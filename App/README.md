@@ -3758,3 +3758,37 @@ existing table-based layout. This felt like its own separate, real
 piece of work rather than something to rush alongside the structural
 mobile-layout changes in this round. Happy to build it as a focused
 follow-up if you want that exact card style.
+
+## Fixed a major, root-cause bug: stat cards (and likely more) rendering completely unstyled
+
+Found the actual cause from your screenshots, and it's a real mistake
+on my part from several rounds back, not something new. When I fixed
+the sidebar's CSS being scoped only to `#delivery-app` (the Admin
+container), I duplicated every *selector* that referenced it for
+`#delivery-customer-app` too — but I never duplicated the *CSS
+variable definitions themselves*. `--admin-surface`, `--admin-border`,
+`--admin-shadow-xs`, `--admin-sidebar-text`, and about 15 others were
+only ever defined inside `#delivery-app { ... }`.
+
+CSS custom properties don't inherit across separate top-level
+elements — since `#delivery-customer-app` is a completely different
+container, none of those variables existed within it at all. Every
+rule I'd duplicated that referenced `var(--admin-*)` was silently
+resolving to nothing: no background, no border, no shadow, no rounded
+corners. That's exactly what showed up as stat cards rendering as bare
+text with no card styling at all, and is very likely also why the
+"Dream Girl Collections" sidebar text appeared so faint — its color
+was one of the undefined variables too.
+
+### The actual fix
+
+Added the identical set of `--admin-*` variable definitions scoped to
+`#delivery-customer-app`, matching `#delivery-app`'s values exactly.
+Confirmed there's only one such variable-defining block in the whole
+file (plus a dark-mode variant that's Admin-only and doesn't apply to
+the customer dashboard), so this is a complete fix, not a partial one.
+
+Since both the desktop and mobile layouts share these same underlying
+CSS rules — just arranged differently via media queries — this single
+fix should resolve the broken styling in both the desktop screenshot
+and the mobile view.

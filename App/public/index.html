@@ -1184,6 +1184,38 @@
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
             -webkit-font-smoothing: antialiased;
         }
+        /* Same variable set for the customer container — CSS custom
+           properties don't inherit across separate top-level elements,
+           so every rule below that references var(--admin-*) for
+           #delivery-customer-app was silently resolving to nothing
+           without this. This is the actual root cause of stat cards
+           (and other elements) rendering with no background, border,
+           or shadow at all. */
+        #delivery-customer-app {
+            --admin-bg: #f8fafc;
+            --admin-surface: #ffffff;
+            --admin-surface-alt: #f1f5f9;
+            --admin-border: #e2e8f0;
+            --admin-border-strong: #cbd5e1;
+            --admin-text: #0f172a;
+            --admin-text-secondary: #64748b;
+            --admin-text-tertiary: #94a3b8;
+            --admin-sidebar-from: #121829;
+            --admin-sidebar-to: #1a2137;
+            --admin-sidebar-text: #cbd5e1;
+            --admin-sidebar-text-hover: #ffffff;
+            --admin-shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.04);
+            --admin-shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.06), 0 1px 2px rgba(15, 23, 42, 0.04);
+            --admin-shadow-md: 0 4px 16px rgba(15, 23, 42, 0.08);
+            --admin-shadow-lg: 0 16px 40px rgba(15, 23, 42, 0.12);
+            --admin-radius-lg: 1rem;
+            --admin-radius-md: 0.75rem;
+            --admin-radius-sm: 0.5rem;
+            background: var(--admin-bg);
+            min-height: 100vh;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            -webkit-font-smoothing: antialiased;
+        }
         #delivery-app h1, #delivery-app h2, #delivery-app h3, #delivery-app h4 {
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
             letter-spacing: -0.01em;
