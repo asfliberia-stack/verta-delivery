@@ -3792,3 +3792,53 @@ Since both the desktop and mobile layouts share these same underlying
 CSS rules — just arranged differently via media queries — this single
 fix should resolve the broken styling in both the desktop screenshot
 and the mobile view.
+
+## Desktop dashboard refactored toward the SaaS interface spec
+
+Built to the detailed spec provided, with one thing flagged directly
+rather than silently changed: the spec calls for a light/slate
+sidebar theme, which is a real, visible change from the dark navy
+sidebar confirmed correct just one message earlier. Built to the new
+spec as explicitly requested.
+
+### What's real and built this round
+
+- **Sidebar**: light theme (white background, right border), dark
+  text/icons for readability, red logout action with proper contrast.
+  Added a real "+ Create New Order" button directly in the sidebar.
+- **Hero banner**: compressed to a low-profile horizontal card on
+  desktop only (kept the original vertical version on mobile, since
+  it matches your confirmed mobile reference) — its duplicate
+  "Create New Order" button is hidden on desktop now that the sidebar
+  has its own.
+- **Orders table**: wrapped in a real white card with border and
+  shadow, sticky header, and genuinely working search + status filter
+  controls — not decorative inputs, they actually filter the real
+  `orders` array client-side. Added as optional parameters to the
+  existing shared table function, defaulting to no-op, so the other
+  three places that already call it are completely unaffected.
+- Bottom padding added so the floating "Live" chat widget doesn't sit
+  on top of table content.
+
+### A real mistake caught and fixed mid-round
+
+Changing the sidebar hover color accidentally deleted the Admin
+dashboard's own hover rule in the same edit (both were matched by one
+`str_replace`). Caught it immediately by checking whether the rule
+still existed, restored it, and confirmed via direct comparison that
+the Admin dashboard's sidebar colors are completely unchanged.
+
+### What's not built yet
+
+- The three-dot actions dropdown menu (replacing the current
+  eye/x icons) — touching this means modifying the shared table
+  function's action-column rendering, which is reused in three other
+  places (Marketplace order history, the admin-placed-order table).
+  That felt like a real, separate risk worth flagging rather than
+  rushing into the same round as the layout changes.
+- Pagination/row-count controls on the table — not built.
+- The top header's search/notification quick-actions beyond what
+  already existed — not added as new elements this round.
+
+Happy to tackle the actions dropdown as a focused, careful follow-up
+if you'd like it, given the shared-function risk involved.

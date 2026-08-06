@@ -169,6 +169,19 @@
         }
         .dcust-stat-icon svg { width: 19px; height: 19px; }
 
+        .dcust-table-card {
+            background: white; border: 1px solid var(--border); border-radius: 1rem;
+            box-shadow: var(--shadow-sm); overflow: hidden; padding-bottom: 4rem;
+        }
+        .dcust-table-controls {
+            display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap;
+            gap: 0.75rem; padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--border);
+        }
+        .dcust-table-card .orders-grid { padding: 0 1.5rem; }
+        .dcust-table-card table thead th {
+            position: sticky; top: 0; background: #f8fafc; z-index: 1;
+        }
+
         .mobile-section { margin-top: 1.5rem; }
         .mobile-section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.875rem; }
         .mobile-section-title { font-size: 1.0625rem; font-weight: 800; color: var(--slate); }
@@ -219,6 +232,13 @@
 
             .mobile-bottom-nav { display: none; }
             #delivery-customer-app .admin-shell { grid-template-columns: 272px 1fr; }
+            #delivery-customer-app .hero {
+                padding: 1.5rem 2rem; text-align: left; display: flex; align-items: center;
+                justify-content: space-between; gap: 1.5rem; border-radius: 1rem;
+            }
+            #delivery-customer-app .hero h2 { font-size: 1.375rem; margin-bottom: 0.25rem; }
+            #delivery-customer-app .hero p { font-size: 0.9375rem; margin-bottom: 0; max-width: none; margin-left: 0; }
+            #delivery-customer-app #btn-new-order { display: none; }
             #delivery-customer-app .admin-sidebar { display: flex; }
             .mobile-topbar { padding: 1rem 2rem; flex-wrap: nowrap; }
             .desktop-hide-logo { display: none; }
@@ -1279,7 +1299,8 @@
         }
         /* ---- Sidebar ---- */
         #delivery-customer-app .admin-sidebar {
-            background: linear-gradient(180deg, var(--admin-sidebar-from) 0%, var(--admin-sidebar-to) 100%);
+            background: #ffffff;
+            border-right: 1px solid #e2e8f0;
             min-height: 100vh;
             padding: 1.75rem 1.25rem;
             display: none;
@@ -1313,12 +1334,12 @@
             display: flex; align-items: center; gap: 0.75rem;
             min-height: 44px;
             padding: 0.625rem 0.875rem; border-radius: var(--admin-radius-sm);
-            color: var(--admin-sidebar-text); font-weight: 600; font-size: 0.875rem;
+            color: #475569; font-weight: 600; font-size: 0.875rem;
             background: transparent; border: none; cursor: pointer; text-align: left;
             transition: background 0.15s ease, color 0.15s ease; width: 100%;
         }
         #delivery-app .admin-nav-item:hover { background: rgba(255,255,255,0.06); color: var(--admin-sidebar-text-hover); }
-        #delivery-customer-app .admin-nav-item:hover { background: rgba(255,255,255,0.06); color: var(--admin-sidebar-text-hover); }
+        #delivery-customer-app .admin-nav-item:hover { background: #f1f5f9; color: #1e293b; }
         #delivery-app .admin-nav-item:focus-visible {
             outline: 2px solid var(--primary); outline-offset: 2px;
             background: rgba(255,255,255,0.06); color: var(--admin-sidebar-text-hover);
@@ -1350,7 +1371,7 @@
         }
         #delivery-customer-app .admin-sidebar-footer {
             margin-top: 1.5rem; padding-top: 1.25rem;
-            border-top: 1px solid rgba(255,255,255,0.08);
+            border-top: 1px solid #e2e8f0;
             display: flex; flex-direction: column; gap: 0.25rem;
         }
         #delivery-app .admin-profile { display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem 0.875rem; }
@@ -1368,11 +1389,11 @@
             font-weight: 700; font-size: 0.9375rem; border: none; flex-shrink: 0;
         }
         #delivery-app .admin-profile-label { color: white; font-weight: 600; font-size: 0.875rem; }
-        #delivery-customer-app .admin-profile-label { color: white; font-weight: 600; font-size: 0.875rem; }
+        #delivery-customer-app .admin-profile-label { color: #1e293b; font-weight: 600; font-size: 0.875rem; }
         #delivery-app .admin-logout { color: var(--admin-sidebar-text); }
-        #delivery-customer-app .admin-logout { color: var(--admin-sidebar-text); }
+        #delivery-customer-app .admin-logout { color: #dc2626; }
         #delivery-app .admin-logout:hover { background: rgba(255,255,255,0.06); color: var(--admin-sidebar-text-hover); }
-        #delivery-customer-app .admin-logout:hover { background: rgba(255,255,255,0.06); color: var(--admin-sidebar-text-hover); }
+        #delivery-customer-app .admin-logout:hover { background: #fef2f2; color: #b91c1c; }
 
         /* ---- Sidebar toggle ---- */
         #delivery-app .sidebar-toggle-btn {
@@ -3072,6 +3093,7 @@
                 <div class="admin-sidebar-logo">
                     <img src="assets/logo.png" alt="ONLib Delivery">
                 </div>
+                <button type="button" class="btn-primary" id="dcust-sidebar-new-order-btn" style="width:100%; margin-bottom:1.25rem; padding:0.625rem 1rem; border-radius:0.5rem;">+ Create New Order</button>
                 <nav class="admin-nav">
                     <button type="button" class="admin-nav-item active" id="dcust-nav-dashboard">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
@@ -3187,8 +3209,23 @@
                     </section>
 
                     <section class="orders-section" id="your-orders-section">
-                        <div class="mobile-section-header"><div class="section-title">Your Orders</div></div>
-                        <div class="orders-grid" id="orders-grid"></div>
+                        <div class="dcust-table-card">
+                            <div class="dcust-table-controls">
+                                <div class="section-title" style="margin:0;">Your Orders</div>
+                                <div style="display:flex; gap:0.75rem; flex-wrap:wrap;">
+                                    <input type="text" class="form-input" id="dcust-orders-search" placeholder="Search orders…" style="max-width:220px;">
+                                    <select class="form-input" id="dcust-orders-status-filter" style="max-width:160px;">
+                                        <option value="all">All statuses</option>
+                                        <option value="pending">Pending</option>
+                                        <option value="accepted">Accepted</option>
+                                        <option value="picked-up">In transit</option>
+                                        <option value="delivered">Delivered</option>
+                                        <option value="cancelled">Cancelled</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="orders-grid" id="orders-grid"></div>
+                        </div>
                     </section>
                 </div>
 
@@ -6584,6 +6621,12 @@
             document.getElementById('dcust-stat-spent').textContent = `$${totalSpent.toFixed(2)}`;
         }
 
+        function applyDcustOrdersFilter() {
+            const search = document.getElementById('dcust-orders-search')?.value || '';
+            const status = document.getElementById('dcust-orders-status-filter')?.value || 'all';
+            renderSenderOrdersTable('orders-grid', search, status);
+        }
+
         function setDeliveryCustomerView(view) {
             document.getElementById('dcust-view-dashboard').style.display = view === 'dashboard' ? 'block' : 'none';
             document.getElementById('dcust-view-my-orders').style.display = view === 'my-orders' ? 'block' : 'none';
@@ -6828,6 +6871,9 @@
             document.getElementById('dcust-nav-dashboard').addEventListener('click', () => setDeliveryCustomerView('dashboard'));
             document.getElementById('dcust-nav-my-orders').addEventListener('click', () => setDeliveryCustomerView('my-orders'));
             document.getElementById('dcust-nav-new-order').addEventListener('click', openNewOrderModal);
+            document.getElementById('dcust-sidebar-new-order-btn').addEventListener('click', openNewOrderModal);
+            document.getElementById('dcust-orders-search').addEventListener('input', applyDcustOrdersFilter);
+            document.getElementById('dcust-orders-status-filter').addEventListener('change', applyDcustOrdersFilter);
             document.getElementById('dcust-nav-addresses').addEventListener('click', openDcustAddressesModal);
             document.getElementById('close-dcust-addresses-modal').addEventListener('click', () => {
                 document.getElementById('dcust-addresses-modal').classList.remove('active');
@@ -10099,15 +10145,28 @@
             { key: null, label: 'Actions' },
         ];
 
-        function renderSenderOrdersTable(containerId) {
+        function renderSenderOrdersTable(containerId, searchQuery, statusFilter) {
             const container = document.getElementById(containerId);
             if (!container) return;
-            if (orders.length === 0) {
-                renderEmptyState(container, 'No orders yet — create your first one above.');
+            let filtered = orders;
+            if (statusFilter && statusFilter !== 'all') {
+                filtered = filtered.filter(o => o.status === statusFilter);
+            }
+            if (searchQuery && searchQuery.trim()) {
+                const q = searchQuery.trim().toLowerCase();
+                filtered = filtered.filter(o =>
+                    (o.id || '').toLowerCase().includes(q) ||
+                    (o.itemDescription || '').toLowerCase().includes(q) ||
+                    (o.pickupAddress || '').toLowerCase().includes(q) ||
+                    (o.dropoffAddress || '').toLowerCase().includes(q)
+                );
+            }
+            if (filtered.length === 0) {
+                renderEmptyState(container, orders.length === 0 ? 'No orders yet — create your first one above.' : 'No orders match your search.');
                 return;
             }
 
-            const sorted = [...orders].sort((a, b) => {
+            const sorted = [...filtered].sort((a, b) => {
                 let av = a[senderOrdersSortKey];
                 let bv = b[senderOrdersSortKey];
                 if (senderOrdersSortKey === 'createdAt') { av = new Date(av); bv = new Date(bv); }
