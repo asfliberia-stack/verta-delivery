@@ -374,10 +374,13 @@
             .desktop-sidebar-logout { color: #dc2626; }
 
             .mobile-bottom-nav { display: none; }
+            #delivery-app .admin-shell { grid-template-columns: 272px 1fr; }
             #delivery-customer-app .admin-shell { grid-template-columns: 272px 1fr; }
             #delivery-company-app .admin-shell { grid-template-columns: 272px 1fr; }
+            #delivery-app .admin-sidebar { display: flex; }
             #delivery-customer-app .admin-sidebar { display: flex; }
             #delivery-company-app .admin-sidebar { display: flex; }
+            #delivery-app .sidebar-toggle-btn { display: flex; }
             .mobile-topbar { padding: 1rem 2rem; flex-wrap: nowrap; }
             .desktop-hide-logo { display: none; }
             .mobile-search-bar { order: 0; flex: 1; max-width: 640px; margin: 0; }
@@ -1460,7 +1463,8 @@
 
         /* ---- Sidebar ---- */
         #delivery-app .admin-sidebar {
-            background: linear-gradient(180deg, var(--admin-sidebar-from) 0%, var(--admin-sidebar-to) 100%);
+            background: #ffffff;
+            border-right: 1px solid #e2e8f0;
             min-height: 100vh;
             padding: 1.75rem 1.25rem;
             display: flex;
@@ -1517,7 +1521,7 @@
             display: flex; align-items: center; gap: 0.75rem;
             min-height: 44px;
             padding: 0.625rem 0.875rem; border-radius: var(--admin-radius-sm);
-            color: var(--admin-sidebar-text); font-weight: 600; font-size: 0.875rem;
+            color: #475569; font-weight: 600; font-size: 0.875rem;
             background: transparent; border: none; cursor: pointer; text-align: left;
             transition: background 0.15s ease, color 0.15s ease; width: 100%;
         }
@@ -1537,12 +1541,12 @@
             background: transparent; border: none; cursor: pointer; text-align: left;
             transition: background 0.15s ease, color 0.15s ease; width: 100%;
         }
-        #delivery-app .admin-nav-item:hover { background: rgba(255,255,255,0.06); color: var(--admin-sidebar-text-hover); }
+        #delivery-app .admin-nav-item:hover { background: #f1f5f9; color: #1e293b; }
         #delivery-customer-app .admin-nav-item:hover { background: #f1f5f9; color: #1e293b; }
         #delivery-company-app .admin-nav-item:hover { background: #f1f5f9; color: #1e293b; }
         #delivery-app .admin-nav-item:focus-visible {
             outline: 2px solid var(--primary); outline-offset: 2px;
-            background: rgba(255,255,255,0.06); color: var(--admin-sidebar-text-hover);
+            background: #f1f5f9; color: #1e293b;
         }
         #delivery-customer-app .admin-nav-item:focus-visible {
             outline: 2px solid var(--primary); outline-offset: 2px;
@@ -1618,13 +1622,13 @@
             display: flex; align-items: center; justify-content: center;
             font-weight: 700; font-size: 0.9375rem; border: none; flex-shrink: 0;
         }
-        #delivery-app .admin-profile-label { color: white; font-weight: 600; font-size: 0.875rem; }
+        #delivery-app .admin-profile-label { color: #1e293b; font-weight: 600; font-size: 0.875rem; }
         #delivery-customer-app .admin-profile-label { color: #1e293b; font-weight: 600; font-size: 0.875rem; }
         #delivery-company-app .admin-profile-label { color: #1e293b; font-weight: 600; font-size: 0.875rem; }
-        #delivery-app .admin-logout { color: var(--admin-sidebar-text); }
+        #delivery-app .admin-logout { color: #dc2626; }
         #delivery-customer-app .admin-logout { color: #dc2626; }
         #delivery-company-app .admin-logout { color: #dc2626; }
-        #delivery-app .admin-logout:hover { background: rgba(255,255,255,0.06); color: var(--admin-sidebar-text-hover); }
+        #delivery-app .admin-logout:hover { background: #fef2f2; color: #b91c1c; }
         #delivery-customer-app .admin-logout:hover { background: #fef2f2; color: #b91c1c; }
         #delivery-company-app .admin-logout:hover { background: #fef2f2; color: #b91c1c; }
 
@@ -1638,9 +1642,9 @@
             height: 2.75rem;
             border-radius: var(--admin-radius-sm);
             display: flex; align-items: center; justify-content: center;
-            background: rgba(255,255,255,0.08);
-            border: 1px solid rgba(255,255,255,0.14);
-            color: white;
+            background: var(--admin-surface-alt);
+            border: 1px solid var(--admin-border);
+            color: var(--admin-text-secondary);
             cursor: pointer;
             transition: left 0.3s ease-in-out, background 0.15s, color 0.15s, border-color 0.15s;
         }
@@ -1675,7 +1679,7 @@
             cursor: pointer;
             transition: left 0.3s ease-in-out, background 0.15s, color 0.15s, border-color 0.15s;
         }
-        #delivery-app .sidebar-toggle-btn:hover { background: rgba(255,255,255,0.16); }
+        #delivery-app .sidebar-toggle-btn:hover { background: var(--admin-border); color: var(--admin-text); }
         #delivery-customer-app .sidebar-toggle-btn:hover { background: rgba(255,255,255,0.16); }
         #delivery-company-app .sidebar-toggle-btn:hover { background: rgba(255,255,255,0.16); }
         #delivery-app .sidebar-toggle-btn:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
@@ -2616,6 +2620,34 @@
         #delivery-company-app .admin-shell.sidebar-collapsed .sidebar-toggle-btn { left: auto; right: 1.25rem; }
         }
 
+        /* ---- Manage Agent / Super Admin dashboard: mobile bottom-nav
+           instead of the collapsible sidebar ----
+           #delivery-app previously relied purely on a hamburger-toggled
+           sidebar collapse for small screens, which — unlike the sender
+           and delivery-company dashboards — left the full nav list
+           rendered inline above the content on first paint (no bottom
+           nav, no default-collapsed state), a real usability problem on
+           phones. Below 1024px the sidebar and its toggle button are
+           now hidden outright and the mobile-bottom-nav (added in the
+           HTML, reusing the same shared .mobile-bottom-nav component as
+           the other two dashboards) takes over primary navigation,
+           matching the pattern already established there. */
+        @media (max-width: 1023px) {
+            #delivery-app .admin-sidebar { display: none; }
+            #delivery-app .sidebar-toggle-btn { display: none; }
+            #delivery-app .admin-main { padding: 1.5rem 1.5rem calc(5.5rem + env(safe-area-inset-bottom)); }
+            /* Single-column grid tracks default to an "auto" (content-based)
+               minimum, not 0 — so the KPI grids inside (Today's Snapshot,
+               Platform Overview), which use minmax(220px, 1fr) tiles, were
+               forcing the whole #admin-shell / .admin-main grid track wider
+               than the phone's viewport instead of wrapping to one column,
+               pushing every card into horizontal overflow. minmax(0, 1fr)
+               removes that floor so the track — and everything nested
+               inside it — actually respects the viewport width. */
+            #delivery-app .admin-shell { grid-template-columns: minmax(0, 1fr); }
+            #delivery-app .admin-main { min-width: 0; }
+        }
+
         /* ---- Customer/sender delivery dashboard: real desktop sidebar
            (fix) ----
            The desktop overrides for #delivery-customer-app .admin-shell
@@ -2633,10 +2665,13 @@
            unconditional rule, makes them win the cascade the way the
            original @media block always intended. */
         @media (min-width: 1024px) {
+            #delivery-app .admin-shell { grid-template-columns: 272px 1fr; }
             #delivery-customer-app .admin-shell { grid-template-columns: 272px 1fr; }
             #delivery-company-app .admin-shell { grid-template-columns: 272px 1fr; }
+            #delivery-app .admin-sidebar { display: flex; }
             #delivery-customer-app .admin-sidebar { display: flex; }
             #delivery-company-app .admin-sidebar { display: flex; }
+            #delivery-app .sidebar-toggle-btn { display: flex; }
             /* The sidebar's own "+ Create New Order" button duplicated
                the "Create New Order" nav item right below it once the
                sidebar was visible — hide the duplicate on desktop, where
@@ -4169,7 +4204,7 @@
                                 <div style="font-weight:700; color:var(--slate);" id="sa-manage-agent-name">—</div>
                                 <div style="font-size:0.875rem; color:var(--slate-light);" id="sa-manage-agent-email">—</div>
                             </div>
-                            <div style="display:flex; gap:0.5rem;">
+                            <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
                                 <button type="button" class="btn-small btn-secondary" id="sa-manage-agent-edit-btn">Edit</button>
                                 <button type="button" class="btn-small" id="sa-manage-agent-reset-password-btn">Reset Password</button>
                                 <button type="button" class="btn-small btn-secondary" id="sa-manage-agent-permissions-btn">Permissions</button>
@@ -4197,6 +4232,43 @@
                 </div>
 
             </div>
+
+            <!-- Mobile bottom nav — replaces the collapsible sidebar below
+                 1024px. Shared between Manage Agent and Super Admin; items
+                 that only make sense for one role are toggled in enterApp()
+                 the same way the sidebar's own Platform Overview/Vendors/
+                 Delivery Companies buttons already are. Every button just
+                 clicks the equivalent, already-wired sidebar/topbar button
+                 so there is exactly one code path per action. -->
+            <nav class="mobile-bottom-nav">
+                <button type="button" class="mobile-nav-item" id="admin-mnav-platform" style="display:none;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"></path><path d="M18.7 8 12 14.7 8.5 11.2 4 15.7"></path></svg>
+                    Platform
+                </button>
+                <button type="button" class="mobile-nav-item active" id="admin-mnav-overview">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+                    <span id="admin-mnav-overview-label">Overview</span>
+                </button>
+                <button type="button" class="mobile-nav-item" id="admin-mnav-order-history">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+                    Orders
+                </button>
+                <button type="button" class="mobile-nav-item mobile-nav-item-prominent" id="admin-mnav-new-order" aria-label="New Order">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                </button>
+                <button type="button" class="mobile-nav-item" id="admin-mnav-fleet">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                    Fleet
+                </button>
+                <button type="button" class="mobile-nav-item" id="admin-mnav-vendors" style="display:none;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+                    Vendors
+                </button>
+                <button type="button" class="mobile-nav-item" id="admin-mnav-more">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle><circle cx="5" cy="12" r="1"></circle></svg>
+                    More
+                </button>
+            </nav>
         </div>
 
         <!-- Kept in the DOM (hidden) so existing renderOrderHistory() calls in
@@ -5682,6 +5754,64 @@
                     Back to service selector
                 </button>
                 <button type="button" class="admin-nav-item admin-logout" id="dc-more-logout" style="width:100%; text-align:left;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+                    Logout
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Manage Agent / Super Admin mobile "More" sheet — same idea as
+         #dc-more-modal above: destinations that don't fit in the 5-item
+         bottom bar. A couple of items (Order History, Fleet Directory)
+         are also reachable from the bottom bar itself for Manage Agent,
+         but keeping them here too costs nothing and means Super Admin
+         (whose bottom bar has different priorities) always finds every
+         destination in the same place. -->
+    <div class="modal-overlay" id="admin-more-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>More</h3>
+                <button class="close-btn" id="close-admin-more-modal">&times;</button>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:0.5rem;">
+                <button type="button" class="admin-nav-item" id="admin-more-order-history" style="width:100%; text-align:left;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
+                    Order History
+                </button>
+                <button type="button" class="admin-nav-item" id="admin-more-monthly-report" style="width:100%; text-align:left;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+                    Monthly Report
+                </button>
+                <button type="button" class="admin-nav-item" id="admin-more-add-expense" style="width:100%; text-align:left;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
+                    Add Expense
+                </button>
+                <button type="button" class="admin-nav-item" id="admin-more-fleet" style="width:100%; text-align:left;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                    Fleet Directory
+                </button>
+                <button type="button" class="admin-nav-item" id="admin-more-customers" style="width:100%; text-align:left;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><path d="M20 8v6M23 11h-6"></path></svg>
+                    Customers
+                </button>
+                <button type="button" class="admin-nav-item" id="admin-more-delivery-companies" style="width:100%; text-align:left; display:none;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13"></rect><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon><circle cx="5.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle></svg>
+                    Delivery Companies
+                </button>
+                <button type="button" class="admin-nav-item" id="admin-more-settings" style="width:100%; text-align:left;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                    Settings
+                </button>
+                <button type="button" class="admin-nav-item" id="admin-more-help-support" style="width:100%; text-align:left;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+                    Help &amp; Support
+                </button>
+                <button type="button" class="admin-nav-item" id="admin-more-back-to-chooser" style="width:100%; text-align:left;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+                    Back to service selector
+                </button>
+                <button type="button" class="admin-nav-item admin-logout" id="admin-more-logout" style="width:100%; text-align:left;">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
                     Logout
                 </button>
@@ -7793,6 +7923,25 @@
                 const platformOverviewNavBtn = document.getElementById('sa-platform-overview-nav-btn');
                 if (platformOverviewNavBtn) platformOverviewNavBtn.style.display = isSuperAdmin ? 'flex' : 'none';
                 document.getElementById('admin-overview-nav-label').textContent = isSuperAdmin ? 'Delivery Operations' : 'Overview';
+                // Mobile bottom nav — same role split as the sidebar above,
+                // just mirrored onto the mobile-only nav buttons.
+                const mnavPlatformBtn = document.getElementById('admin-mnav-platform');
+                if (mnavPlatformBtn) mnavPlatformBtn.style.display = isSuperAdmin ? 'flex' : 'none';
+                const mnavFleetBtn = document.getElementById('admin-mnav-fleet');
+                if (mnavFleetBtn) mnavFleetBtn.style.display = isSuperAdmin ? 'none' : 'flex';
+                const mnavOrderHistoryBtn = document.getElementById('admin-mnav-order-history');
+                if (mnavOrderHistoryBtn) mnavOrderHistoryBtn.style.display = isSuperAdmin ? 'none' : 'flex';
+                const mnavVendorsBtn = document.getElementById('admin-mnav-vendors');
+                if (mnavVendorsBtn) mnavVendorsBtn.style.display = isSuperAdmin ? 'flex' : 'none';
+                const mnavOverviewLabelEl = document.getElementById('admin-mnav-overview-label');
+                if (mnavOverviewLabelEl) mnavOverviewLabelEl.textContent = isSuperAdmin ? 'Ops' : 'Overview';
+                const moreDeliveryCompaniesBtn = document.getElementById('admin-more-delivery-companies');
+                if (moreDeliveryCompaniesBtn) moreDeliveryCompaniesBtn.style.display = isSuperAdmin ? 'flex' : 'none';
+                // Super Admin lands on Platform Overview by default — reflect
+                // that in the bottom nav's initial active state too (matches
+                // setAdminMainView('platform') called a few lines down).
+                if (mnavPlatformBtn) mnavPlatformBtn.classList.toggle('active', isSuperAdmin);
+                document.getElementById('admin-mnav-overview').classList.toggle('active', !isSuperAdmin);
                 startAdminClock();
                 renderNotificationCenter();
                 renderSkeletonCards(document.getElementById('orders-grouped-delivery'));
@@ -8888,6 +9037,10 @@
             const overviewBtn = document.getElementById('admin-overview-nav-btn');
             if (platformBtn) platformBtn.classList.toggle('active', view === 'platform');
             if (overviewBtn) overviewBtn.classList.toggle('active', view === 'operational');
+            const mnavPlatformBtn = document.getElementById('admin-mnav-platform');
+            const mnavOverviewBtn = document.getElementById('admin-mnav-overview');
+            if (mnavPlatformBtn) mnavPlatformBtn.classList.toggle('active', view === 'platform');
+            if (mnavOverviewBtn) mnavOverviewBtn.classList.toggle('active', view === 'operational');
         }
 
         async function loadSuperAdminOverview() {
@@ -9268,6 +9421,75 @@
             document.getElementById('recent-deliveries-container').addEventListener('click', (e) => {
                 const row = e.target.closest('.recent-delivery-row');
                 if (row) openOrderDetails(row.dataset.id, 'delivery');
+            });
+
+            // ---- Mobile bottom nav (Manage Agent / Super Admin) ----
+            // Every button just re-clicks the equivalent, already-wired
+            // sidebar/topbar control — one code path per action, no
+            // duplicated logic to drift out of sync.
+            document.getElementById('admin-mnav-platform').addEventListener('click', () => {
+                document.getElementById('sa-platform-overview-nav-btn').click();
+            });
+            document.getElementById('admin-mnav-overview').addEventListener('click', () => {
+                document.getElementById('admin-overview-nav-btn').click();
+            });
+            document.getElementById('admin-mnav-order-history').addEventListener('click', () => {
+                document.getElementById('view-order-history-delivery').click();
+            });
+            document.getElementById('admin-mnav-new-order').addEventListener('click', () => {
+                document.getElementById('open-admin-new-order-btn').click();
+            });
+            document.getElementById('admin-mnav-fleet').addEventListener('click', () => {
+                document.getElementById('scroll-to-agents-btn').click();
+            });
+            document.getElementById('admin-mnav-vendors').addEventListener('click', () => {
+                document.getElementById('open-vendors-btn').click();
+            });
+            document.getElementById('admin-mnav-more').addEventListener('click', () => {
+                document.getElementById('admin-more-modal').classList.add('active');
+            });
+            document.getElementById('close-admin-more-modal').addEventListener('click', () => {
+                document.getElementById('admin-more-modal').classList.remove('active');
+            });
+            document.getElementById('admin-more-order-history').addEventListener('click', () => {
+                document.getElementById('admin-more-modal').classList.remove('active');
+                document.getElementById('view-order-history-delivery').click();
+            });
+            document.getElementById('admin-more-monthly-report').addEventListener('click', () => {
+                document.getElementById('admin-more-modal').classList.remove('active');
+                document.getElementById('open-monthly-report-btn').click();
+            });
+            document.getElementById('admin-more-add-expense').addEventListener('click', () => {
+                document.getElementById('admin-more-modal').classList.remove('active');
+                document.getElementById('add-expense-btn').click();
+            });
+            document.getElementById('admin-more-fleet').addEventListener('click', () => {
+                document.getElementById('admin-more-modal').classList.remove('active');
+                document.getElementById('scroll-to-agents-btn').click();
+            });
+            document.getElementById('admin-more-customers').addEventListener('click', () => {
+                document.getElementById('admin-more-modal').classList.remove('active');
+                document.getElementById('open-customers-btn').click();
+            });
+            document.getElementById('admin-more-delivery-companies').addEventListener('click', () => {
+                document.getElementById('admin-more-modal').classList.remove('active');
+                document.getElementById('open-delivery-companies-btn').click();
+            });
+            document.getElementById('admin-more-settings').addEventListener('click', () => {
+                document.getElementById('admin-more-modal').classList.remove('active');
+                document.getElementById('open-settings-btn').click();
+            });
+            document.getElementById('admin-more-help-support').addEventListener('click', () => {
+                document.getElementById('admin-more-modal').classList.remove('active');
+                document.getElementById('open-help-support-btn').click();
+            });
+            document.getElementById('admin-more-back-to-chooser').addEventListener('click', () => {
+                document.getElementById('admin-more-modal').classList.remove('active');
+                document.getElementById('admin-back-to-chooser-btn').click();
+            });
+            document.getElementById('admin-more-logout').addEventListener('click', () => {
+                document.getElementById('admin-more-modal').classList.remove('active');
+                document.getElementById('admin-logout-btn').click();
             });
         }
 
