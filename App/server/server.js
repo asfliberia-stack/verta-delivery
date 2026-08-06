@@ -593,7 +593,7 @@ app.post('/api/auth/register', authLimiter, async (req, res) => {
     });
     const sessionId = await recordLoginHistory(req, user.id);
     const token = signToken(user, sessionId);
-    res.json({ token, user: { id: user.id, businessName: user.businessName, email: user.email, phone: user.phone, storeAddress: user.storeAddress, profileImageUrl: user.profileImageUrl, role: user.role, approvalStatus: user.approvalStatus } });
+    res.json({ token, user: { id: user.id, businessName: user.businessName, email: user.email, phone: user.phone, storeAddress: user.storeAddress, profileImageUrl: user.profileImageUrl, role: user.role, approvalStatus: user.approvalStatus, rejectionReason: user.rejectionReason } });
   } catch (err) {
     console.error('register failed', err);
     res.status(500).json({ error: 'Registration failed' });
@@ -655,7 +655,7 @@ app.post('/api/auth/register-vendor', authLimiter, async (req, res) => {
     const token = signToken(user, sessionId);
     res.json({
       token,
-      user: { id: user.id, businessName: user.businessName, email: user.email, phone: user.phone, storeAddress: user.storeAddress, profileImageUrl: user.profileImageUrl, role: user.role, approvalStatus: user.approvalStatus },
+      user: { id: user.id, businessName: user.businessName, email: user.email, phone: user.phone, storeAddress: user.storeAddress, profileImageUrl: user.profileImageUrl, role: user.role, approvalStatus: user.approvalStatus, rejectionReason: user.rejectionReason },
     });
   } catch (err) {
     console.error('register-vendor failed', err);
@@ -710,7 +710,7 @@ app.post('/api/auth/register-delivery-company', authLimiter, async (req, res) =>
     const token = signToken(user, sessionId);
     res.json({
       token,
-      user: { id: user.id, businessName: user.businessName, email: user.email, phone: user.phone, storeAddress: user.storeAddress, profileImageUrl: user.profileImageUrl, role: user.role, approvalStatus: user.approvalStatus },
+      user: { id: user.id, businessName: user.businessName, email: user.email, phone: user.phone, storeAddress: user.storeAddress, profileImageUrl: user.profileImageUrl, role: user.role, approvalStatus: user.approvalStatus, rejectionReason: user.rejectionReason },
     });
   } catch (err) {
     console.error('register-delivery-company failed', err);
@@ -730,7 +730,7 @@ app.post('/api/auth/login', authLimiter, async (req, res) => {
 
     const sessionId = await recordLoginHistory(req, user.id);
     const token = signToken(user, sessionId);
-    res.json({ token, user: { id: user.id, businessName: user.businessName, email: user.email, phone: user.phone, storeAddress: user.storeAddress, profileImageUrl: user.profileImageUrl, role: user.role, approvalStatus: user.approvalStatus } });
+    res.json({ token, user: { id: user.id, businessName: user.businessName, email: user.email, phone: user.phone, storeAddress: user.storeAddress, profileImageUrl: user.profileImageUrl, role: user.role, approvalStatus: user.approvalStatus, rejectionReason: user.rejectionReason } });
   } catch (err) {
     console.error('login failed', err);
     res.status(500).json({ error: 'Login failed' });
@@ -810,7 +810,7 @@ app.post('/api/auth/google', authLimiter, async (req, res) => {
 
     const sessionId = await recordLoginHistory(req, user.id);
     const token = signToken(user, sessionId);
-    res.json({ token, user: { id: user.id, businessName: user.businessName, email: user.email, phone: user.phone, storeAddress: user.storeAddress, profileImageUrl: user.profileImageUrl, role: user.role, approvalStatus: user.approvalStatus } });
+    res.json({ token, user: { id: user.id, businessName: user.businessName, email: user.email, phone: user.phone, storeAddress: user.storeAddress, profileImageUrl: user.profileImageUrl, role: user.role, approvalStatus: user.approvalStatus, rejectionReason: user.rejectionReason } });
   } catch (err) {
     console.error('Google sign-in failed', err);
     res.status(401).json({ error: 'Google sign-in failed — the token could not be verified' });
@@ -938,7 +938,7 @@ app.post('/api/auth/admin-login', authLimiter, async (req, res) => {
 app.get('/api/me', requireAuth, async (req, res) => {
   const user = await db.getUserById(req.user.id);
   if (!user) return res.status(401).json({ error: 'Account no longer exists' });
-  res.json({ user: { id: user.id, businessName: user.businessName, email: user.email, phone: user.phone, storeAddress: user.storeAddress, profileImageUrl: user.profileImageUrl, role: user.role, approvalStatus: user.approvalStatus } });
+  res.json({ user: { id: user.id, businessName: user.businessName, email: user.email, phone: user.phone, storeAddress: user.storeAddress, profileImageUrl: user.profileImageUrl, role: user.role, approvalStatus: user.approvalStatus, rejectionReason: user.rejectionReason } });
 });
 
 // Self-service profile edit — any authenticated user updating their own
@@ -1358,70 +1358,106 @@ app.post('/api/super-admin/vendors', requireAuth, requireSuperAdmin, async (req,
   }
 });
 
-// Real Manage Agent account summary — for the Super Admin Console's
-// "Manage Agent" tab. There's only one such account today (the shared
-// ADMIN_EMAIL/ADMIN_PASSWORD login), so this just surfaces it.
-app.get('/api/super-admin/manage-agent', requireAuth, requireSuperAdmin, async (req, res) => {
+// Staff accounts ("Manage Agent" role = 'admin') — real multi-account
+// CRUD for the Super Admin Console's "Staff" tab. Historically there was
+// only ever one such account, found on every boot by looking up a fixed
+// ADMIN_EMAIL environment variable (see seedAdminIfConfigured further
+// down this file) — that seeding still runs and still creates that one
+// account on a fresh deploy, but it's now just how staff account #1
+// happens to come into existence. From here a Super Admin can create,
+// edit, reset the password of, permission, and disable as many more
+// role = 'admin' accounts as the business needs — no different from any
+// other account once created.
+app.get('/api/super-admin/staff', requireAuth, requireSuperAdmin, async (req, res) => {
   try {
-    const admin = await db.getUserByEmail(ADMIN_EMAIL);
-    if (!admin) return res.status(404).json({ error: 'Manage Agent account not found' });
-    res.json({ id: admin.id, businessName: admin.businessName, email: admin.email, phone: admin.phone, createdAt: admin.createdAt, isDisabled: admin.isDisabled, disabledFeatures: admin.disabledFeatures });
+    const staff = await db.getStaffAccounts();
+    res.json({ staff });
   } catch (err) {
-    console.error('GET /api/super-admin/manage-agent failed', err);
-    res.status(500).json({ error: 'Failed to load Manage Agent account' });
+    console.error('GET /api/super-admin/staff failed', err);
+    res.status(500).json({ error: 'Failed to load staff accounts' });
   }
 });
 
-// Super Admin editing the Manage Agent account's name/email/phone
-// directly. IMPORTANT gotcha, surfaced to the frontend in the
-// response so it can warn the person: this account is found on every
-// server restart by looking up the ADMIN_EMAIL environment variable
-// (see seedAdminIfConfigured). If the email is changed here without
-// also updating ADMIN_EMAIL in Railway's Variables tab to match, the
-// next restart won't find an account at the old ADMIN_EMAIL value and
-// will create a brand new, blank one there — the same class of issue
-// documented around Verta Delivery Service's own account further up
-// this file.
-app.put('/api/super-admin/manage-agent/:id', requireAuth, requireSuperAdmin, async (req, res) => {
+// Creating a new staff (Manage Agent) account directly — no
+// application/approval step needed, mirroring Add Vendor/Add Delivery
+// Company: the Super Admin creating it here IS the approval.
+app.post('/api/super-admin/staff', requireAuth, requireSuperAdmin, async (req, res) => {
+  const { businessName, email, phone, password } = req.body || {};
+  if (!businessName || !email || !password) {
+    return res.status(400).json({ error: 'Name, email, and password are required' });
+  }
+  if (password.length < 8) {
+    return res.status(400).json({ error: 'Password must be at least 8 characters' });
+  }
+  try {
+    const existing = await db.getUserByEmail(email);
+    if (existing) return res.status(409).json({ error: 'An account with that email already exists' });
+    const passwordHash = await hashPassword(password);
+    const staff = await db.createUser({
+      id: crypto.randomUUID(),
+      businessName,
+      email,
+      phone: phone || null,
+      passwordHash,
+      role: 'admin',
+      approvalStatus: 'approved',
+    });
+    await logAudit(req, 'staff.create', { targetType: 'user', targetId: staff.id, targetLabel: staff.businessName });
+    res.json({ staff: { id: staff.id, businessName: staff.businessName, email: staff.email, phone: staff.phone, createdAt: staff.createdAt, isDisabled: staff.isDisabled, disabledFeatures: staff.disabledFeatures } });
+  } catch (err) {
+    console.error('POST /api/super-admin/staff failed', err);
+    res.status(500).json({ error: 'Failed to create staff account' });
+  }
+});
+
+// Editing a staff account's name/email/phone. The ADMIN_EMAIL warning
+// below only matters for the one account that's actually looked up by
+// that env var on every boot (see seedAdminIfConfigured) — any other
+// staff account created from here has no such dependency, so the
+// warning only fires when this is that specific account.
+app.put('/api/super-admin/staff/:id', requireAuth, requireSuperAdmin, async (req, res) => {
   const { businessName, email, phone } = req.body || {};
   if (!businessName || !email) {
     return res.status(400).json({ error: 'Name and email are required' });
   }
   try {
+    const target = await db.getUserById(req.params.id);
+    if (!target || target.role !== 'admin') return res.status(404).json({ error: 'Staff account not found' });
     const existing = await db.getUserByEmail(email);
     if (existing && existing.id !== req.params.id) {
       return res.status(409).json({ error: 'Another account already uses that email' });
     }
+    const wasEnvSeededAccount = target.email.toLowerCase() === ADMIN_EMAIL.toLowerCase();
     const updated = await db.updateManageAgentAccount(req.params.id, { businessName, email, phone });
-    if (!updated) return res.status(404).json({ error: 'Manage Agent account not found' });
-    const emailChanged = updated.email.toLowerCase() !== ADMIN_EMAIL.toLowerCase();
-    await logAudit(req, 'manage_agent.update', { targetType: 'user', targetId: updated.id, targetLabel: updated.businessName });
+    if (!updated) return res.status(404).json({ error: 'Staff account not found' });
+    await logAudit(req, 'staff.update', { targetType: 'user', targetId: updated.id, targetLabel: updated.businessName });
+    const emailChanged = wasEnvSeededAccount && updated.email.toLowerCase() !== ADMIN_EMAIL.toLowerCase();
     res.json({
-      manageAgent: { id: updated.id, businessName: updated.businessName, email: updated.email, phone: updated.phone },
+      staff: { id: updated.id, businessName: updated.businessName, email: updated.email, phone: updated.phone },
       emailChangedWarning: emailChanged
-        ? `Remember to also update ADMIN_EMAIL=${updated.email} in Railway's Variables tab — otherwise the next server restart will create a new, blank Manage Agent account at the old address instead of finding this one.`
+        ? `This was the account found via ADMIN_EMAIL on server boot. Update ADMIN_EMAIL=${updated.email} in Railway's Variables tab too — otherwise the next restart re-creates a new, blank account at the old address instead of finding this one.`
         : null,
     });
   } catch (err) {
-    console.error('PUT /api/super-admin/manage-agent failed', err);
-    res.status(500).json({ error: 'Failed to update Manage Agent account' });
+    console.error('PUT /api/super-admin/staff failed', err);
+    res.status(500).json({ error: 'Failed to update staff account' });
   }
 });
 
-app.put('/api/super-admin/manage-agent/:id/password', requireAuth, requireSuperAdmin, async (req, res) => {
+app.put('/api/super-admin/staff/:id/password', requireAuth, requireSuperAdmin, async (req, res) => {
   const { password } = req.body || {};
   if (!password || password.length < 8) {
     return res.status(400).json({ error: 'Password must be at least 8 characters' });
   }
   try {
     const target = await db.getUserById(req.params.id);
-    if (!target || target.role !== 'admin') return res.status(404).json({ error: 'Manage Agent account not found' });
+    if (!target || target.role !== 'admin') return res.status(404).json({ error: 'Staff account not found' });
     const passwordHash = await hashPassword(password);
     await db.updateUserPassword(req.params.id, passwordHash);
-    await logAudit(req, 'manage_agent.password_reset', { targetType: 'user', targetId: target.id, targetLabel: target.businessName });
+    await logAudit(req, 'staff.password_reset', { targetType: 'user', targetId: target.id, targetLabel: target.businessName });
     res.json({ ok: true });
   } catch (err) {
-    console.error('PUT /api/super-admin/manage-agent/:id/password failed', err);
+    console.error('PUT /api/super-admin/staff/:id/password failed', err);
     res.status(500).json({ error: 'Failed to reset password' });
   }
 });
@@ -1434,9 +1470,9 @@ app.get('/api/super-admin/feature-keys', requireAuth, requireSuperAdmin, (req, r
 });
 
 // Super Admin cutting off (or restoring) specific features for a
-// Manage Agent account. Takes effect immediately — checked fresh
-// against the database on every gated request, not cached in a token.
-app.put('/api/super-admin/manage-agent/:id/features', requireAuth, requireSuperAdmin, async (req, res) => {
+// staff account. Takes effect immediately — checked fresh against the
+// database on every gated request, not cached in a token.
+app.put('/api/super-admin/staff/:id/features', requireAuth, requireSuperAdmin, async (req, res) => {
   const { disabledFeatures } = req.body || {};
   if (!Array.isArray(disabledFeatures) || !disabledFeatures.every(f => typeof f === 'string')) {
     return res.status(400).json({ error: 'disabledFeatures must be a list of feature keys' });
@@ -1448,11 +1484,11 @@ app.put('/api/super-admin/manage-agent/:id/features', requireAuth, requireSuperA
   }
   try {
     const updated = await db.setDisabledFeatures(req.params.id, disabledFeatures);
-    if (!updated) return res.status(404).json({ error: 'Manage Agent account not found' });
-    await logAudit(req, 'manage_agent.features_update', { targetType: 'user', targetId: updated.id, targetLabel: updated.businessName, details: { disabledFeatures } });
+    if (!updated) return res.status(404).json({ error: 'Staff account not found' });
+    await logAudit(req, 'staff.features_update', { targetType: 'user', targetId: updated.id, targetLabel: updated.businessName, details: { disabledFeatures } });
     res.json({ ok: true, disabledFeatures: updated.disabledFeatures });
   } catch (err) {
-    console.error('PUT /api/super-admin/manage-agent/:id/features failed', err);
+    console.error('PUT /api/super-admin/staff/:id/features failed', err);
     res.status(500).json({ error: 'Failed to update permissions' });
   }
 });
@@ -1473,6 +1509,9 @@ app.get('/api/super-admin/vendors/:id/documents', requireAuth, requireSuperAdmin
 
 app.post('/api/super-admin/vendors/:id/approve', requireAuth, requireSuperAdmin, async (req, res) => {
   try {
+    // Approving clears any previous rejection reason (see
+    // db.setVendorApprovalStatus) — a fresh approval shouldn't carry a
+    // stale explanation for why an earlier attempt was turned down.
     const vendor = await db.setVendorApprovalStatus(req.params.id, 'approved');
     if (!vendor) return res.status(404).json({ error: 'Vendor not found' });
     await logAudit(req, 'vendor.approve', { targetType: 'user', targetId: vendor.id, targetLabel: vendor.businessName });
@@ -1483,12 +1522,19 @@ app.post('/api/super-admin/vendors/:id/approve', requireAuth, requireSuperAdmin,
   }
 });
 
+// A reason is required — this is the whole point of the feature: the
+// applicant (and the audit log) should always know why an application
+// was turned down, not just that it was.
 app.post('/api/super-admin/vendors/:id/reject', requireAuth, requireSuperAdmin, async (req, res) => {
+  const { reason } = req.body || {};
+  if (!reason || !reason.trim()) {
+    return res.status(400).json({ error: 'A rejection reason is required' });
+  }
   try {
-    const vendor = await db.setVendorApprovalStatus(req.params.id, 'rejected');
+    const vendor = await db.setVendorApprovalStatus(req.params.id, 'rejected', reason.trim());
     if (!vendor) return res.status(404).json({ error: 'Vendor not found' });
-    await logAudit(req, 'vendor.reject', { targetType: 'user', targetId: vendor.id, targetLabel: vendor.businessName });
-    res.json({ ok: true, vendor: { id: vendor.id, businessName: vendor.businessName, approvalStatus: vendor.approvalStatus } });
+    await logAudit(req, 'vendor.reject', { targetType: 'user', targetId: vendor.id, targetLabel: vendor.businessName, details: { reason: reason.trim() } });
+    res.json({ ok: true, vendor: { id: vendor.id, businessName: vendor.businessName, approvalStatus: vendor.approvalStatus, rejectionReason: vendor.rejectionReason } });
   } catch (err) {
     console.error('POST vendor reject failed', err);
     res.status(500).json({ error: 'Failed to reject vendor' });
@@ -1580,6 +1626,8 @@ app.put('/api/super-admin/users/:id/disable-status', requireAuth, requireSuperAd
 
 app.post('/api/super-admin/delivery-companies/:id/approve', requireAuth, requireSuperAdmin, async (req, res) => {
   try {
+    // Approving clears any previous rejection reason — see the matching
+    // comment on the vendor approve endpoint above.
     const company = await db.setDeliveryCompanyApprovalStatus(req.params.id, 'approved');
     if (!company) return res.status(404).json({ error: 'Delivery company not found' });
     await logAudit(req, 'delivery_company.approve', { targetType: 'user', targetId: company.id, targetLabel: company.businessName });
@@ -1590,12 +1638,18 @@ app.post('/api/super-admin/delivery-companies/:id/approve', requireAuth, require
   }
 });
 
+// A reason is required — same reasoning as the vendor reject endpoint
+// above.
 app.post('/api/super-admin/delivery-companies/:id/reject', requireAuth, requireSuperAdmin, async (req, res) => {
+  const { reason } = req.body || {};
+  if (!reason || !reason.trim()) {
+    return res.status(400).json({ error: 'A rejection reason is required' });
+  }
   try {
-    const company = await db.setDeliveryCompanyApprovalStatus(req.params.id, 'rejected');
+    const company = await db.setDeliveryCompanyApprovalStatus(req.params.id, 'rejected', reason.trim());
     if (!company) return res.status(404).json({ error: 'Delivery company not found' });
-    await logAudit(req, 'delivery_company.reject', { targetType: 'user', targetId: company.id, targetLabel: company.businessName });
-    res.json({ ok: true, deliveryCompany: { id: company.id, businessName: company.businessName, approvalStatus: company.approvalStatus } });
+    await logAudit(req, 'delivery_company.reject', { targetType: 'user', targetId: company.id, targetLabel: company.businessName, details: { reason: reason.trim() } });
+    res.json({ ok: true, deliveryCompany: { id: company.id, businessName: company.businessName, approvalStatus: company.approvalStatus, rejectionReason: company.rejectionReason } });
   } catch (err) {
     console.error('POST delivery company reject failed', err);
     res.status(500).json({ error: 'Failed to reject delivery company' });
@@ -1627,7 +1681,7 @@ app.post('/api/super-admin/vendors/:id/impersonate', requireAuth, requireSuperAd
     await logAudit(req, 'vendor.impersonate', { targetType: 'user', targetId: vendor.id, targetLabel: vendor.businessName });
     res.json({
       token,
-      user: { id: vendor.id, businessName: vendor.businessName, email: vendor.email, role: vendor.role, approvalStatus: vendor.approvalStatus },
+      user: { id: vendor.id, businessName: vendor.businessName, email: vendor.email, role: vendor.role, approvalStatus: vendor.approvalStatus, rejectionReason: vendor.rejectionReason },
     });
   } catch (err) {
     console.error('POST vendor impersonate failed', err);
@@ -1820,6 +1874,75 @@ app.get('/api/super-admin/payouts', requireAuth, requireSuperAdmin, async (req, 
   } catch (err) {
     console.error('GET /api/super-admin/payouts failed', err);
     res.status(500).json({ error: 'Failed to load payouts' });
+  }
+});
+
+// ============================================================
+// Disputes — Super Admin queue. The customer-facing "report a
+// problem"/"my disputes" endpoints live down with the other
+// marketplace/customer routes; this half is the resolution side,
+// gated the same as Payouts and Vendors (Super Admin only) since
+// resolving a dispute can move money — see the refund-netting comment
+// on db.getPayoutSummary.
+// ============================================================
+const DISPUTE_CATEGORIES = ['wrong_item', 'damaged', 'never_arrived', 'overcharged', 'other'];
+
+app.get('/api/super-admin/disputes', requireAuth, requireSuperAdmin, async (req, res) => {
+  try {
+    const status = ['open', 'resolved', 'rejected'].includes(req.query.status) ? req.query.status : undefined;
+    const [disputes, openCount] = await Promise.all([
+      db.getDisputes({ status }),
+      db.countOpenDisputes(),
+    ]);
+    res.json({ disputes, openCount });
+  } catch (err) {
+    console.error('GET /api/super-admin/disputes failed', err);
+    res.status(500).json({ error: 'Failed to load disputes' });
+  }
+});
+
+// The one resolution step. decision === 'refund' requires a positive
+// refundAmount and moves the dispute to 'resolved'; decision ===
+// 'reject' forces refundAmount to null and moves it to 'rejected'.
+// resolutionNote is required either way — shown back to the customer,
+// same reasoning as the vendor/delivery-company rejection-reason
+// feature: they should always know why, not just what happened.
+app.put('/api/super-admin/disputes/:id/resolve', requireAuth, requireSuperAdmin, async (req, res) => {
+  const { decision, refundAmount, resolutionNote } = req.body || {};
+  if (!['refund', 'reject'].includes(decision)) {
+    return res.status(400).json({ error: 'decision must be "refund" or "reject"' });
+  }
+  if (!resolutionNote || !resolutionNote.trim()) {
+    return res.status(400).json({ error: 'A resolution note is required — the customer will see this' });
+  }
+  let finalRefundAmount = null;
+  if (decision === 'refund') {
+    if (typeof refundAmount !== 'number' || isNaN(refundAmount) || refundAmount <= 0) {
+      return res.status(400).json({ error: 'refundAmount must be a positive number when issuing a refund' });
+    }
+    finalRefundAmount = Math.round(refundAmount * 100) / 100;
+  }
+  try {
+    const existing = await db.getDisputeById(req.params.id);
+    if (!existing) return res.status(404).json({ error: 'Dispute not found' });
+    if (existing.status !== 'open') return res.status(409).json({ error: `This dispute was already ${existing.status}` });
+    const dispute = await db.resolveDispute(req.params.id, {
+      status: decision === 'refund' ? 'resolved' : 'rejected',
+      resolutionNote: resolutionNote.trim(),
+      refundAmount: finalRefundAmount,
+      resolvedBy: req.user.id,
+    });
+    if (!dispute) return res.status(409).json({ error: 'This dispute was already resolved' });
+    await logAudit(req, 'dispute.resolve', {
+      targetType: 'dispute', targetId: dispute.id, targetLabel: existing.customerName,
+      details: { decision, refundAmount: finalRefundAmount, resolutionNote: resolutionNote.trim() },
+    });
+    // Live-update an open customer tab, same pattern as order:updated.
+    io.to(`user:${dispute.customerId}`).emit('dispute:resolved', dispute);
+    res.json({ ok: true, dispute });
+  } catch (err) {
+    console.error('PUT /api/super-admin/disputes/:id/resolve failed', err);
+    res.status(500).json({ error: 'Failed to resolve dispute' });
   }
 });
 
@@ -2107,6 +2230,60 @@ app.get('/api/marketplace/my-purchases', requireAuth, async (req, res) => {
   } catch (err) {
     console.error('GET /api/marketplace/my-purchases failed', err);
     res.status(500).json({ error: 'Failed to load purchase history' });
+  }
+});
+
+// A customer reporting a problem with a delivery order or a
+// marketplace purchase — see the disputes table comment in
+// schema.sql for why it's one-or-the-other. Ownership is verified
+// server-side (not just trusted from the client) before a dispute can
+// be filed, and a second open dispute against the same order/purchase
+// is blocked so the Super Admin queue doesn't fill up with duplicates
+// for one problem.
+app.post('/api/disputes', requireAuth, async (req, res) => {
+  if (req.user.role !== 'sender') return res.status(403).json({ error: 'Only customers can report a problem' });
+  const { orderId, purchaseId, category, description } = req.body || {};
+  if (!orderId && !purchaseId) return res.status(400).json({ error: 'orderId or purchaseId is required' });
+  if (!description || !description.trim()) return res.status(400).json({ error: 'Please describe the problem' });
+  const finalCategory = DISPUTE_CATEGORIES.includes(category) ? category : 'other';
+  try {
+    if (orderId) {
+      const order = await db.getOrder(orderId);
+      if (!order || order.senderId !== req.user.id) return res.status(404).json({ error: 'Order not found' });
+    }
+    if (purchaseId) {
+      const purchase = await db.getPurchaseById(purchaseId);
+      if (!purchase || purchase.customerId !== req.user.id) return res.status(404).json({ error: 'Purchase not found' });
+    }
+    const existing = await db.getDisputesForCustomer(req.user.id);
+    const alreadyOpen = existing.some(d => d.status === 'open'
+      && ((orderId && d.orderId === orderId) || (purchaseId && d.purchaseId === purchaseId)));
+    if (alreadyOpen) return res.status(409).json({ error: 'You already have an open dispute for this order' });
+    const dispute = await db.createDispute({
+      id: crypto.randomUUID(),
+      orderId: orderId || null,
+      purchaseId: purchaseId || null,
+      customerId: req.user.id,
+      category: finalCategory,
+      description: description.trim(),
+    });
+    res.json({ ok: true, dispute });
+  } catch (err) {
+    console.error('POST /api/disputes failed', err);
+    res.status(500).json({ error: 'Failed to submit dispute' });
+  }
+});
+
+// A customer's own dispute history/status — including anything
+// already resolved, so they can see the outcome and any refund note.
+app.get('/api/disputes/mine', requireAuth, async (req, res) => {
+  if (req.user.role !== 'sender') return res.status(403).json({ error: 'Only customers have disputes' });
+  try {
+    const disputes = await db.getDisputesForCustomer(req.user.id);
+    res.json({ disputes });
+  } catch (err) {
+    console.error('GET /api/disputes/mine failed', err);
+    res.status(500).json({ error: 'Failed to load your disputes' });
   }
 });
 

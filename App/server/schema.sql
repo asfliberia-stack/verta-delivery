@@ -32,6 +32,13 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS business_registration_doc TEXT;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS id_document_type TEXT;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS id_document_doc TEXT;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS applied_at TIMESTAMPTZ;
+-- Set when a Super Admin rejects a vendor/delivery-company application
+-- (required at that point — see the reject endpoints in server.js) so
+-- the applicant knows why, not just that they were turned down.
+-- Cleared automatically on a later approval (see
+-- setVendorApprovalStatus/setDeliveryCompanyApprovalStatus in db.js),
+-- so a fresh approval never carries a stale rejection explanation.
+ALTER TABLE users ADD COLUMN IF NOT EXISTS rejection_reason TEXT;
 
 -- Existing databases already have a `role` CHECK constraint that only
 -- allows 'sender'/'admin' — CREATE TABLE IF NOT EXISTS above won't touch
@@ -483,3 +490,45 @@ ALTER TABLE platform_settings ADD COLUMN IF NOT EXISTS default_delivery_fee NUME
 ALTER TABLE platform_settings ADD COLUMN IF NOT EXISTS service_area TEXT;
 ALTER TABLE platform_settings ADD COLUMN IF NOT EXISTS maintenance_mode BOOLEAN NOT NULL DEFAULT false;
 ALTER TABLE platform_settings ADD COLUMN IF NOT EXISTS maintenance_message TEXT;
+
+-- ============================================================
+-- Disputes — the last of the original Super Admin gaps: a real,
+-- structured way for a customer to report a problem with an order and
+-- for a Super Admin to resolve it, optionally with a refund.
+--
+-- Deliberately references EITHER a delivery order OR a marketplace
+-- purchase, not always both, since either can be disputed on its own
+-- (a plain sender-to-recipient delivery has no purchase at all) — the
+-- CHECK constraint below just requires at least one to be set. Which
+-- one is set also decides who a refund is attributed to: a
+-- purchase-linked dispute nets against that purchase's vendor (see
+-- getPayoutSummary in db.js), an order-only dispute nets against that
+-- order's delivery company. A marketplace order that also has its own
+-- linked delivery order (purchases.delivery_order_id) can only be
+-- disputed via the purchase — resolving it doesn't separately dock the
+-- delivery company, since the complaint in that flow is about the
+-- vendor's product/fulfillment, not the delivery itself.
+--
+-- No update/delete on open disputes here beyond the one resolve step
+-- (open -> resolved | rejected) — same "small, real, honest" shape as
+-- the rejection-reason and payout features: a required explanation is
+-- always shown back to the person it affects, and refund_amount is
+-- only ever set alongside status = 'resolved'.
+-- ============================================================
+CREATE TABLE IF NOT EXISTS disputes (
+    id              TEXT PRIMARY KEY,
+    order_id        TEXT REFERENCES orders(id) ON DELETE SET NULL,
+    purchase_id     TEXT REFERENCES purchases(id) ON DELETE SET NULL,
+    customer_id     TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    category        TEXT NOT NULL DEFAULT 'other' CHECK (category IN ('wrong_item', 'damaged', 'never_arrived', 'overcharged', 'other')),
+    description     TEXT NOT NULL,
+    status          TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'resolved', 'rejected')),
+    resolution_note TEXT,
+    refund_amount   NUMERIC(10, 2),
+    resolved_by     TEXT REFERENCES users(id) ON DELETE SET NULL,
+    resolved_at     TIMESTAMPTZ,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CHECK (order_id IS NOT NULL OR purchase_id IS NOT NULL)
+);
+CREATE INDEX IF NOT EXISTS idx_disputes_customer_id ON disputes (customer_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_disputes_status ON disputes (status, created_at DESC);

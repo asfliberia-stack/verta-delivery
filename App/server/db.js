@@ -144,6 +144,29 @@ function rowToPayout(r) {
   };
 }
 
+// Base row only — no joins. getDisputes()/getDisputeById() below build
+// their own richer, joined shape (customer/order/purchase/vendor/
+// delivery-company context) for display; this mapper is just for the
+// plain INSERT/UPDATE ... RETURNING * results in createDispute/
+// resolveDispute.
+function rowToDispute(r) {
+  if (!r) return null;
+  return {
+    id: r.id,
+    orderId: r.order_id,
+    purchaseId: r.purchase_id,
+    customerId: r.customer_id,
+    category: r.category,
+    description: r.description,
+    status: r.status,
+    resolutionNote: r.resolution_note,
+    refundAmount: r.refund_amount !== null && r.refund_amount !== undefined ? Number(r.refund_amount) : null,
+    resolvedBy: r.resolved_by,
+    resolvedAt: r.resolved_at,
+    createdAt: r.created_at,
+  };
+}
+
 function rowToAuditLogEntry(r) {
   if (!r) return null;
   return {
@@ -193,6 +216,7 @@ function rowToUser(r) {
     passwordHash: r.password_hash, // only used internally for login checks
     tokenVersion: r.token_version,
     approvalStatus: r.approval_status,
+    rejectionReason: r.rejection_reason || null,
     businessRegistrationDoc: r.business_registration_doc,
     idDocumentType: r.id_document_type,
     idDocumentDoc: r.id_document_doc,
@@ -807,8 +831,9 @@ const db = {
     return rowToUser(rows[0]);
   },
 
-  // Super Admin editing the Manage Agent account directly — scoped to
-  // role = 'admin' so this can never be pointed at any other account.
+  // Super Admin editing a staff (Manage Agent) account directly — scoped
+  // to role = 'admin' so this can never be pointed at any other account.
+  // Reused for every staff account now, not just a single fixed one.
   async updateManageAgentAccount(id, { businessName, email, phone }) {
     const { rows } = await pool.query(
       `UPDATE users SET business_name = $1, email = $2, phone = $3
@@ -842,7 +867,7 @@ const db = {
   // real vendor accounts existed.
   async getVendors() {
     const { rows } = await pool.query(
-      "SELECT id, business_name, email, phone, approval_status, applied_at, created_at, is_disabled, commission_rate_override FROM users WHERE role = 'vendor' ORDER BY created_at DESC"
+      "SELECT id, business_name, email, phone, approval_status, rejection_reason, applied_at, created_at, is_disabled, commission_rate_override FROM users WHERE role = 'vendor' ORDER BY created_at DESC"
     );
     return rows.map(r => ({
       id: r.id,
@@ -850,10 +875,30 @@ const db = {
       email: r.email,
       phone: r.phone,
       approvalStatus: r.approval_status,
+      rejectionReason: r.rejection_reason || null,
       appliedAt: r.applied_at,
       createdAt: r.created_at,
       isDisabled: r.is_disabled,
       commissionRateOverride: r.commission_rate_override !== null && r.commission_rate_override !== undefined ? Number(r.commission_rate_override) : null,
+    }));
+  },
+
+  // ---- Staff ("Manage Agent") accounts — role = 'admin'. No
+  // approval workflow (a Super Admin creating one here IS the
+  // approval, same as Add Vendor/Add Delivery Company), so no
+  // approval_status/rejection_reason/applied_at columns to select. ----
+  async getStaffAccounts() {
+    const { rows } = await pool.query(
+      "SELECT id, business_name, email, phone, created_at, is_disabled, disabled_features FROM users WHERE role = 'admin' ORDER BY created_at ASC"
+    );
+    return rows.map(r => ({
+      id: r.id,
+      businessName: r.business_name,
+      email: r.email,
+      phone: r.phone,
+      createdAt: r.created_at,
+      isDisabled: r.is_disabled,
+      disabledFeatures: r.disabled_features || [],
     }));
   },
 
@@ -862,7 +907,7 @@ const db = {
   // above, mirrored exactly, scoped to role = 'delivery_company'). ----
   async getDeliveryCompanies() {
     const { rows } = await pool.query(
-      "SELECT id, business_name, email, phone, approval_status, applied_at, created_at, is_disabled, commission_rate_override FROM users WHERE role = 'delivery_company' ORDER BY created_at DESC"
+      "SELECT id, business_name, email, phone, approval_status, rejection_reason, applied_at, created_at, is_disabled, commission_rate_override FROM users WHERE role = 'delivery_company' ORDER BY created_at DESC"
     );
     return rows.map(r => ({
       id: r.id,
@@ -870,6 +915,7 @@ const db = {
       email: r.email,
       phone: r.phone,
       approvalStatus: r.approval_status,
+      rejectionReason: r.rejection_reason || null,
       appliedAt: r.applied_at,
       createdAt: r.created_at,
       isDisabled: r.is_disabled,
@@ -877,10 +923,14 @@ const db = {
     }));
   },
 
-  async setDeliveryCompanyApprovalStatus(id, status) {
+  // reason is required by the caller (server.js) when status ===
+  // 'rejected'; when status === 'approved' (or any other value), the
+  // previous rejection reason — if any — is cleared automatically, so
+  // a fresh approval never carries a stale explanation forward.
+  async setDeliveryCompanyApprovalStatus(id, status, reason = null) {
     const { rows } = await pool.query(
-      "UPDATE users SET approval_status = $1 WHERE id = $2 AND role = 'delivery_company' RETURNING *",
-      [status, id]
+      "UPDATE users SET approval_status = $1, rejection_reason = $2 WHERE id = $3 AND role = 'delivery_company' RETURNING *",
+      [status, status === 'rejected' ? reason : null, id]
     );
     return rowToUser(rows[0]);
   },
@@ -911,10 +961,12 @@ const db = {
     };
   },
 
-  async setVendorApprovalStatus(vendorId, status) {
+  // Same reason-handling as setDeliveryCompanyApprovalStatus above —
+  // required by the caller when rejecting, cleared on any other status.
+  async setVendorApprovalStatus(vendorId, status, reason = null) {
     const { rows } = await pool.query(
-      "UPDATE users SET approval_status = $1 WHERE id = $2 AND role = 'vendor' RETURNING *",
-      [status, vendorId]
+      "UPDATE users SET approval_status = $1, rejection_reason = $2 WHERE id = $3 AND role = 'vendor' RETURNING *",
+      [status, status === 'rejected' ? reason : null, vendorId]
     );
     return rowToUser(rows[0]);
   },
@@ -1160,6 +1212,14 @@ const db = {
   async getPurchaseItems(purchaseId) {
     const { rows } = await pool.query('SELECT * FROM purchase_items WHERE purchase_id = $1', [purchaseId]);
     return rows.map(r => ({ id: r.id, productId: r.product_id, productName: r.product_name, unitPrice: Number(r.unit_price), quantity: r.quantity }));
+  },
+
+  // Single-purchase lookup — used by the disputes endpoints to verify
+  // a customer actually owns the purchase they're filing a dispute
+  // against, without pulling their whole purchase history.
+  async getPurchaseById(id) {
+    const { rows } = await pool.query('SELECT * FROM purchases WHERE id = $1', [id]);
+    return rowToPurchase(rows[0]);
   },
 
   // Real sales overview for the vendor dashboard — total revenue and
@@ -1665,24 +1725,46 @@ const db = {
   },
 
   // Real, calculated-from-actual-data summary — vendor gross comes
-  // from `purchases`, delivery company gross from delivered `orders`.
-  // Never recalculates past payouts; only used to show current
-  // standing (gross earned all-time vs. already paid out all-time).
+  // from `purchases`, delivery company gross from delivered `orders`,
+  // each net of any refunds issued through resolved disputes (see
+  // resolveDispute below — a purchase-linked refund nets against that
+  // purchase's vendor, an order-only refund nets against that order's
+  // delivery company; see the comment on the disputes table in
+  // schema.sql for the full reasoning). Never recalculates past
+  // payouts; only used to show current standing (gross earned
+  // all-time, net of refunds, vs. already paid out all-time).
   async getPayoutSummary() {
-    const [vendorRows, companyRows, vendorRevenue, deliveryRevenue, paidOut, platformSettings] = await Promise.all([
+    const [vendorRows, companyRows, vendorRevenue, deliveryRevenue, vendorRefunds, deliveryRefunds, paidOut, platformSettings] = await Promise.all([
       pool.query("SELECT id, business_name, email, commission_rate_override FROM users WHERE role = 'vendor' AND approval_status = 'approved' ORDER BY business_name"),
       pool.query("SELECT id, business_name, email, commission_rate_override FROM users WHERE role = 'delivery_company' AND approval_status = 'approved' ORDER BY business_name"),
       pool.query("SELECT vendor_id, COALESCE(SUM(total_amount), 0)::numeric AS gross FROM purchases GROUP BY vendor_id"),
       pool.query("SELECT delivery_company_id, COALESCE(SUM(amount), 0)::numeric AS gross FROM orders WHERE status = 'delivered' AND delivery_company_id IS NOT NULL GROUP BY delivery_company_id"),
+      pool.query(
+        `SELECT pur.vendor_id AS vendor_id, COALESCE(SUM(d.refund_amount), 0)::numeric AS refunded
+         FROM disputes d JOIN purchases pur ON pur.id = d.purchase_id
+         WHERE d.status = 'resolved' AND d.refund_amount IS NOT NULL
+         GROUP BY pur.vendor_id`
+      ),
+      pool.query(
+        `SELECT o.delivery_company_id AS delivery_company_id, COALESCE(SUM(d.refund_amount), 0)::numeric AS refunded
+         FROM disputes d JOIN orders o ON o.id = d.order_id
+         WHERE d.status = 'resolved' AND d.refund_amount IS NOT NULL AND d.purchase_id IS NULL AND o.delivery_company_id IS NOT NULL
+         GROUP BY o.delivery_company_id`
+      ),
       pool.query("SELECT recipient_id, COALESCE(SUM(net_amount), 0)::numeric AS paid FROM payouts GROUP BY recipient_id"),
       this.getPlatformSettings(),
     ]);
     const vendorRevMap = new Map(vendorRevenue.rows.map(r => [r.vendor_id, Number(r.gross)]));
     const deliveryRevMap = new Map(deliveryRevenue.rows.map(r => [r.delivery_company_id, Number(r.gross)]));
+    const vendorRefundMap = new Map(vendorRefunds.rows.map(r => [r.vendor_id, Number(r.refunded)]));
+    const deliveryRefundMap = new Map(deliveryRefunds.rows.map(r => [r.delivery_company_id, Number(r.refunded)]));
     const paidMap = new Map(paidOut.rows.map(r => [r.recipient_id, Number(r.paid)]));
 
-    const build = (rows, revMap, recipientType, defaultRate) => rows.map(r => {
-      const gross = revMap.get(r.id) || 0;
+    const build = (rows, revMap, refundMap, recipientType, defaultRate) => rows.map(r => {
+      // Clamped at 0 rather than allowed to go negative — refunds can
+      // never exceed what was actually sold, but this guards against
+      // it visually even if it somehow did.
+      const gross = Math.max(0, (revMap.get(r.id) || 0) - (refundMap.get(r.id) || 0));
       const override = r.commission_rate_override !== null && r.commission_rate_override !== undefined ? Number(r.commission_rate_override) : null;
       const effectiveRate = override !== null ? override : defaultRate;
       const commissionAmount = Math.round(gross * (effectiveRate / 100) * 100) / 100;
@@ -1705,8 +1787,8 @@ const db = {
 
     return {
       platformSettings,
-      vendors: build(vendorRows.rows, vendorRevMap, 'vendor', platformSettings.marketplaceCommissionPercent),
-      deliveryCompanies: build(companyRows.rows, deliveryRevMap, 'delivery_company', platformSettings.deliveryCommissionPercent),
+      vendors: build(vendorRows.rows, vendorRevMap, vendorRefundMap, 'vendor', platformSettings.marketplaceCommissionPercent),
+      deliveryCompanies: build(companyRows.rows, deliveryRevMap, deliveryRefundMap, 'delivery_company', platformSettings.deliveryCommissionPercent),
     };
   },
 
@@ -1732,6 +1814,108 @@ const db = {
       values
     );
     return rows.map(rowToPayout);
+  },
+
+  // ---- Disputes ---------------------------------------------------------
+  // A customer reporting a problem with an order or marketplace
+  // purchase, and a Super Admin resolving it (optionally with a
+  // refund). See the schema.sql comment on the disputes table for the
+  // order_id/purchase_id reasoning.
+
+  // Shared SELECT for both getDisputes() and getDisputeById() — joins
+  // in exactly the display context the Super Admin queue and the
+  // customer's own dispute list need (who, what order/purchase, how
+  // much, which vendor/delivery company), so callers never have to
+  // make a second round trip just to render a row.
+  _disputeSelect() {
+    return `SELECT d.*,
+        cust.business_name AS customer_name, cust.email AS customer_email,
+        o.item_description AS order_item_description, o.amount AS order_amount, o.status AS order_status,
+        o.delivery_company_id AS order_delivery_company_id, dc.business_name AS delivery_company_name,
+        pur.total_amount AS purchase_amount, pur.vendor_id AS purchase_vendor_id, v.business_name AS vendor_name
+      FROM disputes d
+      JOIN users cust ON cust.id = d.customer_id
+      LEFT JOIN orders o ON o.id = d.order_id
+      LEFT JOIN users dc ON dc.id = o.delivery_company_id
+      LEFT JOIN purchases pur ON pur.id = d.purchase_id
+      LEFT JOIN users v ON v.id = pur.vendor_id`;
+  },
+
+  _rowToDisputeWithContext(r) {
+    if (!r) return null;
+    return {
+      ...rowToDispute(r),
+      customerName: r.customer_name,
+      customerEmail: r.customer_email,
+      order: r.order_id ? {
+        itemDescription: r.order_item_description,
+        amount: r.order_amount !== null && r.order_amount !== undefined ? Number(r.order_amount) : null,
+        status: r.order_status,
+        deliveryCompanyId: r.order_delivery_company_id,
+        deliveryCompanyName: r.delivery_company_name,
+      } : null,
+      purchase: r.purchase_id ? {
+        amount: r.purchase_amount !== null && r.purchase_amount !== undefined ? Number(r.purchase_amount) : null,
+        vendorId: r.purchase_vendor_id,
+        vendorName: r.vendor_name,
+      } : null,
+    };
+  },
+
+  async createDispute({ id, orderId, purchaseId, customerId, category, description }) {
+    const { rows } = await pool.query(
+      `INSERT INTO disputes (id, order_id, purchase_id, customer_id, category, description)
+       VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+      [id, orderId || null, purchaseId || null, customerId, category, description]
+    );
+    return rowToDispute(rows[0]);
+  },
+
+  async getDisputeById(id) {
+    const { rows } = await pool.query(`${this._disputeSelect()} WHERE d.id = $1`, [id]);
+    return this._rowToDisputeWithContext(rows[0]);
+  },
+
+  // A customer's own disputes — also used to block filing a second
+  // open dispute against the same order/purchase (see the
+  // already-open check in the POST /api/disputes handler).
+  async getDisputesForCustomer(customerId) {
+    const { rows } = await pool.query(
+      `${this._disputeSelect()} WHERE d.customer_id = $1 ORDER BY d.created_at DESC`,
+      [customerId]
+    );
+    return rows.map(r => this._rowToDisputeWithContext(r));
+  },
+
+  // Super Admin queue. status is optional — omitted means "all".
+  async getDisputes({ status } = {}) {
+    const values = [];
+    let where = '';
+    if (status) { values.push(status); where = 'WHERE d.status = $1'; }
+    const { rows } = await pool.query(
+      `${this._disputeSelect()} ${where} ORDER BY (d.status = 'open') DESC, d.created_at DESC`,
+      values
+    );
+    return rows.map(r => this._rowToDisputeWithContext(r));
+  },
+
+  async countOpenDisputes() {
+    const { rows } = await pool.query("SELECT COUNT(*)::int AS count FROM disputes WHERE status = 'open'");
+    return rows[0].count;
+  },
+
+  // The one resolve step — open -> resolved (with a refund amount) or
+  // open -> rejected (no refund, resolutionNote explains why). Scoped
+  // to status = 'open' so a dispute can only ever be resolved once;
+  // returns null (not an error) if it's already been decided, which
+  // the caller turns into a 409.
+  async resolveDispute(id, { status, resolutionNote, refundAmount, resolvedBy }) {
+    const { rows } = await pool.query(
+      `UPDATE disputes SET status = $1, resolution_note = $2, refund_amount = $3, resolved_by = $4, resolved_at = now()
+       WHERE id = $5 AND status = 'open' RETURNING *`,
+      [status, resolutionNote, refundAmount, resolvedBy || null, id]
+    );
+    return rowToDispute(rows[0]);
   },
 
   // ---- Audit log ------------------------------------------------------

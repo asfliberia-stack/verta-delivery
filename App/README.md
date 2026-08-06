@@ -4013,3 +4013,216 @@ schema migration and the actual order-blocking behavior end-to-end
 against a real server — worth a quick manual check after deploying
 (turn maintenance mode on, confirm a real order attempt gets rejected
 with the message you set, confirm Super Admin can still get through).
+
+## Vendor/delivery-company rejections are no longer silent
+
+The last small gap from that Super Admin review: rejecting a vendor or
+delivery-company application told the applicant nothing beyond
+"application under review" — even after being rejected, the pending
+screen never actually said so in a way that explained why. There was
+no way for a Super Admin to leave a reason, and no way for the
+applicant (or a later Super Admin re-reviewing the same account) to
+see one.
+
+Fixed with a new nullable `rejection_reason` column on `users`, set
+only when an application is rejected and automatically cleared on any
+later approval — so a fresh approval never carries a stale rejection
+explanation forward. Specifically:
+
+- **Rejecting now requires a reason.** In the vendor/delivery-company
+  review modal, clicking "Reject" no longer rejects immediately — it
+  reveals a required textarea ("shown to the applicant") with Cancel/
+  Confirm Reject buttons. The confirm button is a no-op with an error
+  toast until a non-empty reason is entered. The same requirement is
+  enforced server-side too (`POST /api/super-admin/vendors/:id/reject`
+  and the delivery-company equivalent both 400 without a `reason`), so
+  the reason can't be bypassed by calling the API directly.
+- **The applicant sees it.** The existing "application wasn't
+  approved" pending screen now shows the actual reason in a callout
+  box, pulled from `currentUser.rejectionReason` (now included on
+  every endpoint that returns the logged-in user: register, login,
+  Google auth, and `/api/me`).
+- **Admins see it too.** A Super Admin re-opening a previously-rejected
+  application (e.g. after the applicant re-applies) sees a "Previously
+  rejected" banner with the old reason for context. The Vendors and
+  Delivery Companies list tables also surface the reason under the
+  "Rejected" status pill (and as a tooltip on the pill itself) instead
+  of just the bare status word.
+- **Audited.** Reject actions already wrote to the audit log
+  (`vendor.reject` / `delivery_company.reject`) from the earlier audit
+  trail work — the reason now rides along in that same log entry's
+  `details`, so there's a permanent record of why, not just that.
+
+Verified with an isolated Playwright pass against the review modal's
+actual JS (prior-rejection banner shows/hides correctly per applicant,
+Reject reveals the reason section, an empty/whitespace-only reason is
+blocked client-side with a toast and never reaches `apiFetch`, a real
+reason is sent trimmed in the reject request body, Cancel reverses the
+reveal cleanly, and the pending screen renders the reason for a
+rejected user and hides the box entirely for a merely-pending one).
+Same sandbox caveat as the rest of this session's Super Admin work: no
+live database to confirm the migration and the full reject → re-apply
+→ re-review round trip against a real server — worth a quick manual
+check after deploying.
+
+## Multi-staff support — more than one Manage Agent account
+
+The last architectural gap from the original Super Admin review: the
+business side of the app (creating orders, running the fleet, the
+whole operational dashboard) could only ever be operated through one
+hardcoded "Manage Agent" login, seeded on boot from the `ADMIN_EMAIL`/
+`ADMIN_PASSWORD` environment variables. There was no way to give a
+second staff member — a dispatcher, a second shift, a support hire —
+their own login without handing them the one shared password.
+
+Nothing about the underlying role model needed to change to fix this —
+`role = 'admin'` ("Manage Agent," distinct from `super_admin`) already
+existed, along with real per-account feature permissions
+(`disabled_features`) and account-disable support. The actual ceiling
+was that every "Manage Agent" endpoint assumed exactly one row, found
+by looking up the fixed `ADMIN_EMAIL` value instead of listing
+`WHERE role = 'admin'`. That's now a real list:
+
+- **New Super Admin sidebar panel: Staff Accounts.** A table of every
+  `admin`-role account (same look as the existing Vendors and Delivery
+  Companies panels) — name, email, date added, active/disabled status,
+  and per-row Edit / Reset Password / Permissions / Disable actions.
+- **+ Add Staff** creates a brand new account directly — name, email,
+  phone, a temporary password to hand off — no application/approval
+  step, same reasoning as Add Vendor and Add Delivery Company: the
+  Super Admin creating it here *is* the approval.
+- **Permissions stay per-account**, reusing the exact feature-toggle
+  system already built for the single account (Create New Order,
+  Order Actions, Fleet Directory, Expenses, Price Presets, Customers,
+  Business Profile settings, Export & Backup/Restore) — so, for
+  example, a support hire can be limited to just Customers and Order
+  Actions while dispatch keeps full access. Every account's checks are
+  evaluated independently and take effect immediately (no re-login
+  needed), unchanged from before.
+- **The original env-var-seeded account still exists and still works
+  exactly as before** — `seedAdminIfConfigured` still creates it on
+  first boot from `ADMIN_EMAIL`/`ADMIN_PASSWORD` if nothing's there
+  yet. That's now simply how staff account #1 happens to get created
+  on a fresh deploy; every account after that is a real row created
+  from the new panel, on equal footing with the first. Editing that
+  *specific* account's email still warns you to update `ADMIN_EMAIL`
+  in Railway's Variables tab to match (otherwise the next restart
+  re-creates a blank one at the old address) — every other staff
+  account has no such dependency, so the warning only ever fires for
+  that one.
+- **Audited.** Create/edit/password-reset/permissions-change all log
+  to the existing audit trail (`staff.create`, `staff.update`,
+  `staff.password_reset`, `staff.features_update`); the older
+  `manage_agent.*` labels stay in the Audit Log's action-filter dropdown
+  too, so entries logged before this change still show a readable
+  label instead of a raw action string.
+
+New endpoints: `GET/POST /api/super-admin/staff`, `PUT
+/api/super-admin/staff/:id`, `PUT /api/super-admin/staff/:id/password`,
+`PUT /api/super-admin/staff/:id/features` — replacing the old singular
+`/api/super-admin/manage-agent...` routes. Disabling/enabling a staff
+account reuses the existing generic
+`PUT /api/super-admin/users/:id/disable-status` endpoint unchanged
+(already worked for any non-`super_admin` role).
+
+Verified with an isolated Playwright pass driving the panel's actual
+JS end to end: the staff list renders multiple accounts with correct
+active/disabled status, Add Staff posts the right payload and reloads
+the list, Edit/Reset Password/Permissions each resolve to the *correct*
+account by id (not a single cached one — confirmed two different
+accounts' permission checkboxes load independently, so one account's
+disabled features never leak into another's modal), and permission
+changes save and reflect back into the list immediately. Also caught
+and fixed a real stacking bug during verification: the Edit/Reset
+Password/Permissions modals were still positioned earlier in the page
+than the new Staff Accounts list in the underlying HTML, so opening
+one while the list stayed open behind it (the same nested-modal pattern
+already used for reviewing a vendor application) rendered it hidden
+behind the list instead of on top — every `.modal-overlay` shares the
+same CSS z-index, so stacking among simultaneously-open modals is
+decided by DOM order. Fixed by moving those three modals after the
+Staff Accounts list in the page. Same sandbox caveat as the rest of
+this session's Super Admin work: no live database to confirm the
+migration and a real login as a newly-created staff account against a
+running server — worth a quick manual check after deploying.
+
+## Dispute & refund handling
+
+The last item from the original Super Admin review: there was
+genuinely no structured way to handle a customer complaint. A
+customer with a broken item, an order that never arrived, or a
+duplicate charge had no option beyond messaging a vendor directly —
+nothing was tracked, nothing had a status, and there was no way to
+actually record a refund anywhere in the app.
+
+This adds a real `disputes` table and a full report → review → resolve
+flow:
+
+- **Customers report a problem** from either their delivery order
+  history (a "Report a Problem" button now shows up in Order Details
+  once an order is delivered or cancelled — reporting mid-delivery
+  doesn't make much sense, so it's gated to those two end states) or
+  from a marketplace purchase card ("Your Orders" in the Marketplace).
+  Each report picks a category (wrong item, damaged, never arrived,
+  overcharged, something else) and a free-text description. The server
+  verifies the customer actually owns whichever order/purchase they're
+  reporting — not just trusted from the client — and blocks filing a
+  second open report against the same order so the queue doesn't fill
+  up with duplicates for one problem.
+- **A new "My Reports" screen** (Account → My Reports) shows a
+  customer everything they've filed, its status, and — once decided —
+  the exact resolution note and refund amount. A live Socket.io push
+  updates this instantly if they're online when a Super Admin resolves
+  it, the same mechanism live order-status updates already use.
+- **Super Admin gets a real Disputes queue** (new sidebar item, with an
+  open-count badge so it's obvious at a glance whether anything needs
+  attention), filterable by Open/Resolved/Rejected/All. Each row shows
+  who filed it, what it's about, and which vendor or delivery company
+  it's against.
+- **Resolving is one decision, both paths require an explanation.**
+  Issue a refund (a positive dollar amount, required) or reject with no
+  refund — either way a resolution note is required and is exactly
+  what the customer sees, same reasoning as the vendor/delivery-company
+  rejection-reason feature earlier in this session. Already-decided
+  disputes open in a read-only view instead of the form, so a past
+  decision can't be accidentally re-edited.
+- **Refunds actually affect payout numbers**, not just a status label.
+  A refund tied to a marketplace purchase nets against that vendor's
+  gross revenue in the Payouts panel; a refund tied to a plain delivery
+  order (no purchase attached) nets against that order's delivery
+  company. `getPayoutSummary()` now subtracts total refunded amounts
+  before computing commission and net earned, so a vendor/company's
+  outstanding balance reflects reality, not just gross sales. Since
+  this app has no live payment processor integration, a "refund" here
+  is a real bookkeeping adjustment against what's owed at the next
+  payout, not an automatic reversed charge — the resolve form says so
+  explicitly.
+- **Audited.** Every resolution logs to the existing audit trail
+  (`dispute.resolve`, with the decision, refund amount, and note in the
+  details).
+
+New endpoints: `POST /api/disputes` and `GET /api/disputes/mine`
+(customer-facing), `GET /api/super-admin/disputes` and
+`PUT /api/super-admin/disputes/:id/resolve` (Super Admin).
+
+Verified with three isolated Playwright passes against the actual JS:
+(1) the customer-facing report/My-Reports flow — submitting a report
+sends the right payload for both an order and a purchase, My Reports
+renders all three statuses with the resolution note and refund amount
+formatted correctly; (2) the Super Admin queue and resolve flow — the
+open-count badge, the decision toggle correctly showing/hiding the
+refund field, a missing resolution note or a missing/zero refund
+amount both blocked client-side before ever reaching `apiFetch`, a
+reject decision sending no `refundAmount` key at all, and viewing an
+already-resolved dispute showing the read-only decided view instead of
+the form; (3) the two report-a-problem entry points specifically — the
+button only appears on delivered/cancelled orders (not pending, where
+Cancel Order shows instead) in Order Details, and the marketplace
+purchase card's button opens the same report modal targeting a
+purchase id instead of an order id. Same sandbox caveat as the rest of
+this session's Super Admin work: no live database to confirm the
+migration and the real refund-netting math against actual purchase/
+order data on a running server — worth a quick manual check after
+deploying (file a report, resolve it with a refund, confirm the
+affected vendor/company's outstanding balance in the Payouts panel
+actually drops by that amount).

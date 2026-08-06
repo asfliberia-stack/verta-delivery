@@ -3283,6 +3283,11 @@
                             <div><div class="mp-account-menu-title">Payment Methods</div><div class="mp-account-menu-sub">Coming soon — pay on delivery for now</div></div>
                             <div class="mp-account-menu-chevron"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg></div>
                         </button>
+                        <button type="button" class="mp-account-menu-item" id="mp-account-menu-disputes">
+                            <div class="mp-account-menu-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg></div>
+                            <div><div class="mp-account-menu-title">My Reports</div><div class="mp-account-menu-sub">Problems you've reported and their status</div></div>
+                            <div class="mp-account-menu-chevron"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg></div>
+                        </button>
                         <button type="button" class="mp-account-menu-item" id="mp-account-menu-help">
                             <div class="mp-account-menu-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg></div>
                             <div><div class="mp-account-menu-title">Help &amp; Support</div><div class="mp-account-menu-sub">Get help and contact support</div></div>
@@ -3488,7 +3493,8 @@
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="30" height="30"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
             </div>
             <h2 id="vendor-pending-status" style="font-size:1.25rem; font-weight:800; color:var(--slate); margin-bottom:0.75rem;">Your vendor application is under review.</h2>
-            <p id="vendor-pending-detail" style="color:var(--slate-light); margin-bottom:2rem; line-height:1.5;"></p>
+            <p id="vendor-pending-detail" style="color:var(--slate-light); margin-bottom:1rem; line-height:1.5;"></p>
+            <div id="vendor-pending-reason" style="display:none; background:#fee2e2; border:1px solid #fecaca; border-radius:0.75rem; padding:0.875rem 1rem; margin-bottom:1.5rem; font-size:0.875rem; color:#991b1b; text-align:left;"></div>
             <button type="button" class="quick-access-btn secondary" id="vendor-pending-logout-btn" style="width:100%;">Logout</button>
         </div>
     </div>
@@ -3967,9 +3973,18 @@
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13"></rect><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon><circle cx="5.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle></svg>
                         Delivery Companies
                     </button>
+                    <button type="button" class="admin-nav-item" id="open-staff-btn" style="display:none;">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                        Staff Accounts
+                    </button>
                     <button type="button" class="admin-nav-item" id="open-payouts-btn" style="display:none;">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
                         Payouts &amp; Commission
+                    </button>
+                    <button type="button" class="admin-nav-item" id="open-disputes-btn" style="display:none;">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+                        Disputes
+                        <span id="disputes-open-count-badge" style="display:none; margin-left:auto; background:#dc2626; color:white; border-radius:9999px; font-size:0.6875rem; font-weight:700; padding:0.0625rem 0.5rem;"></span>
                     </button>
                     <button type="button" class="admin-nav-item" id="open-audit-log-btn" style="display:none;">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="9" y1="15" x2="15" y2="15"></line><line x1="9" y1="11" x2="15" y2="11"></line></svg>
@@ -4219,18 +4234,13 @@
                     </section>
 
                     <section class="orders-section" style="margin-bottom: 1.5rem;">
-                        <h2 class="section-title">Manage Agent Account</h2>
-                        <div id="sa-manage-agent-card" style="background:white; border-radius:1rem; padding:1.25rem; border:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;">
+                        <h2 class="section-title">Staff Accounts</h2>
+                        <div style="background:white; border-radius:1rem; padding:1.25rem; border:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;">
                             <div>
-                                <div style="font-weight:700; color:var(--slate);" id="sa-manage-agent-name">—</div>
-                                <div style="font-size:0.875rem; color:var(--slate-light);" id="sa-manage-agent-email">—</div>
+                                <div style="font-weight:700; color:var(--slate);">Manage Agent logins</div>
+                                <div style="font-size:0.875rem; color:var(--slate-light);">Create, edit, and permission as many staff accounts as your team needs — each with its own login and its own set of permissions.</div>
                             </div>
-                            <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
-                                <button type="button" class="btn-small btn-secondary" id="sa-manage-agent-edit-btn">Edit</button>
-                                <button type="button" class="btn-small" id="sa-manage-agent-reset-password-btn">Reset Password</button>
-                                <button type="button" class="btn-small btn-secondary" id="sa-manage-agent-permissions-btn">Permissions</button>
-                                <button type="button" class="btn-small toggle-disabled-btn" id="sa-manage-agent-toggle-btn">Disable</button>
-                            </div>
+                            <button type="button" class="btn-small btn-secondary" id="sa-manage-staff-btn">Manage Staff</button>
                         </div>
                     </section>
 
@@ -4821,6 +4831,54 @@
         </div>
     </div>
 
+    <!-- Report a Problem (customer-facing) — deliberately placed after
+         order-details-modal in the DOM (see the .modal-overlay z-index
+         comment near staff-modal above): this can be opened either
+         directly from an order/purchase card, or from within the Order
+         Details modal, which needs to stay open behind it. -->
+    <div class="modal-overlay" id="report-dispute-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>Report a Problem</h3>
+                <button class="close-btn" id="close-report-dispute-modal">&times;</button>
+            </div>
+            <form id="report-dispute-form">
+                <div class="form-group">
+                    <label class="form-label">What went wrong?</label>
+                    <select class="form-input" id="report-dispute-category-input">
+                        <option value="wrong_item">Wrong item</option>
+                        <option value="damaged">Item arrived damaged</option>
+                        <option value="never_arrived">Never arrived</option>
+                        <option value="overcharged">Overcharged</option>
+                        <option value="other">Something else</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Details</label>
+                    <textarea class="form-input" id="report-dispute-description-input" rows="4" required placeholder="Tell us what happened — the more detail, the faster we can help."></textarea>
+                </div>
+                <div id="report-dispute-form-error" style="color: #dc2626; font-size: 0.875rem; margin-bottom: 1rem; display: none;"></div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-small btn-secondary" id="cancel-report-dispute-form">Cancel</button>
+                    <button type="submit" class="btn-small btn-success" id="report-dispute-form-submit-btn">Submit Report</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- My Reports (customer-facing) — status/history of everything
+         this customer has filed, including the resolution note and
+         refund amount once decided. -->
+    <div class="modal-overlay" id="my-disputes-modal">
+        <div class="modal" style="max-width: 640px; max-height: 85vh; overflow-y: auto;">
+            <div class="modal-header">
+                <h3>My Reports</h3>
+                <button class="close-btn" id="close-my-disputes-modal">&times;</button>
+            </div>
+            <div id="my-disputes-list"><p style="text-align: center; color: var(--slate-light); padding: 1rem 0;">Loading…</p></div>
+        </div>
+    </div>
+
     <!-- Set Amount Modal when accepting order -->
     <div class="modal-overlay" id="set-amount-modal">
         <div class="modal">
@@ -5217,82 +5275,6 @@
         </div>
     </div>
 
-    <!-- Edit Manage Agent (Super Admin only) -->
-    <div class="modal-overlay" id="edit-manage-agent-modal">
-        <div class="modal">
-            <div class="modal-header">
-                <h3>Edit Manage Agent</h3>
-                <button class="close-btn" id="close-edit-manage-agent-modal">&times;</button>
-            </div>
-            <form id="edit-manage-agent-form">
-                <div class="form-group">
-                    <label class="form-label">Name</label>
-                    <input type="text" class="form-input" id="edit-manage-agent-name-input" required>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Email</label>
-                    <input type="email" class="form-input" id="edit-manage-agent-email-input" required>
-                    <p class="settings-hint">If you change this, also update <code>ADMIN_EMAIL</code> in Railway's Variables tab to match — otherwise the next server restart creates a new, blank account at the old address instead of finding this one.</p>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Phone</label>
-                    <div class="phone-input-row">
-                        <select class="form-input country-code-select" id="edit-manage-agent-phone-country"></select>
-                        <input type="tel" class="form-input" id="edit-manage-agent-phone-input">
-                    </div>
-                </div>
-                <div id="edit-manage-agent-form-error" style="color: #dc2626; font-size: 0.875rem; margin-bottom: 1rem; display: none;"></div>
-                <div class="modal-footer">
-                    <button type="button" class="btn-small btn-secondary" id="cancel-edit-manage-agent-form">Cancel</button>
-                    <button type="submit" class="btn-small btn-success" id="edit-manage-agent-form-submit-btn">Save Changes</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- Reset Manage Agent Password (Super Admin only) — deliberately
-         its own separate action, same reasoning as the customer one. -->
-    <div class="modal-overlay" id="reset-manage-agent-password-modal">
-        <div class="modal">
-            <div class="modal-header">
-                <h3>Reset Password</h3>
-                <button class="close-btn" id="close-reset-manage-agent-password-modal">&times;</button>
-            </div>
-            <p style="color: var(--slate-light); margin-bottom: 1.25rem;">Set a new password for the Manage Agent account.</p>
-            <form id="reset-manage-agent-password-form">
-                <div class="form-group">
-                    <label class="form-label">New Password</label>
-                    <input type="text" class="form-input" id="reset-manage-agent-password-input" required minlength="8" placeholder="At least 8 characters">
-                    <p class="settings-hint">This immediately replaces the current password.</p>
-                </div>
-                <div id="reset-manage-agent-password-error" style="color: #dc2626; font-size: 0.875rem; margin-bottom: 1rem; display: none;"></div>
-                <div class="modal-footer">
-                    <button type="button" class="btn-small btn-secondary" id="cancel-reset-manage-agent-password">Cancel</button>
-                    <button type="submit" class="btn-small" style="background:#dc2626; color:white;" id="reset-manage-agent-password-submit-btn">Reset Password</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- Manage Agent Permissions (Super Admin only) — checkboxes are
-         populated dynamically from the backend's FEATURE_KEYS list,
-         not hardcoded here, so this never drifts out of sync with
-         what's actually enforced server-side. -->
-    <div class="modal-overlay" id="manage-agent-permissions-modal">
-        <div class="modal">
-            <div class="modal-header">
-                <h3>Manage Agent Permissions</h3>
-                <button class="close-btn" id="close-manage-agent-permissions-modal">&times;</button>
-            </div>
-            <p style="color: var(--slate-light); margin-bottom: 1.25rem;">Uncheck anything you don't want this Manage Agent account to be able to do. This doesn't affect the account's own password/email/login history — those stay under their own control.</p>
-            <div id="manage-agent-permissions-list"></div>
-            <div id="manage-agent-permissions-error" style="color: #dc2626; font-size: 0.875rem; margin: 1rem 0; display: none;"></div>
-            <div class="modal-footer">
-                <button type="button" class="btn-small btn-secondary" id="cancel-manage-agent-permissions">Cancel</button>
-                <button type="button" class="btn-small btn-success" id="save-manage-agent-permissions-btn">Save Permissions</button>
-            </div>
-        </div>
-    </div>
 
 
     <div class="modal-overlay" id="settings-modal">
@@ -5641,6 +5623,152 @@
         </div>
     </div>
 
+    <!-- Staff Accounts (Super Admin only) — real multi-account list for
+         role = 'admin' ("Manage Agent"), replacing what used to be a
+         single hardcoded account. Same table/modal pattern as Vendors
+         and Delivery Companies above. -->
+    <div class="modal-overlay" id="staff-modal">
+        <div class="modal" style="max-width: 900px; width: 95%; max-height: 85vh; overflow-y: auto;">
+            <div class="modal-header">
+                <h3>👥 Staff Accounts</h3>
+                <div style="display:flex; gap:0.5rem; align-items:center;">
+                    <button type="button" class="btn-small btn-success" id="open-add-staff-btn">+ Add Staff</button>
+                    <button class="close-btn" id="close-staff-modal">&times;</button>
+                </div>
+            </div>
+            <p style="color: var(--slate-light); margin-bottom: 1.5rem; font-size: 0.875rem;">
+                Each account here can log in and operate the delivery dashboard as "Manage Agent" —
+                creating orders, managing the fleet, and everything else short of the Super Admin
+                console. Use Permissions to cut off specific capabilities per account.
+            </p>
+            <div id="staff-modal-content">
+                <p style="text-align: center; color: var(--slate-light); padding: 2rem 0;">Loading…</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Staff (Super Admin only) — creates a real, immediately-active
+         role = 'admin' account directly, mirroring Add Vendor/Add
+         Delivery Company. -->
+    <div class="modal-overlay" id="add-staff-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>+ Add Staff</h3>
+                <button class="close-btn" id="close-add-staff-modal">&times;</button>
+            </div>
+            <form id="add-staff-form">
+                <div class="form-group">
+                    <label class="form-label">Name</label>
+                    <input type="text" class="form-input" id="add-staff-name-input" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Email</label>
+                    <input type="email" class="form-input" id="add-staff-email-input" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Phone</label>
+                    <div class="phone-input-row">
+                        <select class="form-input country-code-select" id="add-staff-phone-country"></select>
+                        <input type="tel" class="form-input" id="add-staff-phone-input" placeholder="881405696">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Temporary Password</label>
+                    <input type="text" class="form-input" id="add-staff-password-input" required minlength="8" placeholder="At least 8 characters">
+                    <p class="settings-hint">Share this with them directly — there's no automated email to send it for you. They can change it later from their own Settings.</p>
+                </div>
+                <div id="add-staff-form-error" style="color: #dc2626; font-size: 0.875rem; margin-bottom: 1rem; display: none;"></div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-small btn-secondary" id="cancel-add-staff-form">Cancel</button>
+                    <button type="submit" class="btn-small btn-success" id="add-staff-form-submit-btn">Create Staff Account</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Edit Manage Agent (Super Admin only) — deliberately placed
+         after staff-modal in the DOM: every .modal-overlay shares the
+         same z-index (see the .modal-overlay CSS rule), so stacking
+         among simultaneously-active modals is decided by DOM order.
+         This (and the two modals below it) need to render on top of
+         staff-modal, which stays open behind them while one is active —
+         same nesting pattern as vendor-review-modal over vendors-modal. -->
+    <div class="modal-overlay" id="edit-manage-agent-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>Edit Manage Agent</h3>
+                <button class="close-btn" id="close-edit-manage-agent-modal">&times;</button>
+            </div>
+            <form id="edit-manage-agent-form">
+                <div class="form-group">
+                    <label class="form-label">Name</label>
+                    <input type="text" class="form-input" id="edit-manage-agent-name-input" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Email</label>
+                    <input type="email" class="form-input" id="edit-manage-agent-email-input" required>
+                    <p class="settings-hint">If this is the original Manage Agent account (the one <code>ADMIN_EMAIL</code> points to in Railway's Variables tab) and you change its email here, update <code>ADMIN_EMAIL</code> to match too — otherwise the next server restart re-creates a new, blank account at the old address instead of finding this one. You'll get a warning after saving if that applies.</p>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Phone</label>
+                    <div class="phone-input-row">
+                        <select class="form-input country-code-select" id="edit-manage-agent-phone-country"></select>
+                        <input type="tel" class="form-input" id="edit-manage-agent-phone-input">
+                    </div>
+                </div>
+                <div id="edit-manage-agent-form-error" style="color: #dc2626; font-size: 0.875rem; margin-bottom: 1rem; display: none;"></div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-small btn-secondary" id="cancel-edit-manage-agent-form">Cancel</button>
+                    <button type="submit" class="btn-small btn-success" id="edit-manage-agent-form-submit-btn">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Reset Manage Agent Password (Super Admin only) — deliberately
+         its own separate action, same reasoning as the customer one. -->
+    <div class="modal-overlay" id="reset-manage-agent-password-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>Reset Password</h3>
+                <button class="close-btn" id="close-reset-manage-agent-password-modal">&times;</button>
+            </div>
+            <p style="color: var(--slate-light); margin-bottom: 1.25rem;">Set a new password for the Manage Agent account.</p>
+            <form id="reset-manage-agent-password-form">
+                <div class="form-group">
+                    <label class="form-label">New Password</label>
+                    <input type="text" class="form-input" id="reset-manage-agent-password-input" required minlength="8" placeholder="At least 8 characters">
+                    <p class="settings-hint">This immediately replaces the current password.</p>
+                </div>
+                <div id="reset-manage-agent-password-error" style="color: #dc2626; font-size: 0.875rem; margin-bottom: 1rem; display: none;"></div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-small btn-secondary" id="cancel-reset-manage-agent-password">Cancel</button>
+                    <button type="submit" class="btn-small" style="background:#dc2626; color:white;" id="reset-manage-agent-password-submit-btn">Reset Password</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Manage Agent Permissions (Super Admin only) — checkboxes are
+         populated dynamically from the backend's FEATURE_KEYS list,
+         not hardcoded here, so this never drifts out of sync with
+         what's actually enforced server-side. -->
+    <div class="modal-overlay" id="manage-agent-permissions-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>Manage Agent Permissions</h3>
+                <button class="close-btn" id="close-manage-agent-permissions-modal">&times;</button>
+            </div>
+            <p style="color: var(--slate-light); margin-bottom: 1.25rem;">Uncheck anything you don't want this Manage Agent account to be able to do. This doesn't affect the account's own password/email/login history — those stay under their own control.</p>
+            <div id="manage-agent-permissions-list"></div>
+            <div id="manage-agent-permissions-error" style="color: #dc2626; font-size: 0.875rem; margin: 1rem 0; display: none;"></div>
+            <div class="modal-footer">
+                <button type="button" class="btn-small btn-secondary" id="cancel-manage-agent-permissions">Cancel</button>
+                <button type="button" class="btn-small btn-success" id="save-manage-agent-permissions-btn">Save Permissions</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Payouts & Commission (Super Admin only) -->
     <div class="modal-overlay" id="payouts-modal">
         <div class="modal" style="max-width: 980px; width: 95%; max-height: 85vh; overflow-y: auto;">
@@ -5748,6 +5876,74 @@
         </div>
     </div>
 
+    <!-- Disputes (Super Admin only) — customers reporting a problem
+         with an order/purchase, and the resolve step (refund or
+         reject, both with a required note the customer sees). -->
+    <div class="modal-overlay" id="disputes-modal">
+        <div class="modal" style="max-width: 900px; width: 95%; max-height: 85vh; overflow-y: auto;">
+            <div class="modal-header">
+                <h3>⚠️ Disputes</h3>
+                <button class="close-btn" id="close-disputes-modal">&times;</button>
+            </div>
+            <div style="display:flex; gap:0.75rem; align-items:center; margin-bottom:1.25rem; flex-wrap:wrap;">
+                <label class="form-label" style="margin:0;">Status:</label>
+                <select class="form-input" id="disputes-status-filter" style="max-width:220px;">
+                    <option value="open">Open</option>
+                    <option value="">All</option>
+                    <option value="resolved">Resolved</option>
+                    <option value="rejected">Rejected</option>
+                </select>
+            </div>
+            <div id="disputes-table" style="overflow-x:auto;"><p style="text-align: center; color: var(--slate-light); padding: 1rem 0;">Loading…</p></div>
+        </div>
+    </div>
+
+    <!-- Resolve Dispute (Super Admin only) — the one decision point:
+         refund (requires a positive amount) or reject (no refund).
+         Either way a resolution note is required — the customer sees
+         it, same reasoning as the vendor/delivery-company
+         rejection-reason feature. -->
+    <div class="modal-overlay" id="resolve-dispute-modal">
+        <div class="modal" style="max-width: 560px;">
+            <div class="modal-header">
+                <h3 id="resolve-dispute-modal-title">Resolve Dispute</h3>
+                <button class="close-btn" id="close-resolve-dispute-modal">&times;</button>
+            </div>
+            <div id="resolve-dispute-summary" style="background:var(--bg-light); border-radius:0.75rem; padding:1rem; margin-bottom:1.25rem; font-size:0.875rem;"></div>
+            <form id="resolve-dispute-form">
+                <div class="form-group">
+                    <label class="form-label">Decision</label>
+                    <div style="display:flex; gap:1rem;">
+                        <label class="auth-checkbox-label" style="margin:0;"><input type="radio" name="resolve-dispute-decision" value="refund" checked> Issue a refund</label>
+                        <label class="auth-checkbox-label" style="margin:0;"><input type="radio" name="resolve-dispute-decision" value="reject"> Reject — no refund</label>
+                    </div>
+                </div>
+                <div class="form-group" id="resolve-dispute-refund-amount-group">
+                    <label class="form-label">Refund Amount ($)</label>
+                    <input type="number" class="form-input" id="resolve-dispute-refund-amount-input" min="0.01" step="0.01" placeholder="e.g. 12.50">
+                    <p class="settings-hint">Recorded against the relevant vendor/delivery company's payout balance — it isn't an automatic payment reversal, since this app has no live payment processor integration.</p>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Resolution Note (the customer will see this)</label>
+                    <textarea class="form-input" id="resolve-dispute-note-input" rows="3" required placeholder="e.g. Confirmed the item arrived damaged — refunding in full."></textarea>
+                </div>
+                <div id="resolve-dispute-error" style="color: #dc2626; font-size: 0.875rem; margin-bottom: 1rem; display: none;"></div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-small btn-secondary" id="cancel-resolve-dispute-form">Cancel</button>
+                    <button type="submit" class="btn-small btn-success" id="resolve-dispute-form-submit-btn">Save Resolution</button>
+                </div>
+            </form>
+            <!-- Shown instead of the form above for an already-decided
+                 dispute — read-only, no re-editing a past decision. -->
+            <div id="resolve-dispute-decided-view" style="display:none;">
+                <div id="resolve-dispute-decided-content" style="font-size:0.875rem;"></div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-small btn-secondary" id="close-resolve-dispute-decided-view">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Platform Settings (Super Admin only) — default delivery fee,
          service area, and a real maintenance-mode switch. -->
     <div class="modal-overlay" id="platform-settings-modal">
@@ -5800,13 +5996,35 @@
                 <div><div style="color:var(--slate-light); font-size:0.75rem; text-transform:uppercase; font-weight:700;">Phone</div><div id="vendor-review-phone" style="font-weight:600;">—</div></div>
                 <div><div style="color:var(--slate-light); font-size:0.75rem; text-transform:uppercase; font-weight:700;">Applied</div><div id="vendor-review-applied" style="font-weight:600;">—</div></div>
             </div>
+            <!-- Shown only when re-reviewing an application that was
+                 already rejected once before — informational, so the
+                 Super Admin doesn't have to remember or go dig through
+                 the audit log to see why. -->
+            <div id="vendor-review-prior-rejection" style="display:none; background:#fee2e2; border:1px solid #fecaca; border-radius:0.75rem; padding:0.875rem 1rem; margin-bottom:1.5rem; font-size:0.875rem; color:#991b1b;">
+                <strong>Previously rejected:</strong> <span id="vendor-review-prior-rejection-reason"></span>
+            </div>
             <h4 style="font-weight:700; margin-bottom:0.625rem;">Business Registration Document</h4>
             <div id="vendor-review-biz-doc" style="margin-bottom:1.5rem;"></div>
             <h4 style="font-weight:700; margin-bottom:0.625rem;">Identification (<span id="vendor-review-id-label">ID</span>)</h4>
             <div id="vendor-review-id-doc" style="margin-bottom:1.5rem;"></div>
-            <div style="display:flex; gap:1rem;">
+            <div id="vendor-review-actions" style="display:flex; gap:1rem;">
                 <button type="button" class="btn-small" style="flex:1; background-color:#dc2626; color:white;" id="vendor-reject-btn">Reject</button>
                 <button type="button" class="btn-small btn-success" style="flex:1;" id="vendor-approve-btn">Approve</button>
+            </div>
+            <!-- Reason capture — shown in place of the buttons above
+                 once "Reject" is clicked; a reason is required before
+                 "Confirm Reject" is enabled, since the whole point of
+                 this feature is that a rejection always comes with an
+                 explanation, not just a status flip. -->
+            <div id="vendor-reject-reason-section" style="display:none;">
+                <div class="form-group">
+                    <label class="form-label">Reason for rejection (shown to the applicant)</label>
+                    <textarea class="form-input" id="vendor-reject-reason-input" rows="3" placeholder="e.g. Business registration document is unreadable — please re-submit a clearer scan."></textarea>
+                </div>
+                <div style="display:flex; gap:1rem;">
+                    <button type="button" class="btn-small btn-secondary" style="flex:1;" id="vendor-reject-cancel-btn">Cancel</button>
+                    <button type="button" class="btn-small" style="flex:1; background-color:#dc2626; color:white;" id="vendor-reject-confirm-btn">Confirm Reject</button>
+                </div>
             </div>
         </div>
     </div>
@@ -5967,9 +6185,17 @@
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13"></rect><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon><circle cx="5.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle></svg>
                     Delivery Companies
                 </button>
+                <button type="button" class="admin-nav-item" id="admin-more-staff" style="width:100%; text-align:left; display:none;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                    Staff Accounts
+                </button>
                 <button type="button" class="admin-nav-item" id="admin-more-payouts" style="width:100%; text-align:left; display:none;">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
                     Payouts &amp; Commission
+                </button>
+                <button type="button" class="admin-nav-item" id="admin-more-disputes" style="width:100%; text-align:left; display:none;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+                    Disputes
                 </button>
                 <button type="button" class="admin-nav-item" id="admin-more-audit-log" style="width:100%; text-align:left; display:none;">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="9" y1="15" x2="15" y2="15"></line><line x1="9" y1="11" x2="15" y2="11"></line></svg>
@@ -6822,6 +7048,22 @@
                 });
             });
 
+            // A Super Admin resolved (or rejected) a dispute this
+            // customer filed. Live-notify if they're online, and
+            // refresh the My Reports list if it happens to be open.
+            socket.on('dispute:resolved', (dispute) => {
+                const refundNote = dispute.refundAmount ? ` — $${dispute.refundAmount.toFixed(2)} refunded` : '';
+                showToast(`Your report was ${dispute.status}${refundNote}`, dispute.status === 'resolved' ? 'success' : 'error');
+                sendLocalNotification('Report Update', {
+                    body: dispute.resolutionNote || `Your report was ${dispute.status}.`,
+                    requireInteraction: false,
+                    tag: `dispute-resolved-${dispute.id}`,
+                });
+                if (document.getElementById('my-disputes-modal').classList.contains('active')) {
+                    loadMyDisputesPanel();
+                }
+            });
+
             socket.on('order:deleted', ({ ids }) => {
                 orders = orders.filter(o => !ids.includes(o.id));
                 selectedOrderIds = selectedOrderIds.filter(id => !ids.includes(id));
@@ -7503,6 +7745,13 @@
             document.getElementById('vendor-pending-detail').textContent = isRejected
                 ? "If you think this is a mistake, contact support to discuss next steps."
                 : "A Super Admin needs to review your business registration and ID before your account can go live. This usually doesn't take long — check back soon.";
+            const reasonEl = document.getElementById('vendor-pending-reason');
+            if (isRejected && currentUser.rejectionReason) {
+                reasonEl.innerHTML = `<strong>Reason:</strong> ${currentUser.rejectionReason}`;
+                reasonEl.style.display = 'block';
+            } else {
+                reasonEl.style.display = 'none';
+            }
             document.getElementById('vendor-pending-screen').style.display = 'flex';
         }
 
@@ -7882,6 +8131,10 @@
             document.getElementById('mp-account-menu-orders').addEventListener('click', () => setMarketplaceTab('orders'));
             document.getElementById('mp-account-menu-wishlist').addEventListener('click', () => setMarketplaceTab('wishlist'));
             document.getElementById('mp-account-menu-addresses').addEventListener('click', () => setMarketplaceTab('addresses'));
+            document.getElementById('mp-account-menu-disputes').addEventListener('click', () => {
+                document.getElementById('my-disputes-modal').classList.add('active');
+                loadMyDisputesPanel();
+            });
             document.getElementById('mp-account-menu-payment').addEventListener('click', () => setMarketplaceTab('payment-methods'));
             document.getElementById('mp-account-menu-help').addEventListener('click', () => {
                 renderHelpSupport('customer');
@@ -8135,8 +8388,12 @@
                 if (vendorsNavBtn) vendorsNavBtn.style.display = isSuperAdmin ? 'flex' : 'none';
                 const deliveryCompaniesNavBtn = document.getElementById('open-delivery-companies-btn');
                 if (deliveryCompaniesNavBtn) deliveryCompaniesNavBtn.style.display = isSuperAdmin ? 'flex' : 'none';
+                const staffNavBtn = document.getElementById('open-staff-btn');
+                if (staffNavBtn) staffNavBtn.style.display = isSuperAdmin ? 'flex' : 'none';
                 const payoutsNavBtn = document.getElementById('open-payouts-btn');
                 if (payoutsNavBtn) payoutsNavBtn.style.display = isSuperAdmin ? 'flex' : 'none';
+                const disputesNavBtn = document.getElementById('open-disputes-btn');
+                if (disputesNavBtn) disputesNavBtn.style.display = isSuperAdmin ? 'flex' : 'none';
                 const auditLogNavBtn = document.getElementById('open-audit-log-btn');
                 if (auditLogNavBtn) auditLogNavBtn.style.display = isSuperAdmin ? 'flex' : 'none';
                 const platformSettingsNavBtn = document.getElementById('open-platform-settings-btn');
@@ -8158,8 +8415,12 @@
                 if (mnavOverviewLabelEl) mnavOverviewLabelEl.textContent = isSuperAdmin ? 'Ops' : 'Overview';
                 const moreDeliveryCompaniesBtn = document.getElementById('admin-more-delivery-companies');
                 if (moreDeliveryCompaniesBtn) moreDeliveryCompaniesBtn.style.display = isSuperAdmin ? 'flex' : 'none';
+                const moreStaffBtn = document.getElementById('admin-more-staff');
+                if (moreStaffBtn) moreStaffBtn.style.display = isSuperAdmin ? 'flex' : 'none';
                 const morePayoutsBtn = document.getElementById('admin-more-payouts');
                 if (morePayoutsBtn) morePayoutsBtn.style.display = isSuperAdmin ? 'flex' : 'none';
+                const moreDisputesBtn = document.getElementById('admin-more-disputes');
+                if (moreDisputesBtn) moreDisputesBtn.style.display = isSuperAdmin ? 'flex' : 'none';
                 const moreAuditLogBtn = document.getElementById('admin-more-audit-log');
                 if (moreAuditLogBtn) moreAuditLogBtn.style.display = isSuperAdmin ? 'flex' : 'none';
                 const morePlatformSettingsBtn = document.getElementById('admin-more-platform-settings');
@@ -8604,6 +8865,14 @@
             document.getElementById('cancel-new-order').addEventListener('click', closeNewOrderModal);
             document.getElementById('close-order-details').addEventListener('click', closeOrderDetailsModal);
             document.getElementById('new-order-form').addEventListener('submit', handleNewOrder);
+
+            // ---- Report a Problem / My Reports (customer-facing disputes) ----
+            document.getElementById('close-report-dispute-modal').addEventListener('click', closeReportDisputeModal);
+            document.getElementById('cancel-report-dispute-form').addEventListener('click', closeReportDisputeModal);
+            document.getElementById('report-dispute-form').addEventListener('submit', handleReportDisputeFormSubmit);
+            document.getElementById('close-my-disputes-modal').addEventListener('click', () => {
+                document.getElementById('my-disputes-modal').classList.remove('active');
+            });
 
             document.getElementById('order-search-input').addEventListener('input', debounce(renderOrdersDelivery, 200));
             document.getElementById('order-status-filter').addEventListener('change', renderOrdersDelivery);
@@ -9307,41 +9576,105 @@
                         </div>
                     `).join('');
                 }
-                loadManageAgentAccountCard();
             } catch (err) {
                 console.error('Failed to load Super Admin overview', err);
                 showToast('Could not load the platform overview.', 'error');
             }
         }
 
-        let manageAgentAccountCache = null;
+        // ---- Staff Accounts (Super Admin only) — real multi-account
+        // CRUD. `staffCache` holds the last-loaded list (for the Edit/
+        // Reset Password/Permissions modals to look up by id);
+        // `staffModalTargetId` tracks which row those shared modals are
+        // currently acting on, since — unlike the old single-account
+        // version of this panel — there's no longer just one account to
+        // assume. ----
+        let staffCache = [];
+        let staffModalTargetId = null;
 
-        async function loadManageAgentAccountCard() {
+        async function loadStaffPanel() {
+            const container = document.getElementById('staff-modal-content');
+            if (!container) return;
             try {
-                const admin = await apiFetch('/api/super-admin/manage-agent');
-                manageAgentAccountCache = admin;
-                document.getElementById('sa-manage-agent-name').textContent = admin.businessName;
-                document.getElementById('sa-manage-agent-email').textContent = admin.email + (admin.isDisabled ? ' — Disabled' : '');
-                const toggleBtn = document.getElementById('sa-manage-agent-toggle-btn');
-                toggleBtn.dataset.id = admin.id;
-                toggleBtn.dataset.name = admin.businessName;
-                toggleBtn.dataset.disabled = admin.isDisabled;
-                toggleBtn.textContent = admin.isDisabled ? 'Enable' : 'Disable';
-                toggleBtn.style.background = admin.isDisabled ? '#dcfce7' : '#fef3c7';
-                toggleBtn.style.color = admin.isDisabled ? '#15803d' : '#92400e';
-                document.getElementById('sa-manage-agent-card').style.opacity = admin.isDisabled ? '0.55' : '1';
+                const data = await apiFetch('/api/super-admin/staff');
+                const staff = data.staff || [];
+                staffCache = staff;
+                if (staff.length === 0) {
+                    container.innerHTML = '<p style="text-align: center; color: var(--slate-light); padding: 1rem 0;">No staff accounts yet.</p>';
+                    return;
+                }
+                let html = '<div style="overflow-x: auto;"><table class="settings-table"><thead><tr><th>Name</th><th>Email</th><th>Since</th><th>Status</th><th></th></tr></thead><tbody>';
+                staff.forEach(s => {
+                    html += `<tr${s.isDisabled ? ' style="opacity:0.55;"' : ''}>
+                        <td style="font-weight:700;">${s.businessName}</td>
+                        <td>${s.email}</td>
+                        <td>${new Date(s.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</td>
+                        <td>${s.isDisabled
+                            ? '<span style="background:#fee2e2; color:#b91c1c; padding:0.1875rem 0.625rem; border-radius:9999px; font-size:0.75rem; font-weight:700;">Disabled</span>'
+                            : '<span style="background:#dcfce7; color:#15803d; padding:0.1875rem 0.625rem; border-radius:9999px; font-size:0.75rem; font-weight:700;">Active</span>'}</td>
+                        <td style="white-space:nowrap; display:flex; gap:0.5rem;">
+                            <button type="button" class="btn-small btn-secondary edit-staff-btn" data-id="${s.id}">Edit</button>
+                            <button type="button" class="btn-small reset-staff-password-btn" data-id="${s.id}">Reset Password</button>
+                            <button type="button" class="btn-small btn-secondary staff-permissions-btn" data-id="${s.id}">Permissions</button>
+                            <button type="button" class="btn-small toggle-disabled-btn" data-id="${s.id}" data-name="${s.businessName.replace(/"/g, '&quot;')}" data-disabled="${s.isDisabled}" style="background:${s.isDisabled ? '#dcfce7' : '#fef3c7'}; color:${s.isDisabled ? '#15803d' : '#92400e'};">${s.isDisabled ? 'Enable' : 'Disable'}</button>
+                        </td>
+                    </tr>`;
+                });
+                html += '</tbody></table></div>';
+                container.innerHTML = html;
             } catch (err) {
-                console.error('Failed to load Manage Agent account', err);
+                container.innerHTML = `<p style="text-align: center; color: #dc2626; padding: 2rem 0;">${err.message}</p>`;
             }
         }
 
-        function openEditManageAgentModal() {
-            if (!manageAgentAccountCache) return;
-            document.getElementById('edit-manage-agent-name-input').value = manageAgentAccountCache.businessName;
-            document.getElementById('edit-manage-agent-email-input').value = manageAgentAccountCache.email;
+        function openAddStaffModal() {
+            document.getElementById('add-staff-form').reset();
+            document.getElementById('add-staff-form-error').style.display = 'none';
+            populateCountryCodeSelects();
+            document.getElementById('add-staff-modal').classList.add('active');
+        }
+
+        function closeAddStaffModal() {
+            document.getElementById('add-staff-modal').classList.remove('active');
+        }
+
+        async function handleAddStaffFormSubmit(e) {
+            e.preventDefault();
+            const errorEl = document.getElementById('add-staff-form-error');
+            const submitBtn = document.getElementById('add-staff-form-submit-btn');
+            errorEl.style.display = 'none';
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Creating…';
+            try {
+                const businessName = document.getElementById('add-staff-name-input').value.trim();
+                const email = document.getElementById('add-staff-email-input').value.trim();
+                const password = document.getElementById('add-staff-password-input').value;
+                const phone = combinePhoneNumber('add-staff-phone-country', 'add-staff-phone-input');
+                await apiFetch('/api/super-admin/staff', {
+                    method: 'POST',
+                    body: JSON.stringify({ businessName, email, phone, password }),
+                });
+                closeAddStaffModal();
+                showToast('Staff account created — share the password with them directly', 'success');
+                await loadStaffPanel();
+            } catch (err) {
+                errorEl.textContent = err.message;
+                errorEl.style.display = 'block';
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Create Staff Account';
+            }
+        }
+
+        function openEditManageAgentModal(id) {
+            const target = staffCache.find(s => s.id === id);
+            if (!target) return;
+            staffModalTargetId = id;
+            document.getElementById('edit-manage-agent-name-input').value = target.businessName;
+            document.getElementById('edit-manage-agent-email-input').value = target.email;
             document.getElementById('edit-manage-agent-form-error').style.display = 'none';
             populateCountryCodeSelects();
-            splitPhoneNumber(manageAgentAccountCache.phone, 'edit-manage-agent-phone-country', 'edit-manage-agent-phone-input');
+            splitPhoneNumber(target.phone, 'edit-manage-agent-phone-country', 'edit-manage-agent-phone-input');
             document.getElementById('edit-manage-agent-modal').classList.add('active');
         }
 
@@ -9360,16 +9693,16 @@
                 const businessName = document.getElementById('edit-manage-agent-name-input').value.trim();
                 const email = document.getElementById('edit-manage-agent-email-input').value.trim();
                 const phone = combinePhoneNumber('edit-manage-agent-phone-country', 'edit-manage-agent-phone-input');
-                const data = await apiFetch(`/api/super-admin/manage-agent/${manageAgentAccountCache.id}`, {
+                const data = await apiFetch(`/api/super-admin/staff/${staffModalTargetId}`, {
                     method: 'PUT',
                     body: JSON.stringify({ businessName, email, phone }),
                 });
                 closeEditManageAgentModal();
-                showToast('Manage Agent account updated', 'success');
+                showToast('Staff account updated', 'success');
                 if (data.emailChangedWarning) {
                     showToast(data.emailChangedWarning, 'error');
                 }
-                await loadManageAgentAccountCard();
+                await loadStaffPanel();
             } catch (err) {
                 errorEl.textContent = err.message;
                 errorEl.style.display = 'block';
@@ -9379,7 +9712,8 @@
             }
         }
 
-        function openResetManageAgentPasswordModal() {
+        function openResetManageAgentPasswordModal(id) {
+            staffModalTargetId = id;
             document.getElementById('reset-manage-agent-password-form').reset();
             document.getElementById('reset-manage-agent-password-error').style.display = 'none';
             document.getElementById('reset-manage-agent-password-modal').classList.add('active');
@@ -9398,7 +9732,7 @@
             submitBtn.textContent = 'Resetting…';
             try {
                 const password = document.getElementById('reset-manage-agent-password-input').value;
-                await apiFetch(`/api/super-admin/manage-agent/${manageAgentAccountCache.id}/password`, {
+                await apiFetch(`/api/super-admin/staff/${staffModalTargetId}/password`, {
                     method: 'PUT',
                     body: JSON.stringify({ password }),
                 });
@@ -9413,15 +9747,17 @@
             }
         }
 
-        async function openManageAgentPermissionsModal() {
-            if (!manageAgentAccountCache) return;
+        async function openManageAgentPermissionsModal(id) {
+            const target = staffCache.find(s => s.id === id);
+            if (!target) return;
+            staffModalTargetId = id;
             const listEl = document.getElementById('manage-agent-permissions-list');
             document.getElementById('manage-agent-permissions-error').style.display = 'none';
             listEl.innerHTML = '<p style="color:var(--slate-light); text-align:center; padding:1rem 0;">Loading…</p>';
             document.getElementById('manage-agent-permissions-modal').classList.add('active');
             try {
                 const data = await apiFetch('/api/super-admin/feature-keys');
-                const currentlyDisabled = manageAgentAccountCache.disabledFeatures || [];
+                const currentlyDisabled = target.disabledFeatures || [];
                 listEl.innerHTML = Object.entries(data.featureKeys).map(([key, label]) => `
                     <label style="display:flex; align-items:center; gap:0.75rem; padding:0.625rem 0; border-bottom:1px solid var(--border); cursor:pointer;">
                         <input type="checkbox" class="manage-agent-permission-checkbox" data-feature-key="${key}" ${currentlyDisabled.includes(key) ? '' : 'checked'} style="width:1.125rem; height:1.125rem;">
@@ -9448,11 +9784,12 @@
             saveBtn.disabled = true;
             saveBtn.textContent = 'Saving…';
             try {
-                await apiFetch(`/api/super-admin/manage-agent/${manageAgentAccountCache.id}/features`, {
+                await apiFetch(`/api/super-admin/staff/${staffModalTargetId}/features`, {
                     method: 'PUT',
                     body: JSON.stringify({ disabledFeatures }),
                 });
-                manageAgentAccountCache.disabledFeatures = disabledFeatures;
+                const target = staffCache.find(s => s.id === staffModalTargetId);
+                if (target) target.disabledFeatures = disabledFeatures;
                 showToast('Permissions updated', 'success');
                 closeManageAgentPermissionsModal();
             } catch (err) {
@@ -9531,18 +9868,40 @@
                 document.getElementById('vendors-modal').classList.add('active');
                 loadVendors();
             });
-            document.getElementById('sa-manage-agent-toggle-btn').addEventListener('click', (e) => {
-                toggleAccountDisabled(e.target.dataset.id, e.target.dataset.name, e.target.dataset.disabled === 'true', loadManageAgentAccountCard);
+            // ---- Staff Accounts (Super Admin only) ----
+            document.getElementById('sa-manage-staff-btn').addEventListener('click', () => {
+                document.getElementById('staff-modal').classList.add('active');
+                loadStaffPanel();
             });
-            document.getElementById('sa-manage-agent-edit-btn').addEventListener('click', openEditManageAgentModal);
+            document.getElementById('open-staff-btn').addEventListener('click', () => {
+                document.getElementById('staff-modal').classList.add('active');
+                loadStaffPanel();
+            });
+            document.getElementById('close-staff-modal').addEventListener('click', () => {
+                document.getElementById('staff-modal').classList.remove('active');
+            });
+            document.getElementById('open-add-staff-btn').addEventListener('click', openAddStaffModal);
+            document.getElementById('close-add-staff-modal').addEventListener('click', closeAddStaffModal);
+            document.getElementById('cancel-add-staff-form').addEventListener('click', closeAddStaffModal);
+            document.getElementById('add-staff-form').addEventListener('submit', handleAddStaffFormSubmit);
+            // One delegated listener for every row's Edit/Reset Password/
+            // Permissions/Disable button — same pattern as the Vendors and
+            // Delivery Companies tables, since rows are re-rendered on
+            // every loadStaffPanel() call.
+            document.getElementById('staff-modal-content').addEventListener('click', (e) => {
+                if (e.target.classList.contains('edit-staff-btn')) openEditManageAgentModal(e.target.dataset.id);
+                if (e.target.classList.contains('reset-staff-password-btn')) openResetManageAgentPasswordModal(e.target.dataset.id);
+                if (e.target.classList.contains('staff-permissions-btn')) openManageAgentPermissionsModal(e.target.dataset.id);
+                if (e.target.classList.contains('toggle-disabled-btn')) {
+                    toggleAccountDisabled(e.target.dataset.id, e.target.dataset.name, e.target.dataset.disabled === 'true', loadStaffPanel);
+                }
+            });
             document.getElementById('close-edit-manage-agent-modal').addEventListener('click', closeEditManageAgentModal);
             document.getElementById('cancel-edit-manage-agent-form').addEventListener('click', closeEditManageAgentModal);
             document.getElementById('edit-manage-agent-form').addEventListener('submit', handleEditManageAgentFormSubmit);
-            document.getElementById('sa-manage-agent-reset-password-btn').addEventListener('click', openResetManageAgentPasswordModal);
             document.getElementById('close-reset-manage-agent-password-modal').addEventListener('click', closeResetManageAgentPasswordModal);
             document.getElementById('cancel-reset-manage-agent-password').addEventListener('click', closeResetManageAgentPasswordModal);
             document.getElementById('reset-manage-agent-password-form').addEventListener('submit', handleResetManageAgentPasswordSubmit);
-            document.getElementById('sa-manage-agent-permissions-btn').addEventListener('click', openManageAgentPermissionsModal);
             document.getElementById('close-manage-agent-permissions-modal').addEventListener('click', closeManageAgentPermissionsModal);
             document.getElementById('cancel-manage-agent-permissions').addEventListener('click', closeManageAgentPermissionsModal);
             document.getElementById('save-manage-agent-permissions-btn').addEventListener('click', saveManageAgentPermissions);
@@ -9609,8 +9968,26 @@
             document.getElementById('vendor-approve-btn').addEventListener('click', (e) => {
                 decideVendorApplication(e.target.dataset.id, 'approve');
             });
-            document.getElementById('vendor-reject-btn').addEventListener('click', (e) => {
-                decideVendorApplication(e.target.dataset.id, 'reject');
+            document.getElementById('vendor-reject-btn').addEventListener('click', () => {
+                // Reveal the reason textarea instead of rejecting immediately —
+                // a rejection reason is required and shown back to the applicant.
+                document.getElementById('vendor-review-actions').style.display = 'none';
+                document.getElementById('vendor-reject-reason-section').style.display = 'block';
+                const input = document.getElementById('vendor-reject-reason-input');
+                input.value = '';
+                input.focus();
+            });
+            document.getElementById('vendor-reject-cancel-btn').addEventListener('click', () => {
+                document.getElementById('vendor-reject-reason-section').style.display = 'none';
+                document.getElementById('vendor-review-actions').style.display = 'flex';
+            });
+            document.getElementById('vendor-reject-confirm-btn').addEventListener('click', () => {
+                const reason = document.getElementById('vendor-reject-reason-input').value.trim();
+                if (!reason) {
+                    showToast('Please enter a reason for rejecting this application', 'error');
+                    return;
+                }
+                decideVendorApplication(document.getElementById('vendor-reject-btn').dataset.id, 'reject', reason);
             });
 
             // ---- Delivery Companies (Super Admin only) ----
@@ -9654,6 +10031,32 @@
                 document.getElementById('record-payout-modal').classList.remove('active');
             });
             document.getElementById('record-payout-form').addEventListener('submit', handleRecordPayoutSubmit);
+
+            // ---- Disputes (Super Admin only) ----
+            document.getElementById('open-disputes-btn').addEventListener('click', () => {
+                document.getElementById('disputes-modal').classList.add('active');
+                loadDisputesPanel();
+            });
+            document.getElementById('close-disputes-modal').addEventListener('click', () => {
+                document.getElementById('disputes-modal').classList.remove('active');
+            });
+            document.getElementById('disputes-status-filter').addEventListener('change', loadDisputesPanel);
+            document.getElementById('disputes-table').addEventListener('click', (e) => {
+                const resolveBtn = e.target.closest('.resolve-dispute-btn');
+                if (resolveBtn) { openResolveDisputeModal(resolveBtn.dataset.id); return; }
+                const viewBtn = e.target.closest('.view-dispute-btn');
+                if (viewBtn) viewDisputeModal(viewBtn.dataset.id);
+            });
+            document.getElementById('close-resolve-dispute-modal').addEventListener('click', closeResolveDisputeModal);
+            document.getElementById('cancel-resolve-dispute-form').addEventListener('click', closeResolveDisputeModal);
+            document.getElementById('close-resolve-dispute-decided-view').addEventListener('click', closeResolveDisputeModal);
+            document.getElementById('resolve-dispute-form').addEventListener('submit', handleResolveDisputeFormSubmit);
+            document.querySelectorAll('input[name="resolve-dispute-decision"]').forEach(radio => {
+                radio.addEventListener('change', () => {
+                    const isRefund = document.querySelector('input[name="resolve-dispute-decision"]:checked').value === 'refund';
+                    document.getElementById('resolve-dispute-refund-amount-group').style.display = isRefund ? 'block' : 'none';
+                });
+            });
 
             // ---- Audit Log (Super Admin only) ----
             document.getElementById('open-audit-log-btn').addEventListener('click', () => {
@@ -9756,9 +10159,17 @@
                 document.getElementById('admin-more-modal').classList.remove('active');
                 document.getElementById('open-delivery-companies-btn').click();
             });
+            document.getElementById('admin-more-staff').addEventListener('click', () => {
+                document.getElementById('admin-more-modal').classList.remove('active');
+                document.getElementById('open-staff-btn').click();
+            });
             document.getElementById('admin-more-payouts').addEventListener('click', () => {
                 document.getElementById('admin-more-modal').classList.remove('active');
                 document.getElementById('open-payouts-btn').click();
+            });
+            document.getElementById('admin-more-disputes').addEventListener('click', () => {
+                document.getElementById('admin-more-modal').classList.remove('active');
+                document.getElementById('open-disputes-btn').click();
             });
             document.getElementById('admin-more-audit-log').addEventListener('click', () => {
                 document.getElementById('admin-more-modal').classList.remove('active');
@@ -10148,11 +10559,11 @@
                 if (vendors.length === 0) {
                     html += '<p style="text-align: center; color: var(--slate-light); padding: 1rem 0;">No vendor accounts yet.</p>';
                 } else {
-                    const statusPill = (status) => {
+                    const statusPill = (status, rejectionReason) => {
                         const map = {
                             approved: '<span style="background:#dcfce7; color:#15803d; padding:0.1875rem 0.625rem; border-radius:9999px; font-size:0.75rem; font-weight:700;">Approved</span>',
                             pending: '<span style="background:#fef3c7; color:#92400e; padding:0.1875rem 0.625rem; border-radius:9999px; font-size:0.75rem; font-weight:700;">Pending</span>',
-                            rejected: '<span style="background:#fee2e2; color:#b91c1c; padding:0.1875rem 0.625rem; border-radius:9999px; font-size:0.75rem; font-weight:700;">Rejected</span>',
+                            rejected: `<span style="background:#fee2e2; color:#b91c1c; padding:0.1875rem 0.625rem; border-radius:9999px; font-size:0.75rem; font-weight:700;" ${rejectionReason ? `title="${rejectionReason.replace(/"/g, '&quot;')}"` : ''}>Rejected</span>${rejectionReason ? `<div style="font-size:0.6875rem; color:var(--slate-light); margin-top:0.25rem; max-width:220px;">${rejectionReason}</div>` : ''}`,
                         };
                         return map[status] || status;
                     };
@@ -10162,7 +10573,7 @@
                             <td style="font-weight:700;">${v.businessName}${v.isDisabled ? ' <span style="background:#fee2e2; color:#991b1b; padding:0.125rem 0.5rem; border-radius:9999px; font-size:0.6875rem; font-weight:700;">Disabled</span>' : ''}</td>
                             <td>${v.email}</td>
                             <td>${new Date(v.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</td>
-                            <td>${statusPill(v.approvalStatus)}</td>
+                            <td>${statusPill(v.approvalStatus, v.rejectionReason)}</td>
                             <td style="white-space:nowrap; display:flex; gap:0.5rem;">
                                 ${v.approvalStatus === 'pending' ? `<button type="button" class="btn-small btn-secondary review-vendor-btn" data-id="${v.id}">Review</button>` : ''}
                                 <button type="button" class="btn-small btn-secondary enter-vendor-dashboard-btn" data-id="${v.id}" title="Open this vendor's real dashboard for support/oversight">Enter Dashboard</button>
@@ -10206,11 +10617,11 @@
                 if (companies.length === 0) {
                     html += '<p style="text-align: center; color: var(--slate-light); padding: 1rem 0;">No delivery company accounts yet.</p>';
                 } else {
-                    const statusPill = (status) => {
+                    const statusPill = (status, rejectionReason) => {
                         const map = {
                             approved: '<span style="background:#dcfce7; color:#15803d; padding:0.1875rem 0.625rem; border-radius:9999px; font-size:0.75rem; font-weight:700;">Approved</span>',
                             pending: '<span style="background:#fef3c7; color:#92400e; padding:0.1875rem 0.625rem; border-radius:9999px; font-size:0.75rem; font-weight:700;">Pending</span>',
-                            rejected: '<span style="background:#fee2e2; color:#b91c1c; padding:0.1875rem 0.625rem; border-radius:9999px; font-size:0.75rem; font-weight:700;">Rejected</span>',
+                            rejected: `<span style="background:#fee2e2; color:#b91c1c; padding:0.1875rem 0.625rem; border-radius:9999px; font-size:0.75rem; font-weight:700;" ${rejectionReason ? `title="${rejectionReason.replace(/"/g, '&quot;')}"` : ''}>Rejected</span>${rejectionReason ? `<div style="font-size:0.6875rem; color:var(--slate-light); margin-top:0.25rem; max-width:220px;">${rejectionReason}</div>` : ''}`,
                         };
                         return map[status] || status;
                     };
@@ -10220,7 +10631,7 @@
                             <td style="font-weight:700;">${c.businessName}${c.isDisabled ? ' <span style="background:#fee2e2; color:#991b1b; padding:0.125rem 0.5rem; border-radius:9999px; font-size:0.6875rem; font-weight:700;">Disabled</span>' : ''}</td>
                             <td>${c.email}</td>
                             <td>${new Date(c.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</td>
-                            <td>${statusPill(c.approvalStatus)}</td>
+                            <td>${statusPill(c.approvalStatus, c.rejectionReason)}</td>
                             <td style="white-space:nowrap; display:flex; gap:0.5rem;">
                                 ${c.approvalStatus === 'pending' ? `<button type="button" class="btn-small btn-secondary review-delivery-company-btn" data-id="${c.id}">Review</button>` : ''}
                                 <button type="button" class="btn-small toggle-disabled-btn" data-id="${c.id}" data-name="${c.businessName.replace(/"/g, '&quot;')}" data-disabled="${c.isDisabled}" style="background:${c.isDisabled ? '#dcfce7' : '#fef3c7'}; color:${c.isDisabled ? '#15803d' : '#92400e'};">${c.isDisabled ? 'Enable' : 'Disable'}</button>
@@ -10426,9 +10837,18 @@
             'delivery_company.approve': 'Delivery company approved',
             'delivery_company.reject': 'Delivery company rejected',
             'delivery_company.commission_rate_override': 'Delivery company commission rate changed',
+            // Legacy labels for audit entries logged before staff accounts
+            // became a real list (see 'staff.*' below, which replaced these
+            // going forward) — kept so older entries still show a readable
+            // label instead of the raw action string.
             'manage_agent.update': 'Manage Agent account updated',
             'manage_agent.password_reset': 'Manage Agent password reset',
             'manage_agent.features_update': 'Manage Agent permissions changed',
+            'staff.create': 'Staff account created',
+            'staff.update': 'Staff account updated',
+            'staff.password_reset': 'Staff password reset',
+            'staff.features_update': 'Staff permissions changed',
+            'dispute.resolve': 'Dispute resolved',
             'user.disable': 'Account disabled',
             'user.enable': 'Account enabled',
             'settings.commission_update': 'Commission settings updated',
@@ -10492,6 +10912,140 @@
             } catch (err) {
                 if (reset) container.innerHTML = `<p style="text-align: center; color: #dc2626; padding: 2rem 0;">${err.message}</p>`;
                 showToast(err.message, 'error');
+            }
+        }
+
+        // ============================================================
+        // Disputes (Super Admin only)
+        // ============================================================
+        let disputesCache = [];
+        let resolveDisputeTargetId = null;
+
+        function updateDisputesNavBadge(openCount) {
+            const badge = document.getElementById('disputes-open-count-badge');
+            if (!badge) return;
+            if (openCount > 0) {
+                badge.textContent = openCount;
+                badge.style.display = 'inline-block';
+            } else {
+                badge.style.display = 'none';
+            }
+        }
+
+        async function loadDisputesPanel() {
+            const container = document.getElementById('disputes-table');
+            container.innerHTML = '<p style="text-align: center; color: var(--slate-light); padding: 1rem 0;">Loading…</p>';
+            try {
+                const status = document.getElementById('disputes-status-filter').value;
+                const params = status ? `?status=${status}` : '';
+                const data = await apiFetch(`/api/super-admin/disputes${params}`);
+                const disputes = data.disputes || [];
+                disputesCache = disputes;
+                updateDisputesNavBadge(data.openCount || 0);
+                if (disputes.length === 0) {
+                    container.innerHTML = '<p style="text-align: center; color: var(--slate-light); padding: 1rem 0;">No disputes here.</p>';
+                    return;
+                }
+                container.innerHTML = '<table class="settings-table"><thead><tr><th>Customer</th><th>Category</th><th>Against</th><th>Filed</th><th>Status</th><th></th></tr></thead><tbody>' +
+                    disputes.map(d => `
+                        <tr>
+                            <td style="font-weight:700;">${d.customerName}<div style="font-size:0.75rem; color:var(--slate-light); font-weight:400;">${d.customerEmail}</div></td>
+                            <td>${DISPUTE_CATEGORY_LABELS[d.category] || d.category}</td>
+                            <td style="font-size:0.8125rem;">${d.purchase ? `${d.purchase.vendorName} (vendor)` : d.order && d.order.deliveryCompanyName ? `${d.order.deliveryCompanyName} (delivery)` : '—'}</td>
+                            <td style="white-space:nowrap; font-size:0.8125rem; color:var(--slate-light);">${new Date(d.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</td>
+                            <td>${DISPUTE_STATUS_PILLS[d.status] || d.status}</td>
+                            <td>${d.status === 'open' ? `<button type="button" class="btn-small btn-secondary resolve-dispute-btn" data-id="${d.id}">Resolve</button>` : `<button type="button" class="btn-small btn-secondary view-dispute-btn" data-id="${d.id}">View</button>`}</td>
+                        </tr>
+                    `).join('') + '</tbody></table>';
+            } catch (err) {
+                container.innerHTML = `<p style="text-align: center; color: #dc2626; padding: 2rem 0;">${err.message}</p>`;
+            }
+        }
+
+        function disputeSummaryHtml(d) {
+            return `
+                <div><strong>${d.customerName}</strong> (${d.customerEmail})</div>
+                <div style="margin-top:0.375rem;">${DISPUTE_CATEGORY_LABELS[d.category] || d.category} — ${d.purchase ? `purchase from ${d.purchase.vendorName}, $${d.purchase.amount.toFixed(2)}` : d.order ? `order: ${d.order.itemDescription}${d.order.amount !== null ? `, $${d.order.amount.toFixed(2)}` : ''}` : ''}</div>
+                <div style="margin-top:0.5rem; color:var(--slate);">${d.description}</div>
+            `;
+        }
+
+        function openResolveDisputeModal(id) {
+            const dispute = disputesCache.find(d => d.id === id);
+            if (!dispute) return;
+            resolveDisputeTargetId = id;
+            document.getElementById('resolve-dispute-modal-title').textContent = 'Resolve Dispute';
+            document.getElementById('resolve-dispute-summary').innerHTML = disputeSummaryHtml(dispute);
+            document.getElementById('resolve-dispute-form').reset();
+            document.getElementById('resolve-dispute-error').style.display = 'none';
+            document.getElementById('resolve-dispute-refund-amount-group').style.display = 'block';
+            document.getElementById('resolve-dispute-form').style.display = 'block';
+            document.getElementById('resolve-dispute-decided-view').style.display = 'none';
+            document.getElementById('resolve-dispute-modal').classList.add('active');
+        }
+
+        // Read-only view for an already-decided dispute — same summary,
+        // form replaced with what was decided and why, no re-editing a
+        // past decision.
+        function viewDisputeModal(id) {
+            const dispute = disputesCache.find(d => d.id === id);
+            if (!dispute) return;
+            document.getElementById('resolve-dispute-modal-title').textContent = dispute.status === 'resolved' ? 'Resolved Dispute' : 'Rejected Dispute';
+            document.getElementById('resolve-dispute-summary').innerHTML = disputeSummaryHtml(dispute);
+            document.getElementById('resolve-dispute-form').style.display = 'none';
+            document.getElementById('resolve-dispute-decided-view').style.display = 'block';
+            document.getElementById('resolve-dispute-decided-content').innerHTML = `
+                <div>${DISPUTE_STATUS_PILLS[dispute.status] || dispute.status}</div>
+                <div style="margin-top:0.75rem; background:var(--bg-light); border-radius:0.625rem; padding:0.875rem 1rem;">
+                    ${dispute.resolutionNote || ''}
+                    ${dispute.refundAmount ? `<div style="margin-top:0.5rem; font-weight:700; color:#15803d;">Refunded: $${dispute.refundAmount.toFixed(2)}</div>` : ''}
+                </div>
+            `;
+            document.getElementById('resolve-dispute-modal').classList.add('active');
+        }
+
+        function closeResolveDisputeModal() {
+            document.getElementById('resolve-dispute-modal').classList.remove('active');
+        }
+
+        async function handleResolveDisputeFormSubmit(e) {
+            e.preventDefault();
+            const errorEl = document.getElementById('resolve-dispute-error');
+            const submitBtn = document.getElementById('resolve-dispute-form-submit-btn');
+            errorEl.style.display = 'none';
+            const decision = document.querySelector('input[name="resolve-dispute-decision"]:checked').value;
+            const resolutionNote = document.getElementById('resolve-dispute-note-input').value.trim();
+            if (!resolutionNote) {
+                errorEl.textContent = 'A resolution note is required';
+                errorEl.style.display = 'block';
+                return;
+            }
+            const body = { decision, resolutionNote };
+            if (decision === 'refund') {
+                const refundAmount = Number(document.getElementById('resolve-dispute-refund-amount-input').value);
+                if (!refundAmount || refundAmount <= 0) {
+                    errorEl.textContent = 'Enter a refund amount greater than $0';
+                    errorEl.style.display = 'block';
+                    return;
+                }
+                body.refundAmount = refundAmount;
+            }
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Saving…';
+            try {
+                await apiFetch(`/api/super-admin/disputes/${resolveDisputeTargetId}/resolve`, {
+                    method: 'PUT',
+                    body: JSON.stringify(body),
+                });
+                closeResolveDisputeModal();
+                showToast('Dispute resolved', 'success');
+                await loadDisputesPanel();
+            } catch (err) {
+                errorEl.textContent = err.message;
+                errorEl.style.display = 'block';
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Save Resolution';
             }
         }
 
@@ -10565,6 +11119,21 @@
             document.getElementById('vendor-review-id-doc').innerHTML = '';
             document.getElementById('vendor-approve-btn').dataset.id = id;
             document.getElementById('vendor-reject-btn').dataset.id = id;
+
+            // Reset the reject-reason flow to its default state each time
+            // the modal opens, and surface any prior rejection so the
+            // admin has context if this applicant is re-applying.
+            document.getElementById('vendor-reject-reason-input').value = '';
+            document.getElementById('vendor-reject-reason-section').style.display = 'none';
+            document.getElementById('vendor-review-actions').style.display = 'flex';
+            const priorRejection = document.getElementById('vendor-review-prior-rejection');
+            if (applicant.rejectionReason) {
+                document.getElementById('vendor-review-prior-rejection-reason').textContent = applicant.rejectionReason;
+                priorRejection.style.display = 'block';
+            } else {
+                priorRejection.style.display = 'none';
+            }
+
             document.getElementById('vendor-review-modal').classList.add('active');
 
             try {
@@ -10585,14 +11154,15 @@
             }
         }
 
-        async function decideVendorApplication(id, decision) {
+        async function decideVendorApplication(id, decision, reason = null) {
             const type = document.getElementById('vendor-review-modal').dataset.reviewType || 'vendor';
             const endpointBase = type === 'delivery_company' ? 'delivery-companies' : 'vendors';
             const label = type === 'delivery_company' ? 'delivery company' : 'vendor';
-            const verb = decision === 'approve' ? 'approve' : 'reject';
-            if (!confirm(`Are you sure you want to ${verb} this ${label} application?`)) return;
+            if (decision === 'approve' && !confirm(`Are you sure you want to approve this ${label} application?`)) return;
             try {
-                await apiFetch(`/api/super-admin/${endpointBase}/${id}/${decision}`, { method: 'POST' });
+                const options = { method: 'POST' };
+                if (decision === 'reject') options.body = JSON.stringify({ reason });
+                await apiFetch(`/api/super-admin/${endpointBase}/${id}/${decision}`, options);
                 showToast(`${label.charAt(0).toUpperCase() + label.slice(1)} ${decision === 'approve' ? 'approved' : 'rejected'}`, 'success');
                 document.getElementById('vendor-review-modal').classList.remove('active');
                 if (type === 'delivery_company') { loadDeliveryCompaniesPanel(); } else { loadVendors(); }
@@ -11878,13 +12448,106 @@
                             <div class="mp-purchase-items-scroll">${itemsHtml}</div>
                             <div class="mp-purchase-footer">
                                 <div class="mp-purchase-total"><span>Total</span>$${purchase.totalAmount.toFixed(2)}</div>
-                                ${purchase.deliveryOrderId ? `<button type="button" class="btn-small btn-secondary track-purchase-delivery-btn" data-order-id="${purchase.deliveryOrderId}">Track Delivery</button>` : ''}
+                                <div style="display:flex; gap:0.5rem;">
+                                    ${purchase.deliveryOrderId ? `<button type="button" class="btn-small btn-secondary track-purchase-delivery-btn" data-order-id="${purchase.deliveryOrderId}">Track Delivery</button>` : ''}
+                                    <button type="button" class="btn-small btn-secondary report-purchase-dispute-btn" data-purchase-id="${purchase.id}">Report a Problem</button>
+                                </div>
                             </div>
                         </div>
                     `;
                 }).join('');
             } catch (err) {
                 container.innerHTML = `<p style="text-align:center; color:#dc2626;">${err.message}</p>`;
+            }
+        }
+
+        // ---- Report a Problem / My Reports (customer-facing disputes) ----
+        // reportDisputeTarget tracks what the open report-dispute-modal is
+        // currently filing against — either an order (plain delivery) or a
+        // purchase (marketplace) — see the disputes table comment in
+        // schema.sql for why it's one or the other, never both.
+        let reportDisputeTarget = null;
+
+        function openReportDisputeModal(id, type) {
+            reportDisputeTarget = { id, type };
+            document.getElementById('report-dispute-form').reset();
+            document.getElementById('report-dispute-form-error').style.display = 'none';
+            document.getElementById('report-dispute-modal').classList.add('active');
+        }
+
+        function closeReportDisputeModal() {
+            document.getElementById('report-dispute-modal').classList.remove('active');
+        }
+
+        async function handleReportDisputeFormSubmit(e) {
+            e.preventDefault();
+            const errorEl = document.getElementById('report-dispute-form-error');
+            const submitBtn = document.getElementById('report-dispute-form-submit-btn');
+            errorEl.style.display = 'none';
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Submitting…';
+            try {
+                const category = document.getElementById('report-dispute-category-input').value;
+                const description = document.getElementById('report-dispute-description-input').value.trim();
+                const body = { category, description };
+                if (reportDisputeTarget.type === 'order') body.orderId = reportDisputeTarget.id;
+                else body.purchaseId = reportDisputeTarget.id;
+                await apiFetch('/api/disputes', { method: 'POST', body: JSON.stringify(body) });
+                closeReportDisputeModal();
+                closeOrderDetailsModal();
+                showToast("Report submitted — we'll follow up soon", 'success');
+            } catch (err) {
+                errorEl.textContent = err.message;
+                errorEl.style.display = 'block';
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Submit Report';
+            }
+        }
+
+        const DISPUTE_CATEGORY_LABELS = {
+            wrong_item: 'Wrong item',
+            damaged: 'Item arrived damaged',
+            never_arrived: 'Never arrived',
+            overcharged: 'Overcharged',
+            other: 'Something else',
+        };
+
+        const DISPUTE_STATUS_PILLS = {
+            open: '<span style="background:#fef3c7; color:#92400e; padding:0.1875rem 0.625rem; border-radius:9999px; font-size:0.75rem; font-weight:700;">Open</span>',
+            resolved: '<span style="background:#dcfce7; color:#15803d; padding:0.1875rem 0.625rem; border-radius:9999px; font-size:0.75rem; font-weight:700;">Resolved</span>',
+            rejected: '<span style="background:#fee2e2; color:#b91c1c; padding:0.1875rem 0.625rem; border-radius:9999px; font-size:0.75rem; font-weight:700;">Rejected</span>',
+        };
+
+        async function loadMyDisputesPanel() {
+            const listEl = document.getElementById('my-disputes-list');
+            try {
+                const data = await apiFetch('/api/disputes/mine');
+                const disputes = data.disputes || [];
+                if (disputes.length === 0) {
+                    renderEmptyState(listEl, "You haven't reported any problems.");
+                    return;
+                }
+                listEl.innerHTML = disputes.map(d => `
+                    <div style="border:1px solid var(--border); border-radius:0.875rem; padding:1rem 1.25rem; margin-bottom:0.875rem;">
+                        <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:1rem; margin-bottom:0.5rem;">
+                            <div>
+                                <div style="font-weight:700; color:var(--slate);">${DISPUTE_CATEGORY_LABELS[d.category] || d.category}</div>
+                                <div style="font-size:0.75rem; color:var(--slate-light);">${new Date(d.createdAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}${d.order ? ` · Order for ${d.order.itemDescription}` : ''}${d.purchase ? ` · Purchase from ${d.purchase.vendorName}` : ''}</div>
+                            </div>
+                            ${DISPUTE_STATUS_PILLS[d.status] || d.status}
+                        </div>
+                        <div style="font-size:0.875rem; color:var(--slate); margin-bottom:${d.resolutionNote ? '0.625rem' : '0'};">${d.description}</div>
+                        ${d.resolutionNote ? `
+                            <div style="background:var(--bg-light); border-radius:0.625rem; padding:0.75rem 0.875rem; font-size:0.8125rem; color:var(--slate);">
+                                <strong>${d.status === 'resolved' ? 'Resolution' : 'Response'}:</strong> ${d.resolutionNote}
+                                ${d.refundAmount ? `<div style="margin-top:0.375rem; font-weight:700; color:#15803d;">Refunded: $${d.refundAmount.toFixed(2)}</div>` : ''}
+                            </div>
+                        ` : ''}
+                    </div>
+                `).join('');
+            } catch (err) {
+                listEl.innerHTML = `<p style="text-align:center; color:#dc2626; padding:2rem 0;">${err.message}</p>`;
             }
         }
 
@@ -12182,6 +12845,15 @@
                 const btn = document.createElement('button');
                 btn.className = 'btn-small btn-danger'; btn.textContent = 'Cancel Order'; btn.style.marginTop = '1rem';
                 btn.addEventListener('click', () => { closeOrderDetailsModal(); cancelOrder(order.id); });
+                timelineContainer.appendChild(btn);
+            } else if (role === 'sender' && (order.status === 'delivered' || order.status === 'cancelled')) {
+                // A problem only makes sense to report once an order is
+                // actually finished, one way or another — an in-flight
+                // order should just be cancelled or waited out instead.
+                const timelineContainer = content.querySelector('.timeline');
+                const btn = document.createElement('button');
+                btn.className = 'btn-small btn-secondary'; btn.textContent = 'Report a Problem'; btn.style.marginTop = '1rem';
+                btn.addEventListener('click', () => openReportDisputeModal(order.id, 'order'));
                 timelineContainer.appendChild(btn);
             }
         }
@@ -13879,8 +14551,10 @@
 
             // ---- Your Orders (Marketplace purchase history) ----
             document.getElementById('mp-orders-grid').addEventListener('click', (e) => {
-                const btn = e.target.closest('.track-purchase-delivery-btn');
-                if (btn) openOrderDetails(btn.dataset.orderId, 'sender');
+                const trackBtn = e.target.closest('.track-purchase-delivery-btn');
+                if (trackBtn) { openOrderDetails(trackBtn.dataset.orderId, 'sender'); return; }
+                const reportBtn = e.target.closest('.report-purchase-dispute-btn');
+                if (reportBtn) openReportDisputeModal(reportBtn.dataset.purchaseId, 'purchase');
             });
 
             // ---- Messages ----
