@@ -4318,3 +4318,62 @@ caveat as the rest of this session — no live server to confirm the
 real `/api/agents` and `agent:set-duty-status` socket round-trips
 end-to-end, only that the client-side wiring and rendering are
 correct.
+
+## Deployed fixes not showing up: stale index.html / service worker caching
+
+After the Fleet Directory fix above, it was reported as deployed but
+still showing the old (pre-fix) behavior. Re-verified the actual code
+in this session with the same Playwright pass — still correct, still
+opens the dedicated modal. So the far more likely explanation isn't
+the app logic; it's that the browser (or a proxy/CDN in front of the
+app) is still serving a cached copy of `index.html` from before the
+deploy.
+
+This app is unusually exposed to that failure mode for two reasons
+stacked together: (1) the entire client — every screen, every
+feature — lives in one inline `<script>` block inside `index.html`.
+There's no separate `app.js` with its own filename/hash that changes
+on deploy and forces a cache miss; if `index.html` itself is cached,
+the whole app is frozen at whatever version was cached, silently. (2)
+`public/sw.js` registers a service worker that keeps its own copy of
+the app shell in the Cache Storage API as a fallback (see the "Fleet
+Directory" fixes above for what it does) — a second, independent
+cache layer on top of the browser's normal HTTP cache, on top of
+whatever Railway's own edge/CDN does.
+
+Two changes, both defensive/preventive since the actual cause can't be
+confirmed from this sandbox (no access to the live deployment or its
+proxy layer):
+
+- **`server/server.js`** — `express.static` now sets
+  `Cache-Control: no-cache, no-store, must-revalidate` specifically on
+  `index.html` and `sw.js` (every other static asset — images,
+  `manifest.json`, etc. — keeps normal caching, since those never
+  change independently of an `index.html` change anyway). This tells
+  browsers and any well-behaved proxy to always check back with the
+  server rather than serving a locally cached copy for any length of
+  time.
+- **`public/sw.js`** — bumped `CACHE_NAME` from `golib-shell-v1` to
+  `golib-shell-v2`. The existing `activate` handler already deletes
+  any cache whose name doesn't match `CACHE_NAME`, so this forces
+  every browser with the old service worker installed to drop its
+  cached shell the next time the page loads and the new service
+  worker activates.
+
+**This deploy still needs a one-time hard refresh to take effect** —
+the fix changes what happens on *future* deploys, it can't reach back
+and un-cache what a browser already has cached from before. To
+confirm the Fleet Directory fix specifically: open the app in a
+private/incognito window (guarantees no cache at all), or do a hard
+reload (Ctrl+Shift+R / Cmd+Shift+R on the existing tab), or open
+DevTools → Application → Service Workers → Unregister, then reload
+normally.
+
+Also worth double-checking, since it can produce the exact same
+symptom independent of caching: that the deploy actually replaced the
+live files. If this app is deployed on Railway via a connected GitHub
+repo (auto-deploy on push), uploading this zip somewhere doesn't put
+it live by itself — the contents need to actually reach the repo/
+branch Railway builds from (or be pushed via the Railway CLI/dashboard
+upload, depending on how this project is set up). Worth confirming
+which of those applies here if a hard refresh doesn't resolve it.

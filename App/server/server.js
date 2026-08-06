@@ -144,7 +144,26 @@ app.use(cors());
 // documents). Raised to comfortably cover the largest of those with
 // room for JSON overhead and two documents in one request.
 app.use(express.json({ limit: '10mb' }));
-app.use(express.static(path.join(__dirname, '..', 'public')));
+app.use(express.static(path.join(__dirname, '..', 'public'), {
+  setHeaders: (res, filePath) => {
+    // This whole client is one HTML file (index.html) with the entire
+    // app inline in a single <script> block — there's no separate
+    // bundled JS file that changes version on each deploy. Left to
+    // express.static's normal caching, browsers and any CDN/reverse
+    // proxy in front of this app are free to keep serving a stale
+    // index.html indefinitely (only revalidating occasionally), which
+    // makes every deployed fix invisible until someone happens to hard
+    // -refresh. sw.js has the same problem for the same reason — it's
+    // what controls whether the service worker itself re-checks for
+    // updates. Force both to always be revalidated with the server.
+    // Every other static asset (images, manifest.json, etc.) keeps the
+    // normal caching behavior, which is fine since none of those
+    // change without an accompanying index.html change anyway.
+    if (filePath.endsWith('index.html') || filePath.endsWith('sw.js')) {
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    }
+  },
+}));
 
 // Brute-force protection on the three password-checking endpoints
 // (sender login, sender registration, admin login). Generous enough
