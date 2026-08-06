@@ -6974,9 +6974,19 @@
                 el.style.backgroundImage = `url(${imageUrl})`;
                 el.style.backgroundSize = 'cover';
                 el.style.backgroundPosition = 'center';
+                // Real profile photos/logos are often flat icons with
+                // transparent edges, which looked odd sitting on the
+                // avatar circle's colored (var(--primary)) fill. A real
+                // photo replaces that fill entirely, so give it a plain
+                // white backing instead of the brand color showing
+                // through the transparent parts.
+                el.style.backgroundColor = '#ffffff';
                 el.textContent = '';
             } else {
                 el.style.backgroundImage = '';
+                // No photo set — go back to the CSS-defined colored
+                // circle with initials, rather than leaving it white.
+                el.style.backgroundColor = '';
                 el.textContent = currentUser && currentUser.businessName ? currentUser.businessName.charAt(0).toUpperCase() : '';
             }
         }
