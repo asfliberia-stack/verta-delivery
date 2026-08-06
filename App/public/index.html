@@ -232,13 +232,6 @@
 
             .mobile-bottom-nav { display: none; }
             #delivery-customer-app .admin-shell { grid-template-columns: 272px 1fr; }
-            #delivery-customer-app .hero {
-                padding: 1.5rem 2rem; text-align: left; display: flex; align-items: center;
-                justify-content: space-between; gap: 1.5rem; border-radius: 1rem;
-            }
-            #delivery-customer-app .hero h2 { font-size: 1.375rem; margin-bottom: 0.25rem; }
-            #delivery-customer-app .hero p { font-size: 0.9375rem; margin-bottom: 0; max-width: none; margin-left: 0; }
-            #delivery-customer-app #btn-new-order { display: none; }
             #delivery-customer-app .admin-sidebar { display: flex; }
             .mobile-topbar { padding: 1rem 2rem; flex-wrap: nowrap; }
             .desktop-hide-logo { display: none; }
@@ -2125,6 +2118,33 @@
         #delivery-customer-app .sidebar-toggle-btn { left: auto; right: 1.25rem; }
             #delivery-app .admin-shell.sidebar-collapsed .sidebar-toggle-btn { left: auto; right: 1.25rem; }
         #delivery-customer-app .admin-shell.sidebar-collapsed .sidebar-toggle-btn { left: auto; right: 1.25rem; }
+        }
+
+        /* ---- Customer/sender delivery dashboard: real desktop sidebar
+           (fix) ----
+           The desktop overrides for #delivery-customer-app .admin-shell
+           and .admin-sidebar declared earlier in this stylesheet (inside
+           the very first @media (min-width: 1024px) block, near the top)
+           were being silently defeated: further down, the unconditional,
+           equal-specificity base rules for those same selectors
+           (grid-template-columns: 1fr; and .admin-sidebar { display:
+           none; }) come later in the source, so — same specificity, last
+           declaration wins regardless of the media query — they always
+           won, at every viewport width. Net effect: the customer
+           dashboard's sidebar could never actually show, even on a wide
+           desktop window, and the layout stayed single-column.
+           Repeating the desktop overrides here, after every conflicting
+           unconditional rule, makes them win the cascade the way the
+           original @media block always intended. */
+        @media (min-width: 1024px) {
+            #delivery-customer-app .admin-shell { grid-template-columns: 272px 1fr; }
+            #delivery-customer-app .admin-sidebar { display: flex; }
+            /* The sidebar's own "+ Create New Order" button duplicated
+               the "Create New Order" nav item right below it once the
+               sidebar was visible — hide the duplicate on desktop, where
+               the nav item is always reachable (unlike mobile, where the
+               sidebar itself is normally hidden). */
+            #delivery-customer-app #dcust-sidebar-new-order-btn { display: none; }
         }
     </style>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
