@@ -4430,3 +4430,59 @@ Customers all stay visible. Re-ran the equivalent check for a real
 Manage Agent account with restrictions to confirm those are still
 correctly hidden — this fix narrows an incorrect blanket assumption,
 it doesn't weaken the actual restriction feature.
+
+## Fix: welcome banner stuck on "Agent Dashboard", and no way to rename your own account
+
+Reported directly, with a screenshot: after promoting an account to
+Super Admin, the topbar avatar correctly showed "Super Admin" as the
+role, but the big welcome banner still showed the old Manage Agent
+business name ("ONLib") as the greeting, with a role badge stuck on
+"AGENT DASHBOARD" instead of "Super Admin".
+
+Two separate bugs bundled into one visual symptom:
+
+1. **The role badge was a real bug**, not just stale data. The
+   `.admin-welcome-role` class is shared by three different
+   dashboards' own welcome elements — the delivery company dashboard's
+   `#dc-welcome-name`, the delivery customer dashboard's
+   `#dcust-welcome-name`, and this one, the admin/super_admin topbar's
+   role badge. `enterApp()` was setting it via
+   `document.querySelector('.admin-welcome-role')`, which always
+   returns the *first* matching element in the document — that's
+   `#dc-welcome-name`, not the visible one. So every login was
+   silently updating a hidden delivery-company dashboard element
+   instead of the one actually on screen, leaving this badge frozen on
+   its static HTML placeholder text ("Agent Dashboard") no matter what
+   role logged in. Gave the element a real id
+   (`admin-welcome-role-label`) and switched the lookup to
+   `getElementById`, the same pattern already used for every other
+   per-role display element in this file — avoids this exact class of
+   bug by construction, not just for this one element.
+
+2. **The business name showing "ONLib" was real data, correctly
+   displayed** — just not what you want to see. Every account has one
+   `businessName` field, shown in the sidebar/topbar/welcome banner;
+   promoting an account to Super Admin (via SQL or the new Change Role
+   feature) intentionally doesn't touch it, since renaming isn't part
+   of what "changing role" means. The actual gap: there was no way to
+   change it afterward. `PUT /api/me/profile` (self-service rename,
+   any role) already existed and is exactly what every other role's
+   own Settings form already calls — vendor, delivery company,
+   delivery customer, marketplace account — but admin/super_admin was
+   the one role that never got a form wired up to it. Added a "Your
+   Name" field under Settings → Security → Account, right next to the
+   existing photo upload (both are about *this account*, distinct from
+   the separate "Business Profile" tab, which edits the platform's own
+   name/logo/hours, not any one account's). Saving updates the
+   sidebar, topbar, and welcome banner immediately, no reload needed.
+
+Verified with a Playwright pass: confirmed the two decoy elements
+(`#dc-welcome-name`, `#dcust-welcome-name`) are untouched by the fixed
+code path while the real badge updates correctly; confirmed the
+Settings modal pre-fills "Your Name" with the current account name,
+saving it calls `/api/me/profile` with the right payload and updates
+every on-screen copy of the name (welcome title, topbar name, both
+avatar initials) without a page reload; and confirmed an empty name is
+blocked client-side with an inline error, matching every other form in
+this app, rather than silently no-op'ing or hitting the server with an
+invalid request.

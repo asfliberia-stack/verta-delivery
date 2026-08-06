@@ -4022,7 +4022,7 @@
                         <div>
                             <p class="admin-welcome-eyebrow" id="admin-greeting">Good morning,</p>
                             <h1 class="admin-welcome-title" id="user-name">Agent Dashboard</h1>
-                            <p class="admin-welcome-role">Agent Dashboard</p>
+                            <p class="admin-welcome-role" id="admin-welcome-role-label">Agent Dashboard</p>
                         </div>
                         <div class="admin-topbar-right">
                             <div class="admin-topbar-datetime">
@@ -5414,6 +5414,27 @@
                                 <input type="file" accept="image/*" id="admin-settings-photo-input" style="display:none;">
                                 <p style="font-size:0.75rem; color:var(--slate-lighter); margin-top:0.375rem;">JPG or PNG, under 500KB</p>
                             </div>
+                        </div>
+                        <!-- This account's own display name — shown in the
+                             sidebar, topbar, and welcome banner. Separate
+                             from "Business Profile" (the Business tab), which
+                             is the platform's own name/logo/hours, not any
+                             one account's. There was previously no way to
+                             change this for an admin/super_admin account at
+                             all — it stuck at whatever name the account was
+                             created with (env-seeded "ONLib", or whatever a
+                             Super Admin typed into "+ Add Staff"), which
+                             reads oddly after a Change Role promotion carries
+                             the old name forward. The backend
+                             (PUT /api/me/profile) already supported this for
+                             every role; this was just never wired up here. -->
+                        <div class="form-group" style="max-width: 320px;">
+                            <label class="form-label">Your Name</label>
+                            <input type="text" class="form-input" id="admin-my-name-input">
+                        </div>
+                        <div style="margin-bottom: 1.25rem;">
+                            <button type="button" class="btn-small btn-success" id="admin-my-name-save-btn">Save Name</button>
+                            <span id="admin-my-name-error" style="color: #dc2626; font-size: 0.875rem; margin-left: 0.75rem; display: none;"></span>
                         </div>
                         <div style="display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 0.5rem;">
                             <button type="button" class="btn-small btn-secondary" id="toggle-change-email-btn">Change Email</button>
@@ -8453,7 +8474,16 @@
                 refreshMyAvatarDisplays();
                 const topbarRoleEl = document.getElementById('topbar-user-role');
                 if (topbarRoleEl) topbarRoleEl.textContent = roleLabel;
-                const welcomeRoleEl = document.querySelector('.admin-welcome-role');
+                // Was document.querySelector('.admin-welcome-role') — that
+                // class is shared with the delivery-company and delivery-
+                // customer dashboards' own welcome elements (#dc-welcome-name,
+                // #dcust-welcome-name), which appear earlier in the DOM.
+                // querySelector always grabs the first match, so this was
+                // silently updating one of THOSE hidden elements instead of
+                // this one — leaving this badge stuck on its static
+                // "Agent Dashboard" placeholder text regardless of actual
+                // role. Targeting the id avoids the collision.
+                const welcomeRoleEl = document.getElementById('admin-welcome-role-label');
                 if (welcomeRoleEl) welcomeRoleEl.textContent = roleLabel;
                 const sidebarLabelEl = document.getElementById('sidebar-role-label');
                 if (sidebarLabelEl) sidebarLabelEl.textContent = roleLabel;
@@ -9051,6 +9081,9 @@
                 populateSettingsProfileForm();
                 loadLoginHistory();
                 renderPricePresetsList();
+                const myNameInput = document.getElementById('admin-my-name-input');
+                if (myNameInput) myNameInput.value = (currentUser && currentUser.businessName) || '';
+                document.getElementById('admin-my-name-error').style.display = 'none';
                 const contactEl = document.getElementById('settings-about-support-contact');
                 if (contactEl) {
                     const email = settings.businessEmail || 'onlib231@gmail.com';
@@ -9436,6 +9469,46 @@
                 } finally {
                     btn.disabled = false;
                     btn.textContent = 'Save Changes';
+                }
+            });
+
+            // ---- Security: your own display name ----
+            // Reuses the same PUT /api/me/profile endpoint every other
+            // role's own settings form already calls (vendor, delivery
+            // company, delivery customer, marketplace account) — this was
+            // simply the one role that never got a frontend form wired up
+            // to it, even though the backend never restricted it by role.
+            document.getElementById('admin-my-name-save-btn').addEventListener('click', async () => {
+                const errorEl = document.getElementById('admin-my-name-error');
+                const input = document.getElementById('admin-my-name-input');
+                const btn = document.getElementById('admin-my-name-save-btn');
+                errorEl.style.display = 'none';
+                const businessName = input.value.trim();
+                if (!businessName) {
+                    errorEl.textContent = 'Name cannot be empty';
+                    errorEl.style.display = 'inline';
+                    return;
+                }
+                btn.disabled = true;
+                btn.textContent = 'Saving…';
+                try {
+                    const data = await apiFetch('/api/me/profile', {
+                        method: 'PUT',
+                        body: JSON.stringify({ businessName, phone: currentUser.phone }),
+                    });
+                    currentUser.businessName = data.user.businessName;
+                    document.getElementById('user-name').textContent = currentUser.businessName;
+                    document.getElementById('topbar-user-name').textContent = currentUser.businessName;
+                    document.getElementById('user-avatar').textContent = currentUser.businessName.charAt(0).toUpperCase();
+                    document.getElementById('topbar-user-avatar').textContent = currentUser.businessName.charAt(0).toUpperCase();
+                    refreshMyAvatarDisplays();
+                    showToast('Name updated', 'success');
+                } catch (err) {
+                    errorEl.textContent = err.message;
+                    errorEl.style.display = 'inline';
+                } finally {
+                    btn.disabled = false;
+                    btn.textContent = 'Save Name';
                 }
             });
 
