@@ -506,6 +506,50 @@ const db = {
     return rowToOrder(rows[0]);
   },
 
+  // Cancels a pending order and, if it's a marketplace order (linked to
+  // a purchase via delivery_order_id), restocks every purchased item in
+  // the same transaction — so a crash between the two steps can't leave
+  // stock permanently short, and two concurrent cancel attempts on the
+  // same order can't double-restock it (the UPDATE only matches while
+  // status is still 'pending'). Plain delivery orders (no linked
+  // purchase) just get their status flipped, same as before this
+  // existed. Returns null if the order wasn't pending (already
+  // cancelled/accepted/etc.) so the caller can report that cleanly.
+  async cancelOrderAndRestock(id) {
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      const { rows: orderRows } = await client.query(
+        `UPDATE orders SET status = 'cancelled' WHERE id = $1 AND status = 'pending' RETURNING *`,
+        [id]
+      );
+      if (!orderRows[0]) {
+        await client.query('ROLLBACK');
+        return null;
+      }
+
+      const { rows: purchaseRows } = await client.query(
+        'SELECT id FROM purchases WHERE delivery_order_id = $1', [id]
+      );
+      if (purchaseRows[0]) {
+        const { rows: items } = await client.query(
+          'SELECT product_id, quantity FROM purchase_items WHERE purchase_id = $1', [purchaseRows[0].id]
+        );
+        for (const item of items) {
+          await client.query('UPDATE products SET stock_quantity = stock_quantity + $1 WHERE id = $2', [item.quantity, item.product_id]);
+        }
+      }
+
+      await client.query('COMMIT');
+      return rowToOrder(orderRows[0]);
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
+  },
+
   async deleteOrders(ids) {
     if (!ids.length) return;
     await pool.query('DELETE FROM orders WHERE id = ANY($1::text[])', [ids]);
@@ -1036,8 +1080,15 @@ const db = {
   // ---- Marketplace: products -----------------------------------------
 
   async getProductsByVendor(vendorId) {
-    const { rows } = await pool.query('SELECT * FROM products WHERE vendor_id = $1 ORDER BY created_at DESC', [vendorId]);
-    return rows.map(rowToProduct);
+    const { rows } = await pool.query(`
+      SELECT p.*,
+        (
+          SELECT json_agg(json_build_object('id', pi.id, 'imageDataUrl', pi.image_data_url) ORDER BY pi.position, pi.created_at)
+          FROM product_images pi WHERE pi.product_id = p.id
+        ) AS extra_images
+      FROM products p WHERE p.vendor_id = $1 ORDER BY p.created_at DESC
+    `, [vendorId]);
+    return rows.map(r => ({ ...rowToProduct(r), images: r.extra_images || [] }));
   },
 
   // Storefront listing — every active product from every vendor, with
@@ -1048,7 +1099,11 @@ const db = {
         COALESCE(AVG(r.rating), 0)::numeric AS avg_rating,
         COUNT(DISTINCT r.id)::int AS review_count,
         COALESCE(sold.units_sold, 0)::int AS units_sold,
-        promo.discount_percent, promo.ends_at AS promo_ends_at
+        promo.discount_percent, promo.ends_at AS promo_ends_at,
+        (
+          SELECT json_agg(json_build_object('id', pi.id, 'imageDataUrl', pi.image_data_url) ORDER BY pi.position, pi.created_at)
+          FROM product_images pi WHERE pi.product_id = p.id
+        ) AS extra_images
       FROM products p
       JOIN users u ON u.id = p.vendor_id
       LEFT JOIN product_reviews r ON r.product_id = p.id
@@ -1083,8 +1138,22 @@ const db = {
         price: effectivePrice, // the price everywhere else in the app already reads
         discountPercent,
         promoEndsAt: r.promo_ends_at,
+        images: r.extra_images || [],
       };
     });
+  },
+
+  // Super Admin product moderation — every product from every vendor,
+  // active or hidden, in or out of stock (unlike getActiveProductsForStorefront,
+  // which is deliberately filtered for the customer-facing feed).
+  async getAllProductsForModeration() {
+    const { rows } = await pool.query(`
+      SELECT p.*, u.business_name AS vendor_name
+      FROM products p
+      JOIN users u ON u.id = p.vendor_id
+      ORDER BY p.created_at DESC
+    `);
+    return rows.map(r => ({ ...rowToProduct(r), vendorName: r.vendor_name }));
   },
 
   async getActiveDeals() {
@@ -1125,6 +1194,31 @@ const db = {
 
   async deleteProduct(id) {
     await pool.query('DELETE FROM products WHERE id = $1', [id]);
+  },
+
+  // ---- Marketplace: additional product photos (gallery) ----------------
+
+  async countProductImages(productId) {
+    const { rows } = await pool.query('SELECT COUNT(*)::int AS count FROM product_images WHERE product_id = $1', [productId]);
+    return rows[0].count;
+  },
+
+  async addProductImage({ id, productId, imageDataUrl }) {
+    const { rows: posRows } = await pool.query('SELECT COALESCE(MAX(position), -1) + 1 AS next_position FROM product_images WHERE product_id = $1', [productId]);
+    const { rows } = await pool.query(
+      'INSERT INTO product_images (id, product_id, image_data_url, position) VALUES ($1, $2, $3, $4) RETURNING *',
+      [id, productId, imageDataUrl, posRows[0].next_position]
+    );
+    return { id: rows[0].id, productId: rows[0].product_id, imageDataUrl: rows[0].image_data_url };
+  },
+
+  // Scoped to product_id too, not just the image id — so a vendor can
+  // never delete an image belonging to a product that isn't theirs
+  // (the route also checks product ownership, but this is cheap
+  // belt-and-suspenders since it's a single indexed WHERE clause).
+  async deleteProductImage(id, productId) {
+    const { rowCount } = await pool.query('DELETE FROM product_images WHERE id = $1 AND product_id = $2', [id, productId]);
+    return rowCount > 0;
   },
 
   // ---- Marketplace: checkout + purchases -------------------------------
@@ -1349,7 +1443,11 @@ const db = {
       SELECT p.*, u.business_name AS vendor_name, w.created_at AS wishlisted_at,
         COALESCE(AVG(r.rating), 0)::numeric AS avg_rating,
         COUNT(DISTINCT r.id)::int AS review_count,
-        COALESCE(sold.units_sold, 0)::int AS units_sold
+        COALESCE(sold.units_sold, 0)::int AS units_sold,
+        (
+          SELECT json_agg(json_build_object('id', pi.id, 'imageDataUrl', pi.image_data_url) ORDER BY pi.position, pi.created_at)
+          FROM product_images pi WHERE pi.product_id = p.id
+        ) AS extra_images
       FROM wishlist_items w
       JOIN products p ON p.id = w.product_id
       JOIN users u ON u.id = p.vendor_id
@@ -1370,6 +1468,7 @@ const db = {
       reviewCount: r.review_count,
       unitsSold: r.units_sold,
       wishlistedAt: r.wishlisted_at,
+      images: r.extra_images || [],
     }));
   },
 

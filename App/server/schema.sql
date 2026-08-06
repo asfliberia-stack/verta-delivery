@@ -237,6 +237,19 @@ CREATE TABLE IF NOT EXISTS products (
     is_active     BOOLEAN NOT NULL DEFAULT true,
     created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- Additional product photos, beyond the one primary photo stored on
+-- products.image_data_url — lets the PDP show a real multi-image
+-- gallery instead of being capped at a single picture. position
+-- controls display order (lower shows first, after the primary image).
+CREATE TABLE IF NOT EXISTS product_images (
+    id            TEXT PRIMARY KEY,
+    product_id    TEXT NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+    image_data_url TEXT NOT NULL,
+    position      INTEGER NOT NULL DEFAULT 0,
+    created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_product_images_product_id ON product_images (product_id);
 CREATE INDEX IF NOT EXISTS idx_products_vendor_id ON products (vendor_id);
 
 -- A purchase is a shopping-cart checkout — one customer, one vendor

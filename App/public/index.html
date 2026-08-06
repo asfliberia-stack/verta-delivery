@@ -482,6 +482,14 @@
         }
         .category-item.active-category .category-icon-box { background: var(--golib-red); border-color: var(--golib-red); }
         .category-item.active-category .category-icon-box svg { color: white; }
+
+        .storefront-filter-bar {
+            display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; margin: 0.75rem 0 1rem;
+        }
+        .storefront-filter-bar .form-input { margin-bottom: 0; width: auto; }
+        .storefront-filter-bar #storefront-sort-select { min-width: 150px; flex: 1 1 150px; }
+        .storefront-filter-bar #storefront-min-price,
+        .storefront-filter-bar #storefront-max-price { max-width: 90px; }
         .category-item.active-category .category-label { color: var(--golib-red); }
         .category-icon-box svg { width: 20px; height: 20px; color: var(--golib-navy); }
         .category-label { font-size: 0.6875rem; font-weight: 600; color: var(--slate-light); }
@@ -2174,6 +2182,15 @@
         .product-card-sold { display: inline; font-size: 0.75rem; color: var(--slate-light); }
         .product-card-stock { font-size: 0.75rem; color: var(--slate-light); }
         .product-card-actions { display: none; }
+        /* Out-of-stock: dim the image and show a badge. The card stays
+           tappable (opens the PDP so buyers can still see it / message
+           the vendor) — only the buy actions get disabled, on the PDP. */
+        .product-card-outofstock-badge {
+            position: absolute; top: 0.5rem; right: 0.5rem; background: rgba(15, 23, 42, 0.85); color: white;
+            font-size: 0.6875rem; font-weight: 800; padding: 0.1875rem 0.5rem; border-radius: 9999px;
+        }
+        .product-card.out-of-stock .product-card-image { opacity: 0.45; }
+        .pdp-add-cart-btn:disabled, .pdp-buy-now-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
         /* Mobile product grid (<768px) — AliExpress/Taobao-style
            2-column feed. Desktop keeps the same clean card content
@@ -2293,6 +2310,7 @@
             width: 28px; height: 28px; min-width: 28px; border-radius: 50%; border: 1px solid var(--border);
             background: white; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center;
         }
+        .cart-qty-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
         #delivery-app .admin-view-all-link { color: var(--primary); font-weight: 700; font-size: 0.8125rem; cursor: pointer; }
         #delivery-customer-app .admin-view-all-link { color: var(--primary); font-weight: 700; font-size: 0.8125rem; cursor: pointer; }
@@ -3054,6 +3072,18 @@
                     <div class="mobile-section">
                         <div class="mobile-section-header">
                             <div class="mobile-section-title">Featured Products</div>
+                        </div>
+                        <div class="storefront-filter-bar">
+                            <select class="form-input" id="storefront-sort-select">
+                                <option value="newest">Newest</option>
+                                <option value="price-asc">Price: Low to High</option>
+                                <option value="price-desc">Price: High to Low</option>
+                                <option value="rating">Top Rated</option>
+                                <option value="bestselling">Best Selling</option>
+                            </select>
+                            <input type="number" class="form-input" id="storefront-min-price" placeholder="Min $" min="0" step="0.01">
+                            <input type="number" class="form-input" id="storefront-max-price" placeholder="Max $" min="0" step="0.01">
+                            <button type="button" class="btn-small btn-secondary" id="storefront-clear-filters-btn">Clear</button>
                         </div>
                         <div id="storefront-products-container"></div>
                     </div>
@@ -4258,6 +4288,7 @@
                             <button type="button" class="btn-small btn-secondary" id="sa-quick-vendors-btn" style="padding:1rem; text-align:left;">🏬 Manage Vendors</button>
                             <button type="button" class="btn-small btn-secondary" id="sa-quick-customers-btn" style="padding:1rem; text-align:left;">👥 View Customers</button>
                             <button type="button" class="btn-small btn-secondary" id="sa-quick-delivery-ops-btn" style="padding:1rem; text-align:left;">🚚 Delivery Operations</button>
+                            <button type="button" class="btn-small btn-secondary" id="sa-quick-products-btn" style="padding:1rem; text-align:left;">🛒 Marketplace Products</button>
                         </div>
                     </section>
                 </div>
@@ -4734,6 +4765,14 @@
                         <input type="file" accept="image/*" id="product-image-input" style="display:none;">
                         <button type="button" class="btn-small btn-secondary" id="product-image-upload-btn">Upload Photo</button>
                     </div>
+                    <p class="settings-hint">This is the main photo shown on the storefront grid.</p>
+                </div>
+                <div class="form-group" id="product-gallery-group" style="display:none;">
+                    <label class="form-label">Additional Photos</label>
+                    <div id="product-gallery-thumbs" style="display:flex; flex-wrap:wrap; gap:0.625rem; margin-bottom:0.625rem;"></div>
+                    <input type="file" accept="image/*" id="product-gallery-image-input" style="display:none;">
+                    <button type="button" class="btn-small btn-secondary" id="product-gallery-upload-btn">+ Add Photo</button>
+                    <p class="settings-hint" id="product-gallery-hint">Shown on the product page as a swipeable gallery, alongside the main photo above.</p>
                 </div>
                 <div class="auth-error" id="product-form-error"></div>
                 <div class="modal-footer">
@@ -5651,6 +5690,28 @@
         </div>
     </div>
 
+    <!-- Marketplace Products moderation (Super Admin only) — act on a
+         single listing (hide it from the storefront, or remove it
+         entirely) without having to disable the whole vendor account. -->
+    <div class="modal-overlay" id="product-moderation-modal">
+        <div class="modal" style="max-width: 950px; width: 95%; max-height: 85vh; overflow-y: auto;">
+            <div class="modal-header">
+                <h3>🛒 Marketplace Products</h3>
+                <button class="close-btn" id="close-product-moderation-modal">&times;</button>
+            </div>
+            <p style="color: var(--slate-light); margin-bottom: 1rem; font-size: 0.875rem;">
+                Every listing from every vendor. "Hide" pulls it off the storefront/deals feed immediately
+                but keeps everything else about it (and the vendor's account) intact — use it for a listing
+                that shouldn't be shown right now. "Remove" deletes it permanently; past purchases of it are
+                unaffected since order history keeps its own snapshot of the name and price.
+            </p>
+            <input type="text" class="form-input" id="product-moderation-search" placeholder="Search by product name or vendor…" style="margin-bottom: 1rem;">
+            <div id="product-moderation-modal-content">
+                <p style="text-align: center; color: var(--slate-light); padding: 2rem 0;">Loading…</p>
+            </div>
+        </div>
+    </div>
+
     <!-- Delivery Companies (Super Admin only) -->
     <div class="modal-overlay" id="delivery-companies-modal">
         <div class="modal" style="max-width: 900px; width: 95%; max-height: 85vh; overflow-y: auto;">
@@ -6409,6 +6470,15 @@
         let editingProductId = null; // null = "Add Product" mode
         let pendingProductImageDataUrl = null;
         let storefrontProducts = []; // all vendors' active products, for the sender-side storefront
+        // Merged lookup of every product seen so far this session — the
+        // storefront feed alone isn't enough because it (correctly)
+        // excludes zero-stock products, but the Wishlist and Deals feeds
+        // can still surface a product the storefront wouldn't. Anything
+        // that opens the PDP or adds to cart should look here first.
+        let productCache = {};
+        function cacheProducts(products) {
+            (products || []).forEach(p => { productCache[p.id] = p; });
+        }
         let cart = []; // client-side only until checkout: [{ productId, name, price, vendorId, vendorName, quantity }]
 
         function setAgents(records) {
@@ -10181,6 +10251,20 @@
             document.getElementById('sa-quick-delivery-ops-btn').addEventListener('click', () => {
                 setAdminMainView('operational');
             });
+            document.getElementById('sa-quick-products-btn').addEventListener('click', () => {
+                document.getElementById('product-moderation-modal').classList.add('active');
+                loadProductModeration();
+            });
+            document.getElementById('close-product-moderation-modal').addEventListener('click', () => {
+                document.getElementById('product-moderation-modal').classList.remove('active');
+            });
+            document.getElementById('product-moderation-search').addEventListener('input', debounce(renderProductModerationTable, 150));
+            document.getElementById('product-moderation-modal-content').addEventListener('click', (e) => {
+                const toggleBtn = e.target.closest('.toggle-product-active-btn');
+                if (toggleBtn) { toggleProductActive(toggleBtn.dataset.id, toggleBtn.dataset.name, toggleBtn.dataset.active === 'true'); return; }
+                const removeBtn = e.target.closest('.remove-product-btn');
+                if (removeBtn) { removeProductWithConfirm(removeBtn.dataset.id, removeBtn.dataset.name); return; }
+            });
             document.getElementById('sa-pending-applications-list').addEventListener('click', (e) => {
                 if (e.target.classList.contains('sa-review-btn')) openVendorReviewModal(e.target.dataset.id);
             });
@@ -10858,6 +10942,96 @@
             }
         }
 
+        // Super Admin only — product moderation across every vendor.
+        // Cached client-side so the search box can filter instantly
+        // without a re-fetch on every keystroke.
+        let productModerationCache = [];
+
+        async function loadProductModeration() {
+            const container = document.getElementById('product-moderation-modal-content');
+            container.innerHTML = '<p style="text-align: center; color: var(--slate-light); padding: 2rem 0;">Loading…</p>';
+            try {
+                const data = await apiFetch('/api/super-admin/marketplace/products');
+                productModerationCache = data.products || [];
+                renderProductModerationTable();
+            } catch (err) {
+                container.innerHTML = `<p style="text-align: center; color: #dc2626; padding: 2rem 0;">${err.message}</p>`;
+            }
+        }
+
+        function renderProductModerationTable() {
+            const container = document.getElementById('product-moderation-modal-content');
+            const search = (document.getElementById('product-moderation-search').value || '').trim().toLowerCase();
+            const filtered = search
+                ? productModerationCache.filter(p => `${p.name} ${p.vendorName}`.toLowerCase().includes(search))
+                : productModerationCache;
+
+            if (productModerationCache.length === 0) {
+                container.innerHTML = '<p style="text-align: center; color: var(--slate-light); padding: 1rem 0;">No products listed yet.</p>';
+                return;
+            }
+            if (filtered.length === 0) {
+                container.innerHTML = '<p style="text-align: center; color: var(--slate-light); padding: 1rem 0;">No products match that search.</p>';
+                return;
+            }
+
+            let html = '<div style="overflow-x: auto;"><table class="settings-table"><thead><tr><th>Product</th><th>Vendor</th><th>Price</th><th>Stock</th><th>Status</th><th></th></tr></thead><tbody>';
+            filtered.forEach(p => {
+                const outOfStock = (p.stockQuantity || 0) <= 0;
+                html += `<tr${!p.isActive ? ' style="opacity:0.55;"' : ''}>
+                    <td style="font-weight:700; display:flex; align-items:center; gap:0.5rem;">
+                        <img src="${p.imageDataUrl || 'assets/logo.png'}" alt="" style="width:32px; height:32px; border-radius:0.5rem; object-fit:cover; flex-shrink:0;">
+                        ${p.name}
+                    </td>
+                    <td>${p.vendorName}</td>
+                    <td>$${Number(p.price).toFixed(2)}</td>
+                    <td>${p.stockQuantity}${outOfStock ? ' <span style="color:#dc2626;">(out)</span>' : ''}</td>
+                    <td>${p.isActive
+                        ? '<span style="background:#dcfce7; color:#15803d; padding:0.1875rem 0.625rem; border-radius:9999px; font-size:0.75rem; font-weight:700;">Active</span>'
+                        : '<span style="background:#fee2e2; color:#991b1b; padding:0.1875rem 0.625rem; border-radius:9999px; font-size:0.75rem; font-weight:700;">Hidden</span>'}</td>
+                    <td style="white-space:nowrap; display:flex; gap:0.5rem;">
+                        <button type="button" class="btn-small toggle-product-active-btn" data-id="${p.id}" data-name="${p.name.replace(/"/g, '&quot;')}" data-active="${p.isActive}" style="background:${p.isActive ? '#fef3c7' : '#dcfce7'}; color:${p.isActive ? '#92400e' : '#15803d'};">${p.isActive ? 'Hide' : 'Unhide'}</button>
+                        <button type="button" class="btn-small btn-danger remove-product-btn" data-id="${p.id}" data-name="${p.name.replace(/"/g, '&quot;')}">Remove</button>
+                    </td>
+                </tr>`;
+            });
+            html += '</tbody></table></div>';
+            container.innerHTML = html;
+        }
+
+        async function toggleProductActive(id, name, currentlyActive) {
+            const confirmed = confirm(
+                currentlyActive
+                    ? `Hide "${name}" from the storefront? It stays in the vendor's own product list — you (or they) can unhide it any time.`
+                    : `Unhide "${name}"? It'll show up on the storefront again immediately (as long as it's still in stock).`
+            );
+            if (!confirmed) return;
+            try {
+                await apiFetch(`/api/super-admin/marketplace/products/${id}/moderation`, {
+                    method: 'PUT',
+                    body: JSON.stringify({ isActive: !currentlyActive }),
+                });
+                showToast(currentlyActive ? 'Product hidden' : 'Product unhidden', 'success');
+                await loadProductModeration();
+            } catch (err) {
+                showToast(err.message, 'error');
+            }
+        }
+
+        async function removeProductWithConfirm(id, name) {
+            const confirmed = confirm(
+                `Permanently remove "${name}"?\n\nThis deletes the listing entirely — its reviews, wishlist saves, and any scheduled promotion go with it. Past purchases of it are unaffected; order history keeps its own record of the name and price. This cannot be undone.`
+            );
+            if (!confirmed) return;
+            try {
+                await apiFetch(`/api/super-admin/marketplace/products/${id}`, { method: 'DELETE' });
+                showToast('Product removed', 'success');
+                await loadProductModeration();
+            } catch (err) {
+                showToast(err.message, 'error');
+            }
+        }
+
         let vendorsCache = [];
         let deliveryCompaniesCache = [];
 
@@ -11119,6 +11293,9 @@
             'staff.features_update': 'Staff permissions changed',
             'staff.role_change': 'Role changed',
             'dispute.resolve': 'Dispute resolved',
+            'product.hide': 'Product hidden',
+            'product.reactivate': 'Product unhidden',
+            'product.remove': 'Product removed',
             'user.disable': 'Account disabled',
             'user.enable': 'Account enabled',
             'settings.commission_update': 'Commission settings updated',
@@ -13796,11 +13973,14 @@
             full.innerHTML = purchases.map(vendorOrderRowHtml).join('');
         }
 
+        const MAX_EXTRA_PRODUCT_IMAGES = 4; // mirrors the server-side cap in server.js
+
         function openProductModal(productId) {
             editingProductId = productId || null;
             pendingProductImageDataUrl = null;
             const errorEl = document.getElementById('product-form-error');
             errorEl.style.display = 'none';
+            const galleryGroup = document.getElementById('product-gallery-group');
             if (productId) {
                 const p = vendorProducts.find(x => x.id === productId);
                 document.getElementById('product-modal-title').textContent = 'Edit Product';
@@ -13810,16 +13990,76 @@
                 document.getElementById('product-price-input').value = p ? p.price : '';
                 document.getElementById('product-stock-input').value = p ? p.stockQuantity : '';
                 document.getElementById('product-image-preview').src = (p && p.imageDataUrl) || 'assets/logo.png';
+                // Additional photos only make sense once a product exists
+                // (they attach to its id) — so this section only shows in
+                // Edit mode, not while adding a brand-new product.
+                galleryGroup.style.display = 'block';
+                renderProductGalleryThumbs(p ? (p.images || []) : []);
             } else {
                 document.getElementById('product-modal-title').textContent = 'Add Product';
                 document.getElementById('product-form').reset();
                 document.getElementById('product-image-preview').src = 'assets/logo.png';
+                galleryGroup.style.display = 'none';
             }
             document.getElementById('product-modal').classList.add('active');
         }
         function closeProductModal() {
             document.getElementById('product-modal').classList.remove('active');
             editingProductId = null;
+        }
+
+        function renderProductGalleryThumbs(images) {
+            const thumbsEl = document.getElementById('product-gallery-thumbs');
+            thumbsEl.innerHTML = images.map(img => `
+                <div style="position:relative; width:56px; height:56px;">
+                    <img src="${img.imageDataUrl}" alt="" style="width:56px; height:56px; object-fit:cover; border:1px solid var(--border); border-radius:0.5rem;">
+                    <button type="button" class="remove-gallery-image-btn" data-id="${img.id}" title="Remove photo" style="position:absolute; top:-6px; right:-6px; width:20px; height:20px; border-radius:50%; background:#dc2626; color:white; border:none; font-size:0.75rem; line-height:1; cursor:pointer;">×</button>
+                </div>
+            `).join('');
+            const uploadBtn = document.getElementById('product-gallery-upload-btn');
+            const hintEl = document.getElementById('product-gallery-hint');
+            const atCap = images.length >= MAX_EXTRA_PRODUCT_IMAGES;
+            uploadBtn.disabled = atCap;
+            hintEl.textContent = atCap
+                ? `Maximum reached (${images.length}/${MAX_EXTRA_PRODUCT_IMAGES} additional photos).`
+                : `Shown on the product page as a swipeable gallery, alongside the main photo above. (${images.length}/${MAX_EXTRA_PRODUCT_IMAGES})`;
+        }
+
+        async function uploadProductGalleryImage(file) {
+            if (!editingProductId) return;
+            if (file.size > 500 * 1024) {
+                showToast('Please choose an image under 500KB.', 'error');
+                return;
+            }
+            const reader = new FileReader();
+            reader.onload = async () => {
+                try {
+                    const result = await apiFetch(`/api/vendor/products/${editingProductId}/images`, {
+                        method: 'POST',
+                        body: JSON.stringify({ imageDataUrl: reader.result }),
+                    });
+                    const p = vendorProducts.find(x => x.id === editingProductId);
+                    if (p) { p.images = p.images || []; p.images.push(result.image); }
+                    renderProductGalleryThumbs(p ? p.images : []);
+                    showToast('Photo added', 'success');
+                } catch (err) {
+                    showToast(err.message, 'error');
+                }
+            };
+            reader.readAsDataURL(file);
+        }
+
+        async function removeProductGalleryImage(imageId) {
+            if (!editingProductId) return;
+            try {
+                await apiFetch(`/api/vendor/products/${editingProductId}/images/${imageId}`, { method: 'DELETE' });
+                const p = vendorProducts.find(x => x.id === editingProductId);
+                if (p) p.images = (p.images || []).filter(img => img.id !== imageId);
+                renderProductGalleryThumbs(p ? p.images : []);
+                showToast('Photo removed', 'success');
+            } catch (err) {
+                showToast(err.message, 'error');
+            }
         }
 
         async function handleProductFormSubmit(e) {
@@ -14038,6 +14278,19 @@
                 if (e.target.classList.contains('delete-product-btn')) deleteProduct(e.target.dataset.id);
             });
 
+            document.getElementById('product-gallery-upload-btn').addEventListener('click', () => {
+                document.getElementById('product-gallery-image-input').click();
+            });
+            document.getElementById('product-gallery-image-input').addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (file) uploadProductGalleryImage(file);
+                e.target.value = ''; // allow choosing the same file again later
+            });
+            document.getElementById('product-gallery-thumbs').addEventListener('click', (e) => {
+                const btn = e.target.closest('.remove-gallery-image-btn');
+                if (btn) removeProductGalleryImage(btn.dataset.id);
+            });
+
             // Bottom nav + "View All" / quick-action shortcuts that jump tabs
             document.querySelectorAll('#vendor-app .mobile-nav-item').forEach(btn => {
                 btn.addEventListener('click', () => setVendorTab(btn.dataset.vendorTab));
@@ -14131,6 +14384,7 @@
             try {
                 const data = await apiFetch('/api/marketplace/products');
                 storefrontProducts = data.products || [];
+                cacheProducts(storefrontProducts);
                 const categories = [...new Set(storefrontProducts.map(p => p.category).filter(Boolean))];
                 const grid = document.getElementById('mp-category-grid');
                 grid.innerHTML = [`<button type="button" class="category-item" data-category="">
@@ -14306,6 +14560,7 @@
             try {
                 const data = await apiFetch('/api/wishlist');
                 const products = data.products || [];
+                cacheProducts(products);
                 if (products.length === 0) {
                     renderEmptyState(container, "Nothing saved yet — tap the ♡ on any product to add it here.");
                     return;
@@ -14326,6 +14581,7 @@
             try {
                 const data = await apiFetch('/api/marketplace/deals');
                 const products = data.products || [];
+                cacheProducts(products);
                 if (products.length === 0) {
                     renderEmptyState(container, 'No active deals right now — check back soon.');
                     return;
@@ -14563,12 +14819,19 @@
 
         // Shared product card markup — used by the main storefront grid
         // and the Wishlist tab, so both look and behave identically.
+        //
+        // Note on stock: the storefront/deals feeds already exclude
+        // zero-stock products server-side, so this mostly matters for
+        // the Wishlist tab, where a saved product can still show up
+        // after it sells out (wishlist_items isn't stock-filtered).
         function productCardHtml(p) {
+            const outOfStock = (p.stockQuantity || 0) <= 0;
             return `
-                <div class="product-card open-product-detail-btn" data-id="${p.id}" role="button" tabindex="0">
+                <div class="product-card open-product-detail-btn${outOfStock ? ' out-of-stock' : ''}" data-id="${p.id}" role="button" tabindex="0">
                     <div class="product-card-image-wrap">
                         <img class="product-card-image" src="${p.imageDataUrl || 'assets/logo.png'}" alt="${p.name}">
                         ${p.discountPercent ? `<span class="product-card-discount-badge">-${Math.round(p.discountPercent)}%</span>` : ''}
+                        ${outOfStock ? `<span class="product-card-outofstock-badge">Out of Stock</span>` : ''}
                     </div>
                     <div class="product-card-body">
                         <div class="product-card-name">${p.name}</div>
@@ -14581,42 +14844,72 @@
                         </div>
                     </div>
                     <div class="product-card-actions">
-                        <button type="button" class="btn-small btn-success add-to-cart-btn" data-id="${p.id}" style="flex:1;">Add to Cart</button>
+                        <button type="button" class="btn-small btn-success add-to-cart-btn" data-id="${p.id}" style="flex:1;" ${outOfStock ? 'disabled' : ''}>${outOfStock ? 'Out of Stock' : 'Add to Cart'}</button>
                     </div>
                 </div>
             `;
         }
 
+        // Sorts a copy of the given products by the chosen criterion —
+        // never mutates the array passed in (storefrontProducts itself
+        // stays in its original, server-given created_at DESC order, so
+        // switching back to "Newest" doesn't need a re-fetch).
+        function sortStorefrontProducts(products, sortValue) {
+            const arr = [...products];
+            switch (sortValue) {
+                case 'price-asc': return arr.sort((a, b) => a.price - b.price);
+                case 'price-desc': return arr.sort((a, b) => b.price - a.price);
+                case 'rating': return arr.sort((a, b) => (b.avgRating || 0) - (a.avgRating || 0) || (b.reviewCount || 0) - (a.reviewCount || 0));
+                case 'bestselling': return arr.sort((a, b) => (b.unitsSold || 0) - (a.unitsSold || 0));
+                case 'newest':
+                default: return arr.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+            }
+        }
+
         function renderStorefrontProducts() {
             const container = document.getElementById('storefront-products-container');
             const search = document.getElementById('storefront-search-input').value.trim().toLowerCase();
+            const sortValue = document.getElementById('storefront-sort-select').value;
+            const minPriceInput = document.getElementById('storefront-min-price').value;
+            const maxPriceInput = document.getElementById('storefront-max-price').value;
+            const minPrice = minPriceInput === '' ? null : parseFloat(minPriceInput);
+            const maxPrice = maxPriceInput === '' ? null : parseFloat(maxPriceInput);
             document.querySelectorAll('#mp-category-grid .category-item').forEach(btn => {
                 btn.classList.toggle('active-category', btn.dataset.category === selectedStorefrontCategory);
             });
-            const filtered = storefrontProducts.filter(p => {
+            let filtered = storefrontProducts.filter(p => {
                 if (selectedStorefrontCategory && p.category !== selectedStorefrontCategory) return false;
                 if (search && !`${p.name} ${p.vendorName}`.toLowerCase().includes(search)) return false;
+                if (minPrice !== null && !isNaN(minPrice) && p.price < minPrice) return false;
+                if (maxPrice !== null && !isNaN(maxPrice) && p.price > maxPrice) return false;
                 return true;
             });
+            filtered = sortStorefrontProducts(filtered, sortValue);
             if (filtered.length === 0) {
-                renderEmptyState(container, 'No products found.');
+                renderEmptyState(container, 'No products match your search/filters.');
                 return;
             }
             container.innerHTML = `<div class="product-grid">${filtered.map(p => productCardHtml(p)).join('')}</div>`;
         }
 
-        // Product Detail Page — reuses the already-loaded storefrontProducts
-        // data (no extra API call). Only shows a real pagination badge
-        // (1/1 for the vast majority of products, since the product-photo
-        // upload flow only supports one image today) — never fabricates
-        // extra carousel frames that don't exist.
+        // Product Detail Page — reuses the already-loaded storefrontProducts/
+        // wishlist/deals data (no extra API call). The pagination badge
+        // reflects the real photo count — the primary photo plus however
+        // many additional gallery photos (0-4) the vendor added — never
+        // fabricates extra carousel frames that don't exist.
         let currentPdpProductId = null;
         function openProductDetail(productId) {
-            const product = storefrontProducts.find(p => p.id === productId);
+            // Look in the merged cache first — a card opened from the
+            // Wishlist tab may reference a product that's out of stock
+            // and therefore absent from storefrontProducts (the
+            // storefront/deals feeds are filtered server-side).
+            const product = productCache[productId] || storefrontProducts.find(p => p.id === productId);
             if (!product) return;
             currentPdpProductId = productId;
 
-            const images = product.imageDataUrl ? [product.imageDataUrl] : ['assets/logo.png'];
+            const galleryImages = (product.images || []).map(img => img.imageDataUrl).filter(Boolean);
+            const images = [product.imageDataUrl, ...galleryImages].filter(Boolean);
+            if (images.length === 0) images.push('assets/logo.png');
             document.getElementById('pdp-hero-scroll').innerHTML = images.map(src => `<img src="${src}" alt="${product.name}">`).join('');
             document.getElementById('pdp-pagination-badge').textContent = `1/${images.length}`;
 
@@ -14645,6 +14938,14 @@
             document.getElementById('pdp-description').classList.remove('open');
             updatePdpWishlistButton(productId);
 
+            const pdpOutOfStock = (product.stockQuantity || 0) <= 0;
+            const pdpAddBtn = document.getElementById('pdp-add-to-cart-btn');
+            const pdpBuyBtn = document.getElementById('pdp-buy-now-btn');
+            pdpAddBtn.disabled = pdpOutOfStock;
+            pdpAddBtn.title = pdpOutOfStock ? 'Out of stock' : 'Add to Cart';
+            pdpBuyBtn.disabled = pdpOutOfStock;
+            pdpBuyBtn.textContent = pdpOutOfStock ? 'Out of Stock' : 'Buy Now';
+
             document.getElementById('mp-view-product-detail').classList.add('open');
             document.getElementById('mp-view-product-detail').scrollTop = 0;
         }
@@ -14655,16 +14956,26 @@
         }
 
         function addToCart(productId) {
-            const product = storefrontProducts.find(p => p.id === productId);
+            const product = productCache[productId] || storefrontProducts.find(p => p.id === productId);
             if (!product) return;
+            const availableStock = product.stockQuantity || 0;
+            if (availableStock <= 0) {
+                showToast('Sorry, this product is out of stock.', 'error');
+                return;
+            }
             const existingVendor = cart.length > 0 ? cart[0].vendorId : null;
             if (existingVendor && existingVendor !== product.vendorId) {
                 showToast('Your cart can only have items from one vendor at a time — checkout or clear your cart first.', 'error');
                 return;
             }
             const existing = cart.find(c => c.productId === productId);
+            const currentQty = existing ? existing.quantity : 0;
+            if (currentQty + 1 > availableStock) {
+                showToast(`Only ${availableStock} in stock — you already have the max in your cart.`, 'error');
+                return;
+            }
             if (existing) existing.quantity += 1;
-            else cart.push({ productId: product.id, name: product.name, price: product.price, vendorId: product.vendorId, vendorName: product.vendorName, vendorStoreAddress: product.vendorStoreAddress, quantity: 1 });
+            else cart.push({ productId: product.id, name: product.name, price: product.price, vendorId: product.vendorId, vendorName: product.vendorName, vendorStoreAddress: product.vendorStoreAddress, quantity: 1, stockQuantity: availableStock });
             updateCartCount();
             showToast(`Added ${product.name} to cart`, 'success');
         }
@@ -14692,7 +15003,7 @@
                     <div class="cart-qty-controls">
                         <button type="button" class="cart-qty-btn" data-action="dec" data-id="${c.productId}">−</button>
                         <span>${c.quantity}</span>
-                        <button type="button" class="cart-qty-btn" data-action="inc" data-id="${c.productId}">+</button>
+                        <button type="button" class="cart-qty-btn" data-action="inc" data-id="${c.productId}" ${c.stockQuantity != null && c.quantity >= c.stockQuantity ? 'disabled title="Max stock reached"' : ''}>+</button>
                         <button type="button" class="cart-qty-btn" data-action="remove" data-id="${c.productId}" title="Remove">×</button>
                     </div>
                 </div>
@@ -14922,6 +15233,17 @@
                 }
             });
             document.getElementById('storefront-search-input').addEventListener('input', debounce(renderStorefrontProducts, 200));
+            document.getElementById('storefront-sort-select').addEventListener('change', renderStorefrontProducts);
+            document.getElementById('storefront-min-price').addEventListener('input', debounce(renderStorefrontProducts, 300));
+            document.getElementById('storefront-max-price').addEventListener('input', debounce(renderStorefrontProducts, 300));
+            document.getElementById('storefront-clear-filters-btn').addEventListener('click', () => {
+                document.getElementById('storefront-sort-select').value = 'newest';
+                document.getElementById('storefront-min-price').value = '';
+                document.getElementById('storefront-max-price').value = '';
+                selectedStorefrontCategory = '';
+                document.getElementById('storefront-search-input').value = '';
+                renderStorefrontProducts();
+            });
             document.getElementById('mp-category-grid').addEventListener('click', (e) => {
                 const btn = e.target.closest('.category-item');
                 if (!btn) return;
@@ -14956,7 +15278,13 @@
                 const id = btn.dataset.id;
                 const item = cart.find(c => c.productId === id);
                 if (!item) return;
-                if (btn.dataset.action === 'inc') item.quantity += 1;
+                if (btn.dataset.action === 'inc') {
+                    if (item.stockQuantity != null && item.quantity + 1 > item.stockQuantity) {
+                        showToast(`Only ${item.stockQuantity} in stock.`, 'error');
+                    } else {
+                        item.quantity += 1;
+                    }
+                }
                 else if (btn.dataset.action === 'dec') item.quantity = Math.max(1, item.quantity - 1);
                 else if (btn.dataset.action === 'remove') cart = cart.filter(c => c.productId !== id);
                 updateCartCount();

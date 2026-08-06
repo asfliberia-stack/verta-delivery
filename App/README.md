@@ -4486,3 +4486,96 @@ avatar initials) without a page reload; and confirmed an empty name is
 blocked client-side with an inline error, matching every other form in
 this app, rather than silently no-op'ing or hitting the server with an
 invalid request.
+
+## Marketplace quick wins: stock enforcement, restock-on-cancel, product moderation, multi-photo listings, storefront search/sort
+
+After walking through the Marketplace feature-by-feature, five
+self-contained gaps got fixed in one pass (a sixth item, real payment
+gateway integration — Marketplace is pay-on-delivery only today — was
+deliberately deferred to its own conversation, since it needs a
+provider account and business decisions before any code gets
+written).
+
+**1. Stock wasn't enforced anywhere in the shopping flow until
+checkout.** A product could show "Add to Cart" and "Buy Now" right up
+until the moment `db.checkout()` rejected it server-side with "Not
+enough stock" — no visual warning, no button disabling, and nothing
+stopping a customer from racking up 10 of an item that only has 2 left
+before finding out at the register. Fixed on every layer: product
+cards now show an "Out of Stock" badge and disable Add to Cart when
+`stockQuantity <= 0` (this mostly shows up on the Wishlist tab — the
+storefront/deals feeds already exclude zero-stock products server-side
+via `WHERE p.stock_quantity > 0`, so a product only becomes visibly
+out-of-stock after being wishlisted while still available); the
+Product Detail Page disables both buy buttons and relabels "Buy Now"
+to "Out of Stock"; `addToCart()` now rejects a zero-stock add outright
+and caps the cart quantity at whatever's actually in stock, with the
+cart's own "+" button disabling once you've hit that cap. Fixing this
+surfaced a real latent bug along the way: the PDP was built to only
+look up product data from `storefrontProducts` (the storefront feed),
+so opening a product from the Wishlist tab — which fetches its own
+data separately and isn't stock-filtered — silently failed to open at
+all whenever that product wasn't also in the storefront feed (i.e.,
+exactly the out-of-stock case this fix targets). Added a shared
+`productCache`, populated by the storefront, wishlist, and deals loads
+alike, and pointed the PDP and `addToCart()` at it instead.
+
+**2. Cancelling a marketplace order never returned its stock.** There
+was no restock logic anywhere in the codebase — a customer could
+cancel their still-pending order and the 3 units it reserved would
+just stay decremented forever, understating real inventory. Added
+`db.cancelOrderAndRestock()`, a transaction-safe method that flips the
+order to cancelled and — only if it's a marketplace order (linked to a
+purchase via `delivery_order_id`) — puts every purchased item's
+quantity back, all in one transaction so a crash between the two steps
+can't leave stock short, and scoped so two concurrent cancel attempts
+on the same order can't double-restock it. Deliberately did *not*
+extend this to dispute refunds: a refund doesn't necessarily mean the
+item came back to the vendor (the dispute could be about late
+delivery, a damaged item that isn't being returned, etc.), so
+auto-restocking there would risk inflating inventory that was never
+actually returned — that's a business-judgment call for whoever
+resolves the dispute, not something to infer automatically.
+
+**3. Super Admin could only disable an entire vendor account** — no
+way to act on one bad listing without taking every other product that
+vendor sells down with it. Added a "🛒 Marketplace Products" quick
+action on the Super Admin Platform Overview, opening a searchable
+table of every product from every vendor with two actions: "Hide"
+(reversible — flips `is_active` to false, which was already a real,
+enforced column that just had no UI ever wired up to set it) and
+"Remove" (a hard delete, for listings that shouldn't exist at all;
+past purchases of a removed product are unaffected since order history
+already stores its own name/price snapshot independent of the product
+row).
+
+**4. Product photos were capped at one image per product.** Added a
+`product_images` table (up to 4 extra photos per product, on top of
+the existing primary photo) and gallery management in the vendor's
+Edit Product form — thumbnails with a remove button, an "Add Photo"
+button that disables once you hit the cap, same 500KB per-image size
+limit as the primary photo. The Product Detail Page's photo carousel
+now shows the real photo count instead of always being stuck at "1/1".
+New photos only attach to a product that already exists (they need its
+id), so the gallery section only appears once you're editing a saved
+product, not while creating a brand-new one.
+
+**5. Storefront search was a plain substring match with no sort or
+price filter.** Added a sort dropdown (Newest, Price Low→High, Price
+High→Low, Top Rated, Best Selling) and a Min $/Max $ price range,
+plus a Clear button that resets search, category, sort, and price
+range together. All client-side against the already-loaded product
+list — no new API calls — since the storefront already fetches every
+active product up front.
+
+Verified with five separate Playwright passes (stock enforcement
+across cards/PDP/cart, product moderation table + hide/unhide/remove,
+the photo gallery's upload/remove/cap logic and the PDP's merged
+image list, and the sort/filter math against a small fixed dataset
+with known expected orderings) — every check passed with zero page
+errors. As with every other feature in this session, none of this
+could be tested against a live Postgres instance or the actual Railway
+deployment from this sandbox; the schema change (`product_images`) is
+a new `CREATE TABLE IF NOT EXISTS`, so it applies automatically the
+same way every other table in `schema.sql` does on next deploy — no
+manual migration step needed.

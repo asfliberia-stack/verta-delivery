@@ -331,7 +331,12 @@ io.on('connection', (socket) => {
       if (existing.status !== 'pending') {
         return ack && ack({ ok: false, error: 'Only pending orders (not yet accepted by an agent) can be cancelled' });
       }
-      const order = await db.updateOrder(id, { status: 'cancelled' });
+      // Atomically cancels + restocks (if this order is linked to a
+      // marketplace purchase) — see cancelOrderAndRestock's own comment.
+      const order = await db.cancelOrderAndRestock(id);
+      if (!order) {
+        return ack && ack({ ok: false, error: 'Only pending orders (not yet accepted by an agent) can be cancelled' });
+      }
       orderRooms(order).forEach((r) => io.to(r).emit('order:updated', order));
       ack && ack({ ok: true, order });
     } catch (err) {
@@ -2183,6 +2188,106 @@ app.delete('/api/vendor/products/:id', requireAuth, requireVendor, async (req, r
   } catch (err) {
     console.error('DELETE /api/vendor/products failed', err);
     res.status(500).json({ error: 'Failed to delete product' });
+  }
+});
+
+// Additional product photos (gallery) — beyond the one primary photo
+// captured at creation time. Capped at 4 extra (5 total with the
+// primary) so a vendor can't unintentionally balloon a single row's
+// storage; each photo is size-capped the same way the primary is.
+const MAX_EXTRA_PRODUCT_IMAGES = 4;
+
+app.post('/api/vendor/products/:id/images', requireAuth, requireVendor, async (req, res) => {
+  const { imageDataUrl } = req.body || {};
+  if (!imageDataUrl) return res.status(400).json({ error: 'An image is required' });
+  if (imageDataUrl.length > MAX_PRODUCT_IMAGE_BYTES) {
+    return res.status(400).json({ error: 'Product image is too large — please use an image under ~500KB.' });
+  }
+  try {
+    const existing = await db.getProductById(req.params.id);
+    if (!existing) return res.status(404).json({ error: 'Product not found' });
+    if (existing.vendorId !== req.user.id) return res.status(403).json({ error: 'Not your product' });
+    const currentCount = await db.countProductImages(req.params.id);
+    if (currentCount >= MAX_EXTRA_PRODUCT_IMAGES) {
+      return res.status(400).json({ error: `A product can have at most ${MAX_EXTRA_PRODUCT_IMAGES + 1} photos total (1 primary + ${MAX_EXTRA_PRODUCT_IMAGES} more).` });
+    }
+    const image = await db.addProductImage({ id: crypto.randomUUID(), productId: req.params.id, imageDataUrl });
+    res.json({ ok: true, image });
+  } catch (err) {
+    console.error('POST /api/vendor/products/:id/images failed', err);
+    res.status(500).json({ error: 'Failed to add photo' });
+  }
+});
+
+app.delete('/api/vendor/products/:id/images/:imageId', requireAuth, requireVendor, async (req, res) => {
+  try {
+    const existing = await db.getProductById(req.params.id);
+    if (!existing) return res.status(404).json({ error: 'Product not found' });
+    if (existing.vendorId !== req.user.id) return res.status(403).json({ error: 'Not your product' });
+    const deleted = await db.deleteProductImage(req.params.imageId, req.params.id);
+    if (!deleted) return res.status(404).json({ error: 'Photo not found' });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('DELETE /api/vendor/products/:id/images/:imageId failed', err);
+    res.status(500).json({ error: 'Failed to remove photo' });
+  }
+});
+
+// ============================================================
+// Super Admin product moderation — until now Super Admin could only
+// disable an entire vendor account, with no way to act on a single bad
+// listing without taking down every other product that vendor sells.
+// "Hide" (isActive=false) is the reversible default — it just removes
+// the product from the storefront/deals feed (see
+// getActiveProductsForStorefront's WHERE clause) without touching
+// anything else about the vendor's account. "Remove" is a hard delete
+// for content that shouldn't exist at all; purchase history is
+// unaffected since purchase_items snapshots the product name/price and
+// only SETs NULL its product_id link (see schema.sql).
+// ============================================================
+app.get('/api/super-admin/marketplace/products', requireAuth, requireSuperAdmin, async (req, res) => {
+  try {
+    const products = await db.getAllProductsForModeration();
+    res.json({ products });
+  } catch (err) {
+    console.error('GET /api/super-admin/marketplace/products failed', err);
+    res.status(500).json({ error: 'Failed to load products' });
+  }
+});
+
+app.put('/api/super-admin/marketplace/products/:id/moderation', requireAuth, requireSuperAdmin, async (req, res) => {
+  const { isActive } = req.body || {};
+  if (typeof isActive !== 'boolean') {
+    return res.status(400).json({ error: 'isActive must be true or false' });
+  }
+  try {
+    const existing = await db.getProductById(req.params.id);
+    if (!existing) return res.status(404).json({ error: 'Product not found' });
+    const product = await db.updateProduct(req.params.id, { isActive });
+    await logAudit(req, isActive ? 'product.reactivate' : 'product.hide', {
+      targetType: 'product', targetId: product.id, targetLabel: product.name,
+      details: { vendorId: product.vendorId },
+    });
+    res.json({ ok: true, product });
+  } catch (err) {
+    console.error('PUT /api/super-admin/marketplace/products/:id/moderation failed', err);
+    res.status(500).json({ error: 'Failed to update product' });
+  }
+});
+
+app.delete('/api/super-admin/marketplace/products/:id', requireAuth, requireSuperAdmin, async (req, res) => {
+  try {
+    const existing = await db.getProductById(req.params.id);
+    if (!existing) return res.status(404).json({ error: 'Product not found' });
+    await db.deleteProduct(req.params.id);
+    await logAudit(req, 'product.remove', {
+      targetType: 'product', targetId: existing.id, targetLabel: existing.name,
+      details: { vendorId: existing.vendorId },
+    });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('DELETE /api/super-admin/marketplace/products/:id failed', err);
+    res.status(500).json({ error: 'Failed to remove product' });
   }
 });
 
