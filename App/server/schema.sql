@@ -397,3 +397,71 @@ CREATE TABLE IF NOT EXISTS store_follows (
 );
 CREATE INDEX IF NOT EXISTS idx_store_follows_customer_id ON store_follows (customer_id);
 CREATE INDEX IF NOT EXISTS idx_store_follows_vendor_id ON store_follows (vendor_id);
+
+-- ============================================================
+-- Commission & payout tracking (Super Admin) — real, calculated from
+-- actual purchase/order data, not fabricated display numbers. Two
+-- concepts, deliberately kept separate:
+--   - a commission RATE (percent): how much of a vendor's or delivery
+--     company's revenue the platform keeps. Configurable globally,
+--     with an optional per-account override.
+--   - a payout: a real, recorded event of the platform actually
+--     paying a vendor/delivery company their net share for a given
+--     period. Recording one is how Super Admin marks money as paid;
+--     nothing here moves real money — this is a ledger, same spirit
+--     as expenses/price_presets elsewhere in this file.
+-- ============================================================
+
+-- Single-row table, same pattern as `settings` above.
+CREATE TABLE IF NOT EXISTS platform_settings (
+    id                              TEXT PRIMARY KEY DEFAULT 'platform',
+    marketplace_commission_percent  NUMERIC(5,2) NOT NULL DEFAULT 10,
+    delivery_commission_percent     NUMERIC(5,2) NOT NULL DEFAULT 15,
+    updated_at                      TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- Optional per-account override — NULL means "use the platform
+-- default above". Only meaningful for role = 'vendor' (marketplace)
+-- or role = 'delivery_company' (delivery) accounts.
+ALTER TABLE users ADD COLUMN IF NOT EXISTS commission_rate_override NUMERIC(5,2);
+
+-- A real, recorded payout event. gross/commission/net are snapshotted
+-- at the time it's recorded (not recalculated later), so a later
+-- platform commission-rate change never silently rewrites a payout
+-- that's already gone out in real life.
+CREATE TABLE IF NOT EXISTS payouts (
+    id                TEXT PRIMARY KEY,
+    recipient_type    TEXT NOT NULL CHECK (recipient_type IN ('vendor', 'delivery_company')),
+    recipient_id      TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    period_start      TIMESTAMPTZ NOT NULL,
+    period_end        TIMESTAMPTZ NOT NULL,
+    gross_amount      NUMERIC(10, 2) NOT NULL,
+    commission_rate   NUMERIC(5, 2) NOT NULL,
+    commission_amount NUMERIC(10, 2) NOT NULL,
+    net_amount        NUMERIC(10, 2) NOT NULL,
+    notes             TEXT,
+    created_by        TEXT REFERENCES users(id) ON DELETE SET NULL,
+    created_at        TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_payouts_recipient_id ON payouts (recipient_id, created_at DESC);
+
+-- ============================================================
+-- Audit log — a real, append-only record of sensitive Super Admin
+-- actions (approvals, disables, permission/commission changes,
+-- payouts, account edits). The app never updates or deletes rows
+-- here — that's the whole point of an audit trail.
+-- ============================================================
+CREATE TABLE IF NOT EXISTS audit_log (
+    id           TEXT PRIMARY KEY,
+    actor_id     TEXT REFERENCES users(id) ON DELETE SET NULL,
+    actor_name   TEXT NOT NULL,
+    actor_role   TEXT NOT NULL,
+    action       TEXT NOT NULL,
+    target_type  TEXT,
+    target_id    TEXT,
+    target_label TEXT,
+    details      JSONB NOT NULL DEFAULT '{}',
+    created_at   TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_audit_log_created_at ON audit_log (created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_audit_log_actor_id ON audit_log (actor_id, created_at DESC);

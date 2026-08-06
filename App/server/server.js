@@ -73,6 +73,31 @@ async function checkFeatureEnabled(user, featureKey) {
   return !(await db.isFeatureDisabledForUser(user.id, featureKey));
 }
 
+// Append-only audit trail for Super Admin actions. Best-effort by
+// design: a logging failure must never block or roll back the action
+// it's describing, so failures are swallowed here (after being logged
+// server-side) rather than surfaced to the caller. req.user comes from
+// the verified JWT payload (see auth.js signToken) and already carries
+// id/role/businessName/email, so no extra DB lookup is needed just to
+// know who did this.
+async function logAudit(req, action, { targetType, targetId, targetLabel, details } = {}) {
+  try {
+    await db.createAuditLogEntry({
+      id: crypto.randomUUID(),
+      actorId: req.user?.id || null,
+      actorName: req.user?.businessName || req.user?.email || 'Unknown',
+      actorRole: req.user?.role || 'unknown',
+      action,
+      targetType: targetType || null,
+      targetId: targetId || null,
+      targetLabel: targetLabel || null,
+      details: details || {},
+    });
+  } catch (err) {
+    console.error(`logAudit failed for action "${action}"`, err);
+  }
+}
+
 // Sign in with Google — optional, same graceful-degradation pattern as
 // Twilio below. Unset means the feature simply isn't available yet;
 // nothing else in the app depends on it.
@@ -189,17 +214,27 @@ io.use(socketAuth); // every socket connection must present a valid JWT
 //     browsers/devices sync with each other, and only see their own orders.
 //   - Every admin socket joins `admins` — admins see every order from every
 //     sender, live, across all their own devices too.
-//   - Every delivery_company socket ALSO joins `pending-orders` — a
-//     deliberately separate room from `admins`, so companies get real-time
-//     visibility into new, unassigned orders (matching the "any approved
-//     company's agents can accept a pending order" design) without also
-//     receiving Manage Agent's other business events (expenses, price
-//     presets, settings) that `admins` carries and shouldn't leak to a
-//     third-party company.
-// An order event is therefore always emitted to: the owning sender's room,
-// `admins`, and `pending-orders`.
-function orderRooms(senderId) {
-  return [`user:${senderId}`, 'admins', 'pending-orders'];
+//   - Every delivery_company socket joins TWO rooms: `pending-orders` (a
+//     shared pool, deliberately not company-scoped, so every approved
+//     company gets real-time visibility into new, unassigned orders any of
+//     them could accept) AND its own `delivery-company:<their id>` room —
+//     a real per-tenant room, the same idea as `vendor:<id>` below.
+//     Previously `pending-orders` was the ONLY room a delivery-company
+//     socket ever joined, so once an order was accepted by one company,
+//     every further update to it (amount, agent, payment method, admin
+//     edits) still broadcast to `pending-orders` and therefore leaked to
+//     every OTHER company too — not just the one that accepted it. Adding
+//     the per-company room and having orderRooms() below switch to it once
+//     an order is claimed closes that leak.
+// orderRooms(order) picks the right room set for THIS order's current
+// state: still-pending/unclaimed orders (no deliveryCompanyId yet)
+// broadcast to the whole `pending-orders` pool, since any company might
+// accept them; once claimed, only that one company's own room gets
+// further updates.
+function orderRooms(order) {
+  const rooms = [`user:${order.senderId}`, 'admins'];
+  rooms.push(order.deliveryCompanyId ? `delivery-company:${order.deliveryCompanyId}` : 'pending-orders');
+  return rooms;
 }
 
 io.on('connection', (socket) => {
@@ -211,6 +246,7 @@ io.on('connection', (socket) => {
   socket.join(room);
   if (socket.user.role === 'delivery_company') {
     socket.join('pending-orders');
+    socket.join(`delivery-company:${socket.user.id}`);
   }
   console.log(`[socket] ${socket.user.role} connected: ${socket.user.email} (${socket.id})`);
 
@@ -264,7 +300,7 @@ io.on('connection', (socket) => {
         status: 'pending',
         placedByAdmin: isAdmin,
       });
-      orderRooms(order.senderId).forEach((r) => io.to(r).emit('order:created', order));
+      orderRooms(order).forEach((r) => io.to(r).emit('order:created', order));
       ack && ack({ ok: true, order });
       notifyNewOrder(order); // fire-and-forget — never blocks the order response
     } catch (err) {
@@ -287,7 +323,7 @@ io.on('connection', (socket) => {
         return ack && ack({ ok: false, error: 'Only pending orders (not yet accepted by an agent) can be cancelled' });
       }
       const order = await db.updateOrder(id, { status: 'cancelled' });
-      orderRooms(order.senderId).forEach((r) => io.to(r).emit('order:updated', order));
+      orderRooms(order).forEach((r) => io.to(r).emit('order:updated', order));
       ack && ack({ ok: true, order });
     } catch (err) {
       console.error('order:cancel failed', err);
@@ -304,7 +340,7 @@ io.on('connection', (socket) => {
     }
     try {
       const order = await db.updateOrder(id, fields);
-      orderRooms(order.senderId).forEach((r) => io.to(r).emit('order:updated', order));
+      orderRooms(order).forEach((r) => io.to(r).emit('order:updated', order));
       ack && ack({ ok: true, order });
     } catch (err) {
       console.error('order:update failed', err);
@@ -312,7 +348,7 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on('order:accept', async ({ id, amount, acceptedBy, paymentMethod }, ack) => {
+  socket.on('order:accept', async ({ id, amount, agentId, acceptedBy, paymentMethod }, ack) => {
     if (!isAdminLike(socket.user.role) && socket.user.role !== 'delivery_company') {
       return ack && ack({ ok: false, error: 'Only admins can accept orders' });
     }
@@ -320,25 +356,44 @@ io.on('connection', (socket) => {
       return ack && ack({ ok: false, error: `This feature has been turned off for your account by a Super Admin: ${FEATURE_KEYS.order_actions}` });
     }
     try {
-      const agent = await db.getAgentByName(acceptedBy);
+      // Prefer a real agent id — the collision-safe lookup — over the
+      // legacy name-based one. Agents have no uniqueness constraint on
+      // `name` (see schema.sql), so two agents sharing a name, even
+      // across two different companies, could previously resolve to the
+      // wrong one via getAgentByName()'s unordered `LIMIT 1`: wrongly
+      // denying a delivery company's own accept ("not your agent"), or
+      // worse, wrongly attributing the order's deliveryCompanyId to
+      // someone else's company. acceptedBy (name) is kept ONLY as a
+      // fallback for a browser tab still holding pre-fix JS during a
+      // rolling deploy; every reloaded client now sends agentId.
+      const agent = agentId
+        ? await db.getAgentById(agentId)
+        : (acceptedBy ? await db.getAgentByName(acceptedBy) : null);
       // A delivery company can only accept using one of its own
       // agents — this is the real check, not just trusting whatever
-      // name the client sent.
+      // id/name the client sent.
       if (socket.user.role === 'delivery_company') {
         if (!agent || agent.deliveryCompanyId !== socket.user.id) {
           return ack && ack({ ok: false, error: 'That agent does not belong to your company' });
         }
       }
+      // accepted_by is stored as a permanent, point-in-time snapshot of
+      // the agent's name (see schema.sql) — always derived from the
+      // resolved agent now, not trusted verbatim from the client, so a
+      // stale/mismatched acceptedBy string can no longer end up on the
+      // order. Falls back to the raw client string only in the rare
+      // admin case where no agent record matched at all (preserves prior
+      // permissiveness for admins, who aren't restricted to real agents).
       const order = await db.acceptOrderAtomic(id, {
         amount,
-        acceptedBy,
+        acceptedBy: agent ? agent.name : (acceptedBy || 'Unknown'),
         paymentMethod: paymentMethod || null,
         deliveryCompanyId: agent ? agent.deliveryCompanyId : null,
       });
       if (!order) {
         return ack && ack({ ok: false, error: 'This order was already accepted — someone got there first.' });
       }
-      orderRooms(order.senderId).forEach((r) => io.to(r).emit('order:updated', order));
+      orderRooms(order).forEach((r) => io.to(r).emit('order:updated', order));
       ack && ack({ ok: true, order });
     } catch (err) {
       console.error('order:accept failed', err);
@@ -411,6 +466,20 @@ io.on('connection', (socket) => {
 
   // ---- Fleet Directory (agents) — admin-managed, admin-only --------
 
+  // Agent CRUD previously only ever emitted to `admins` — a delivery
+  // company creating/editing/toggling duty status on its OWN agent got
+  // no real-time echo of that at all, since delivery-company sockets
+  // were never members of `admins` and there was no per-company room to
+  // target instead. Now that each delivery-company socket also joins
+  // `delivery-company:<their id>` (see the room-strategy comment above),
+  // route the same event there too when the agent belongs to one.
+  function emitAgentEvent(eventName, agent) {
+    io.to('admins').emit(eventName, agent);
+    if (agent.deliveryCompanyId) {
+      io.to(`delivery-company:${agent.deliveryCompanyId}`).emit(eventName, agent);
+    }
+  }
+
   socket.on('agent:create', async ({ name, phone }, ack) => {
     if (!isAdminLike(socket.user.role) && socket.user.role !== 'delivery_company') {
       return ack && ack({ ok: false, error: 'Only admins can add agents' });
@@ -423,7 +492,7 @@ io.on('connection', (socket) => {
     }
     try {
       const agent = await db.createAgent({ id: crypto.randomUUID(), name: name.trim(), phone: phone.trim(), deliveryCompanyId: socket.user.id });
-      io.to('admins').emit('agent:created', agent);
+      emitAgentEvent('agent:created', agent);
       ack && ack({ ok: true, agent });
     } catch (err) {
       console.error('agent:create failed', err);
@@ -450,7 +519,7 @@ io.on('connection', (socket) => {
       }
       const agent = await db.updateAgent(id, { name: name.trim(), phone: phone.trim() });
       if (!agent) return ack && ack({ ok: false, error: 'Agent not found' });
-      io.to('admins').emit('agent:updated', agent);
+      emitAgentEvent('agent:updated', agent);
       ack && ack({ ok: true, agent });
     } catch (err) {
       console.error('agent:update failed', err);
@@ -479,7 +548,7 @@ io.on('connection', (socket) => {
       }
       const agent = await db.updateAgentDutyStatus(id, dutyStatus);
       if (!agent) return ack && ack({ ok: false, error: 'Agent not found' });
-      io.to('admins').emit('agent:updated', agent);
+      emitAgentEvent('agent:updated', agent);
       ack && ack({ ok: true, agent });
     } catch (err) {
       console.error('agent:set-duty-status failed', err);
@@ -1113,6 +1182,7 @@ app.post('/api/super-admin/customers', requireAuth, requireSuperAdmin, async (re
       passwordHash,
       role: 'sender',
     });
+    await logAudit(req, 'customer.create', { targetType: 'user', targetId: customer.id, targetLabel: customer.businessName });
     res.json({ customer });
   } catch (err) {
     console.error('POST /api/super-admin/customers failed', err);
@@ -1132,6 +1202,7 @@ app.put('/api/super-admin/customers/:id', requireAuth, requireSuperAdmin, async 
     }
     const updated = await db.updateCustomerByAdmin(req.params.id, { businessName, email, phone });
     if (!updated) return res.status(404).json({ error: 'Customer not found' });
+    await logAudit(req, 'customer.update', { targetType: 'user', targetId: updated.id, targetLabel: updated.businessName });
     res.json({ customer: updated });
   } catch (err) {
     console.error('PUT /api/super-admin/customers/:id failed', err);
@@ -1146,6 +1217,7 @@ app.delete('/api/super-admin/customers/:id', requireAuth, requireSuperAdmin, asy
   try {
     const deleted = await db.deleteCustomer(req.params.id);
     if (!deleted) return res.status(404).json({ error: 'Customer not found' });
+    await logAudit(req, 'customer.delete', { targetType: 'user', targetId: req.params.id });
     res.json({ ok: true });
   } catch (err) {
     console.error('DELETE /api/super-admin/customers/:id failed', err);
@@ -1167,6 +1239,7 @@ app.put('/api/super-admin/customers/:id/password', requireAuth, requireSuperAdmi
     if (!target || target.role !== 'sender') return res.status(404).json({ error: 'Customer not found' });
     const passwordHash = await hashPassword(password);
     await db.updateUserPassword(req.params.id, passwordHash);
+    await logAudit(req, 'customer.password_reset', { targetType: 'user', targetId: target.id, targetLabel: target.businessName });
     res.json({ ok: true });
   } catch (err) {
     console.error('PUT /api/super-admin/customers/:id/password failed', err);
@@ -1259,6 +1332,7 @@ app.post('/api/super-admin/vendors', requireAuth, requireSuperAdmin, async (req,
       role: 'vendor',
       approvalStatus: 'approved',
     });
+    await logAudit(req, 'vendor.create', { targetType: 'user', targetId: vendor.id, targetLabel: vendor.businessName });
     res.json({ vendor });
   } catch (err) {
     console.error('POST /api/super-admin/vendors failed', err);
@@ -1303,6 +1377,7 @@ app.put('/api/super-admin/manage-agent/:id', requireAuth, requireSuperAdmin, asy
     const updated = await db.updateManageAgentAccount(req.params.id, { businessName, email, phone });
     if (!updated) return res.status(404).json({ error: 'Manage Agent account not found' });
     const emailChanged = updated.email.toLowerCase() !== ADMIN_EMAIL.toLowerCase();
+    await logAudit(req, 'manage_agent.update', { targetType: 'user', targetId: updated.id, targetLabel: updated.businessName });
     res.json({
       manageAgent: { id: updated.id, businessName: updated.businessName, email: updated.email, phone: updated.phone },
       emailChangedWarning: emailChanged
@@ -1325,6 +1400,7 @@ app.put('/api/super-admin/manage-agent/:id/password', requireAuth, requireSuperA
     if (!target || target.role !== 'admin') return res.status(404).json({ error: 'Manage Agent account not found' });
     const passwordHash = await hashPassword(password);
     await db.updateUserPassword(req.params.id, passwordHash);
+    await logAudit(req, 'manage_agent.password_reset', { targetType: 'user', targetId: target.id, targetLabel: target.businessName });
     res.json({ ok: true });
   } catch (err) {
     console.error('PUT /api/super-admin/manage-agent/:id/password failed', err);
@@ -1355,6 +1431,7 @@ app.put('/api/super-admin/manage-agent/:id/features', requireAuth, requireSuperA
   try {
     const updated = await db.setDisabledFeatures(req.params.id, disabledFeatures);
     if (!updated) return res.status(404).json({ error: 'Manage Agent account not found' });
+    await logAudit(req, 'manage_agent.features_update', { targetType: 'user', targetId: updated.id, targetLabel: updated.businessName, details: { disabledFeatures } });
     res.json({ ok: true, disabledFeatures: updated.disabledFeatures });
   } catch (err) {
     console.error('PUT /api/super-admin/manage-agent/:id/features failed', err);
@@ -1380,6 +1457,7 @@ app.post('/api/super-admin/vendors/:id/approve', requireAuth, requireSuperAdmin,
   try {
     const vendor = await db.setVendorApprovalStatus(req.params.id, 'approved');
     if (!vendor) return res.status(404).json({ error: 'Vendor not found' });
+    await logAudit(req, 'vendor.approve', { targetType: 'user', targetId: vendor.id, targetLabel: vendor.businessName });
     res.json({ ok: true, vendor: { id: vendor.id, businessName: vendor.businessName, approvalStatus: vendor.approvalStatus } });
   } catch (err) {
     console.error('POST vendor approve failed', err);
@@ -1391,6 +1469,7 @@ app.post('/api/super-admin/vendors/:id/reject', requireAuth, requireSuperAdmin, 
   try {
     const vendor = await db.setVendorApprovalStatus(req.params.id, 'rejected');
     if (!vendor) return res.status(404).json({ error: 'Vendor not found' });
+    await logAudit(req, 'vendor.reject', { targetType: 'user', targetId: vendor.id, targetLabel: vendor.businessName });
     res.json({ ok: true, vendor: { id: vendor.id, businessName: vendor.businessName, approvalStatus: vendor.approvalStatus } });
   } catch (err) {
     console.error('POST vendor reject failed', err);
@@ -1436,6 +1515,7 @@ app.post('/api/super-admin/delivery-companies', requireAuth, requireSuperAdmin, 
       role: 'delivery_company',
       approvalStatus: 'approved',
     });
+    await logAudit(req, 'delivery_company.create', { targetType: 'user', targetId: deliveryCompany.id, targetLabel: deliveryCompany.businessName });
     res.json({ deliveryCompany });
   } catch (err) {
     console.error('POST /api/super-admin/delivery-companies failed', err);
@@ -1472,6 +1552,7 @@ app.put('/api/super-admin/users/:id/disable-status', requireAuth, requireSuperAd
   try {
     const updated = await db.setUserDisabled(req.params.id, disabled);
     if (!updated) return res.status(404).json({ error: 'Account not found, or it belongs to a Super Admin (not allowed)' });
+    await logAudit(req, disabled ? 'user.disable' : 'user.enable', { targetType: 'user', targetId: updated.id, targetLabel: updated.businessName });
     res.json({ ok: true, user: { id: updated.id, businessName: updated.businessName, isDisabled: updated.isDisabled } });
   } catch (err) {
     console.error('PUT disable-status failed', err);
@@ -1483,6 +1564,7 @@ app.post('/api/super-admin/delivery-companies/:id/approve', requireAuth, require
   try {
     const company = await db.setDeliveryCompanyApprovalStatus(req.params.id, 'approved');
     if (!company) return res.status(404).json({ error: 'Delivery company not found' });
+    await logAudit(req, 'delivery_company.approve', { targetType: 'user', targetId: company.id, targetLabel: company.businessName });
     res.json({ ok: true, deliveryCompany: { id: company.id, businessName: company.businessName, approvalStatus: company.approvalStatus } });
   } catch (err) {
     console.error('POST delivery company approve failed', err);
@@ -1494,6 +1576,7 @@ app.post('/api/super-admin/delivery-companies/:id/reject', requireAuth, requireS
   try {
     const company = await db.setDeliveryCompanyApprovalStatus(req.params.id, 'rejected');
     if (!company) return res.status(404).json({ error: 'Delivery company not found' });
+    await logAudit(req, 'delivery_company.reject', { targetType: 'user', targetId: company.id, targetLabel: company.businessName });
     res.json({ ok: true, deliveryCompany: { id: company.id, businessName: company.businessName, approvalStatus: company.approvalStatus } });
   } catch (err) {
     console.error('POST delivery company reject failed', err);
@@ -1523,6 +1606,7 @@ app.post('/api/super-admin/vendors/:id/impersonate', requireAuth, requireSuperAd
     const superAdmin = await db.getUserById(req.user.id);
     const token = signImpersonationToken(vendor, superAdmin);
     console.log(`[impersonation] Super Admin ${superAdmin.email} entered vendor dashboard for "${vendor.businessName}" (${vendor.email})`);
+    await logAudit(req, 'vendor.impersonate', { targetType: 'user', targetId: vendor.id, targetLabel: vendor.businessName });
     res.json({
       token,
       user: { id: vendor.id, businessName: vendor.businessName, email: vendor.email, role: vendor.role, approvalStatus: vendor.approvalStatus },
@@ -1530,6 +1614,168 @@ app.post('/api/super-admin/vendors/:id/impersonate', requireAuth, requireSuperAd
   } catch (err) {
     console.error('POST vendor impersonate failed', err);
     res.status(500).json({ error: 'Failed to enter vendor dashboard' });
+  }
+});
+
+// ============================================================
+// Commission & Payouts — Super Admin only. Two-tier commission model:
+// a global default rate per recipient type (marketplace vendors vs.
+// delivery companies) in platform_settings, with an optional per-
+// account override on the user (commission_rate_override). Payouts
+// are real records — gross/commission/net are snapshotted at creation
+// time and never recalculated retroactively if rates change later.
+// ============================================================
+app.get('/api/super-admin/settings/commission', requireAuth, requireSuperAdmin, async (req, res) => {
+  try {
+    const settings = await db.getPlatformSettings();
+    res.json({ settings });
+  } catch (err) {
+    console.error('GET /api/super-admin/settings/commission failed', err);
+    res.status(500).json({ error: 'Failed to load commission settings' });
+  }
+});
+
+app.put('/api/super-admin/settings/commission', requireAuth, requireSuperAdmin, async (req, res) => {
+  const { marketplaceCommissionPercent, deliveryCommissionPercent } = req.body || {};
+  const fields = { marketplaceCommissionPercent, deliveryCommissionPercent };
+  for (const [key, val] of Object.entries(fields)) {
+    if (val === undefined) continue;
+    if (typeof val !== 'number' || isNaN(val) || val < 0 || val > 100) {
+      return res.status(400).json({ error: `${key} must be a number between 0 and 100` });
+    }
+  }
+  try {
+    const settings = await db.upsertPlatformSettings(fields);
+    await logAudit(req, 'settings.commission_update', { targetType: 'platform_settings', targetId: 'platform', details: fields });
+    res.json({ ok: true, settings });
+  } catch (err) {
+    console.error('PUT /api/super-admin/settings/commission failed', err);
+    res.status(500).json({ error: 'Failed to update commission settings' });
+  }
+});
+
+// Per-account commission rate override — vendors and delivery
+// companies share the same handler shape, so one route body is
+// parameterized by role rather than duplicated.
+function handleCommissionOverride(role) {
+  return async (req, res) => {
+    const { rate } = req.body || {};
+    if (rate !== null && (typeof rate !== 'number' || isNaN(rate) || rate < 0 || rate > 100)) {
+      return res.status(400).json({ error: 'rate must be a number between 0 and 100, or null to clear the override' });
+    }
+    try {
+      const target = await db.getUserById(req.params.id);
+      if (!target || target.role !== role) return res.status(404).json({ error: 'Account not found' });
+      const updated = await db.setCommissionRateOverride(req.params.id, rate);
+      await logAudit(req, `${role}.commission_rate_override`, { targetType: 'user', targetId: target.id, targetLabel: target.businessName, details: { rate } });
+      res.json({ ok: true, commissionRateOverride: updated.commissionRateOverride });
+    } catch (err) {
+      console.error(`PUT commission-rate override (${role}) failed`, err);
+      res.status(500).json({ error: 'Failed to update commission rate' });
+    }
+  };
+}
+app.put('/api/super-admin/vendors/:id/commission-rate', requireAuth, requireSuperAdmin, handleCommissionOverride('vendor'));
+app.put('/api/super-admin/delivery-companies/:id/commission-rate', requireAuth, requireSuperAdmin, handleCommissionOverride('delivery_company'));
+
+// Current standing for every approved vendor/delivery company — gross
+// revenue earned all-time, commission at their effective rate, and
+// what's already been paid out vs. still outstanding. Real data only:
+// gross comes from actual purchases/delivered orders, nothing
+// estimated or fabricated.
+app.get('/api/super-admin/payouts/summary', requireAuth, requireSuperAdmin, async (req, res) => {
+  try {
+    const summary = await db.getPayoutSummary();
+    res.json(summary);
+  } catch (err) {
+    console.error('GET /api/super-admin/payouts/summary failed', err);
+    res.status(500).json({ error: 'Failed to load payout summary' });
+  }
+});
+
+// Recording a real payout — a Super Admin marking that a specific
+// amount was actually paid out to a vendor/delivery company for a
+// given period. commission_amount/net_amount are computed and
+// snapshotted here at creation time (see db.createPayout) — they will
+// never drift if the platform's commission rate changes afterward.
+app.post('/api/super-admin/payouts', requireAuth, requireSuperAdmin, async (req, res) => {
+  const { recipientType, recipientId, periodStart, periodEnd, grossAmount, commissionRate, notes } = req.body || {};
+  if (!['vendor', 'delivery_company'].includes(recipientType)) {
+    return res.status(400).json({ error: 'recipientType must be "vendor" or "delivery_company"' });
+  }
+  if (!recipientId || !periodStart || !periodEnd) {
+    return res.status(400).json({ error: 'recipientId, periodStart, and periodEnd are required' });
+  }
+  if (typeof grossAmount !== 'number' || isNaN(grossAmount) || grossAmount < 0) {
+    return res.status(400).json({ error: 'grossAmount must be a non-negative number' });
+  }
+  if (typeof commissionRate !== 'number' || isNaN(commissionRate) || commissionRate < 0 || commissionRate > 100) {
+    return res.status(400).json({ error: 'commissionRate must be a number between 0 and 100' });
+  }
+  try {
+    const target = await db.getUserById(recipientId);
+    if (!target || target.role !== recipientType) return res.status(404).json({ error: 'Recipient not found' });
+    const payout = await db.createPayout({
+      id: crypto.randomUUID(),
+      recipientType, recipientId, periodStart, periodEnd, grossAmount, commissionRate,
+      notes: notes || null,
+      createdBy: req.user.id,
+    });
+    await logAudit(req, 'payout.create', {
+      targetType: 'user', targetId: target.id, targetLabel: target.businessName,
+      details: { payoutId: payout.id, grossAmount, netAmount: payout.netAmount, recipientType },
+    });
+    res.json({ ok: true, payout });
+  } catch (err) {
+    console.error('POST /api/super-admin/payouts failed', err);
+    res.status(500).json({ error: 'Failed to record payout' });
+  }
+});
+
+// Payout history — optionally filtered to a single recipient (used by
+// the per-vendor/per-company detail view); otherwise platform-wide,
+// most recent first.
+app.get('/api/super-admin/payouts', requireAuth, requireSuperAdmin, async (req, res) => {
+  try {
+    const limit = Math.min(200, Math.max(1, parseInt(req.query.limit, 10) || 50));
+    const payouts = await db.getPayouts({ recipientId: req.query.recipientId || undefined, limit });
+    res.json({ payouts });
+  } catch (err) {
+    console.error('GET /api/super-admin/payouts failed', err);
+    res.status(500).json({ error: 'Failed to load payouts' });
+  }
+});
+
+// ============================================================
+// Audit Log — Super Admin only. Read-only, append-only trail of
+// every sensitive action taken from the Super Admin console (see the
+// logAudit() calls threaded through this file). Paginated with a
+// created_at cursor (`before`) rather than offset, since new entries
+// are always being appended.
+// ============================================================
+app.get('/api/super-admin/audit-log', requireAuth, requireSuperAdmin, async (req, res) => {
+  try {
+    const limit = Math.min(200, Math.max(1, parseInt(req.query.limit, 10) || 50));
+    const entries = await db.getAuditLog({
+      limit,
+      before: req.query.before || undefined,
+      action: req.query.action || undefined,
+      actorId: req.query.actorId || undefined,
+    });
+    res.json({ entries });
+  } catch (err) {
+    console.error('GET /api/super-admin/audit-log failed', err);
+    res.status(500).json({ error: 'Failed to load audit log' });
+  }
+});
+
+app.get('/api/super-admin/audit-log/actions', requireAuth, requireSuperAdmin, async (req, res) => {
+  try {
+    const actions = await db.getAuditActionKeys();
+    res.json({ actions });
+  } catch (err) {
+    console.error('GET /api/super-admin/audit-log/actions failed', err);
+    res.status(500).json({ error: 'Failed to load audit actions' });
   }
 });
 
@@ -2228,7 +2474,7 @@ app.post('/api/marketplace/checkout', requireAuth, async (req, res) => {
     if (result.deliveryOrderId) {
       const deliveryOrder = await db.getOrder(result.deliveryOrderId);
       if (deliveryOrder) {
-        orderRooms(deliveryOrder.senderId).forEach((r) => io.to(r).emit('order:created', deliveryOrder));
+        orderRooms(deliveryOrder).forEach((r) => io.to(r).emit('order:created', deliveryOrder));
         notifyNewOrder(deliveryOrder);
       }
     }

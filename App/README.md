@@ -3842,3 +3842,132 @@ the Admin dashboard's sidebar colors are completely unchanged.
 
 Happy to tackle the actions dropdown as a focused, careful follow-up
 if you'd like it, given the shared-function risk involved.
+
+## Commission/payout tracking + Super Admin audit log
+
+Two of the gaps flagged in a Super Admin feature review: no way to
+see what vendors/delivery companies actually owe the platform, and no
+record of what a Super Admin has changed. Both are now real, working
+features, not scaffolding.
+
+### Commission & Payouts
+
+- **Two-tier commission model**: a platform-wide default rate per
+  recipient type (`platform_settings.marketplace_commission_percent` /
+  `delivery_commission_percent`, both editable from the new "Payouts &
+  Commission" panel), plus an optional per-account override
+  (`users.commission_rate_override`) — set by clicking any account's
+  rate in the standing table. Clearing the override falls back to the
+  platform default automatically.
+- **Real gross revenue, not estimated**: vendor gross comes from
+  `SUM(purchases.total_amount)`; delivery company gross comes from
+  `SUM(orders.amount)` on delivered orders — the same tables that
+  already power the rest of the app's real stats.
+- **Payouts are snapshotted, not recalculated**: recording a payout
+  stores the gross amount, the commission rate *at that moment*, and
+  the resulting commission/net amounts directly on the `payouts` row.
+  Changing the platform's default rate afterward never rewrites past
+  payout history.
+- New endpoints: `GET/PUT /api/super-admin/settings/commission`,
+  `PUT /api/super-admin/{vendors|delivery-companies}/:id/commission-rate`,
+  `GET /api/super-admin/payouts/summary`, `POST/GET /api/super-admin/payouts`.
+
+### Audit Log
+
+- Every sensitive Super Admin action now writes an append-only entry:
+  customer/vendor/delivery-company create/update/delete, approve/
+  reject, account disable/enable, Manage Agent edits (profile,
+  password, permissions), commission rate changes, payouts recorded,
+  and vendor dashboard impersonation.
+- Logging is best-effort and non-blocking — if writing the audit
+  entry fails for any reason, the action it's describing still
+  completes; only the log write itself is swallowed (and logged to
+  the server console) so a logging hiccup can never block real work.
+- New "Audit Log" panel (Super Admin sidebar/More menu): filterable
+  by action, paginated with a Load More button using a `created_at`
+  cursor rather than an offset, since new entries are always being
+  appended underneath whatever's currently loaded.
+- New endpoints: `GET /api/super-admin/audit-log`,
+  `GET /api/super-admin/audit-log/actions`.
+
+### Known limitation
+
+Both features were built and syntax-verified (`node --check` on the
+full backend, plus a Playwright pass rendering both new panels on
+desktop and mobile with mocked data) but **not exercised against a
+live Postgres database** — this sandbox has no database and no
+registry access to install `node_modules`, so a real end-to-end run
+(server boot → schema migration → live API calls) hasn't happened
+yet. Test both panels against a real database before relying on them
+in production; the schema uses the same `IF NOT EXISTS`-idempotent
+pattern as every other table in `schema.sql`, so it's safe to deploy
+alongside existing data.
+
+## Two correctness fixes: agent lookup by id, and Socket.io room leakage between delivery companies
+
+Two live bugs flagged during the same Super Admin feature review, not
+new features — both fixed and verified this round.
+
+### Agent lookups now resolve by id, not name
+
+`agents.name` has no uniqueness constraint (see `schema.sql`) — nothing
+ever stopped two agents from sharing a name, including agents
+belonging to two *different* delivery companies. `order:accept`
+(`server.js`) used to resolve "which agent is accepting this order"
+with `db.getAgentByName()`, an unordered `SELECT ... LIMIT 1`. With a
+name collision, that could match the wrong agent entirely — wrongly
+denying a delivery company's own accept ("that agent doesn't belong to
+your company"), or worse, silently attributing the order's
+`deliveryCompanyId` to the wrong company.
+
+Fixed by sending the agent's real `id` from both places an order gets
+accepted (the delivery-company "Accept Order" modal, and the admin
+"Set Amount / Accept" modal) — both already had the id available on
+the agent record, they just weren't using it. `order:accept` now
+resolves by `db.getAgentById()` first; the old name-based lookup is
+kept only as a fallback for a browser tab still holding pre-fix JS
+during a rolling deploy, so nothing breaks mid-deploy. `accepted_by` on
+the order itself is unchanged — still a permanent name snapshot, by
+design (see the existing comment in `schema.sql`), just now always
+derived from the correctly-resolved agent instead of trusted verbatim
+from the client.
+
+Verified with an isolated Playwright test that creates two agents
+sharing the literal name "John Doe" with different ids, submits both
+accept flows, and confirms the exact agent id selected in the dropdown
+is what gets sent — not a name that could resolve to either one.
+
+### Delivery companies no longer see each other's order updates
+
+Every `delivery_company` socket used to join exactly one room —
+`pending-orders` — shared by every approved delivery company with no
+distinction between them. That room is supposed to carry only new,
+unclaimed orders (so any company can see and accept them), but every
+*subsequent* update to an order — the amount and agent once accepted,
+admin edits after that, etc. — was still broadcast through the same
+shared room. In practice, once Company A accepted an order, Company B
+(and every other connected company) kept receiving live updates about
+an order that was no longer theirs to see, including Company A's
+accepted amount, payment method, and which of Company A's agents took
+it.
+
+Fixed by giving each delivery-company socket its own room too —
+`delivery-company:<their id>`, the same pattern already used correctly
+for vendors (`vendor:<id>`) — and having the server pick the room set
+per-order based on whether it's still unclaimed: `orderRooms(order)`
+sends to the shared `pending-orders` pool while `deliveryCompanyId` is
+null, and switches to that one company's own room the moment it's
+accepted. Agent create/update/duty-status events also now echo to the
+owning company's room (previously they only went to `admins`, so a
+company got no live confirmation of changes to its own fleet).
+
+Verified with an isolated unit test asserting the room list for a
+still-pending order includes `pending-orders` and excludes any
+per-company room, and that a claimed order's room list excludes
+`pending-orders` entirely and includes only the owning company's room
+— i.e. the leak path is provably closed at the room-selection logic
+level. A live cross-browser Socket.io test (two real delivery-company
+sessions, confirming company B's socket genuinely receives nothing
+after company A accepts) would need a running server + database,
+which isn't available in this sandbox — worth a manual smoke test
+after deploying.

@@ -113,6 +113,49 @@ function rowToSettings(r) {
   };
 }
 
+function rowToPlatformSettings(r) {
+  if (!r) return null;
+  return {
+    marketplaceCommissionPercent: Number(r.marketplace_commission_percent),
+    deliveryCommissionPercent: Number(r.delivery_commission_percent),
+    updatedAt: r.updated_at,
+  };
+}
+
+function rowToPayout(r) {
+  if (!r) return null;
+  return {
+    id: r.id,
+    recipientType: r.recipient_type,
+    recipientId: r.recipient_id,
+    periodStart: r.period_start,
+    periodEnd: r.period_end,
+    grossAmount: Number(r.gross_amount),
+    commissionRate: Number(r.commission_rate),
+    commissionAmount: Number(r.commission_amount),
+    netAmount: Number(r.net_amount),
+    notes: r.notes,
+    createdBy: r.created_by,
+    createdAt: r.created_at,
+  };
+}
+
+function rowToAuditLogEntry(r) {
+  if (!r) return null;
+  return {
+    id: r.id,
+    actorId: r.actor_id,
+    actorName: r.actor_name,
+    actorRole: r.actor_role,
+    action: r.action,
+    targetType: r.target_type,
+    targetId: r.target_id,
+    targetLabel: r.target_label,
+    details: r.details || {},
+    createdAt: r.created_at,
+  };
+}
+
 function rowToLoginHistory(r) {
   if (!r) return null;
   return {
@@ -155,6 +198,7 @@ function rowToUser(r) {
     profileImageUrl: r.profile_image_url,
     isDisabled: r.is_disabled,
     disabledFeatures: r.disabled_features || [],
+    commissionRateOverride: r.commission_rate_override !== null && r.commission_rate_override !== undefined ? Number(r.commission_rate_override) : null,
   };
 }
 
@@ -430,12 +474,16 @@ const db = {
     return rows.map(rowToAgent);
   },
 
-  // Used when an order is accepted, to derive which company fulfilled
-  // it from the agent's own delivery_company_id. Looks up by name,
-  // since that's what accepted_by currently stores (agents don't have
-  // logins) — matches the first agent with that name if there happen
-  // to be duplicates across companies, a known limitation flagged
-  // separately, not fully fixed here.
+  // LEGACY FALLBACK ONLY. order:accept in server.js now resolves the
+  // agent by id (getAgentById, below) — the real fix for the collision
+  // risk this function has: with no uniqueness constraint on `name`,
+  // two agents sharing a name (even across two different companies)
+  // could match the wrong row via this unordered `LIMIT 1`, silently
+  // misattributing an order's company or wrongly denying a delivery
+  // company's own accept. This still exists only so a browser tab
+  // holding pre-fix JS during a rolling deploy doesn't hard-fail; once
+  // every client has reloaded, this path is never exercised. Do not use
+  // this for any new code — use getAgentById.
   async getAgentByName(name) {
     const { rows } = await pool.query('SELECT * FROM agents WHERE name = $1 LIMIT 1', [name]);
     return rowToAgent(rows[0]);
@@ -790,7 +838,7 @@ const db = {
   // real vendor accounts existed.
   async getVendors() {
     const { rows } = await pool.query(
-      "SELECT id, business_name, email, phone, approval_status, applied_at, created_at, is_disabled FROM users WHERE role = 'vendor' ORDER BY created_at DESC"
+      "SELECT id, business_name, email, phone, approval_status, applied_at, created_at, is_disabled, commission_rate_override FROM users WHERE role = 'vendor' ORDER BY created_at DESC"
     );
     return rows.map(r => ({
       id: r.id,
@@ -801,6 +849,7 @@ const db = {
       appliedAt: r.applied_at,
       createdAt: r.created_at,
       isDisabled: r.is_disabled,
+      commissionRateOverride: r.commission_rate_override !== null && r.commission_rate_override !== undefined ? Number(r.commission_rate_override) : null,
     }));
   },
 
@@ -809,7 +858,7 @@ const db = {
   // above, mirrored exactly, scoped to role = 'delivery_company'). ----
   async getDeliveryCompanies() {
     const { rows } = await pool.query(
-      "SELECT id, business_name, email, phone, approval_status, applied_at, created_at, is_disabled FROM users WHERE role = 'delivery_company' ORDER BY created_at DESC"
+      "SELECT id, business_name, email, phone, approval_status, applied_at, created_at, is_disabled, commission_rate_override FROM users WHERE role = 'delivery_company' ORDER BY created_at DESC"
     );
     return rows.map(r => ({
       id: r.id,
@@ -820,6 +869,7 @@ const db = {
       appliedAt: r.applied_at,
       createdAt: r.created_at,
       isDisabled: r.is_disabled,
+      commissionRateOverride: r.commission_rate_override !== null && r.commission_rate_override !== undefined ? Number(r.commission_rate_override) : null,
     }));
   },
 
@@ -1561,6 +1611,147 @@ const db = {
       totalMarketplaceRevenue: Number(purchaseTotals.rows[0].total_revenue),
       pendingVendorApplications: pendingCount.rows[0].count,
     };
+  },
+
+  // ---- Commission & payouts (Super Admin) ---------------------------
+  // Single-row table, same upsert pattern as Business settings above.
+
+  async getPlatformSettings() {
+    const existing = await pool.query("SELECT * FROM platform_settings WHERE id = 'platform'");
+    if (existing.rows.length === 0) {
+      const { rows } = await pool.query("INSERT INTO platform_settings (id) VALUES ('platform') RETURNING *");
+      return rowToPlatformSettings(rows[0]);
+    }
+    return rowToPlatformSettings(existing.rows[0]);
+  },
+
+  async upsertPlatformSettings({ marketplaceCommissionPercent, deliveryCommissionPercent }) {
+    await this.getPlatformSettings(); // ensures the row exists
+    const sets = [];
+    const values = [];
+    let i = 1;
+    if (marketplaceCommissionPercent !== undefined) { sets.push(`marketplace_commission_percent = $${i}`); values.push(marketplaceCommissionPercent); i += 1; }
+    if (deliveryCommissionPercent !== undefined) { sets.push(`delivery_commission_percent = $${i}`); values.push(deliveryCommissionPercent); i += 1; }
+    sets.push('updated_at = now()');
+    if (sets.length > 1) {
+      await pool.query(`UPDATE platform_settings SET ${sets.join(', ')} WHERE id = 'platform'`, values);
+    }
+    return this.getPlatformSettings();
+  },
+
+  // rate === null clears the override (falls back to the platform
+  // default). Scoped to vendor/delivery_company roles only — enforced
+  // here, not just trusted from the caller.
+  async setCommissionRateOverride(userId, rate) {
+    const { rows } = await pool.query(
+      `UPDATE users SET commission_rate_override = $1
+       WHERE id = $2 AND role IN ('vendor', 'delivery_company') RETURNING *`,
+      [rate, userId]
+    );
+    return rowToUser(rows[0]);
+  },
+
+  // Real, calculated-from-actual-data summary — vendor gross comes
+  // from `purchases`, delivery company gross from delivered `orders`.
+  // Never recalculates past payouts; only used to show current
+  // standing (gross earned all-time vs. already paid out all-time).
+  async getPayoutSummary() {
+    const [vendorRows, companyRows, vendorRevenue, deliveryRevenue, paidOut, platformSettings] = await Promise.all([
+      pool.query("SELECT id, business_name, email, commission_rate_override FROM users WHERE role = 'vendor' AND approval_status = 'approved' ORDER BY business_name"),
+      pool.query("SELECT id, business_name, email, commission_rate_override FROM users WHERE role = 'delivery_company' AND approval_status = 'approved' ORDER BY business_name"),
+      pool.query("SELECT vendor_id, COALESCE(SUM(total_amount), 0)::numeric AS gross FROM purchases GROUP BY vendor_id"),
+      pool.query("SELECT delivery_company_id, COALESCE(SUM(amount), 0)::numeric AS gross FROM orders WHERE status = 'delivered' AND delivery_company_id IS NOT NULL GROUP BY delivery_company_id"),
+      pool.query("SELECT recipient_id, COALESCE(SUM(net_amount), 0)::numeric AS paid FROM payouts GROUP BY recipient_id"),
+      this.getPlatformSettings(),
+    ]);
+    const vendorRevMap = new Map(vendorRevenue.rows.map(r => [r.vendor_id, Number(r.gross)]));
+    const deliveryRevMap = new Map(deliveryRevenue.rows.map(r => [r.delivery_company_id, Number(r.gross)]));
+    const paidMap = new Map(paidOut.rows.map(r => [r.recipient_id, Number(r.paid)]));
+
+    const build = (rows, revMap, recipientType, defaultRate) => rows.map(r => {
+      const gross = revMap.get(r.id) || 0;
+      const override = r.commission_rate_override !== null && r.commission_rate_override !== undefined ? Number(r.commission_rate_override) : null;
+      const effectiveRate = override !== null ? override : defaultRate;
+      const commissionAmount = Math.round(gross * (effectiveRate / 100) * 100) / 100;
+      const netEarned = Math.round((gross - commissionAmount) * 100) / 100;
+      const totalPaidOut = paidMap.get(r.id) || 0;
+      return {
+        id: r.id,
+        businessName: r.business_name,
+        email: r.email,
+        recipientType,
+        commissionRateOverride: override,
+        effectiveRate,
+        grossRevenue: gross,
+        commissionAmount,
+        netEarned,
+        totalPaidOut,
+        outstandingBalance: Math.max(0, Math.round((netEarned - totalPaidOut) * 100) / 100),
+      };
+    });
+
+    return {
+      platformSettings,
+      vendors: build(vendorRows.rows, vendorRevMap, 'vendor', platformSettings.marketplaceCommissionPercent),
+      deliveryCompanies: build(companyRows.rows, deliveryRevMap, 'delivery_company', platformSettings.deliveryCommissionPercent),
+    };
+  },
+
+  async createPayout({ id, recipientType, recipientId, periodStart, periodEnd, grossAmount, commissionRate, notes, createdBy }) {
+    const commissionAmount = Math.round(grossAmount * (commissionRate / 100) * 100) / 100;
+    const netAmount = Math.round((grossAmount - commissionAmount) * 100) / 100;
+    const { rows } = await pool.query(
+      `INSERT INTO payouts (id, recipient_type, recipient_id, period_start, period_end, gross_amount, commission_rate, commission_amount, net_amount, notes, created_by)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *`,
+      [id, recipientType, recipientId, periodStart, periodEnd, grossAmount, commissionRate, commissionAmount, netAmount, notes || null, createdBy || null]
+    );
+    return rowToPayout(rows[0]);
+  },
+
+  async getPayouts({ recipientId, limit = 50 } = {}) {
+    const conditions = [];
+    const values = [];
+    let i = 1;
+    if (recipientId) { conditions.push(`recipient_id = $${i}`); values.push(recipientId); i += 1; }
+    values.push(limit);
+    const { rows } = await pool.query(
+      `SELECT * FROM payouts ${conditions.length ? 'WHERE ' + conditions.join(' AND ') : ''} ORDER BY created_at DESC LIMIT $${i}`,
+      values
+    );
+    return rows.map(rowToPayout);
+  },
+
+  // ---- Audit log ------------------------------------------------------
+  // Append-only by design — no update/delete helper exists here on
+  // purpose, matching how login_history is treated elsewhere.
+
+  async createAuditLogEntry({ id, actorId, actorName, actorRole, action, targetType, targetId, targetLabel, details }) {
+    const { rows } = await pool.query(
+      `INSERT INTO audit_log (id, actor_id, actor_name, actor_role, action, target_type, target_id, target_label, details)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
+      [id, actorId || null, actorName, actorRole, action, targetType || null, targetId || null, targetLabel || null, JSON.stringify(details || {})]
+    );
+    return rowToAuditLogEntry(rows[0]);
+  },
+
+  async getAuditLog({ limit = 50, before, action, actorId } = {}) {
+    const conditions = [];
+    const values = [];
+    let i = 1;
+    if (before) { conditions.push(`created_at < $${i}`); values.push(before); i += 1; }
+    if (action) { conditions.push(`action = $${i}`); values.push(action); i += 1; }
+    if (actorId) { conditions.push(`actor_id = $${i}`); values.push(actorId); i += 1; }
+    values.push(limit);
+    const { rows } = await pool.query(
+      `SELECT * FROM audit_log ${conditions.length ? 'WHERE ' + conditions.join(' AND ') : ''} ORDER BY created_at DESC LIMIT $${i}`,
+      values
+    );
+    return rows.map(rowToAuditLogEntry);
+  },
+
+  async getAuditActionKeys() {
+    const { rows } = await pool.query('SELECT DISTINCT action FROM audit_log ORDER BY action');
+    return rows.map(r => r.action);
   },
 };
 
