@@ -3971,3 +3971,45 @@ sessions, confirming company B's socket genuinely receives nothing
 after company A accepts) would need a running server + database,
 which isn't available in this sandbox — worth a manual smoke test
 after deploying.
+
+## Platform-wide settings (default delivery fee, service area, maintenance mode)
+
+The last of the Super Admin gaps flagged in that same review: there
+was nowhere to set anything platform-wide — no default delivery fee,
+no way to describe the service area, and no maintenance-mode switch.
+All three now live in a new "Platform Settings" panel (Super Admin
+sidebar/More menu), reusing the same single-row `platform_settings`
+table the commission settings already added.
+
+- **Default Delivery Fee** — a suggested starting amount only, never
+  enforced. It prefills the amount field when an admin opens "Set
+  Amount / Accept" on an order, but the field stays fully editable —
+  this is a convenience, not a price floor or ceiling.
+- **Service Area** — free text, shown publicly (see below). Purely
+  informational; doesn't restrict who can place an order.
+- **Maintenance Mode** — a real switch, not just a label. When on, it
+  actually blocks new delivery-order creation (`order:create`) and
+  marketplace checkout (`POST /api/marketplace/checkout`) for every
+  role except Super Admin, with a clear error message back to whoever
+  tried. Everything else — logins, existing orders, every other
+  screen — keeps working normally; this only pauses new orders coming
+  in.
+- **Public visibility** — maintenance mode/message, service area, and
+  the default delivery fee are exposed on the existing, unauthenticated
+  `GET /api/config` endpoint (same one already serving the Google
+  Sign-In client id and legal content to guests), so a maintenance
+  banner shows up for everyone — including guests who haven't logged in
+  yet — not just people already inside a dashboard. New endpoints:
+  `GET/PUT /api/super-admin/settings/platform`.
+
+Verified with a Playwright pass: the settings form loads/saves
+correctly on desktop and mobile, the save round-trip sends the right
+payload, and — the one that actually matters — toggling maintenance
+mode on updates the banner live, immediately, without a page reload,
+and a simulated logged-out guest sees the exact same banner and
+message pulled from the public config endpoint. Same sandbox caveat as
+the two features above: no live database was available to confirm the
+schema migration and the actual order-blocking behavior end-to-end
+against a real server — worth a quick manual check after deploying
+(turn maintenance mode on, confirm a real order attempt gets rejected
+with the message you set, confirm Super Admin can still get through).

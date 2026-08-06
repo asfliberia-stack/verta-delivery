@@ -118,6 +118,10 @@ function rowToPlatformSettings(r) {
   return {
     marketplaceCommissionPercent: Number(r.marketplace_commission_percent),
     deliveryCommissionPercent: Number(r.delivery_commission_percent),
+    defaultDeliveryFee: r.default_delivery_fee !== null && r.default_delivery_fee !== undefined ? Number(r.default_delivery_fee) : null,
+    serviceArea: r.service_area || null,
+    maintenanceMode: !!r.maintenance_mode,
+    maintenanceMessage: r.maintenance_message || null,
     updatedAt: r.updated_at,
   };
 }
@@ -1625,13 +1629,22 @@ const db = {
     return rowToPlatformSettings(existing.rows[0]);
   },
 
-  async upsertPlatformSettings({ marketplaceCommissionPercent, deliveryCommissionPercent }) {
+  // Generic partial-update over the single platform_settings row —
+  // covers commission rates (used by the Payouts & Commission panel)
+  // and the platform-wide settings (default delivery fee, service
+  // area, maintenance mode) added later, so both panels can share one
+  // upsert path instead of drifting into two near-duplicate ones.
+  async upsertPlatformSettings({ marketplaceCommissionPercent, deliveryCommissionPercent, defaultDeliveryFee, serviceArea, maintenanceMode, maintenanceMessage }) {
     await this.getPlatformSettings(); // ensures the row exists
     const sets = [];
     const values = [];
     let i = 1;
     if (marketplaceCommissionPercent !== undefined) { sets.push(`marketplace_commission_percent = $${i}`); values.push(marketplaceCommissionPercent); i += 1; }
     if (deliveryCommissionPercent !== undefined) { sets.push(`delivery_commission_percent = $${i}`); values.push(deliveryCommissionPercent); i += 1; }
+    if (defaultDeliveryFee !== undefined) { sets.push(`default_delivery_fee = $${i}`); values.push(defaultDeliveryFee); i += 1; }
+    if (serviceArea !== undefined) { sets.push(`service_area = $${i}`); values.push(serviceArea); i += 1; }
+    if (maintenanceMode !== undefined) { sets.push(`maintenance_mode = $${i}`); values.push(maintenanceMode); i += 1; }
+    if (maintenanceMessage !== undefined) { sets.push(`maintenance_message = $${i}`); values.push(maintenanceMessage); i += 1; }
     sets.push('updated_at = now()');
     if (sets.length > 1) {
       await pool.query(`UPDATE platform_settings SET ${sets.join(', ')} WHERE id = 'platform'`, values);

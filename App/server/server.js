@@ -262,6 +262,15 @@ io.on('connection', (socket) => {
     if (!isSender && !isAdmin) {
       return ack && ack({ ok: false, error: 'Not allowed to create orders' });
     }
+    // Maintenance mode pauses new order creation platform-wide — super
+    // admin stays exempt, since they're the only role that can turn it
+    // back off and may need to place/test an order while it's on.
+    if (socket.user.role !== 'super_admin') {
+      const platformSettings = await db.getPlatformSettings();
+      if (platformSettings.maintenanceMode) {
+        return ack && ack({ ok: false, error: platformSettings.maintenanceMessage || 'New orders are temporarily paused for maintenance. Please try again shortly.' });
+      }
+    }
     try {
       let senderId = socket.user.id;
       let senderName = socket.user.businessName;
@@ -738,15 +747,24 @@ app.post('/api/auth/login', authLimiter, async (req, res) => {
 // account), not just users who are already signed in.
 app.get('/api/config', async (req, res) => {
   try {
-    const settings = await db.getSettings();
+    const [settings, platformSettings] = await Promise.all([db.getSettings(), db.getPlatformSettings()]);
     res.json({
       googleClientId: GOOGLE_CLIENT_ID || null,
       privacyPolicy: settings.privacyPolicy || null,
       termsOfService: settings.termsOfService || null,
+      // Public, unauthenticated on purpose — a guest who hasn't logged
+      // in yet should still see the maintenance banner / service area
+      // before hitting a wall trying to place an order. Commission
+      // rates and the maintenance message's internal-only cousins stay
+      // behind requireSuperAdmin (see /api/super-admin/settings/*).
+      serviceArea: platformSettings.serviceArea || null,
+      defaultDeliveryFee: platformSettings.defaultDeliveryFee,
+      maintenanceMode: platformSettings.maintenanceMode,
+      maintenanceMessage: platformSettings.maintenanceMessage || null,
     });
   } catch (err) {
     console.error('GET /api/config failed', err);
-    res.json({ googleClientId: GOOGLE_CLIENT_ID || null, privacyPolicy: null, termsOfService: null });
+    res.json({ googleClientId: GOOGLE_CLIENT_ID || null, privacyPolicy: null, termsOfService: null, serviceArea: null, defaultDeliveryFee: null, maintenanceMode: false, maintenanceMessage: null });
   }
 });
 
@@ -1654,6 +1672,65 @@ app.put('/api/super-admin/settings/commission', requireAuth, requireSuperAdmin, 
   }
 });
 
+// ============================================================
+// Platform-wide settings — Super Admin only. Same single-row table as
+// commission settings above (platform_settings), a different slice of
+// it: a default delivery fee (a suggested starting amount only — never
+// enforced, admins can still type any amount when accepting an order),
+// a free-text service area description, and a real maintenance-mode
+// switch that actually blocks new order/purchase creation (see
+// order:create and POST /api/marketplace/checkout) rather than just
+// being a label. maintenanceMode/serviceArea/defaultDeliveryFee are
+// also exposed unauthenticated via GET /api/config, so guests see the
+// maintenance banner and service area before ever logging in.
+// ============================================================
+app.get('/api/super-admin/settings/platform', requireAuth, requireSuperAdmin, async (req, res) => {
+  try {
+    const settings = await db.getPlatformSettings();
+    res.json({ settings });
+  } catch (err) {
+    console.error('GET /api/super-admin/settings/platform failed', err);
+    res.status(500).json({ error: 'Failed to load platform settings' });
+  }
+});
+
+app.put('/api/super-admin/settings/platform', requireAuth, requireSuperAdmin, async (req, res) => {
+  const { defaultDeliveryFee, serviceArea, maintenanceMode, maintenanceMessage } = req.body || {};
+  const fields = {};
+  if (defaultDeliveryFee !== undefined) {
+    if (defaultDeliveryFee !== null && (typeof defaultDeliveryFee !== 'number' || isNaN(defaultDeliveryFee) || defaultDeliveryFee < 0)) {
+      return res.status(400).json({ error: 'defaultDeliveryFee must be a non-negative number, or null to clear it' });
+    }
+    fields.defaultDeliveryFee = defaultDeliveryFee;
+  }
+  if (serviceArea !== undefined) {
+    if (serviceArea !== null && typeof serviceArea !== 'string') {
+      return res.status(400).json({ error: 'serviceArea must be a string, or null to clear it' });
+    }
+    fields.serviceArea = serviceArea;
+  }
+  if (maintenanceMode !== undefined) {
+    if (typeof maintenanceMode !== 'boolean') {
+      return res.status(400).json({ error: 'maintenanceMode must be true or false' });
+    }
+    fields.maintenanceMode = maintenanceMode;
+  }
+  if (maintenanceMessage !== undefined) {
+    if (maintenanceMessage !== null && typeof maintenanceMessage !== 'string') {
+      return res.status(400).json({ error: 'maintenanceMessage must be a string, or null to clear it' });
+    }
+    fields.maintenanceMessage = maintenanceMessage;
+  }
+  try {
+    const settings = await db.upsertPlatformSettings(fields);
+    await logAudit(req, 'settings.platform_update', { targetType: 'platform_settings', targetId: 'platform', details: fields });
+    res.json({ ok: true, settings });
+  } catch (err) {
+    console.error('PUT /api/super-admin/settings/platform failed', err);
+    res.status(500).json({ error: 'Failed to update platform settings' });
+  }
+});
+
 // Per-account commission rate override — vendors and delivery
 // companies share the same handler shape, so one route body is
 // parameterized by role rather than duplicated.
@@ -2452,6 +2529,12 @@ app.post('/api/conversations/:id/messages', requireAuth, async (req, res) => {
 app.post('/api/marketplace/checkout', requireAuth, async (req, res) => {
   if (req.user.role !== 'sender') {
     return res.status(403).json({ error: 'Only customers can check out' });
+  }
+  // Maintenance mode pauses checkout platform-wide — same switch and
+  // same message as the delivery-order path above.
+  const platformSettings = await db.getPlatformSettings();
+  if (platformSettings.maintenanceMode) {
+    return res.status(503).json({ error: platformSettings.maintenanceMessage || 'Checkout is temporarily paused for maintenance. Please try again shortly.' });
   }
   const { vendorId, items, pickupAddress, dropoffAddress } = req.body || {};
   if (!vendorId || !Array.isArray(items) || items.length === 0) {

@@ -465,3 +465,21 @@ CREATE TABLE IF NOT EXISTS audit_log (
 );
 CREATE INDEX IF NOT EXISTS idx_audit_log_created_at ON audit_log (created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_audit_log_actor_id ON audit_log (actor_id, created_at DESC);
+
+-- ============================================================
+-- Platform-wide settings — extends the single-row platform_settings
+-- table above (commission rates) with the remaining "there's nowhere
+-- to set this" gaps: a default delivery fee (a suggested starting
+-- amount, not enforced — admins can still enter any amount when
+-- accepting an order), a free-text description of the service area
+-- shown to guests/customers, and a real maintenance-mode switch.
+-- maintenance_mode is enforced server-side (blocks new order/purchase
+-- creation for everyone except super_admin — see server.js) and is
+-- exposed publicly via GET /api/config, unauthenticated, same as
+-- privacyPolicy/termsOfService already are, so guests see the
+-- maintenance banner before ever logging in.
+-- ============================================================
+ALTER TABLE platform_settings ADD COLUMN IF NOT EXISTS default_delivery_fee NUMERIC(10, 2);
+ALTER TABLE platform_settings ADD COLUMN IF NOT EXISTS service_area TEXT;
+ALTER TABLE platform_settings ADD COLUMN IF NOT EXISTS maintenance_mode BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE platform_settings ADD COLUMN IF NOT EXISTS maintenance_message TEXT;
