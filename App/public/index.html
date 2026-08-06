@@ -2312,6 +2312,28 @@
         }
         .cart-qty-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
+        .payment-method-options { display: flex; flex-direction: column; gap: 0.5rem; }
+        .payment-method-option {
+            display: flex; align-items: center; gap: 0.625rem; padding: 0.75rem 0.875rem;
+            border: 1px solid var(--border); border-radius: 0.625rem; cursor: pointer; font-weight: 600; font-size: 0.9375rem;
+        }
+        .payment-method-option:has(input:checked) { border-color: var(--primary); background: var(--bg-light); }
+        .payment-method-option.disabled { cursor: not-allowed; opacity: 0.55; }
+        .payment-method-option.disabled em { font-style: normal; font-weight: 400; color: var(--slate-light); }
+        .payment-status-badge {
+            display: inline-block; margin-left: 0.5rem; padding: 0.1875rem 0.5625rem; border-radius: 9999px;
+            font-size: 0.6875rem; font-weight: 700; vertical-align: middle;
+        }
+        .payment-status-badge.paid { background: #dcfce7; color: #15803d; }
+        .payment-status-badge.pending { background: #fef3c7; color: #92400e; }
+        .payment-status-badge.failed { background: #fee2e2; color: #991b1b; }
+        .payment-status-badge.cod { background: #f1f5f9; color: var(--slate-light); }
+        .momo-waiting-spinner {
+            width: 44px; height: 44px; border: 4px solid var(--border); border-top-color: var(--primary);
+            border-radius: 50%; margin: 0.5rem auto; animation: momo-spin 0.8s linear infinite;
+        }
+        @keyframes momo-spin { to { transform: rotate(360deg); } }
+
         #delivery-app .admin-view-all-link { color: var(--primary); font-weight: 700; font-size: 0.8125rem; cursor: pointer; }
         #delivery-customer-app .admin-view-all-link { color: var(--primary); font-weight: 700; font-size: 0.8125rem; cursor: pointer; }
         #delivery-company-app .admin-view-all-link { color: var(--primary); font-weight: 700; font-size: 0.8125rem; cursor: pointer; }
@@ -4805,29 +4827,62 @@
                 <h3>Checkout</h3>
                 <button class="close-btn" id="close-checkout-modal">&times;</button>
             </div>
-            <p style="margin-bottom: 1.25rem; color: var(--slate-light);">
-                Pay on delivery. Checking out creates a real delivery order for these items — same tracking as any other order.
-            </p>
-            <form id="checkout-form">
-                <div class="form-group">
-                    <label class="form-label">Pickup Address (vendor/store)</label>
-                    <input type="text" class="form-input" id="checkout-pickup-address" required>
-                    <p id="checkout-pickup-subtext" style="color:var(--slate-light); font-size:0.8125rem; margin-top:0.5rem; margin-bottom:0; display:none;"></p>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Dropoff Address (you)</label>
-                    <select class="form-input" id="checkout-saved-address-select" style="margin-bottom:0.625rem;">
-                        <option value="">— Type a new address below —</option>
-                    </select>
-                    <input type="text" class="form-input" id="checkout-dropoff-address" required>
-                </div>
-                <div id="checkout-summary" style="background: var(--bg-light); padding: 1rem; border-radius: 0.75rem; margin-bottom: 1rem; font-weight: 700;"></div>
-                <div class="auth-error" id="checkout-error"></div>
-                <div class="modal-footer">
-                    <button type="button" class="btn-small btn-secondary" id="cancel-checkout">Back to Cart</button>
-                    <button type="submit" class="btn-small btn-success" id="checkout-submit-btn">Place Order</button>
-                </div>
-            </form>
+            <div id="checkout-form-page">
+                <p style="margin-bottom: 1.25rem; color: var(--slate-light);">
+                    Checking out creates a real delivery order for these items — same tracking as any other order.
+                </p>
+                <form id="checkout-form">
+                    <div class="form-group">
+                        <label class="form-label">Payment Method</label>
+                        <div class="payment-method-options" id="checkout-payment-method-options">
+                            <label class="payment-method-option">
+                                <input type="radio" name="checkout-payment-method" value="cod" checked>
+                                <span>Pay on Delivery</span>
+                            </label>
+                            <label class="payment-method-option" id="checkout-momo-option">
+                                <input type="radio" name="checkout-payment-method" value="momo">
+                                <span>Mobile Money (MTN)</span>
+                            </label>
+                            <label class="payment-method-option disabled" title="Not available yet">
+                                <input type="radio" disabled>
+                                <span>Orange Money <em>(Coming soon)</em></span>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="form-group" id="checkout-momo-phone-group" style="display:none;">
+                        <label class="form-label">Mobile Money Phone Number</label>
+                        <input type="tel" class="form-input" id="checkout-momo-phone-input" placeholder="e.g. 231881234567">
+                        <p class="settings-hint">You'll get a prompt on this phone to approve the payment.</p>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Pickup Address (vendor/store)</label>
+                        <input type="text" class="form-input" id="checkout-pickup-address" required>
+                        <p id="checkout-pickup-subtext" style="color:var(--slate-light); font-size:0.8125rem; margin-top:0.5rem; margin-bottom:0; display:none;"></p>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Dropoff Address (you)</label>
+                        <select class="form-input" id="checkout-saved-address-select" style="margin-bottom:0.625rem;">
+                            <option value="">— Type a new address below —</option>
+                        </select>
+                        <input type="text" class="form-input" id="checkout-dropoff-address" required>
+                    </div>
+                    <div id="checkout-summary" style="background: var(--bg-light); padding: 1rem; border-radius: 0.75rem; margin-bottom: 1rem; font-weight: 700;"></div>
+                    <div class="auth-error" id="checkout-error"></div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn-small btn-secondary" id="cancel-checkout">Back to Cart</button>
+                        <button type="submit" class="btn-small btn-success" id="checkout-submit-btn">Place Order</button>
+                    </div>
+                </form>
+            </div>
+            <div id="checkout-momo-waiting-page" style="display:none; text-align:center; padding:1rem 0.5rem;">
+                <div class="momo-waiting-spinner"></div>
+                <h4 style="margin:1rem 0 0.5rem;" id="checkout-momo-waiting-title">Check your phone</h4>
+                <p style="color:var(--slate-light); margin-bottom:1.5rem;" id="checkout-momo-waiting-text">
+                    We sent a payment request to your phone. Approve it there to complete your order.
+                </p>
+                <div class="auth-error" id="checkout-momo-waiting-error"></div>
+                <button type="button" class="btn-small btn-secondary" id="checkout-momo-cancel-wait-btn">Cancel</button>
+            </div>
         </div>
     </div>
 
@@ -12865,6 +12920,18 @@
             `;
         }
 
+        // Shared by the customer "Your Orders" view and the vendor
+        // purchases list — both purchase objects come from the same
+        // rowToPurchase() shape, so one badge renderer covers both.
+        function paymentStatusBadgeHtml(purchase) {
+            if (purchase.paymentMethod === 'momo') {
+                if (purchase.paymentStatus === 'successful') return '<span class="payment-status-badge paid">✓ Paid via MTN MoMo</span>';
+                if (purchase.paymentStatus === 'failed') return '<span class="payment-status-badge failed">Payment Failed</span>';
+                return '<span class="payment-status-badge pending">Payment Pending</span>';
+            }
+            return '<span class="payment-status-badge cod">Pay on Delivery</span>';
+        }
+
         // Marketplace "Your Orders" — deliberately NOT the Delivery-style
         // table above. Shows what was actually bought (real product
         // images from the /api/marketplace/my-purchases endpoint), one
@@ -12904,7 +12971,10 @@
                             </div>
                             <div class="mp-purchase-items-scroll">${itemsHtml}</div>
                             <div class="mp-purchase-footer">
-                                <div class="mp-purchase-total"><span>Total</span>$${purchase.totalAmount.toFixed(2)}</div>
+                                <div class="mp-purchase-total">
+                                    <span>Total</span>$${purchase.totalAmount.toFixed(2)}
+                                    ${paymentStatusBadgeHtml(purchase)}
+                                </div>
                                 <div style="display:flex; gap:0.5rem;">
                                     ${purchase.deliveryOrderId ? `<button type="button" class="btn-small btn-secondary track-purchase-delivery-btn" data-order-id="${purchase.deliveryOrderId}">Track Delivery</button>` : ''}
                                     <button type="button" class="btn-small btn-secondary report-purchase-dispute-btn" data-purchase-id="${purchase.id}">Report a Problem</button>
@@ -13939,9 +14009,12 @@
 
         function vendorOrderRowHtml(p) {
             // Status pill reflects the linked delivery order's real status
-            // when one exists; a purchase with no delivery order (shouldn't
-            // normally happen, since checkout always creates one) falls
-            // back to a neutral "Placed" label rather than a fabricated one.
+            // when one exists. A purchase with no delivery order yet is no
+            // longer necessarily unusual — see checkout()'s comment: a
+            // still-pending Mobile Money payment deliberately doesn't get
+            // a delivery order created until it's confirmed — so this
+            // falls back to a neutral "Placed" label rather than a
+            // fabricated one either way.
             const status = p.deliveryStatus || 'placed';
             const statusLabel = { pending: 'Processing', accepted: 'Processing', 'picked-up': 'Processing', delivered: 'Fulfilled', cancelled: 'Cancelled', placed: 'Placed' }[status] || 'Placed';
             const statusClass = { delivered: 'fulfilled', cancelled: 'cancelled' }[status] || 'processing';
@@ -13950,7 +14023,7 @@
                     <div class="vendor-order-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path><line x1="3" y1="6" x2="21" y2="6"></line><path d="M16 10a4 4 0 0 1-8 0"></path></svg></div>
                     <div class="vendor-order-main">
                         <div class="vendor-order-id">${p.id}</div>
-                        <div class="vendor-order-buyer">Buyer: ${p.customerName}</div>
+                        <div class="vendor-order-buyer">Buyer: ${p.customerName} ${paymentStatusBadgeHtml(p)}</div>
                     </div>
                     <div class="vendor-order-right">
                         <span class="vendor-order-status-pill ${statusClass}">${statusLabel}</span>
@@ -15023,6 +15096,31 @@
             const total = cart.reduce((sum, c) => sum + c.price * c.quantity, 0);
             document.getElementById('checkout-summary').textContent = `${cart.reduce((s, c) => s + c.quantity, 0)} item(s) — Total: $${total.toFixed(2)}`;
 
+            // Reset to the form page (not the Mobile Money waiting page,
+            // in case a previous checkout attempt left it showing) and
+            // back to the Pay on Delivery default every time this opens.
+            document.getElementById('checkout-form-page').style.display = 'block';
+            document.getElementById('checkout-momo-waiting-page').style.display = 'none';
+            document.querySelector('input[name="checkout-payment-method"][value="cod"]').checked = true;
+            document.getElementById('checkout-momo-phone-group').style.display = 'none';
+            stopMomoPolling();
+            currentMomoPurchaseId = null;
+
+            // Mobile Money availability is a live server setting (whether
+            // MTN credentials are configured — see momo.js) — check on
+            // every open rather than assuming, so this reflects reality
+            // even if it changes between visits without a page reload.
+            const momoOption = document.getElementById('checkout-momo-option');
+            const momoRadio = momoOption.querySelector('input');
+            momoRadio.disabled = true;
+            momoOption.classList.add('disabled');
+            apiFetch('/api/marketplace/payment-methods').then(data => {
+                if (data.momoAvailable) {
+                    momoRadio.disabled = false;
+                    momoOption.classList.remove('disabled');
+                }
+            }).catch(() => {}); // stays disabled on failure — safe default
+
             // Real auto-populate from the vendor's own stored store
             // address (Settings → Store Physical Address). When a real
             // address exists, the field is locked (read-only) so buyers
@@ -15090,10 +15188,30 @@
             e.preventDefault();
             const errorEl = document.getElementById('checkout-error');
             const btn = document.getElementById('checkout-submit-btn');
+            const paymentMethod = document.querySelector('input[name="checkout-payment-method"]:checked').value;
             errorEl.style.display = 'none';
             btn.disabled = true;
-            btn.textContent = 'Placing Order…';
+            btn.textContent = paymentMethod === 'momo' ? 'Sending payment request…' : 'Placing Order…';
             try {
+                if (paymentMethod === 'momo') {
+                    const phone = document.getElementById('checkout-momo-phone-input').value.trim();
+                    if (!phone) throw new Error('Enter the phone number to receive the Mobile Money prompt on.');
+                    const result = await apiFetch('/api/marketplace/checkout/momo', {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            vendorId: cart[0].vendorId,
+                            items: cart.map(c => ({ productId: c.productId, quantity: c.quantity })),
+                            pickupAddress: document.getElementById('checkout-pickup-address').value,
+                            dropoffAddress: document.getElementById('checkout-dropoff-address').value,
+                            phone,
+                        }),
+                    });
+                    // Cart isn't cleared yet — payment hasn't succeeded.
+                    // showMomoWaitingPage's polling loop clears it once
+                    // (and if) it does.
+                    showMomoWaitingPage(result.purchaseId);
+                    return;
+                }
                 const result = await apiFetch('/api/marketplace/checkout', {
                     method: 'POST',
                     body: JSON.stringify({
@@ -15116,6 +15234,82 @@
                 btn.disabled = false;
                 btn.textContent = 'Place Order';
             }
+        }
+
+        // ---- Mobile Money waiting/polling ----
+        // Polling, not just the webhook, is what this actually depends
+        // on for correctness (see server.js's module comment on the
+        // Mobile Money routes) — every 3s for up to 3 minutes, since a
+        // customer has to physically pick up their phone and approve a
+        // prompt, which reasonably takes longer than a typical API call.
+        let momoPollTimer = null;
+        let momoPollAttempts = 0;
+        let currentMomoPurchaseId = null;
+        const MOMO_POLL_INTERVAL_MS = 3000;
+        const MOMO_POLL_MAX_ATTEMPTS = 60; // 60 * 3s = 3 minutes
+
+        function stopMomoPolling() {
+            if (momoPollTimer) clearInterval(momoPollTimer);
+            momoPollTimer = null;
+            momoPollAttempts = 0;
+        }
+
+        function showMomoWaitingPage(purchaseId) {
+            document.getElementById('checkout-form-page').style.display = 'none';
+            document.getElementById('checkout-momo-waiting-page').style.display = 'block';
+            document.getElementById('checkout-momo-waiting-title').textContent = 'Check your phone';
+            document.getElementById('checkout-momo-waiting-text').textContent = 'We sent a payment request to your phone. Approve it there to complete your order.';
+            document.getElementById('checkout-momo-waiting-error').style.display = 'none';
+            document.getElementById('checkout-momo-cancel-wait-btn').style.display = 'inline-flex';
+            document.getElementById('checkout-momo-cancel-wait-btn').textContent = 'Cancel';
+            currentMomoPurchaseId = purchaseId;
+            momoPollAttempts = 0;
+            stopMomoPolling();
+            momoPollTimer = setInterval(() => checkMomoPaymentOnce(purchaseId), MOMO_POLL_INTERVAL_MS);
+        }
+
+        async function checkMomoPaymentOnce(purchaseId) {
+            momoPollAttempts += 1;
+            try {
+                const data = await apiFetch(`/api/marketplace/purchases/${purchaseId}/payment-status`);
+                if (data.paymentStatus === 'successful') {
+                    stopMomoPolling();
+                    cart = [];
+                    updateCartCount();
+                    document.getElementById('checkout-modal').classList.remove('active');
+                    document.getElementById('checkout-form').reset();
+                    showToast('Payment received — order placed!', 'success');
+                    sendLocalNotification('Order Placed', { body: `Your Mobile Money payment was confirmed and your order (${purchaseId}) was placed.` });
+                    return;
+                }
+                if (data.paymentStatus === 'failed') {
+                    stopMomoPolling();
+                    document.getElementById('checkout-momo-waiting-title').textContent = 'Payment failed';
+                    document.getElementById('checkout-momo-waiting-text').textContent = 'The Mobile Money payment wasn\'t completed — nothing was charged, and your cart is still here. You can try again or use Pay on Delivery instead.';
+                    document.getElementById('checkout-momo-cancel-wait-btn').textContent = 'Back to Checkout';
+                    return;
+                }
+                if (momoPollAttempts >= MOMO_POLL_MAX_ATTEMPTS) {
+                    stopMomoPolling();
+                    document.getElementById('checkout-momo-waiting-title').textContent = 'Still waiting';
+                    document.getElementById('checkout-momo-waiting-text').textContent = 'This is taking longer than expected. Your cart is still here — you can keep waiting a bit and check back, or cancel and try Pay on Delivery instead.';
+                    document.getElementById('checkout-momo-cancel-wait-btn').textContent = 'Cancel Payment';
+                }
+                // still pending — keep polling silently
+            } catch (err) {
+                // A transient network error shouldn't abandon the wait —
+                // just skip this tick and let the next interval retry.
+                console.error('Mobile Money status check failed', err);
+            }
+        }
+
+        async function cancelMomoWait(purchaseId) {
+            stopMomoPolling();
+            if (purchaseId) {
+                try { await apiFetch(`/api/marketplace/purchases/${purchaseId}/cancel-payment`, { method: 'POST' }); } catch (err) { /* best-effort — it'll also resolve itself if the customer's status check would've marked it failed anyway */ }
+            }
+            document.getElementById('checkout-form-page').style.display = 'block';
+            document.getElementById('checkout-momo-waiting-page').style.display = 'none';
         }
 
         function wireStorefrontEvents() {
@@ -15292,7 +15486,10 @@
             });
 
             document.getElementById('open-checkout-btn').addEventListener('click', openCheckoutModal);
-            document.getElementById('close-checkout-modal').addEventListener('click', () => document.getElementById('checkout-modal').classList.remove('active'));
+            document.getElementById('close-checkout-modal').addEventListener('click', () => {
+                document.getElementById('checkout-modal').classList.remove('active');
+                if (momoPollTimer) cancelMomoWait(currentMomoPurchaseId); // don't leave a pending payment's stock reserved if they close the modal instead of using Cancel
+            });
             document.getElementById('cancel-checkout').addEventListener('click', () => {
                 document.getElementById('checkout-modal').classList.remove('active');
                 document.getElementById('cart-modal').classList.add('active');
@@ -15302,6 +15499,11 @@
                 if (selected) document.getElementById('checkout-dropoff-address').value = selected.address;
             });
             document.getElementById('checkout-form').addEventListener('submit', handleCheckoutSubmit);
+            document.getElementById('checkout-payment-method-options').addEventListener('change', (e) => {
+                if (e.target.name !== 'checkout-payment-method') return;
+                document.getElementById('checkout-momo-phone-group').style.display = e.target.value === 'momo' ? 'block' : 'none';
+            });
+            document.getElementById('checkout-momo-cancel-wait-btn').addEventListener('click', () => cancelMomoWait(currentMomoPurchaseId));
 
             // ---- Product Detail Page ----
             document.getElementById('pdp-back-btn').addEventListener('click', closeProductDetail);

@@ -90,6 +90,10 @@ function rowToPurchase(r) {
     totalAmount: Number(r.total_amount),
     deliveryOrderId: r.delivery_order_id,
     createdAt: r.created_at,
+    paymentMethod: r.payment_method,
+    paymentStatus: r.payment_status,
+    momoReferenceId: r.momo_reference_id,
+    momoPhone: r.momo_phone,
   };
 }
 
@@ -228,6 +232,22 @@ function rowToUser(r) {
     disabledFeatures: r.disabled_features || [],
     commissionRateOverride: r.commission_rate_override !== null && r.commission_rate_override !== undefined ? Number(r.commission_rate_override) : null,
   };
+}
+
+// Shared by cancelOrderAndRestock and voidFailedMomoPayment — both
+// "undo" a checkout for a different reason (customer cancelled vs.
+// payment never went through), but restocking the purchased items back
+// onto their products is the same operation either way. Must be called
+// from inside an already-open transaction (client), not the pool
+// directly, so it commits/rolls back atomically with whatever else the
+// caller is doing.
+async function restockPurchaseItemsInTx(client, purchaseId) {
+  const { rows: items } = await client.query(
+    'SELECT product_id, quantity FROM purchase_items WHERE purchase_id = $1', [purchaseId]
+  );
+  for (const item of items) {
+    await client.query('UPDATE products SET stock_quantity = stock_quantity + $1 WHERE id = $2', [item.quantity, item.product_id]);
+  }
 }
 
 const db = {
@@ -532,16 +552,105 @@ const db = {
         'SELECT id FROM purchases WHERE delivery_order_id = $1', [id]
       );
       if (purchaseRows[0]) {
-        const { rows: items } = await client.query(
-          'SELECT product_id, quantity FROM purchase_items WHERE purchase_id = $1', [purchaseRows[0].id]
-        );
-        for (const item of items) {
-          await client.query('UPDATE products SET stock_quantity = stock_quantity + $1 WHERE id = $2', [item.quantity, item.product_id]);
-        }
+        await restockPurchaseItemsInTx(client, purchaseRows[0].id);
       }
 
       await client.query('COMMIT');
       return rowToOrder(orderRows[0]);
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
+  },
+
+  async getPurchaseByMomoReferenceId(referenceId) {
+    const { rows } = await pool.query('SELECT * FROM purchases WHERE momo_reference_id = $1', [referenceId]);
+    return rowToPurchase(rows[0]);
+  },
+
+  // Flips a pending Mobile Money purchase to 'successful' once MTN
+  // confirms the payment, and — only now, not at checkout time — creates
+  // the real delivery order from the pending_pickup_address/
+  // pending_dropoff_address stashed on the purchase (see checkout()'s
+  // comment on why order creation is deferred for this payment method).
+  // Scoped to payment_status = 'pending' so a late/duplicate webhook
+  // firing after the polling path already confirmed it (or vice versa)
+  // is a safe no-op, not a double-apply/double-order. Returns null if
+  // the purchase was already resolved (paid or already voided).
+  async confirmMomoPaymentAndCreateOrder(purchaseId) {
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      const { rows: purchaseRows } = await client.query(
+        `UPDATE purchases SET payment_status = 'successful' WHERE id = $1 AND payment_status = 'pending' RETURNING *`,
+        [purchaseId]
+      );
+      if (!purchaseRows[0]) {
+        await client.query('ROLLBACK');
+        return null;
+      }
+      const purchase = purchaseRows[0];
+
+      let deliveryOrderId = null;
+      if (purchase.pending_pickup_address && purchase.pending_dropoff_address) {
+        const { rows: itemRows } = await client.query(
+          'SELECT product_name, quantity FROM purchase_items WHERE purchase_id = $1', [purchaseId]
+        );
+        const itemSummary = itemRows.map(li => `${li.quantity}x ${li.product_name}`).join(', ');
+        const { rows: custRows } = await client.query('SELECT business_name FROM users WHERE id = $1', [purchase.customer_id]);
+        deliveryOrderId = `ORD-${Date.now().toString(36).toUpperCase()}${crypto.randomBytes(2).toString('hex').toUpperCase()}M`;
+        await client.query(
+          `INSERT INTO orders (id, sender_id, sender_name, pickup_address, dropoff_address, item_description, amount, status, placed_by_admin)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, 'pending', false)`,
+          [deliveryOrderId, purchase.customer_id, custRows[0] ? custRows[0].business_name : 'Customer',
+            purchase.pending_pickup_address, purchase.pending_dropoff_address, `Marketplace order: ${itemSummary}`, null]
+        );
+        await client.query(
+          `UPDATE purchases SET delivery_order_id = $1, pending_pickup_address = NULL, pending_dropoff_address = NULL WHERE id = $2`,
+          [deliveryOrderId, purchaseId]
+        );
+      }
+
+      await client.query('COMMIT');
+      return { purchase: rowToPurchase({ ...purchase, delivery_order_id: deliveryOrderId, payment_status: 'successful' }), deliveryOrderId };
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
+  },
+
+  // The payment-side equivalent of cancelOrderAndRestock: MTN reported
+  // the Request to Pay as failed/rejected/timed out, so nothing was
+  // actually paid for — restock the items (stock was reserved
+  // optimistically at initiation, same as any other checkout) in one
+  // transaction. Scoped to payment_status = 'pending' for the same
+  // no-double-restock reasoning as cancelOrderAndRestock. Returns null
+  // if the purchase was already resolved (paid or already voided).
+  async voidFailedMomoPayment(purchaseId) {
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      const { rows: purchaseRows } = await client.query(
+        `UPDATE purchases SET payment_status = 'failed' WHERE id = $1 AND payment_status = 'pending' RETURNING *`,
+        [purchaseId]
+      );
+      if (!purchaseRows[0]) {
+        await client.query('ROLLBACK');
+        return null;
+      }
+      await restockPurchaseItemsInTx(client, purchaseId);
+      if (purchaseRows[0].delivery_order_id) {
+        await client.query(
+          `UPDATE orders SET status = 'cancelled' WHERE id = $1 AND status = 'pending'`,
+          [purchaseRows[0].delivery_order_id]
+        );
+      }
+      await client.query('COMMIT');
+      return rowToPurchase(purchaseRows[0]);
     } catch (err) {
       await client.query('ROLLBACK');
       throw err;
@@ -1228,7 +1337,24 @@ const db = {
   // default) a linked delivery order in the existing `orders` table for
   // fulfillment — all-or-nothing, so a failed delivery-order insert
   // can't leave stock decremented with no purchase recorded.
-  async checkout({ customerId, customerName, vendorId, items, pickupAddress, dropoffAddress, createDeliveryOrder }) {
+  //
+  // paymentMethod/paymentStatus/momoReferenceId/momoPhone default to
+  // plain pay-on-delivery (the original behavior, unchanged for the
+  // existing COD checkout call site). The Mobile Money checkout route
+  // passes 'momo'/'pending'/a fresh UUID/the payer's phone instead, AND
+  // passes createDeliveryOrder: false — stock still gets reserved and
+  // the purchase still gets created immediately (so nobody else can buy
+  // the last unit out from under a payment that's about to succeed),
+  // but the delivery order itself is deliberately NOT created yet: it
+  // would otherwise show up in the live delivery queue (getAllOrders
+  // has no concept of payment_status) before the customer has actually
+  // paid. pickupAddress/dropoffAddress are stashed on the purchase row
+  // instead and turned into a real order later, only once
+  // confirmMomoPaymentAndCreateOrder sees the payment succeed.
+  async checkout({
+    customerId, customerName, vendorId, items, pickupAddress, dropoffAddress, createDeliveryOrder,
+    paymentMethod = 'cod', paymentStatus = 'not_applicable', momoReferenceId = null, momoPhone = null,
+  }) {
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
@@ -1273,9 +1399,15 @@ const db = {
         );
       }
 
+      // Only stashed when the delivery order wasn't created yet (the
+      // Mobile Money path) — for the normal COD path the real order
+      // already has these, so there's nothing left to hold onto.
+      const pendingPickupAddress = !createDeliveryOrder ? pickupAddress : null;
+      const pendingDropoffAddress = !createDeliveryOrder ? dropoffAddress : null;
       await client.query(
-        `INSERT INTO purchases (id, customer_id, vendor_id, total_amount, delivery_order_id) VALUES ($1, $2, $3, $4, $5)`,
-        [purchaseId, customerId, vendorId, totalAmount, deliveryOrderId]
+        `INSERT INTO purchases (id, customer_id, vendor_id, total_amount, delivery_order_id, payment_method, payment_status, momo_reference_id, momo_phone, pending_pickup_address, pending_dropoff_address)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+        [purchaseId, customerId, vendorId, totalAmount, deliveryOrderId, paymentMethod, paymentStatus, momoReferenceId, momoPhone, pendingPickupAddress, pendingDropoffAddress]
       );
       for (const li of lineItems) {
         await client.query(
@@ -1285,7 +1417,7 @@ const db = {
       }
 
       await client.query('COMMIT');
-      return { purchaseId, deliveryOrderId, totalAmount };
+      return { purchaseId, deliveryOrderId, totalAmount, paymentMethod, paymentStatus };
     } catch (err) {
       await client.query('ROLLBACK');
       throw err;

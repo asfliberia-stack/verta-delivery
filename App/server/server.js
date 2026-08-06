@@ -10,6 +10,7 @@ const cors = require('cors');
 const { Server } = require('socket.io');
 const db = require('./db');
 const { notifyNewOrder, sendMessage, notifyNewVendorApplication, sendEmail } = require('./notify');
+const momo = require('./momo');
 const { OAuth2Client } = require('google-auth-library');
 const {
   hashPassword,
@@ -2902,6 +2903,197 @@ app.post('/api/marketplace/checkout', requireAuth, async (req, res) => {
     console.error('POST /api/marketplace/checkout failed', err);
     res.status(400).json({ error: err.message || 'Checkout failed' });
   }
+});
+
+// ============================================================
+// Mobile Money (MTN) checkout — an online-payment alternative to Pay
+// on Delivery. Orange Money isn't wired up yet (see README → "Mobile
+// Money (MTN)" for why); the frontend hides it behind a "coming soon"
+// label rather than offering something that doesn't work.
+//
+// Flow: initiate (reserves stock + creates a pending purchase, sends
+// the payment prompt to the customer's phone) -> the frontend polls
+// the status route every few seconds -> once MTN confirms, the real
+// delivery order gets created for the first time (see
+// confirmMomoPaymentAndCreateOrder's comment for why it's deferred).
+// A webhook is also wired up as a best-effort latency improvement, but
+// polling is the mechanism this actually depends on being correct —
+// MTN's callback payload shape isn't confidently documented (see
+// momo.js's module comment), so treat anything it does is a bonus,
+// never the only path to a confirmed payment.
+// ============================================================
+
+app.get('/api/marketplace/payment-methods', (req, res) => {
+  res.json({ momoAvailable: momo.isConfigured, orangeAvailable: false });
+});
+
+app.post('/api/marketplace/checkout/momo', requireAuth, async (req, res) => {
+  if (req.user.role !== 'sender') {
+    return res.status(403).json({ error: 'Only customers can check out' });
+  }
+  if (!momo.isConfigured) {
+    return res.status(503).json({ error: 'Mobile Money isn\'t available yet — please use Pay on Delivery.' });
+  }
+  const platformSettings = await db.getPlatformSettings();
+  if (platformSettings.maintenanceMode) {
+    return res.status(503).json({ error: platformSettings.maintenanceMessage || 'Checkout is temporarily paused for maintenance. Please try again shortly.' });
+  }
+  const { vendorId, items, pickupAddress, dropoffAddress, phone } = req.body || {};
+  if (!vendorId || !Array.isArray(items) || items.length === 0) {
+    return res.status(400).json({ error: 'A vendor and at least one item are required' });
+  }
+  if (!pickupAddress || !dropoffAddress) {
+    return res.status(400).json({ error: 'Pickup and dropoff addresses are required' });
+  }
+  const cleanPhone = String(phone || '').replace(/[^\d]/g, '');
+  if (cleanPhone.length < 8 || cleanPhone.length > 15) {
+    return res.status(400).json({ error: 'Enter a valid Mobile Money phone number, digits only (with country code, e.g. 231XXXXXXXXX).' });
+  }
+
+  let purchaseId = null;
+  try {
+    // Reserves stock and creates the purchase as 'pending' — see
+    // checkout()'s own comment on why createDeliveryOrder is false
+    // here specifically.
+    const result = await db.checkout({
+      customerId: req.user.id,
+      customerName: req.user.businessName,
+      vendorId,
+      items,
+      pickupAddress,
+      dropoffAddress,
+      createDeliveryOrder: false,
+      paymentMethod: 'momo',
+      paymentStatus: 'pending',
+      momoReferenceId: crypto.randomUUID(),
+      momoPhone: cleanPhone,
+    });
+    purchaseId = result.purchaseId;
+
+    const purchase = await db.getPurchaseById(purchaseId);
+    await momo.requestToPay({
+      referenceId: purchase.momoReferenceId,
+      amount: result.totalAmount,
+      externalId: purchaseId,
+      payerMsisdn: cleanPhone,
+      payerMessage: `Order from ONLib Marketplace`,
+      payeeNote: `Purchase ${purchaseId}`,
+    });
+
+    io.to(`vendor:${vendorId}`).emit('purchase:created', result);
+    res.json({ ok: true, purchaseId, referenceId: purchase.momoReferenceId, paymentStatus: 'pending' });
+  } catch (err) {
+    console.error('POST /api/marketplace/checkout/momo failed', err);
+    // The purchase (and its stock reservation) was already created
+    // before the failure — e.g. MTN's API rejected/timed out the
+    // request-to-pay call itself, not just a later payment decline —
+    // so it has to be voided/restocked rather than left dangling as a
+    // permanently-pending purchase nobody will ever resolve.
+    if (purchaseId) {
+      try { await db.voidFailedMomoPayment(purchaseId); } catch (voidErr) { console.error('Failed to void purchase after momo initiation error', voidErr); }
+    }
+    res.status(400).json({ error: err.message || 'Mobile Money checkout failed — please try Pay on Delivery instead.' });
+  }
+});
+
+app.get('/api/marketplace/purchases/:id/payment-status', requireAuth, async (req, res) => {
+  try {
+    const purchase = await db.getPurchaseById(req.params.id);
+    if (!purchase || purchase.customerId !== req.user.id) {
+      return res.status(404).json({ error: 'Purchase not found' });
+    }
+    if (purchase.paymentMethod !== 'momo' || purchase.paymentStatus !== 'pending') {
+      return res.json({ paymentStatus: purchase.paymentStatus, deliveryOrderId: purchase.deliveryOrderId });
+    }
+    // Still pending as far as our own DB knows — ask MTN directly
+    // rather than only waiting on the webhook (see the module comment
+    // above on why polling is the reliable path here).
+    const live = await momo.getRequestToPayStatus(purchase.momoReferenceId);
+    if (live.status === 'SUCCESSFUL') {
+      const confirmed = await db.confirmMomoPaymentAndCreateOrder(purchase.id);
+      if (confirmed && confirmed.deliveryOrderId) {
+        const deliveryOrder = await db.getOrder(confirmed.deliveryOrderId);
+        if (deliveryOrder) {
+          orderRooms(deliveryOrder).forEach((r) => io.to(r).emit('order:created', deliveryOrder));
+          notifyNewOrder(deliveryOrder);
+        }
+      }
+      return res.json({ paymentStatus: 'successful', deliveryOrderId: confirmed ? confirmed.deliveryOrderId : null });
+    }
+    if (live.status === 'FAILED') {
+      await db.voidFailedMomoPayment(purchase.id);
+      return res.json({ paymentStatus: 'failed', reason: live.reason });
+    }
+    // Still PENDING on MTN's side too — customer hasn't approved (or
+    // declined) the prompt on their phone yet.
+    res.json({ paymentStatus: 'pending' });
+  } catch (err) {
+    console.error('GET /api/marketplace/purchases/:id/payment-status failed', err);
+    res.status(500).json({ error: 'Failed to check payment status' });
+  }
+});
+
+// Customer-initiated cancel of their own still-pending Mobile Money
+// payment — e.g. they backed out of approving it on their phone.
+// Restocks the reserved items the same way a failed/expired payment
+// does; without this, walking away from the waiting screen would leave
+// the stock reservation in place indefinitely.
+app.post('/api/marketplace/purchases/:id/cancel-payment', requireAuth, async (req, res) => {
+  try {
+    const purchase = await db.getPurchaseById(req.params.id);
+    if (!purchase || purchase.customerId !== req.user.id) {
+      return res.status(404).json({ error: 'Purchase not found' });
+    }
+    if (purchase.paymentMethod !== 'momo' || purchase.paymentStatus !== 'pending') {
+      return res.status(400).json({ error: 'This purchase is not a pending Mobile Money payment' });
+    }
+    await db.voidFailedMomoPayment(purchase.id);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('POST /api/marketplace/purchases/:id/cancel-payment failed', err);
+    res.status(500).json({ error: 'Failed to cancel payment' });
+  }
+});
+
+// Best-effort webhook — see this file's module comment above. MTN's
+// callback payload shape isn't confidently documented anywhere
+// consulted while building this, so this tries a few plausible field
+// names and always logs the raw body (check Railway logs after a real
+// test payment to see what MTN actually sends, and adjust the field
+// names here if needed) — and always responds 200 so MTN doesn't
+// retry-storm an endpoint it thinks is failing.
+app.post('/api/payments/momo/callback', async (req, res) => {
+  console.log('[momo webhook] received:', JSON.stringify(req.body));
+  try {
+    const body = req.body || {};
+    const referenceId = body.referenceId || body.reference_id || null;
+    const externalId = body.externalId || body.external_id || null;
+    const status = body.status;
+
+    let purchase = null;
+    if (referenceId) purchase = await db.getPurchaseByMomoReferenceId(referenceId);
+    if (!purchase && externalId) purchase = await db.getPurchaseById(externalId);
+
+    if (purchase && purchase.paymentMethod === 'momo' && purchase.paymentStatus === 'pending') {
+      if (status === 'SUCCESSFUL') {
+        const confirmed = await db.confirmMomoPaymentAndCreateOrder(purchase.id);
+        if (confirmed && confirmed.deliveryOrderId) {
+          const deliveryOrder = await db.getOrder(confirmed.deliveryOrderId);
+          if (deliveryOrder) {
+            orderRooms(deliveryOrder).forEach((r) => io.to(r).emit('order:created', deliveryOrder));
+            notifyNewOrder(deliveryOrder);
+          }
+        }
+      } else if (status === 'FAILED') {
+        await db.voidFailedMomoPayment(purchase.id);
+      }
+    } else if (!purchase) {
+      console.warn('[momo webhook] could not match a purchase to this callback — relying on polling instead.');
+    }
+  } catch (err) {
+    console.error('[momo webhook] handling failed (polling will still resolve this)', err);
+  }
+  res.status(200).json({ ok: true });
 });
 
 app.get('/health', (req, res) => res.json({ ok: true }));

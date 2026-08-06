@@ -267,6 +267,29 @@ CREATE TABLE IF NOT EXISTS purchases (
 CREATE INDEX IF NOT EXISTS idx_purchases_vendor_id ON purchases (vendor_id);
 CREATE INDEX IF NOT EXISTS idx_purchases_customer_id ON purchases (customer_id);
 
+-- Marketplace checkout payment tracking. Not to be confused with
+-- orders.payment_method above (added earlier) — that one records how a
+-- delivery agent collected payment in person when accepting/completing
+-- an ordinary delivery order; this one tracks online payment for a
+-- marketplace purchase itself, before any delivery even happens.
+-- 'cod' (pay on delivery, the original/default behavior — payment_status
+-- stays 'not_applicable' since nothing digital is tracked for it) or
+-- 'momo' (MTN Mobile Money — payment_status starts 'pending' at
+-- checkout and is flipped to 'successful' or 'failed' once MTN
+-- confirms; see db.checkout()/voidFailedPayment() and server.js's
+-- /api/marketplace/checkout/momo routes).
+ALTER TABLE purchases ADD COLUMN IF NOT EXISTS payment_method TEXT NOT NULL DEFAULT 'cod';
+ALTER TABLE purchases ADD COLUMN IF NOT EXISTS payment_status TEXT NOT NULL DEFAULT 'not_applicable';
+ALTER TABLE purchases ADD COLUMN IF NOT EXISTS momo_reference_id TEXT;
+ALTER TABLE purchases ADD COLUMN IF NOT EXISTS momo_phone TEXT;
+-- Held here only while a Mobile Money payment is pending — the real
+-- delivery order (and its own pickup_address/dropoff_address columns
+-- on `orders`) isn't created until payment succeeds, so it never shows
+-- up in the live delivery queue for an order nobody has actually paid
+-- for yet. Cleared back to NULL once the real order is created.
+ALTER TABLE purchases ADD COLUMN IF NOT EXISTS pending_pickup_address TEXT;
+ALTER TABLE purchases ADD COLUMN IF NOT EXISTS pending_dropoff_address TEXT;
+
 CREATE TABLE IF NOT EXISTS purchase_items (
     id            TEXT PRIMARY KEY,
     purchase_id   TEXT NOT NULL REFERENCES purchases(id) ON DELETE CASCADE,

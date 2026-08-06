@@ -4579,3 +4579,141 @@ deployment from this sandbox; the schema change (`product_images`) is
 a new `CREATE TABLE IF NOT EXISTS`, so it applies automatically the
 same way every other table in `schema.sql` does on next deploy — no
 manual migration step needed.
+
+## Mobile Money (MTN) — online payment at checkout
+
+Marketplace checkout was pay-on-delivery only. Added a real online
+payment option using MTN Mobile Money's Collections API, alongside Pay
+on Delivery (both are offered — this doesn't replace anything). Orange
+Money is shown at checkout too, but disabled with a "Coming soon"
+label, not built yet — see "Why Orange Money isn't built yet" below.
+
+**How it works for a customer:** at checkout, choosing "Mobile Money
+(MTN)" instead of "Pay on Delivery" asks for a phone number, then sends
+a payment prompt to that phone. The checkout modal switches to a
+waiting screen ("Check your phone") while the app polls for the
+outcome every 3 seconds, for up to 3 minutes. Approve the prompt on
+the phone → the order is placed for real, same as any other order.
+Decline or let it time out → nothing is charged, the cart is
+untouched, and Pay on Delivery is still right there as a fallback.
+
+**Where the credentials come from — you'll need to do this yourself,
+this session can't:** MTN Liberia (Lonestar Cell MTN) runs its own MoMo
+API developer program (via `lonestarcell.com/developer`, pointing to
+`momodeveloper.mtn.com`). The path to a live account:
+1. Sign up at momodeveloper.mtn.com and subscribe to the "Collections"
+   product to get a **Subscription Key** — this works against MTN's
+   public sandbox immediately, no approval needed.
+2. Run the new one-time setup script against that sandbox:
+   `MOMO_SUBSCRIPTION_KEY=your-key node server/scripts/momo-provision-sandbox.js`
+   (or `npm run momo:provision-sandbox --prefix server` with the env
+   var set) — it prints the `MOMO_API_USER`/`MOMO_API_KEY` values to
+   put in your environment. This is genuinely sandbox-only; there's no
+   flag in that script to point it at production.
+3. For a **real Liberia merchant account**, contact MTN Liberia
+   directly — customercare.lr@mtn.com, or through the Merchant/Developer
+   pages on lonestarcell.com — since Liberia-scoped production API
+   credentials aren't self-service through the generic developer
+   portal. They'll also confirm the real currency code to use (see the
+   currency caveat below) and give you a production base URL.
+
+**Environment variables** (server/.env locally, Railway's Variables tab
+in production — see `server/momo.js`'s header comment for the full
+list): `MOMO_SUBSCRIPTION_KEY`, `MOMO_API_USER`, `MOMO_API_KEY`,
+`MOMO_TARGET_ENVIRONMENT` (sandbox/production), `MOMO_BASE_URL`,
+`MOMO_CURRENCY`. None of them are required for the app to run — if
+they're unset, `momo.isConfigured` is false, the checkout screen hides
+the Mobile Money option automatically (via
+`GET /api/marketplace/payment-methods`), and Pay on Delivery keeps
+working exactly as before. This mirrors the existing pattern for
+Twilio notifications in `notify.js` — optional integrations that fail
+open, not closed.
+
+**Currency caveat, stated plainly:** `MOMO_CURRENCY` defaults to
+`EUR`, because MTN's public sandbox only accepts EUR regardless of
+what your real target market is — this is a documented sandbox
+quirk, not a mistake. Once you have a real Liberia production account,
+MTN Liberia will tell you the actual currency code to configure (this
+app's own prices are in USD elsewhere, so this will need to be set
+correctly before going live — it was left as the sandbox default
+rather than guessed, since guessing wrong here means real
+mischarges).
+
+**Why the delivery order isn't created until payment succeeds:** stock
+is reserved immediately when a Mobile Money payment is initiated (so
+nobody else can buy the last unit while a payment is in flight — the
+same atomic stock-lock `db.checkout()` already used for Pay on
+Delivery), and the purchase record is created right away too, marked
+`payment_status: 'pending'`. But the actual delivery order — the thing
+that shows up in the live delivery queue for an agent to accept — is
+deliberately **not** created until MTN confirms the payment
+succeeded. `getAllOrders()` (what populates that queue) has no concept
+of payment status, so creating the order eagerly would mean a
+delivery agent could accept and start fulfilling an order nobody has
+actually paid for yet. If the payment fails, times out, or the
+customer cancels the wait screen, the reserved stock is put back
+(`db.voidFailedMomoPayment`) — the exact same restock mechanism built
+for order cancellation earlier in this session, generalized into a
+shared `restockPurchaseItemsInTx` helper both now call.
+
+**Why polling, not just a webhook — an honest documentation gap:** MTN
+does support a callback/webhook mechanism (`providerCallbackHost`, set
+once per API user at provisioning time), but after cross-referencing
+several independent developer writeups of this API while building
+this, the exact JSON payload shape MTN sends to that callback couldn't
+be pinned down with confidence — sources agree on the request-to-pay
+and status-check formats, but not on the callback body. Rather than
+guess and risk silently dropping real payment confirmations, the
+webhook (`POST /api/payments/momo/callback`) is wired up as a
+best-effort latency improvement — it tries a few plausible field names
+and always logs the raw payload — but the customer-facing polling loop
+(`GET /api/marketplace/purchases/:id/payment-status`, which asks MTN
+directly via `getRequestToPayStatus`) is what this feature actually
+depends on for correctness. After a real test payment against a live
+account, check the Railway logs for `[momo webhook] received:` to see
+MTN's actual payload shape, and adjust the field names in that route
+if they don't match what's already there.
+
+**Why Orange Money isn't built yet:** Orange's pan-African Web Payment
+API (developer.orange.com) doesn't list Liberia among its supported
+countries, and Orange Liberia's own merchant page only describes
+in-person merchant registration — no e-commerce/API integration
+mentioned anywhere found. The most concrete path found was a
+third-party payment aggregator (ApcoPay) that documents Orange Mobile
+Money support specifically for Liberia via a hosted-payment-page flow
+— worth revisiting as its own follow-up once you've decided whether to
+pursue Orange directly or through an aggregator.
+
+**One more piece of context, for awareness rather than action:**
+Liberia's Central Bank launched a national mobile-money
+interoperability system (IIPS) in December 2025 enabling cross-network
+transfers between MTN and Orange Money — but as of February 2026 it hit
+real reliability problems (failed transfers, missing funds, MTN
+briefly suspended it). That's specifically about *cross-network*
+transfers between the two providers' systems, not each provider's own
+in-network collections (what this checkout integration actually uses),
+but it's worth knowing about if a customer ever asks why a
+cross-network mobile money transfer elsewhere behaved oddly — it's not
+this app.
+
+**Verified:** `node --check` on `server/momo.js`, the new checkout
+routes in `server/server.js`, and the provisioning script; a Playwright
+pass on the checkout UI covering the full state machine (Mobile Money
+option enabled/disabled based on live server config, phone field
+show/hide, initiating a payment, polling through pending → successful
+with cart-clear-and-close, polling through pending → failed with the
+cart preserved and a clear retry message, and the Cancel button voiding
+a still-pending payment); and a Playwright pass confirming the payment
+status badge renders correctly for every combination of payment
+method/status on both the customer purchase history and vendor orders
+list. **What could not be verified, stated plainly:** this sandbox has
+no live Postgres, no network path to `momodeveloper.mtn.com`, and no
+real MTN credentials of any kind (sandbox or production) — so the
+actual HTTP calls in `momo.js` (token fetch, request-to-pay, status
+check) have never executed against MTN's real API. They were built
+directly from MTN's documented request/response shapes (cross-checked
+across multiple independent sources for consistency), and the code
+around them is unit-testable in isolation, but a first real run against
+the sandbox (via the provisioning script + a real sandbox test
+transaction) is the genuine next step before trusting this in
+production, not something this session could complete on your behalf.
