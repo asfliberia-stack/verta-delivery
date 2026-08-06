@@ -182,6 +182,99 @@
             position: sticky; top: 0; background: #f8fafc; z-index: 1;
         }
 
+        /* ---- Mobile dashboard redesign — base/shared declarations ----
+           Defaults here are the desktop behavior; the @media
+           (max-width: 1023px) block further down (after the CSS
+           variable/#delivery-customer-app rules it needs to out-specify)
+           swaps them for the compact mobile treatment. */
+        .dcust-topbar-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 0.75rem; }
+        .dcust-topbar-back-link {
+            display: none; align-items: center; gap: 0.375rem; background: none; border: none;
+            color: var(--slate-light); font-weight: 600; font-size: 0.8125rem; cursor: pointer;
+            white-space: nowrap; padding: 0.5rem 0; flex-shrink: 0;
+        }
+        .dcust-topbar-back-link svg { width: 15px; height: 15px; flex-shrink: 0; }
+        .dcust-topbar-back-link:hover { color: var(--slate); }
+        .dcust-stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+        .dcust-hero-cta { display: inline-flex; align-items: center; gap: 0.75rem; }
+        .dcust-hero-cta-icon {
+            width: 24px; height: 24px; border-radius: 50%; background: rgba(255,255,255,0.25);
+            display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+        }
+        .dcust-hero-cta-icon svg { width: 14px; height: 14px; }
+        .dcust-view-all-link {
+            display: none; align-items: center; gap: 0.25rem; color: var(--primary);
+            font-weight: 700; font-size: 0.8125rem; cursor: pointer; white-space: nowrap;
+        }
+        .dcust-view-all-link svg { width: 15px; height: 15px; }
+        .dcust-table-controls-filters { display: flex; gap: 0.75rem; flex-wrap: wrap; }
+        .dcust-order-cards-list { display: none; flex-direction: column; gap: 0.75rem; padding: 0 1.25rem 1.25rem; }
+        .dcust-order-card {
+            background: white; border: 1px solid var(--border); border-radius: 1rem;
+            padding: 1rem 1.125rem; cursor: pointer; transition: box-shadow 0.15s ease, border-color 0.15s ease;
+        }
+        .dcust-order-card:hover, .dcust-order-card:focus-visible { border-color: var(--primary-light); box-shadow: var(--shadow-sm); outline: none; }
+        .dcust-order-card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 0.75rem; margin-bottom: 0.75rem; }
+        .dcust-order-card-id { font-weight: 700; font-size: 0.9375rem; color: var(--slate); font-family: 'SF Mono', 'Fira Code', monospace; }
+        .dcust-order-card-time { font-size: 0.75rem; color: var(--slate-lighter); font-weight: 600; margin-top: 0.125rem; }
+        .dcust-order-card-right { display: flex; align-items: center; gap: 0.625rem; flex-shrink: 0; }
+        .dcust-order-card-chevron { width: 16px; height: 16px; color: var(--slate-lighter); flex-shrink: 0; }
+        .dcust-order-card-body { display: flex; flex-direction: column; gap: 0.5rem; }
+        .dcust-order-card-row { display: flex; align-items: flex-start; gap: 0.5rem; font-size: 0.8125rem; }
+        .dcust-order-card-row svg { width: 14px; height: 14px; color: var(--slate-lighter); flex-shrink: 0; margin-top: 0.125rem; }
+        .dcust-order-card-label { color: var(--slate-light); font-weight: 600; min-width: 48px; flex-shrink: 0; }
+        .dcust-order-card-value { color: var(--slate); font-weight: 600; }
+
+        /* ---- Mobile dashboard redesign — compact overrides ----
+           Every selector here is ID+class-scoped (#delivery-customer-app
+           .foo…) specifically so it reliably outweighs the shared,
+           unscoped base rules (.hero, .stat-card, …) and the later
+           unconditional #delivery-customer-app .stat-card /
+           .stat-card-top / etc. rules further down this stylesheet —
+           by specificity, not by hoping to land after them in source
+           order. (Relying on source order alone is what caused the
+           desktop sidebar to silently stay display:none for every
+           viewport width — see the fix further down this file.) */
+        @media (max-width: 1023px) {
+            /* Metrics: 3 cards across, Pending + a double-wide Total Spent */
+            #delivery-customer-app .dcust-stats-grid {
+                grid-template-columns: repeat(3, 1fr); gap: 0.625rem; margin-bottom: 1.25rem;
+            }
+            #delivery-customer-app .dcust-stats-grid .stat-card:nth-child(5) { grid-column: span 2; }
+            #delivery-customer-app .dcust-stats-grid .stat-card { padding: 0.875rem; border-radius: 0.875rem; }
+            #delivery-customer-app .dcust-stats-grid .stat-card-top { margin-bottom: 0.5rem; }
+            #delivery-customer-app .dcust-stats-grid .stat-card h4 { font-size: 0.625rem; }
+            #delivery-customer-app .dcust-stats-grid .stat-card p { font-size: 1.375rem; }
+            #delivery-customer-app .dcust-stats-grid .dcust-stat-icon { width: 30px; height: 30px; }
+            #delivery-customer-app .dcust-stats-grid .dcust-stat-icon svg { width: 15px; height: 15px; }
+
+            /* Hero: condensed padding + type scale so it never wraps */
+            #delivery-customer-app .hero { padding: 1.75rem 1.5rem; border-radius: 1.25rem; margin-bottom: 1.25rem; }
+            #delivery-customer-app .hero h2 { font-size: 1.5rem; margin-bottom: 0.5rem; }
+            #delivery-customer-app .hero p { font-size: 0.9375rem; margin-bottom: 1.25rem; max-width: none; }
+            #delivery-customer-app .dcust-hero-cta { padding: 0.75rem 0.5rem 0.75rem 1.5rem; }
+
+            /* "Your Orders" header: "View All" instead of the search/filter
+               row, which stays on the dedicated My Orders page. */
+            #delivery-customer-app .dcust-view-all-link { display: flex; }
+            #delivery-customer-app .dcust-table-controls-filters { display: none; }
+
+            /* Orders list: touch-friendly cards instead of a wide table */
+            #delivery-customer-app .sender-orders-table-wrap { display: none; }
+            #delivery-customer-app .dcust-order-cards-list { display: flex; }
+            #delivery-customer-app .dcust-table-card { padding-bottom: 1.25rem; }
+            #delivery-customer-app .dcust-table-card .orders-grid { padding: 0; }
+
+            /* Discreet "Back to service selector" link next to the
+               welcome text — the sidebar nav item that normally provides
+               this is hidden below the desktop breakpoint. */
+            #delivery-customer-app .dcust-topbar-back-link { display: flex; }
+
+            /* The hamburger opens a sidebar that's always display:none
+               below the desktop breakpoint anyway — dead weight here. */
+            #delivery-customer-app .dcust-mobile-topbar .sidebar-toggle-btn { display: none; }
+        }
+
         .mobile-section { margin-top: 1.5rem; }
         .mobile-section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.875rem; }
         .mobile-section-title { font-size: 1.0625rem; font-weight: 800; color: var(--slate); }
@@ -3176,15 +3269,21 @@
                 </div>
 
                 <div class="admin-topbar">
-                    <div>
-                        <div class="admin-welcome-role" id="dcust-welcome-name">Welcome!</div>
-                        <div id="dcust-welcome-subtitle" style="font-size:0.875rem; color:var(--slate-light);">Here's what's happening with your deliveries.</div>
+                    <div class="dcust-topbar-row">
+                        <div>
+                            <div class="admin-welcome-role" id="dcust-welcome-name">Welcome!</div>
+                            <div id="dcust-welcome-subtitle" style="font-size:0.875rem; color:var(--slate-light);">Here's what's happening with your deliveries.</div>
+                        </div>
+                        <button type="button" class="dcust-topbar-back-link" id="dcust-topbar-back-btn" title="Back to service selector">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+                            <span>Back to service selector</span>
+                        </button>
                     </div>
                 </div>
 
                 <!-- Dashboard view -->
                 <div id="dcust-view-dashboard">
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+                    <div class="dcust-stats-grid">
                         <div class="stat-card">
                             <div class="stat-card-top">
                                 <h4>Total Orders</h4>
@@ -3225,14 +3324,23 @@
                     <section class="hero" id="hero-section">
                         <h2>Send a Package Today!</h2>
                         <p>Fast, Secure, and Reliable Delivery Solution You Can Trust</p>
-                        <button class="btn-primary" id="btn-new-order">Create New Order</button>
+                        <button class="btn-primary dcust-hero-cta" id="btn-new-order">
+                            Create New Order
+                            <span class="dcust-hero-cta-icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                            </span>
+                        </button>
                     </section>
 
                     <section class="orders-section" id="your-orders-section">
                         <div class="dcust-table-card">
                             <div class="dcust-table-controls">
                                 <div class="section-title" style="margin:0;">Your Orders</div>
-                                <div style="display:flex; gap:0.75rem; flex-wrap:wrap;">
+                                <a href="javascript:void(0)" class="dcust-view-all-link" id="dcust-view-all-orders-link">
+                                    View All
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                                </a>
+                                <div class="dcust-table-controls-filters">
                                     <input type="text" class="form-input" id="dcust-orders-search" placeholder="Search orders…" style="max-width:220px;">
                                     <select class="form-input" id="dcust-orders-status-filter" style="max-width:160px;">
                                         <option value="all">All statuses</option>
@@ -6888,8 +6996,10 @@
             });
 
             document.getElementById('dcust-nav-back-to-chooser').addEventListener('click', showAppChooser);
+            document.getElementById('dcust-topbar-back-btn').addEventListener('click', showAppChooser);
             document.getElementById('dcust-nav-dashboard').addEventListener('click', () => setDeliveryCustomerView('dashboard'));
             document.getElementById('dcust-nav-my-orders').addEventListener('click', () => setDeliveryCustomerView('my-orders'));
+            document.getElementById('dcust-view-all-orders-link').addEventListener('click', () => setDeliveryCustomerView('my-orders'));
             document.getElementById('dcust-nav-new-order').addEventListener('click', openNewOrderModal);
             document.getElementById('dcust-sidebar-new-order-btn').addEventListener('click', openNewOrderModal);
             document.getElementById('dcust-orders-search').addEventListener('input', applyDcustOrdersFilter);
@@ -7654,6 +7764,19 @@
             });
 
             document.getElementById('orders-grid').addEventListener('click', handleOrderGridClick);
+            document.getElementById('dcust-my-orders-grid').addEventListener('click', handleOrderGridClick);
+            // Mobile order cards are a focusable <div role="button">, not a
+            // real <button>, so Enter/Space need to be wired up by hand to
+            // activate them the way a native button would.
+            function handleOrderCardKeydown(e) {
+                if (e.key !== 'Enter' && e.key !== ' ') return;
+                const card = e.target.closest('.dcust-order-card');
+                if (!card) return;
+                e.preventDefault();
+                openOrderDetails(card.dataset.id, 'sender');
+            }
+            document.getElementById('orders-grid').addEventListener('keydown', handleOrderCardKeydown);
+            document.getElementById('dcust-my-orders-grid').addEventListener('keydown', handleOrderCardKeydown);
 
             function wireOrderContainerDelegation(container) {
                 container.addEventListener('click', handleOrderGridClick);
@@ -10234,6 +10357,45 @@
                 `;
             }).join('');
 
+            // Mobile card list — same data as the table above, rendered as
+            // touch-friendly cards instead of a wide scrolling table. Both
+            // representations are rendered into the DOM together; CSS
+            // toggles which one is visible by viewport width (see
+            // .sender-orders-table-wrap / .dcust-order-cards-list). Empty
+            // metadata (amount/agent not set yet) is left out of the card
+            // entirely rather than shown as a "—" placeholder.
+            const cardsHtml = sorted.map(order => {
+                const statusClass = `status-${order.status.replace(' ', '-')}`;
+                const statusText = order.status.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+                const agentLabel = order.acceptedBy ? `${order.acceptedBy}${agents[order.acceptedBy] ? ` (${agents[order.acceptedBy]})` : ''}` : '';
+                const metaRow = (iconPath, label, value) => value ? `
+                    <div class="dcust-order-card-row">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${iconPath}</svg>
+                        <span class="dcust-order-card-label">${label}</span>
+                        <span class="dcust-order-card-value">${value}</span>
+                    </div>` : '';
+                return `
+                    <div class="dcust-order-card view-order-row-btn" data-id="${order.id}" role="button" tabindex="0">
+                        <div class="dcust-order-card-top">
+                            <div>
+                                <div class="dcust-order-card-id">${order.id}</div>
+                                <div class="dcust-order-card-time">${formatTime(order.createdAt)}</div>
+                            </div>
+                            <div class="dcust-order-card-right">
+                                <span class="status-badge ${statusClass}">${statusText}</span>
+                                <svg class="dcust-order-card-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                            </div>
+                        </div>
+                        <div class="dcust-order-card-body">
+                            ${metaRow('<path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle>', 'Route', `${order.pickupAddress} → ${order.dropoffAddress}`)}
+                            ${metaRow('<path d="M21 8v13H3V8"></path><path d="M1 3h22v5H1z"></path><line x1="10" y1="12" x2="14" y2="12"></line>', 'Item', order.itemDescription)}
+                            ${metaRow('<circle cx="12" cy="12" r="10"></circle><line x1="12" y1="6" x2="12" y2="18"></line><path d="M15 9.5a3 3 0 0 0-3-1.5c-1.66 0-3 1-3 2.5s1.34 2.5 3 2.5 3 1 3 2.5-1.34 2.5-3 2.5a3 3 0 0 1-3-1.5"></path>', 'Amount', order.amount !== null ? `$${order.amount.toFixed(2)}` : '')}
+                            ${metaRow('<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle>', 'Agent', agentLabel)}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
             container.innerHTML = `
                 <div class="sender-orders-table-wrap">
                     <table class="sender-orders-table">
@@ -10241,6 +10403,7 @@
                         <tbody>${rowsHtml}</tbody>
                     </table>
                 </div>
+                <div class="dcust-order-cards-list">${cardsHtml}</div>
             `;
         }
 
