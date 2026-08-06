@@ -4319,61 +4319,114 @@ real `/api/agents` and `agent:set-duty-status` socket round-trips
 end-to-end, only that the client-side wiring and rendering are
 correct.
 
-## Deployed fixes not showing up: stale index.html / service worker caching
+## Change Role — promote a Manage Agent to Super Admin, or demote one back
 
-After the Fleet Directory fix above, it was reported as deployed but
-still showing the old (pre-fix) behavior. Re-verified the actual code
-in this session with the same Playwright pass — still correct, still
-opens the dedicated modal. So the far more likely explanation isn't
-the app logic; it's that the browser (or a proxy/CDN in front of the
-app) is still serving a cached copy of `index.html` from before the
-deploy.
+Roles were previously fixed once an account was created: `role` was
+set at signup/seeding and nothing in the app ever changed it again for
+an existing account. That's fine until you actually need to swap who
+holds Super Admin — which came up directly (an account needed to move
+from Manage Agent to Super Admin and vice versa), and until now the
+only way to do it was a direct SQL `UPDATE` against the database.
 
-This app is unusually exposed to that failure mode for two reasons
-stacked together: (1) the entire client — every screen, every
-feature — lives in one inline `<script>` block inside `index.html`.
-There's no separate `app.js` with its own filename/hash that changes
-on deploy and forces a cache miss; if `index.html` itself is cached,
-the whole app is frozen at whatever version was cached, silently. (2)
-`public/sw.js` registers a service worker that keeps its own copy of
-the app shell in the Cache Storage API as a fallback (see the "Fleet
-Directory" fixes above for what it does) — a second, independent
-cache layer on top of the browser's normal HTTP cache, on top of
-whatever Railway's own edge/CDN does.
+Staff Accounts now lists both role = 'admin' (Manage Agent) and
+role = 'super_admin' accounts together in one table, each tagged with
+a Role badge. Every account gets a "Make Super Admin" / "Make Manage
+Agent" button (whichever direction applies). Super Admin rows skip the
+Edit/Reset Password/Permissions/Disable buttons entirely — those are
+all deliberately scoped away from role = 'super_admin' at the database
+layer already (see `updateManageAgentAccount`, `setDisabledFeatures`,
+`setUserDisabled` in db.js), so showing them for a Super Admin row
+would just fail.
 
-Two changes, both defensive/preventive since the actual cause can't be
-confirmed from this sandbox (no access to the live deployment or its
-proxy layer):
+Clicking the role button opens a real confirmation modal (not a native
+`confirm()`, consistent with every other consequential action in this
+app) explaining exactly what will happen — the target account will be
+signed out everywhere and need to log in again to pick up the new
+role, since role is baked into the JWT at login time, not re-checked
+per request.
 
-- **`server/server.js`** — `express.static` now sets
-  `Cache-Control: no-cache, no-store, must-revalidate` specifically on
-  `index.html` and `sw.js` (every other static asset — images,
-  `manifest.json`, etc. — keeps normal caching, since those never
-  change independently of an `index.html` change anyway). This tells
-  browsers and any well-behaved proxy to always check back with the
-  server rather than serving a locally cached copy for any length of
-  time.
-- **`public/sw.js`** — bumped `CACHE_NAME` from `golib-shell-v1` to
-  `golib-shell-v2`. The existing `activate` handler already deletes
-  any cache whose name doesn't match `CACHE_NAME`, so this forces
-  every browser with the old service worker installed to drop its
-  cached shell the next time the page loads and the new service
-  worker activates.
+New endpoint: `PUT /api/super-admin/staff/:id/role` (`{ role: 'admin'
+| 'super_admin' }`), guarded by `requireSuperAdmin` and two safety
+checks: the target must currently be exactly the role you'd expect to
+change away from (can't "change" an account to the role it's already
+at), and demoting a Super Admin is blocked if they're the last one —
+never leaves the platform with zero Super Admins. Every change bumps
+`token_version`, the same mechanism "Logout All Devices" already uses,
+so it takes effect immediately rather than waiting for the old token
+to expire on its own (up to 30 days).
 
-**This deploy still needs a one-time hard refresh to take effect** —
-the fix changes what happens on *future* deploys, it can't reach back
-and un-cache what a browser already has cached from before. To
-confirm the Fleet Directory fix specifically: open the app in a
-private/incognito window (guarantees no cache at all), or do a hard
-reload (Ctrl+Shift+R / Cmd+Shift+R on the existing tab), or open
-DevTools → Application → Service Workers → Unregister, then reload
-normally.
+Changing your OWN role (Super Admin promoting themselves back down, or
+promoting themselves — not that that second one means anything) is
+allowed, since the "last Super Admin" check already prevents locking
+yourself out. The response includes a freshly-signed token for that
+one case, and the frontend saves it and reloads the page — the same
+clean "start over as whoever you are now" approach as everywhere else
+in this app that changes a session's role/permissions mid-flight,
+rather than trying to flip every Super-Admin-only UI element in place.
 
-Also worth double-checking, since it can produce the exact same
-symptom independent of caching: that the deploy actually replaced the
-live files. If this app is deployed on Railway via a connected GitHub
-repo (auto-deploy on push), uploading this zip somewhere doesn't put
-it live by itself — the contents need to actually reach the repo/
-branch Railway builds from (or be pushed via the Railway CLI/dashboard
-upload, depending on how this project is set up). Worth confirming
-which of those applies here if a hard refresh doesn't resolve it.
+Promoting an account to Super Admin also clears its `disabled_features`
+column. Without this, a promoted account keeps whatever features were
+disabled on it back when it was a restricted Manage Agent — see the
+Business Profile fix immediately below for exactly what that caused.
+
+Verified with a Playwright pass: the table renders both roles with the
+right badge and the right action buttons per row (Super Admin rows
+correctly missing Edit/Reset Password/Permissions/Disable); promoting
+a Manage Agent account calls the endpoint with the right payload and
+refreshes the list; the confirmation modal's copy is correct for both
+directions and for self vs. other-account targeting. The self-demote
+path's post-confirmation behavior (save the fresh token, reload) is
+straightforward and follows the same pattern the app already uses
+elsewhere, but reloading the page isn't something this sandbox's
+headless test harness can observe past the point the reload fires —
+worth a quick manual click-through after deploying to confirm the
+reload lands you on the Manage Agent dashboard, not an error state.
+
+## Fix: a promoted Super Admin can lose access to Business Profile (and other settings)
+
+Reported directly: after promoting an account from Manage Agent to
+Super Admin (via direct SQL, before the Change Role feature above
+existed), that account couldn't see Business Profile in Settings
+anymore.
+
+Root cause: the frontend's `applyMyFeatureRestrictions()` — which
+hides UI entry points for anything a Super Admin has switched off for
+a Manage Agent account — trusted a comment that turned out not to
+always hold: "Super Admin's own session always has an empty
+`myDisabledFeatures`." That was true as long as the only way to reach
+`role = 'super_admin'` was fresh seeding, since `setDisabledFeatures`
+is scoped away from super_admin at the database layer and could never
+set it on a super_admin row through the app. It stops being true the
+moment an account that already had restrictions *as a Manage Agent*
+gets promoted — the `disabled_features` column doesn't get
+retroactively cleared just because `role` changed, so the promoted
+account carries its old restrictions forward. The backend was never
+actually at risk here — `requireFeature` in server.js checks
+`req.user.role === 'super_admin'` first and exempts it unconditionally
+before ever looking at `disabled_features` — but the frontend function
+never made that same check, so it kept honoring stale restrictions
+that the server itself would have ignored.
+
+Fixed in two places: `applyMyFeatureRestrictions()` now returns
+immediately for `role === 'super_admin'`, mirroring the backend's
+actual exemption instead of assuming the data feeding it is always
+already empty. And `setUserRole` (see Change Role above) now clears
+`disabled_features` on promotion, so this can't happen again through
+the app's own UI going forward — though it doesn't retroactively fix
+any account that was promoted by hand before this shipped, which is
+the account that was actually reported. That one currently has a
+harmless-but-stale `disabled_features` value sitting in the database;
+it has no effect while the account remains Super Admin (both the fixed
+frontend and the always-exempt backend ignore it), but if it's ever
+demoted back to Manage Agent later, those old restrictions would
+reappear. An optional cleanup, not required: `UPDATE users SET
+disabled_features = '{}' WHERE email = '<that account's email>';`.
+
+Verified with a Playwright pass simulating the exact repro — a
+Super Admin session with `myDisabledFeatures` populated with every
+restrictable feature key — and confirming Business Profile, Pricing,
+Backup & Restore, Fleet Directory, New Order, Add Expense, and
+Customers all stay visible. Re-ran the equivalent check for a real
+Manage Agent account with restrictions to confirm those are still
+correctly hidden — this fix narrows an incorrect blanket assumption,
+it doesn't weaken the actual restriction feature.

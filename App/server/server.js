@@ -144,26 +144,7 @@ app.use(cors());
 // documents). Raised to comfortably cover the largest of those with
 // room for JSON overhead and two documents in one request.
 app.use(express.json({ limit: '10mb' }));
-app.use(express.static(path.join(__dirname, '..', 'public'), {
-  setHeaders: (res, filePath) => {
-    // This whole client is one HTML file (index.html) with the entire
-    // app inline in a single <script> block — there's no separate
-    // bundled JS file that changes version on each deploy. Left to
-    // express.static's normal caching, browsers and any CDN/reverse
-    // proxy in front of this app are free to keep serving a stale
-    // index.html indefinitely (only revalidating occasionally), which
-    // makes every deployed fix invisible until someone happens to hard
-    // -refresh. sw.js has the same problem for the same reason — it's
-    // what controls whether the service worker itself re-checks for
-    // updates. Force both to always be revalidated with the server.
-    // Every other static asset (images, manifest.json, etc.) keeps the
-    // normal caching behavior, which is fine since none of those
-    // change without an accompanying index.html change anyway.
-    if (filePath.endsWith('index.html') || filePath.endsWith('sw.js')) {
-      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-    }
-  },
-}));
+app.use(express.static(path.join(__dirname, '..', 'public')));
 
 // Brute-force protection on the three password-checking endpoints
 // (sender login, sender registration, admin login). Generous enough
@@ -1422,7 +1403,7 @@ app.post('/api/super-admin/staff', requireAuth, requireSuperAdmin, async (req, r
       approvalStatus: 'approved',
     });
     await logAudit(req, 'staff.create', { targetType: 'user', targetId: staff.id, targetLabel: staff.businessName });
-    res.json({ staff: { id: staff.id, businessName: staff.businessName, email: staff.email, phone: staff.phone, createdAt: staff.createdAt, isDisabled: staff.isDisabled, disabledFeatures: staff.disabledFeatures } });
+    res.json({ staff: { id: staff.id, businessName: staff.businessName, email: staff.email, phone: staff.phone, role: staff.role, createdAt: staff.createdAt, isDisabled: staff.isDisabled, disabledFeatures: staff.disabledFeatures } });
   } catch (err) {
     console.error('POST /api/super-admin/staff failed', err);
     res.status(500).json({ error: 'Failed to create staff account' });
@@ -1509,6 +1490,60 @@ app.put('/api/super-admin/staff/:id/features', requireAuth, requireSuperAdmin, a
   } catch (err) {
     console.error('PUT /api/super-admin/staff/:id/features failed', err);
     res.status(500).json({ error: 'Failed to update permissions' });
+  }
+});
+
+// Change Role — promote a Manage Agent to Super Admin, or demote a
+// Super Admin back to Manage Agent. Scoped to exactly these two roles
+// at the db layer (see setUserRole) so this can never be pointed at
+// any other kind of account. Two safety checks that live here rather
+// than the DB layer, since they need to read other rows first: never
+// leave the platform with zero Super Admins, and always bump the
+// target's token_version (done inside setUserRole) so the change is
+// enforced immediately rather than waiting for their current token to
+// expire on its own (up to 30 days).
+app.put('/api/super-admin/staff/:id/role', requireAuth, requireSuperAdmin, async (req, res) => {
+  const { role } = req.body || {};
+  if (!['admin', 'super_admin'].includes(role)) {
+    return res.status(400).json({ error: "role must be 'admin' or 'super_admin'" });
+  }
+  try {
+    const target = await db.getUserById(req.params.id);
+    if (!target || !['admin', 'super_admin'].includes(target.role)) {
+      return res.status(404).json({ error: 'Staff account not found' });
+    }
+    if (target.role === role) {
+      return res.status(400).json({ error: `This account is already ${role === 'super_admin' ? 'a Super Admin' : 'a Manage Agent'}` });
+    }
+    if (target.role === 'super_admin' && role === 'admin') {
+      const superAdminCount = await db.countSuperAdmins();
+      if (superAdminCount <= 1) {
+        return res.status(400).json({ error: "Can't demote the last Super Admin — promote another account first" });
+      }
+    }
+    const updated = await db.setUserRole(target.id, role);
+    if (!updated) return res.status(404).json({ error: 'Staff account not found' });
+    await logAudit(req, 'staff.role_change', {
+      targetType: 'user',
+      targetId: updated.id,
+      targetLabel: updated.businessName,
+      details: { from: target.role, to: role },
+    });
+
+    // Demoting/promoting your OWN account: the request that got us here
+    // is still running on the old token, which the token_version bump
+    // above just invalidated — re-sign a fresh one right now so this
+    // response can log the caller straight into their new role instead
+    // of leaving them holding a token that's already been rejected.
+    const selfToken = target.id === req.user.id ? signToken(updated, req.user.sessionId) : null;
+    res.json({
+      ok: true,
+      staff: { id: updated.id, businessName: updated.businessName, email: updated.email, phone: updated.phone, role: updated.role, createdAt: updated.createdAt, isDisabled: updated.isDisabled, disabledFeatures: updated.disabledFeatures },
+      ...(selfToken ? { token: selfToken, user: { id: updated.id, businessName: updated.businessName, email: updated.email, phone: updated.phone, role: updated.role } } : {}),
+    });
+  } catch (err) {
+    console.error('PUT /api/super-admin/staff/:id/role failed', err);
+    res.status(500).json({ error: 'Failed to change role' });
   }
 });
 

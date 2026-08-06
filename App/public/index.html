@@ -5797,6 +5797,30 @@
         </div>
     </div>
 
+    <!-- Change Role confirmation (Super Admin only) — a real confirm
+         step rather than a native confirm(), consistent with how every
+         other consequential action in this app (reject a vendor,
+         resolve a dispute) already avoids browser dialogs. Placed after
+         Staff Accounts and its sibling modals above so it renders on
+         top of the Staff Accounts modal, which stays open behind it —
+         same DOM-order stacking rule as everywhere else in this file
+         (every .modal-overlay shares one z-index). -->
+    <div class="modal-overlay" id="change-role-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>Change Role</h3>
+                <button class="close-btn" id="close-change-role-modal">&times;</button>
+            </div>
+            <p id="change-role-summary" style="margin-bottom: 1rem;"></p>
+            <div id="change-role-warning" style="background: var(--bg-light); border-radius: 0.75rem; padding: 1rem; font-size: 0.875rem; color: var(--slate-light); margin-bottom: 1.25rem;"></div>
+            <div id="change-role-error" style="color: #dc2626; font-size: 0.875rem; margin-bottom: 1rem; display: none;"></div>
+            <div class="modal-footer">
+                <button type="button" class="btn-small btn-secondary" id="cancel-change-role">Cancel</button>
+                <button type="button" class="btn-small" id="confirm-change-role-btn" style="background:#92400e; color:white;">Confirm</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Payouts & Commission (Super Admin only) -->
     <div class="modal-overlay" id="payouts-modal">
         <div class="modal" style="max-width: 980px; width: 95%; max-height: 85vh; overflow-y: auto;">
@@ -7237,9 +7261,22 @@
         // rejects these actions regardless (the real security
         // boundary) — this just matches the UI to it, so a restricted
         // admin doesn't see buttons that only fail when clicked.
-        // Super Admin's own session always has an empty
-        // myDisabledFeatures, so nothing here ever affects them.
+        //
+        // Super Admin is always meant to be exempt (see requireFeature
+        // in server.js, which checks role first and skips the
+        // disabled_features check entirely for super_admin) — but that
+        // only holds in the UI if we check role here too, not just
+        // trust myDisabledFeatures to already be empty for Super Admin.
+        // It can end up stale: an account promoted from Manage Agent to
+        // Super Admin keeps whatever features were disabled on it
+        // beforehand, since changing role doesn't retroactively clear
+        // that column (this is exactly what caused Business Profile to
+        // disappear for a freshly-promoted Super Admin). Checking role
+        // explicitly keeps this in sync with what the server actually
+        // enforces, regardless of what disabled_features happens to
+        // hold.
         function applyMyFeatureRestrictions() {
+            if (currentUser && currentUser.role === 'super_admin') return;
             const hide = (id) => { const el = document.getElementById(id); if (el) el.style.display = 'none'; };
             if (myDisabledFeatures.includes('new_order')) hide('open-admin-new-order-btn');
             if (myDisabledFeatures.includes('fleet')) hide('scroll-to-agents-btn');
@@ -9674,20 +9711,35 @@
                     container.innerHTML = '<p style="text-align: center; color: var(--slate-light); padding: 1rem 0;">No staff accounts yet.</p>';
                     return;
                 }
-                let html = '<div style="overflow-x: auto;"><table class="settings-table"><thead><tr><th>Name</th><th>Email</th><th>Since</th><th>Status</th><th></th></tr></thead><tbody>';
+                let html = '<div style="overflow-x: auto;"><table class="settings-table"><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Since</th><th>Status</th><th></th></tr></thead><tbody>';
                 staff.forEach(s => {
+                    const isSuper = s.role === 'super_admin';
+                    // Super Admin accounts don't go through Edit/Reset
+                    // Password/Permissions/Disable here — those are all
+                    // deliberately scoped away from role = 'super_admin' at
+                    // the database layer (see updateManageAgentAccount,
+                    // setDisabledFeatures, setUserDisabled in db.js), so
+                    // showing those buttons for a Super Admin row would
+                    // just fail. Change Role is the one action that works
+                    // for both directions.
+                    const roleActionLabel = isSuper ? 'Make Manage Agent' : 'Make Super Admin';
+                    const otherActions = isSuper ? '' : `
+                            <button type="button" class="btn-small btn-secondary edit-staff-btn" data-id="${s.id}">Edit</button>
+                            <button type="button" class="btn-small reset-staff-password-btn" data-id="${s.id}">Reset Password</button>
+                            <button type="button" class="btn-small btn-secondary staff-permissions-btn" data-id="${s.id}">Permissions</button>
+                            <button type="button" class="btn-small toggle-disabled-btn" data-id="${s.id}" data-name="${s.businessName.replace(/"/g, '&quot;')}" data-disabled="${s.isDisabled}" style="background:${s.isDisabled ? '#dcfce7' : '#fef3c7'}; color:${s.isDisabled ? '#15803d' : '#92400e'};">${s.isDisabled ? 'Enable' : 'Disable'}</button>`;
                     html += `<tr${s.isDisabled ? ' style="opacity:0.55;"' : ''}>
                         <td style="font-weight:700;">${s.businessName}</td>
                         <td>${s.email}</td>
+                        <td>${isSuper
+                            ? '<span style="background:#ede9fe; color:#5b21b6; padding:0.1875rem 0.625rem; border-radius:9999px; font-size:0.75rem; font-weight:700; white-space:nowrap;">Super Admin</span>'
+                            : '<span style="background:#e0f2fe; color:#0369a1; padding:0.1875rem 0.625rem; border-radius:9999px; font-size:0.75rem; font-weight:700; white-space:nowrap;">Manage Agent</span>'}</td>
                         <td>${new Date(s.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</td>
                         <td>${s.isDisabled
                             ? '<span style="background:#fee2e2; color:#b91c1c; padding:0.1875rem 0.625rem; border-radius:9999px; font-size:0.75rem; font-weight:700;">Disabled</span>'
                             : '<span style="background:#dcfce7; color:#15803d; padding:0.1875rem 0.625rem; border-radius:9999px; font-size:0.75rem; font-weight:700;">Active</span>'}</td>
-                        <td style="white-space:nowrap; display:flex; gap:0.5rem;">
-                            <button type="button" class="btn-small btn-secondary edit-staff-btn" data-id="${s.id}">Edit</button>
-                            <button type="button" class="btn-small reset-staff-password-btn" data-id="${s.id}">Reset Password</button>
-                            <button type="button" class="btn-small btn-secondary staff-permissions-btn" data-id="${s.id}">Permissions</button>
-                            <button type="button" class="btn-small toggle-disabled-btn" data-id="${s.id}" data-name="${s.businessName.replace(/"/g, '&quot;')}" data-disabled="${s.isDisabled}" style="background:${s.isDisabled ? '#dcfce7' : '#fef3c7'}; color:${s.isDisabled ? '#15803d' : '#92400e'};">${s.isDisabled ? 'Enable' : 'Disable'}</button>
+                        <td style="white-space:nowrap; display:flex; gap:0.5rem; flex-wrap:wrap;">${otherActions}
+                            <button type="button" class="btn-small change-role-btn" data-id="${s.id}" data-name="${s.businessName.replace(/"/g, '&quot;')}" data-current-role="${s.role}" style="background:#fef3c7; color:#92400e;">${roleActionLabel}</button>
                         </td>
                     </tr>`;
                 });
@@ -9695,6 +9747,73 @@
                 container.innerHTML = html;
             } catch (err) {
                 container.innerHTML = `<p style="text-align: center; color: #dc2626; padding: 2rem 0;">${err.message}</p>`;
+            }
+        }
+
+        // ---- Change Role (Super Admin only) — promote a Manage Agent to
+        // Super Admin, or demote a Super Admin back to Manage Agent.
+        // `changeRoleTarget` holds what the confirmation modal is acting
+        // on; set on open, read on confirm, cleared on close. ----
+        let changeRoleTarget = null;
+
+        function openChangeRoleModal(id, name, currentRole) {
+            const isSuper = currentRole === 'super_admin';
+            const newRole = isSuper ? 'admin' : 'super_admin';
+            changeRoleTarget = { id, name, currentRole, newRole };
+            document.getElementById('change-role-error').style.display = 'none';
+            document.getElementById('change-role-summary').innerHTML =
+                `Change <strong>${name}</strong> from <strong>${isSuper ? 'Super Admin' : 'Manage Agent'}</strong> to <strong>${isSuper ? 'Manage Agent' : 'Super Admin'}</strong>?`;
+            const isSelf = currentUser && id === currentUser.id;
+            document.getElementById('change-role-warning').textContent = isSuper
+                ? (isSelf
+                    ? "You're demoting your own account. You'll be switched straight into the Manage Agent view — make sure another account already has Super Admin access first, or you could lock yourself out of this console."
+                    : 'This account will need to log in again to pick up the change — any device it\'s currently signed in on will be signed out.')
+                : (isSelf
+                    ? "You're promoting your own account — nothing else changes, you'll keep your current session."
+                    : 'This account will need to log in again to pick up the change — any device it\'s currently signed in on will be signed out. They\'ll gain full Super Admin access, including everything in this console.');
+            document.getElementById('change-role-modal').classList.add('active');
+        }
+
+        function closeChangeRoleModal() {
+            document.getElementById('change-role-modal').classList.remove('active');
+            changeRoleTarget = null;
+        }
+
+        async function handleConfirmChangeRole() {
+            if (!changeRoleTarget) return;
+            const errorEl = document.getElementById('change-role-error');
+            const btn = document.getElementById('confirm-change-role-btn');
+            errorEl.style.display = 'none';
+            btn.disabled = true;
+            btn.textContent = 'Changing…';
+            try {
+                const data = await apiFetch(`/api/super-admin/staff/${changeRoleTarget.id}/role`, {
+                    method: 'PUT',
+                    body: JSON.stringify({ role: changeRoleTarget.newRole }),
+                });
+                const wasSelf = changeRoleTarget.id === currentUser.id;
+                closeChangeRoleModal();
+                if (wasSelf && data.token) {
+                    // Our own role just changed — the token this session
+                    // was using is now invalid (see the server-side
+                    // token_version bump). Save the fresh one and reload,
+                    // the same clean "start over as whoever you are now"
+                    // approach used after Logout All Devices, rather than
+                    // trying to manually flip every Super-Admin-only UI
+                    // element in place.
+                    await saveAuth(data.token, data.user);
+                    showToast('Role changed — reloading…', 'success');
+                    setTimeout(() => location.reload(), 600);
+                    return;
+                }
+                showToast('Role changed — that account will need to log in again', 'success');
+                await loadStaffPanel();
+            } catch (err) {
+                errorEl.textContent = err.message;
+                errorEl.style.display = 'block';
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Confirm';
             }
         }
 
@@ -9966,7 +10085,13 @@
                 if (e.target.classList.contains('toggle-disabled-btn')) {
                     toggleAccountDisabled(e.target.dataset.id, e.target.dataset.name, e.target.dataset.disabled === 'true', loadStaffPanel);
                 }
+                if (e.target.classList.contains('change-role-btn')) {
+                    openChangeRoleModal(e.target.dataset.id, e.target.dataset.name, e.target.dataset.currentRole);
+                }
             });
+            document.getElementById('close-change-role-modal').addEventListener('click', closeChangeRoleModal);
+            document.getElementById('cancel-change-role').addEventListener('click', closeChangeRoleModal);
+            document.getElementById('confirm-change-role-btn').addEventListener('click', handleConfirmChangeRole);
             document.getElementById('close-edit-manage-agent-modal').addEventListener('click', closeEditManageAgentModal);
             document.getElementById('cancel-edit-manage-agent-form').addEventListener('click', closeEditManageAgentModal);
             document.getElementById('edit-manage-agent-form').addEventListener('submit', handleEditManageAgentFormSubmit);
@@ -10919,6 +11044,7 @@
             'staff.update': 'Staff account updated',
             'staff.password_reset': 'Staff password reset',
             'staff.features_update': 'Staff permissions changed',
+            'staff.role_change': 'Role changed',
             'dispute.resolve': 'Dispute resolved',
             'user.disable': 'Account disabled',
             'user.enable': 'Account enabled',

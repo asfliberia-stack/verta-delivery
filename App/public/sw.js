@@ -5,14 +5,7 @@
 // first, since this app's data changes in real time and stale cached
 // data would be actively misleading (an old order list, wrong stock
 // counts, etc).
-// Bumped v1 -> v2: forces every previously-installed service worker to
-// drop its old cached copy of index.html/app-shell on next activate
-// (see the activate handler below, which deletes any cache whose name
-// isn't CACHE_NAME) — otherwise a browser that installed this SW
-// before a given deploy could keep serving that stale shell from the
-// Cache Storage fallback indefinitely. Bump this again on any future
-// deploy where a stale client-side cache could hide a real fix.
-const CACHE_NAME = 'golib-shell-v2';
+const CACHE_NAME = 'golib-shell-v1';
 const APP_SHELL = ['/', '/manifest.json', '/assets/icon-192.png', '/assets/icon-512.png'];
 
 self.addEventListener('install', (event) => {

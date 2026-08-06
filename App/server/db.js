@@ -331,6 +331,46 @@ const db = {
     return rowToUser(rows[0]);
   },
 
+  // Promote a Manage Agent to Super Admin, or demote a Super Admin
+  // back to Manage Agent. Scoped to exactly these two roles in the
+  // query itself (never vendor/sender/delivery_company/etc — those
+  // have their own dedicated account types, not a "level" to move up
+  // or down) so this can never be misused to grant/revoke any other
+  // kind of access. Also bumps token_version, same as setUserDisabled
+  // above — the role is baked into every already-issued JWT, so
+  // without this the account would keep operating under its old role
+  // until whatever token it's holding happens to expire on its own (up
+  // to 30 days).
+  //
+  // Promoting to super_admin also clears disabled_features. Without
+  // this, a promoted account keeps whatever features were disabled on
+  // it as a Manage Agent — harmless server-side (requireFeature always
+  // exempts super_admin regardless of this column), but the frontend
+  // used to trust that a Super Admin's disabled_features was always
+  // empty and hid UI based on it unconditionally, which made Business
+  // Profile (and potentially others) silently vanish for a freshly
+  // promoted Super Admin who'd had it restricted back when they were
+  // still Manage Agent. The frontend now checks role first too (belt
+  // and suspenders), but there's no reason to leave stale restrictions
+  // sitting on the row either.
+  async setUserRole(id, role) {
+    const { rows } = await pool.query(
+      `UPDATE users SET role = $1, token_version = token_version + 1,
+         disabled_features = CASE WHEN $1 = 'super_admin' THEN '{}' ELSE disabled_features END
+       WHERE id = $2 AND role IN ('admin', 'super_admin') RETURNING *`,
+      [role, id]
+    );
+    return rowToUser(rows[0]);
+  },
+
+  // How many accounts currently hold role = 'super_admin' — used to
+  // block demoting the last one and leaving the platform with no one
+  // able to reach the Super Admin console at all.
+  async countSuperAdmins() {
+    const { rows } = await pool.query(`SELECT COUNT(*)::int AS count FROM users WHERE role = 'super_admin'`);
+    return rows[0].count;
+  },
+
   // Fast permission check — used on every gated request, so this is
   // intentionally a single small query rather than fetching the full
   // user row. Takes effect immediately (no token/session dependency),
@@ -883,19 +923,22 @@ const db = {
     }));
   },
 
-  // ---- Staff ("Manage Agent") accounts — role = 'admin'. No
-  // approval workflow (a Super Admin creating one here IS the
-  // approval, same as Add Vendor/Add Delivery Company), so no
-  // approval_status/rejection_reason/applied_at columns to select. ----
+  // ---- Staff accounts — role = 'admin' ("Manage Agent") or
+  // 'super_admin', shown together in one list so Change Role has
+  // something to toggle between. No approval workflow (a Super Admin
+  // creating one here IS the approval, same as Add Vendor/Add Delivery
+  // Company), so no approval_status/rejection_reason/applied_at
+  // columns to select. ----
   async getStaffAccounts() {
     const { rows } = await pool.query(
-      "SELECT id, business_name, email, phone, created_at, is_disabled, disabled_features FROM users WHERE role = 'admin' ORDER BY created_at ASC"
+      "SELECT id, business_name, email, phone, role, created_at, is_disabled, disabled_features FROM users WHERE role IN ('admin', 'super_admin') ORDER BY (role = 'super_admin') DESC, created_at ASC"
     );
     return rows.map(r => ({
       id: r.id,
       businessName: r.business_name,
       email: r.email,
       phone: r.phone,
+      role: r.role,
       createdAt: r.created_at,
       isDisabled: r.is_disabled,
       disabledFeatures: r.disabled_features || [],
