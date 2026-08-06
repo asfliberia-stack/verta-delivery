@@ -5111,6 +5111,34 @@
         </div>
     </div>
 
+    <!-- Fleet Directory (Super Admin only) — a dedicated section, not a
+         detour through the shared Manage Agent operational dashboard.
+         Same underlying agent data/functions as the Manage Agent Fleet
+         Directory section (one shared pool — see the Vendors modal's
+         note on this), just its own modal so Super Admin doesn't have
+         to leave Platform Overview to reach it. Placed BEFORE the
+         Add/Edit Agent Modal below so that modal — opened on top of
+         this one via Edit/+ Add Agent — renders above it; every
+         .modal-overlay shares the same z-index, so DOM order is what
+         decides stacking (see the Staff Accounts modal fix for the
+         bug this exact ordering avoids). -->
+    <div class="modal-overlay" id="fleet-directory-modal">
+        <div class="modal" style="max-width: 900px; width: 95%; max-height: 85vh; overflow-y: auto;">
+            <div class="modal-header">
+                <h3>🚴 Fleet Directory</h3>
+                <div style="display:flex; gap:0.5rem; align-items:center;">
+                    <button type="button" class="btn-small btn-success" id="sa-add-agent-btn">+ Add Agent</button>
+                    <button class="close-btn" id="close-fleet-directory-modal">&times;</button>
+                </div>
+            </div>
+            <p style="color: var(--slate-light); margin-bottom: 1.5rem; font-size: 0.875rem;">
+                Delivery agents available to accept and fulfill orders. This is the same fleet Manage
+                Agent works with day to day — one shared pool, not split per staff account.
+            </p>
+            <div id="sa-agent-contacts-container"></div>
+        </div>
+    </div>
+
     <!-- Add/Edit Agent Modal (Fleet Directory) -->
     <div class="modal-overlay" id="agent-modal">
         <div class="modal">
@@ -7186,7 +7214,15 @@
                 renderSenderOrdersTable('orders-grid');
                 renderMarketplacePurchases('mp-orders-grid');
             }
-            if (currentUser && currentUser.role === 'admin') {
+            // Super Admin shares Manage Agent's operational dashboard (see
+            // enterApp) and can switch into it via "Delivery Operations" —
+            // so it needs the same render calls, not just 'admin'. Without
+            // this, that whole view (Recent Deliveries, stats, weekly
+            // revenue, Order History, Agent Contacts) stayed blank for
+            // Super Admin until some unrelated socket event happened to
+            // trigger a re-render — found while fixing the Fleet Directory
+            // button, which surfaces the same gap for the agent list.
+            if (currentUser && (currentUser.role === 'admin' || currentUser.role === 'super_admin')) {
                 renderOrdersDelivery();
                 renderRecentDeliveries();
                 calculateAndRenderStats();
@@ -8944,18 +8980,33 @@
             document.getElementById('close-order-history').addEventListener('click', closeOrderHistoryModal);
 
             document.getElementById('scroll-to-agents-btn').addEventListener('click', () => {
-                // Fleet Directory lives inside the Delivery Operations view.
-                // Manage Agent is always in that view, so this used to be a
-                // plain scroll. Super Admin's default landing view is
-                // Platform Overview instead — a separate, hidden section —
-                // so scrolling to a hidden element was a silent no-op that
-                // looked like the button was disabled. Switch views first
-                // (reusing the exact same click the "Delivery Operations"
-                // nav item uses) so the section is actually visible.
+                // Manage Agent's Fleet Directory is an inline section on
+                // their one operational dashboard — scrolling to it there
+                // makes sense, since that's the only view they have.
+                // Super Admin has a second, separate view (Platform
+                // Overview) as their default landing page, and rather than
+                // detour them into the Manage Agent dashboard just to see
+                // the fleet, they get their own dedicated Fleet Directory
+                // modal — same underlying agent data, opened directly from
+                // wherever they are.
+                if (currentUser && currentUser.role === 'super_admin') {
+                    openFleetDirectoryModal();
+                    return;
+                }
                 const overviewBtn = document.getElementById('admin-overview-nav-btn');
                 if (overviewBtn && !overviewBtn.classList.contains('active')) overviewBtn.click();
                 const section = document.getElementById('agent-contacts-section');
                 if (section) section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            });
+
+            document.getElementById('sa-add-agent-btn').addEventListener('click', () => openAgentModal(null));
+            document.getElementById('close-fleet-directory-modal').addEventListener('click', () => {
+                document.getElementById('fleet-directory-modal').classList.remove('active');
+            });
+            document.getElementById('sa-agent-contacts-container').addEventListener('click', (e) => {
+                if (e.target.classList.contains('edit-agent-btn')) openAgentModal(e.target.dataset.id);
+                const dutyBtn = e.target.closest('.agent-duty-toggle');
+                if (dutyBtn) toggleAgentDutyStatus(dutyBtn.dataset.id, dutyBtn.dataset.current);
             });
 
             document.getElementById('open-settings-btn').addEventListener('click', () => {
@@ -9102,6 +9153,16 @@
 
         // ---- Fleet Directory: add / edit agent ----
         let editingAgentId = null; // null = "Add Agent" mode; an id = "Edit Agent" mode
+
+        // Super Admin's dedicated Fleet Directory — opens directly from
+        // any view (no need to switch into the Manage Agent operational
+        // dashboard first). renderAgentContacts() fills both this modal's
+        // container and Manage Agent's inline section whenever either is
+        // present in the DOM, so a fresh render here is always current.
+        function openFleetDirectoryModal() {
+            document.getElementById('fleet-directory-modal').classList.add('active');
+            renderAgentContacts();
+        }
 
         function openAgentModal(agentId) {
             editingAgentId = agentId;
@@ -11672,10 +11733,20 @@
         }
 
         function renderAgentContacts() {
-            const container = document.getElementById('agent-contacts-container');
-            if (!container) return;
+            // Two containers can show this same data: Manage Agent's inline
+            // "Agent Contacts" section on the operational dashboard, and
+            // Super Admin's dedicated Fleet Directory modal. Both read from
+            // the same `agentRecords`/`orders`, so one render call keeps
+            // whichever is present (each account only ever has one of the
+            // two in its DOM) in sync — no separate render path to drift.
+            const containerIds = ['agent-contacts-container', 'sa-agent-contacts-container'];
+            const containers = containerIds
+                .map(id => document.getElementById(id))
+                .filter(Boolean);
+            if (containers.length === 0) return;
             if (agentRecords.length === 0) {
-                container.innerHTML = '<p style="text-align: center; color: var(--slate-light);">No agents added yet — click "+ Add Agent" to build your Fleet Directory.</p>';
+                const empty = '<p style="text-align: center; color: var(--slate-light);">No agents added yet — click "+ Add Agent" to build your Fleet Directory.</p>';
+                containers.forEach(c => { c.innerHTML = empty; });
                 return;
             }
             let html = '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem;">';
@@ -11711,7 +11782,7 @@
                 `;
             });
             html += '</div>';
-            container.innerHTML = html;
+            containers.forEach(c => { c.innerHTML = html; });
         }
 
         // ---- Accepting orders (admin) ----

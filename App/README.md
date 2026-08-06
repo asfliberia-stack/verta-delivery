@@ -4260,3 +4260,61 @@ correct nav button gets the active state, and no page errors are
 thrown — then repeats the click from an already-active Delivery
 Operations view (Manage Agent's normal case) to confirm no regression
 there either.
+
+## Fleet Directory becomes its own Super Admin section
+
+Follow-up to the fix above, at the user's request: rather than routing
+Super Admin through Manage Agent's Delivery Operations dashboard just
+to reach the fleet list, Super Admin now gets a dedicated **Fleet
+Directory** modal, opened directly — from Platform Overview or
+anywhere else — with no view-switching involved. Manage Agent's
+experience is completely unchanged: their Fleet Directory button still
+scrolls to the inline "Agent Contacts" section on their one
+operational dashboard, exactly as before.
+
+Both surfaces read the same underlying agent data (still one shared
+fleet — see the note already on the Vendors modal about this) and the
+same add/edit/duty-toggle functions, so there's one code path behind
+two entry points, not two implementations to keep in sync:
+`renderAgentContacts()` now fills whichever of the two containers is
+present in the DOM (Manage Agent's `agent-contacts-container`, Super
+Admin's new `sa-agent-contacts-container`, or — harmlessly — neither),
+and the new modal's "+ Add Agent"/Edit/duty-toggle controls call the
+exact same `openAgentModal` / `toggleAgentDutyStatus` functions the
+original section already used.
+
+While tracing through why the shared dashboard route was ever blank
+for Super Admin, found a second, related bug worth fixing at the same
+time: `refreshAllViews()` — the function that actually paints Recent
+Deliveries, the stats cards, the weekly revenue card, Order History,
+and Agent Contacts from already-loaded data — only ran for
+`role === 'admin'`, never `'super_admin'`, even though Super Admin
+loads the exact same `/api/state` data and shares the exact same
+dashboard markup. In practice this meant that if a Super Admin ever
+did switch into Delivery Operations, most of that page stayed blank
+until some unrelated Socket.io event happened to trigger a re-render.
+Fixed by including `'super_admin'` in that role check — one-line
+change, no new behavior for Manage Agent.
+
+New modal placement note: `fleet-directory-modal` sits in the document
+right before the existing "Add/Edit Agent Modal" (`agent-modal`), for
+the same DOM-order stacking reason documented in the Multi-staff
+support section above — every `.modal-overlay` shares one CSS
+`z-index`, so when Edit/+ Add Agent opens `agent-modal` on top of an
+already-open Fleet Directory modal, it needs to come later in the
+document to actually render on top.
+
+Verified with a Playwright pass covering: Super Admin clicking Fleet
+Directory from Platform Overview opens the new modal without leaving
+Platform Overview; the modal lists agents with working Edit and duty
+buttons; the Edit modal opens correctly pre-filled and confirmed to
+sit later in the DOM than the Fleet Directory modal (so it stacks
+above it); "+ Add Agent" opens the same modal in add mode; the close
+button works; Manage Agent's original scroll-based behavior is
+unaffected; and `refreshAllViews()` now populates both the Super Admin
+and Manage Agent containers when called as `super_admin`. Also
+screenshotted the new modal to confirm the visual layout. Same sandbox
+caveat as the rest of this session — no live server to confirm the
+real `/api/agents` and `agent:set-duty-status` socket round-trips
+end-to-end, only that the client-side wiring and rendering are
+correct.
