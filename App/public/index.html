@@ -225,6 +225,34 @@
         .dcust-order-card-label { color: var(--slate-light); font-weight: 600; min-width: 48px; flex-shrink: 0; }
         .dcust-order-card-value { color: var(--slate); font-weight: 600; }
 
+        /* ---- Delivery Company dashboard ----
+           Brand new classes (no pre-existing rules anywhere else to
+           conflict with), so — unlike the #delivery-customer-app fixes
+           above — no ID-scoping or media-query ordering games are
+           needed here; a plain mobile-first base plus a min-width
+           override is enough. Cards reuse the .dcust-order-card-* parts
+           (top row + labeled body rows) from the sender dashboard for a
+           consistent look, wrapped in this dashboard's own .dc-card
+           instead of .dcust-order-card since these cards hold inline
+           controls (duty dropdown, Accept/Edit buttons) rather than
+           being a single tap target. */
+        .dc-stats-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.625rem; margin-bottom: 1.5rem; }
+        @media (min-width: 640px) {
+            .dc-stats-grid { grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 1rem; }
+        }
+        .dc-section-card { margin-bottom: 1.75rem; }
+        .dc-cards-grid { display: grid; grid-template-columns: 1fr; gap: 0.75rem; }
+        @media (min-width: 640px) {
+            .dc-cards-grid { grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
+        }
+        .dc-card {
+            background: white; border: 1px solid var(--border); border-radius: 1rem;
+            padding: 1rem 1.125rem; transition: box-shadow 0.15s ease, border-color 0.15s ease;
+        }
+        .dc-card:hover { border-color: var(--primary-light); box-shadow: var(--shadow-sm); }
+        .dc-card .dcust-order-card-top { margin-bottom: 0; }
+        .dc-card .dcust-order-card-body { margin-top: 0.75rem; }
+
         /* ---- Mobile dashboard redesign — compact overrides ----
            Every selector here is ID+class-scoped (#delivery-customer-app
            .foo…) specifically so it reliably outweighs the shared,
@@ -240,39 +268,61 @@
             #delivery-customer-app .dcust-stats-grid {
                 grid-template-columns: repeat(3, 1fr); gap: 0.625rem; margin-bottom: 1.25rem;
             }
+            #delivery-company-app .dcust-stats-grid {
+                grid-template-columns: repeat(3, 1fr); gap: 0.625rem; margin-bottom: 1.25rem;
+            }
             #delivery-customer-app .dcust-stats-grid .stat-card:nth-child(5) { grid-column: span 2; }
+            #delivery-company-app .dcust-stats-grid .stat-card:nth-child(5) { grid-column: span 2; }
             #delivery-customer-app .dcust-stats-grid .stat-card { padding: 0.875rem; border-radius: 0.875rem; }
+            #delivery-company-app .dcust-stats-grid .stat-card { padding: 0.875rem; border-radius: 0.875rem; }
             #delivery-customer-app .dcust-stats-grid .stat-card-top { margin-bottom: 0.5rem; }
+            #delivery-company-app .dcust-stats-grid .stat-card-top { margin-bottom: 0.5rem; }
             #delivery-customer-app .dcust-stats-grid .stat-card h4 { font-size: 0.625rem; }
+            #delivery-company-app .dcust-stats-grid .stat-card h4 { font-size: 0.625rem; }
             #delivery-customer-app .dcust-stats-grid .stat-card p { font-size: 1.375rem; }
+            #delivery-company-app .dcust-stats-grid .stat-card p { font-size: 1.375rem; }
             #delivery-customer-app .dcust-stats-grid .dcust-stat-icon { width: 30px; height: 30px; }
+            #delivery-company-app .dcust-stats-grid .dcust-stat-icon { width: 30px; height: 30px; }
             #delivery-customer-app .dcust-stats-grid .dcust-stat-icon svg { width: 15px; height: 15px; }
+            #delivery-company-app .dcust-stats-grid .dcust-stat-icon svg { width: 15px; height: 15px; }
 
             /* Hero: condensed padding + type scale so it never wraps */
             #delivery-customer-app .hero { padding: 1.75rem 1.5rem; border-radius: 1.25rem; margin-bottom: 1.25rem; }
+            #delivery-company-app .hero { padding: 1.75rem 1.5rem; border-radius: 1.25rem; margin-bottom: 1.25rem; }
             #delivery-customer-app .hero h2 { font-size: 1.5rem; margin-bottom: 0.5rem; }
+            #delivery-company-app .hero h2 { font-size: 1.5rem; margin-bottom: 0.5rem; }
             #delivery-customer-app .hero p { font-size: 0.9375rem; margin-bottom: 1.25rem; max-width: none; }
+            #delivery-company-app .hero p { font-size: 0.9375rem; margin-bottom: 1.25rem; max-width: none; }
             #delivery-customer-app .dcust-hero-cta { padding: 0.75rem 0.5rem 0.75rem 1.5rem; }
+            #delivery-company-app .dcust-hero-cta { padding: 0.75rem 0.5rem 0.75rem 1.5rem; }
 
             /* "Your Orders" header: "View All" instead of the search/filter
                row, which stays on the dedicated My Orders page. */
             #delivery-customer-app .dcust-view-all-link { display: flex; }
+            #delivery-company-app .dcust-view-all-link { display: flex; }
             #delivery-customer-app .dcust-table-controls-filters { display: none; }
+            #delivery-company-app .dcust-table-controls-filters { display: none; }
 
             /* Orders list: touch-friendly cards instead of a wide table */
             #delivery-customer-app .sender-orders-table-wrap { display: none; }
+            #delivery-company-app .sender-orders-table-wrap { display: none; }
             #delivery-customer-app .dcust-order-cards-list { display: flex; }
+            #delivery-company-app .dcust-order-cards-list { display: flex; }
             #delivery-customer-app .dcust-table-card { padding-bottom: 1.25rem; }
+            #delivery-company-app .dcust-table-card { padding-bottom: 1.25rem; }
             #delivery-customer-app .dcust-table-card .orders-grid { padding: 0; }
+            #delivery-company-app .dcust-table-card .orders-grid { padding: 0; }
 
             /* Discreet "Back to service selector" link next to the
                welcome text — the sidebar nav item that normally provides
                this is hidden below the desktop breakpoint. */
             #delivery-customer-app .dcust-topbar-back-link { display: flex; }
+            #delivery-company-app .dcust-topbar-back-link { display: flex; }
 
             /* The hamburger opens a sidebar that's always display:none
                below the desktop breakpoint anyway — dead weight here. */
             #delivery-customer-app .dcust-mobile-topbar .sidebar-toggle-btn { display: none; }
+            #delivery-company-app .dcust-mobile-topbar .sidebar-toggle-btn { display: none; }
         }
 
         .mobile-section { margin-top: 1.5rem; }
@@ -325,7 +375,9 @@
 
             .mobile-bottom-nav { display: none; }
             #delivery-customer-app .admin-shell { grid-template-columns: 272px 1fr; }
+            #delivery-company-app .admin-shell { grid-template-columns: 272px 1fr; }
             #delivery-customer-app .admin-sidebar { display: flex; }
+            #delivery-company-app .admin-sidebar { display: flex; }
             .mobile-topbar { padding: 1rem 2rem; flex-wrap: nowrap; }
             .desktop-hide-logo { display: none; }
             .mobile-search-bar { order: 0; flex: 1; max-width: 640px; margin: 0; }
@@ -731,6 +783,7 @@
         .status-picked-up { background: #ede9fe; color: #6d28d9; border: 1px solid #c4b5fd; }
         .status-delivered { background: #DCFCE7; color: #15803D; border: 1px solid #bbf7d0; }
         .status-cancelled { background: #fee2e2; color: #b91c1c; border: 1px solid #fecaca; }
+        .status-off-duty { background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; }
 
         .order-details { margin-bottom: 1.25rem; }
         .order-detail { margin-bottom: 0.75rem; display: flex; gap: 0.75rem; align-items: flex-start; }
@@ -1294,10 +1347,36 @@
            properties don't inherit across separate top-level elements,
            so every rule below that references var(--admin-*) for
            #delivery-customer-app was silently resolving to nothing
+           #delivery-company-app was silently resolving to nothing
            without this. This is the actual root cause of stat cards
            (and other elements) rendering with no background, border,
            or shadow at all. */
         #delivery-customer-app {
+            --admin-bg: #f8fafc;
+            --admin-surface: #ffffff;
+            --admin-surface-alt: #f1f5f9;
+            --admin-border: #e2e8f0;
+            --admin-border-strong: #cbd5e1;
+            --admin-text: #0f172a;
+            --admin-text-secondary: #64748b;
+            --admin-text-tertiary: #94a3b8;
+            --admin-sidebar-from: #121829;
+            --admin-sidebar-to: #1a2137;
+            --admin-sidebar-text: #cbd5e1;
+            --admin-sidebar-text-hover: #ffffff;
+            --admin-shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.04);
+            --admin-shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.06), 0 1px 2px rgba(15, 23, 42, 0.04);
+            --admin-shadow-md: 0 4px 16px rgba(15, 23, 42, 0.08);
+            --admin-shadow-lg: 0 16px 40px rgba(15, 23, 42, 0.12);
+            --admin-radius-lg: 1rem;
+            --admin-radius-md: 0.75rem;
+            --admin-radius-sm: 0.5rem;
+            background: var(--admin-bg);
+            min-height: 100vh;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            -webkit-font-smoothing: antialiased;
+        }
+        #delivery-company-app {
             --admin-bg: #f8fafc;
             --admin-surface: #ffffff;
             --admin-surface-alt: #f1f5f9;
@@ -1368,8 +1447,16 @@
             align-items: start;
             transition: grid-template-columns 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
+        #delivery-company-app .admin-shell {
+            display: grid;
+            grid-template-columns: 1fr;
+            min-height: 100vh;
+            align-items: start;
+            transition: grid-template-columns 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
         #delivery-app .admin-shell.sidebar-collapsed { grid-template-columns: 0px 1fr; }
         #delivery-customer-app .admin-shell.sidebar-collapsed { grid-template-columns: 0px 1fr; }
+        #delivery-company-app .admin-shell.sidebar-collapsed { grid-template-columns: 0px 1fr; }
 
         /* ---- Sidebar ---- */
         #delivery-app .admin-sidebar {
@@ -1396,18 +1483,36 @@
             overflow: hidden;
             transition: padding 0.3s ease-in-out, opacity 0.2s ease-in-out;
         }
+        #delivery-company-app .admin-sidebar {
+            background: #ffffff;
+            border-right: 1px solid #e2e8f0;
+            min-height: 100vh;
+            padding: 1.75rem 1.25rem;
+            display: none;
+            flex-direction: column;
+            position: sticky;
+            top: 0;
+            overflow: hidden;
+            transition: padding 0.3s ease-in-out, opacity 0.2s ease-in-out;
+        }
         #delivery-app .admin-shell.sidebar-collapsed .admin-sidebar {
             padding-left: 0; padding-right: 0; opacity: 0; pointer-events: none;
         }
         #delivery-customer-app .admin-shell.sidebar-collapsed .admin-sidebar {
             padding-left: 0; padding-right: 0; opacity: 0; pointer-events: none;
         }
+        #delivery-company-app .admin-shell.sidebar-collapsed .admin-sidebar {
+            padding-left: 0; padding-right: 0; opacity: 0; pointer-events: none;
+        }
         #delivery-app .admin-sidebar-logo { margin-bottom: 2rem; padding: 0 0.5rem; }
         #delivery-customer-app .admin-sidebar-logo { margin-bottom: 2rem; padding: 0 0.5rem; }
+        #delivery-company-app .admin-sidebar-logo { margin-bottom: 2rem; padding: 0 0.5rem; }
         #delivery-app .admin-sidebar-logo img { height: 42px; max-width: 100%; object-fit: contain; }
         #delivery-customer-app .admin-sidebar-logo img { height: 42px; max-width: 100%; object-fit: contain; }
+        #delivery-company-app .admin-sidebar-logo img { height: 42px; max-width: 100%; object-fit: contain; }
         #delivery-app .admin-nav { display: flex; flex-direction: column; gap: 0.25rem; }
         #delivery-customer-app .admin-nav { display: flex; flex-direction: column; gap: 0.25rem; }
+        #delivery-company-app .admin-nav { display: flex; flex-direction: column; gap: 0.25rem; }
         #delivery-app .admin-nav-item {
             display: flex; align-items: center; gap: 0.75rem;
             min-height: 44px;
@@ -1424,13 +1529,26 @@
             background: transparent; border: none; cursor: pointer; text-align: left;
             transition: background 0.15s ease, color 0.15s ease; width: 100%;
         }
+        #delivery-company-app .admin-nav-item {
+            display: flex; align-items: center; gap: 0.75rem;
+            min-height: 44px;
+            padding: 0.625rem 0.875rem; border-radius: var(--admin-radius-sm);
+            color: #475569; font-weight: 600; font-size: 0.875rem;
+            background: transparent; border: none; cursor: pointer; text-align: left;
+            transition: background 0.15s ease, color 0.15s ease; width: 100%;
+        }
         #delivery-app .admin-nav-item:hover { background: rgba(255,255,255,0.06); color: var(--admin-sidebar-text-hover); }
         #delivery-customer-app .admin-nav-item:hover { background: #f1f5f9; color: #1e293b; }
+        #delivery-company-app .admin-nav-item:hover { background: #f1f5f9; color: #1e293b; }
         #delivery-app .admin-nav-item:focus-visible {
             outline: 2px solid var(--primary); outline-offset: 2px;
             background: rgba(255,255,255,0.06); color: var(--admin-sidebar-text-hover);
         }
         #delivery-customer-app .admin-nav-item:focus-visible {
+            outline: 2px solid var(--primary); outline-offset: 2px;
+            background: rgba(255,255,255,0.06); color: var(--admin-sidebar-text-hover);
+        }
+        #delivery-company-app .admin-nav-item:focus-visible {
             outline: 2px solid var(--primary); outline-offset: 2px;
             background: rgba(255,255,255,0.06); color: var(--admin-sidebar-text-hover);
         }
@@ -1444,12 +1562,26 @@
             box-shadow: 0 2px 8px rgba(99, 102, 241, 0.4);
             cursor: default;
         }
+        #delivery-company-app .admin-nav-item.active {
+            background: var(--primary); color: white;
+            box-shadow: 0 2px 8px rgba(99, 102, 241, 0.4);
+            cursor: default;
+        }
         #delivery-app .admin-nav-item.active:hover { background: var(--primary); }
         #delivery-customer-app .admin-nav-item.active:hover { background: var(--primary); }
+        #delivery-company-app .admin-nav-item.active:hover { background: var(--primary); }
         #delivery-app .admin-nav-item svg { width: 18px; height: 18px; flex-shrink: 0; }
         #delivery-customer-app .admin-nav-item svg { width: 18px; height: 18px; flex-shrink: 0; }
+        #delivery-company-app .admin-nav-item svg { width: 18px; height: 18px; flex-shrink: 0; }
+        /* The "More" sheet modals (#dcust-more-modal, #dc-more-modal) reuse
+           .admin-nav-item buttons but live as top-level modals outside the
+           #delivery-customer-app / #delivery-company-app containers, so the
+           ID-scoped icon-sizing rules above never match there — without this,
+           their SVG icons render at their intrinsic (huge) size. */
+        .modal-overlay .admin-nav-item svg { width: 18px; height: 18px; flex-shrink: 0; }
         #delivery-app .admin-sidebar-spacer { flex: 1; }
         #delivery-customer-app .admin-sidebar-spacer { flex: 1; }
+        #delivery-company-app .admin-sidebar-spacer { flex: 1; }
         #delivery-app .admin-sidebar-footer {
             margin-top: 1.5rem; padding-top: 1.25rem;
             border-top: 1px solid rgba(255,255,255,0.08);
@@ -1460,8 +1592,14 @@
             border-top: 1px solid #e2e8f0;
             display: flex; flex-direction: column; gap: 0.25rem;
         }
+        #delivery-company-app .admin-sidebar-footer {
+            margin-top: 1.5rem; padding-top: 1.25rem;
+            border-top: 1px solid #e2e8f0;
+            display: flex; flex-direction: column; gap: 0.25rem;
+        }
         #delivery-app .admin-profile { display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem 0.875rem; }
         #delivery-customer-app .admin-profile { display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem 0.875rem; }
+        #delivery-company-app .admin-profile { display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem 0.875rem; }
         #delivery-app .admin-profile .user-avatar {
             width: 2.25rem; height: 2.25rem; border-radius: 50%;
             background: var(--primary); color: white;
@@ -1474,12 +1612,21 @@
             display: flex; align-items: center; justify-content: center;
             font-weight: 700; font-size: 0.9375rem; border: none; flex-shrink: 0;
         }
+        #delivery-company-app .admin-profile .user-avatar {
+            width: 2.25rem; height: 2.25rem; border-radius: 50%;
+            background: var(--primary); color: white;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 700; font-size: 0.9375rem; border: none; flex-shrink: 0;
+        }
         #delivery-app .admin-profile-label { color: white; font-weight: 600; font-size: 0.875rem; }
         #delivery-customer-app .admin-profile-label { color: #1e293b; font-weight: 600; font-size: 0.875rem; }
+        #delivery-company-app .admin-profile-label { color: #1e293b; font-weight: 600; font-size: 0.875rem; }
         #delivery-app .admin-logout { color: var(--admin-sidebar-text); }
         #delivery-customer-app .admin-logout { color: #dc2626; }
+        #delivery-company-app .admin-logout { color: #dc2626; }
         #delivery-app .admin-logout:hover { background: rgba(255,255,255,0.06); color: var(--admin-sidebar-text-hover); }
         #delivery-customer-app .admin-logout:hover { background: #fef2f2; color: #b91c1c; }
+        #delivery-company-app .admin-logout:hover { background: #fef2f2; color: #b91c1c; }
 
         /* ---- Sidebar toggle ---- */
         #delivery-app .sidebar-toggle-btn {
@@ -1513,12 +1660,30 @@
             cursor: pointer;
             transition: left 0.3s ease-in-out, background 0.15s, color 0.15s, border-color 0.15s;
         }
+        #delivery-company-app .sidebar-toggle-btn {
+            position: fixed;
+            top: 1.5rem;
+            left: 236px;
+            z-index: 60;
+            width: 2.75rem;
+            height: 2.75rem;
+            border-radius: var(--admin-radius-sm);
+            display: flex; align-items: center; justify-content: center;
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,255,255,0.14);
+            color: white;
+            cursor: pointer;
+            transition: left 0.3s ease-in-out, background 0.15s, color 0.15s, border-color 0.15s;
+        }
         #delivery-app .sidebar-toggle-btn:hover { background: rgba(255,255,255,0.16); }
         #delivery-customer-app .sidebar-toggle-btn:hover { background: rgba(255,255,255,0.16); }
+        #delivery-company-app .sidebar-toggle-btn:hover { background: rgba(255,255,255,0.16); }
         #delivery-app .sidebar-toggle-btn:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
         #delivery-customer-app .sidebar-toggle-btn:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+        #delivery-company-app .sidebar-toggle-btn:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
         #delivery-app .sidebar-toggle-btn svg { width: 20px; height: 20px; }
         #delivery-customer-app .sidebar-toggle-btn svg { width: 20px; height: 20px; }
+        #delivery-company-app .sidebar-toggle-btn svg { width: 20px; height: 20px; }
         #delivery-app .admin-shell.sidebar-collapsed .sidebar-toggle-btn {
             left: 1.25rem;
             background: var(--admin-surface);
@@ -1533,11 +1698,19 @@
             border-color: var(--admin-border);
             box-shadow: var(--admin-shadow-md);
         }
+        #delivery-company-app .admin-shell.sidebar-collapsed .sidebar-toggle-btn {
+            left: 1.25rem;
+            background: var(--admin-surface);
+            color: var(--primary);
+            border-color: var(--admin-border);
+            box-shadow: var(--admin-shadow-md);
+        }
 
         /* ---- Main content ---- */
         #delivery-app .admin-main { padding: 2rem 2.5rem 3rem; max-width: 1400px; }
         /* ---- Main content ---- */
-        #delivery-customer-app .admin-main { padding: 2rem 2.5rem 3rem; max-width: 1400px; margin: 0 auto; }
+        #delivery-customer-app .admin-main { width: 100%; padding: 2rem 2.5rem 3rem; max-width: 1400px; margin: 0 auto; box-sizing: border-box; }
+        #delivery-company-app .admin-main { width: 100%; padding: 2rem 2.5rem 3rem; max-width: 1400px; margin: 0 auto; box-sizing: border-box; }
         #delivery-app .admin-main > header {
             position: sticky; top: 0; z-index: 40;
             background: var(--admin-bg);
@@ -1552,13 +1725,25 @@
             transition: transform 0.3s ease-in-out, opacity 0.3s ease-in-out;
             transform: translateY(0); opacity: 1;
         }
+        #delivery-company-app .admin-main > header {
+            position: sticky; top: 0; z-index: 40;
+            background: var(--admin-bg);
+            padding-bottom: 1.5rem; margin-bottom: 0.5rem;
+            transition: transform 0.3s ease-in-out, opacity 0.3s ease-in-out;
+            transform: translateY(0); opacity: 1;
+        }
         #delivery-app .admin-main > header.header-hidden { transform: translateY(-120%); opacity: 0; }
         #delivery-customer-app .admin-main > header.header-hidden { transform: translateY(-120%); opacity: 0; }
+        #delivery-company-app .admin-main > header.header-hidden { transform: translateY(-120%); opacity: 0; }
         #delivery-app .admin-welcome-eyebrow {
             color: var(--admin-text-secondary); font-size: 0.875rem; font-weight: 500;
             margin-bottom: 0.25rem; text-transform: uppercase; letter-spacing: 0.04em;
         }
         #delivery-customer-app .admin-welcome-eyebrow {
+            color: var(--admin-text-secondary); font-size: 0.875rem; font-weight: 500;
+            margin-bottom: 0.25rem; text-transform: uppercase; letter-spacing: 0.04em;
+        }
+        #delivery-company-app .admin-welcome-eyebrow {
             color: var(--admin-text-secondary); font-size: 0.875rem; font-weight: 500;
             margin-bottom: 0.25rem; text-transform: uppercase; letter-spacing: 0.04em;
         }
@@ -1570,12 +1755,21 @@
             font-size: 1.875rem; font-weight: 700; color: var(--admin-text);
             letter-spacing: -0.02em; margin-bottom: 0.25rem;
         }
+        #delivery-company-app .admin-welcome-title {
+            font-size: 1.875rem; font-weight: 700; color: var(--admin-text);
+            letter-spacing: -0.02em; margin-bottom: 0.25rem;
+        }
         #delivery-app .admin-welcome-role {
             display: inline-block; color: var(--primary); background: #eef2ff;
             font-weight: 600; font-size: 0.75rem; letter-spacing: 0.03em; text-transform: uppercase;
             padding: 0.25rem 0.625rem; border-radius: 9999px;
         }
         #delivery-customer-app .admin-welcome-role {
+            display: inline-block; color: var(--primary); background: #eef2ff;
+            font-weight: 600; font-size: 0.75rem; letter-spacing: 0.03em; text-transform: uppercase;
+            padding: 0.25rem 0.625rem; border-radius: 9999px;
+        }
+        #delivery-company-app .admin-welcome-role {
             display: inline-block; color: var(--primary); background: #eef2ff;
             font-weight: 600; font-size: 0.75rem; letter-spacing: 0.03em; text-transform: uppercase;
             padding: 0.25rem 0.625rem; border-radius: 9999px;
@@ -1593,14 +1787,22 @@
             display: flex; align-items: flex-start; justify-content: space-between;
             gap: 1.5rem; flex-wrap: wrap; position: relative;
         }
+        #delivery-company-app .admin-topbar-row {
+            display: flex; align-items: flex-start; justify-content: space-between;
+            gap: 1.5rem; flex-wrap: wrap; position: relative;
+        }
         #delivery-app .admin-topbar-right { display: flex; align-items: center; gap: 1.25rem; flex-wrap: wrap; }
         #delivery-customer-app .admin-topbar-right { display: flex; align-items: center; gap: 1.25rem; flex-wrap: wrap; }
+        #delivery-company-app .admin-topbar-right { display: flex; align-items: center; gap: 1.25rem; flex-wrap: wrap; }
         #delivery-app .admin-topbar-datetime { text-align: right; }
         #delivery-customer-app .admin-topbar-datetime { text-align: right; }
+        #delivery-company-app .admin-topbar-datetime { text-align: right; }
         #delivery-app .admin-topbar-date { font-size: 0.8125rem; font-weight: 600; color: var(--admin-text); }
         #delivery-customer-app .admin-topbar-date { font-size: 0.8125rem; font-weight: 600; color: var(--admin-text); }
+        #delivery-company-app .admin-topbar-date { font-size: 0.8125rem; font-weight: 600; color: var(--admin-text); }
         #delivery-app .admin-topbar-time { font-size: 0.75rem; color: var(--admin-text-secondary); }
         #delivery-customer-app .admin-topbar-time { font-size: 0.75rem; color: var(--admin-text-secondary); }
+        #delivery-company-app .admin-topbar-time { font-size: 0.75rem; color: var(--admin-text-secondary); }
         #delivery-app .admin-back-to-chooser-btn {
             display: flex; align-items: center; gap: 0.5rem; min-height: 44px; padding: 0 1rem 0 0.875rem;
             border-radius: 9999px; border: 1px solid var(--admin-border); background: var(--admin-surface);
@@ -1611,15 +1813,24 @@
             border-radius: 9999px; border: 1px solid var(--admin-border); background: var(--admin-surface);
             color: var(--admin-text-secondary); cursor: pointer; font-weight: 600; font-size: 0.8125rem; white-space: nowrap;
         }
+        #delivery-company-app .admin-back-to-chooser-btn {
+            display: flex; align-items: center; gap: 0.5rem; min-height: 44px; padding: 0 1rem 0 0.875rem;
+            border-radius: 9999px; border: 1px solid var(--admin-border); background: var(--admin-surface);
+            color: var(--admin-text-secondary); cursor: pointer; font-weight: 600; font-size: 0.8125rem; white-space: nowrap;
+        }
         #delivery-app .admin-back-to-chooser-btn:hover { background: var(--admin-surface-alt); color: var(--admin-text); }
         #delivery-customer-app .admin-back-to-chooser-btn:hover { background: var(--admin-surface-alt); color: var(--admin-text); }
+        #delivery-company-app .admin-back-to-chooser-btn:hover { background: var(--admin-surface-alt); color: var(--admin-text); }
         #delivery-app .admin-back-to-chooser-btn svg { width: 16px; height: 16px; flex-shrink: 0; }
         #delivery-customer-app .admin-back-to-chooser-btn svg { width: 16px; height: 16px; flex-shrink: 0; }
+        #delivery-company-app .admin-back-to-chooser-btn svg { width: 16px; height: 16px; flex-shrink: 0; }
         @media (max-width: 640px) {
             #delivery-app .admin-back-to-chooser-btn span { display: none; }
         #delivery-customer-app .admin-back-to-chooser-btn span { display: none; }
+        #delivery-company-app .admin-back-to-chooser-btn span { display: none; }
             #delivery-app .admin-back-to-chooser-btn { padding: 0; width: 44px; justify-content: center; }
         #delivery-customer-app .admin-back-to-chooser-btn { padding: 0; width: 44px; justify-content: center; }
+        #delivery-company-app .admin-back-to-chooser-btn { padding: 0; width: 44px; justify-content: center; }
         }
         #delivery-app .admin-notification-bell {
             position: relative; width: 44px; height: 44px; border-radius: 50%;
@@ -1631,12 +1842,20 @@
             border: 1px solid var(--admin-border); background: var(--admin-surface); color: var(--admin-text-secondary);
             display: flex; align-items: center; justify-content: center; cursor: pointer;
         }
+        #delivery-company-app .admin-notification-bell {
+            position: relative; width: 44px; height: 44px; border-radius: 50%;
+            border: 1px solid var(--admin-border); background: var(--admin-surface); color: var(--admin-text-secondary);
+            display: flex; align-items: center; justify-content: center; cursor: pointer;
+        }
         #delivery-app .admin-notification-bell:hover { background: var(--admin-surface-alt); color: var(--admin-text); }
         #delivery-customer-app .admin-notification-bell:hover { background: var(--admin-surface-alt); color: var(--admin-text); }
+        #delivery-company-app .admin-notification-bell:hover { background: var(--admin-surface-alt); color: var(--admin-text); }
         #delivery-app .admin-notification-bell:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
         #delivery-customer-app .admin-notification-bell:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+        #delivery-company-app .admin-notification-bell:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
         #delivery-app .admin-notification-bell svg { width: 19px; height: 19px; }
         #delivery-customer-app .admin-notification-bell svg { width: 19px; height: 19px; }
+        #delivery-company-app .admin-notification-bell svg { width: 19px; height: 19px; }
         #delivery-app .admin-notification-badge {
             position: absolute; top: -2px; right: -2px; background: #dc2626; color: white;
             font-size: 0.6875rem; font-weight: 700; min-width: 18px; height: 18px; border-radius: 9999px;
@@ -1647,8 +1866,14 @@
             font-size: 0.6875rem; font-weight: 700; min-width: 18px; height: 18px; border-radius: 9999px;
             display: flex; align-items: center; justify-content: center; padding: 0 4px; border: 2px solid var(--admin-bg);
         }
+        #delivery-company-app .admin-notification-badge {
+            position: absolute; top: -2px; right: -2px; background: #dc2626; color: white;
+            font-size: 0.6875rem; font-weight: 700; min-width: 18px; height: 18px; border-radius: 9999px;
+            display: flex; align-items: center; justify-content: center; padding: 0 4px; border: 2px solid var(--admin-bg);
+        }
         #delivery-app .admin-topbar-profile { display: flex; align-items: center; gap: 0.625rem; }
         #delivery-customer-app .admin-topbar-profile { display: flex; align-items: center; gap: 0.625rem; }
+        #delivery-company-app .admin-topbar-profile { display: flex; align-items: center; gap: 0.625rem; }
         #delivery-app .admin-topbar-profile .user-avatar {
             width: 2.5rem; height: 2.5rem; border-radius: 50%; background: var(--primary); color: white;
             display: flex; align-items: center; justify-content: center; font-weight: 700; flex-shrink: 0;
@@ -1657,10 +1882,16 @@
             width: 2.5rem; height: 2.5rem; border-radius: 50%; background: var(--primary); color: white;
             display: flex; align-items: center; justify-content: center; font-weight: 700; flex-shrink: 0;
         }
+        #delivery-company-app .admin-topbar-profile .user-avatar {
+            width: 2.5rem; height: 2.5rem; border-radius: 50%; background: var(--primary); color: white;
+            display: flex; align-items: center; justify-content: center; font-weight: 700; flex-shrink: 0;
+        }
         #delivery-app .admin-topbar-profile-name { font-size: 0.875rem; font-weight: 700; color: var(--admin-text); }
         #delivery-customer-app .admin-topbar-profile-name { font-size: 0.875rem; font-weight: 700; color: var(--admin-text); }
+        #delivery-company-app .admin-topbar-profile-name { font-size: 0.875rem; font-weight: 700; color: var(--admin-text); }
         #delivery-app .admin-topbar-profile-role { font-size: 0.75rem; color: var(--admin-text-secondary); }
         #delivery-customer-app .admin-topbar-profile-role { font-size: 0.75rem; color: var(--admin-text-secondary); }
+        #delivery-company-app .admin-topbar-profile-role { font-size: 0.75rem; color: var(--admin-text-secondary); }
         #delivery-app .admin-notification-panel {
             display: none; position: absolute; top: 56px; right: 0; width: 340px; max-height: 420px; overflow-y: auto;
             background: var(--admin-surface); border: 1px solid var(--admin-border); border-radius: var(--admin-radius-md);
@@ -1671,8 +1902,14 @@
             background: var(--admin-surface); border: 1px solid var(--admin-border); border-radius: var(--admin-radius-md);
             box-shadow: var(--admin-shadow-lg); z-index: 80;
         }
+        #delivery-company-app .admin-notification-panel {
+            display: none; position: absolute; top: 56px; right: 0; width: 340px; max-height: 420px; overflow-y: auto;
+            background: var(--admin-surface); border: 1px solid var(--admin-border); border-radius: var(--admin-radius-md);
+            box-shadow: var(--admin-shadow-lg); z-index: 80;
+        }
         #delivery-app .admin-notification-panel.open { display: block; }
         #delivery-customer-app .admin-notification-panel.open { display: block; }
+        #delivery-company-app .admin-notification-panel.open { display: block; }
         #delivery-app .admin-notification-panel-header {
             display: flex; justify-content: space-between; align-items: center;
             padding: 0.875rem 1.125rem; border-bottom: 1px solid var(--admin-border); font-size: 0.9375rem;
@@ -1681,24 +1918,37 @@
             display: flex; justify-content: space-between; align-items: center;
             padding: 0.875rem 1.125rem; border-bottom: 1px solid var(--admin-border); font-size: 0.9375rem;
         }
+        #delivery-company-app .admin-notification-panel-header {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 0.875rem 1.125rem; border-bottom: 1px solid var(--admin-border); font-size: 0.9375rem;
+        }
         #delivery-app .admin-notification-panel-header a { color: var(--primary); font-weight: 600; font-size: 0.8125rem; cursor: pointer; }
         #delivery-customer-app .admin-notification-panel-header a { color: var(--primary); font-weight: 600; font-size: 0.8125rem; cursor: pointer; }
+        #delivery-company-app .admin-notification-panel-header a { color: var(--primary); font-weight: 600; font-size: 0.8125rem; cursor: pointer; }
         #delivery-app .admin-notification-item {
             padding: 0.875rem 1.125rem; border-bottom: 1px solid var(--admin-border); font-size: 0.8125rem;
         }
         #delivery-customer-app .admin-notification-item {
             padding: 0.875rem 1.125rem; border-bottom: 1px solid var(--admin-border); font-size: 0.8125rem;
         }
+        #delivery-company-app .admin-notification-item {
+            padding: 0.875rem 1.125rem; border-bottom: 1px solid var(--admin-border); font-size: 0.8125rem;
+        }
         #delivery-app .admin-notification-item:last-child { border-bottom: none; }
         #delivery-customer-app .admin-notification-item:last-child { border-bottom: none; }
+        #delivery-company-app .admin-notification-item:last-child { border-bottom: none; }
         #delivery-app .admin-notification-item-title { font-weight: 700; color: var(--admin-text); margin-bottom: 0.1875rem; }
         #delivery-customer-app .admin-notification-item-title { font-weight: 700; color: var(--admin-text); margin-bottom: 0.1875rem; }
+        #delivery-company-app .admin-notification-item-title { font-weight: 700; color: var(--admin-text); margin-bottom: 0.1875rem; }
         #delivery-app .admin-notification-item-body { color: var(--admin-text-secondary); margin-bottom: 0.25rem; }
         #delivery-customer-app .admin-notification-item-body { color: var(--admin-text-secondary); margin-bottom: 0.25rem; }
+        #delivery-company-app .admin-notification-item-body { color: var(--admin-text-secondary); margin-bottom: 0.25rem; }
         #delivery-app .admin-notification-item-time { color: var(--admin-text-tertiary); font-size: 0.75rem; }
         #delivery-customer-app .admin-notification-item-time { color: var(--admin-text-tertiary); font-size: 0.75rem; }
+        #delivery-company-app .admin-notification-item-time { color: var(--admin-text-tertiary); font-size: 0.75rem; }
         #delivery-app .admin-notification-empty { padding: 2rem 1.125rem; text-align: center; color: var(--admin-text-secondary); font-size: 0.875rem; }
         #delivery-customer-app .admin-notification-empty { padding: 2rem 1.125rem; text-align: center; color: var(--admin-text-secondary); font-size: 0.875rem; }
+        #delivery-company-app .admin-notification-empty { padding: 2rem 1.125rem; text-align: center; color: var(--admin-text-secondary); font-size: 0.875rem; }
 
         #delivery-app .admin-section-label {
             text-align: left; font-size: 0.8125rem; font-weight: 600;
@@ -1706,6 +1956,11 @@
             margin: 2rem 0 1rem;
         }
         #delivery-customer-app .admin-section-label {
+            text-align: left; font-size: 0.8125rem; font-weight: 600;
+            color: var(--admin-text-secondary); text-transform: uppercase; letter-spacing: 0.05em;
+            margin: 2rem 0 1rem;
+        }
+        #delivery-company-app .admin-section-label {
             text-align: left; font-size: 0.8125rem; font-weight: 600;
             color: var(--admin-text-secondary); text-transform: uppercase; letter-spacing: 0.05em;
             margin: 2rem 0 1rem;
@@ -1731,16 +1986,25 @@
         #delivery-customer-app .order-filter-bar {
             display: flex; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 1.5rem;
         }
+        #delivery-company-app .order-filter-bar {
+            display: flex; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 1.5rem;
+        }
         #delivery-app .order-filter-search {
             flex: 2; min-width: 220px; position: relative; display: flex; align-items: center;
         }
         #delivery-customer-app .order-filter-search {
             flex: 2; min-width: 220px; position: relative; display: flex; align-items: center;
         }
+        #delivery-company-app .order-filter-search {
+            flex: 2; min-width: 220px; position: relative; display: flex; align-items: center;
+        }
         #delivery-app .order-filter-search svg {
             position: absolute; left: 0.875rem; width: 16px; height: 16px; color: var(--admin-text-tertiary); pointer-events: none;
         }
         #delivery-customer-app .order-filter-search svg {
+            position: absolute; left: 0.875rem; width: 16px; height: 16px; color: var(--admin-text-tertiary); pointer-events: none;
+        }
+        #delivery-company-app .order-filter-search svg {
             position: absolute; left: 0.875rem; width: 16px; height: 16px; color: var(--admin-text-tertiary); pointer-events: none;
         }
         #delivery-app .order-filter-search input {
@@ -1753,25 +2017,39 @@
             border: 2px solid var(--admin-border); border-radius: 0.75rem; font-size: 0.9375rem;
             background: var(--admin-surface); color: var(--admin-text);
         }
+        #delivery-company-app .order-filter-search input {
+            width: 100%; padding: 0.75rem 1rem 0.75rem 2.5rem; min-height: 44px;
+            border: 2px solid var(--admin-border); border-radius: 0.75rem; font-size: 0.9375rem;
+            background: var(--admin-surface); color: var(--admin-text);
+        }
         #delivery-app .order-filter-search input:focus { outline: none; border-color: var(--primary); }
         #delivery-customer-app .order-filter-search input:focus { outline: none; border-color: var(--primary); }
+        #delivery-company-app .order-filter-search input:focus { outline: none; border-color: var(--primary); }
         #delivery-app .order-filter-select { flex: 1; min-width: 150px; min-height: 44px; }
         #delivery-customer-app .order-filter-select { flex: 1; min-width: 150px; min-height: 44px; }
+        #delivery-company-app .order-filter-select { flex: 1; min-width: 150px; min-height: 44px; }
 
         #delivery-app .admin-two-col { display: grid; grid-template-columns: 1fr 380px; gap: 1.75rem; align-items: start; }
         #delivery-customer-app .admin-two-col { display: grid; grid-template-columns: 1fr 380px; gap: 1.75rem; align-items: start; }
+        #delivery-company-app .admin-two-col { display: grid; grid-template-columns: 1fr 380px; gap: 1.75rem; align-items: start; }
         #delivery-app .admin-two-col-main, #delivery-app .admin-two-col-side { min-width: 0; }
         #delivery-customer-app .admin-two-col-main, #delivery-customer-app .admin-two-col-side { min-width: 0; }
+        #delivery-company-app .admin-two-col-main, #delivery-company-app .admin-two-col-side { min-width: 0; }
         #delivery-app .admin-charts-row { display: flex; gap: 1.5rem; flex-wrap: wrap; margin-top: 1.75rem; }
         #delivery-customer-app .admin-charts-row { display: flex; gap: 1.5rem; flex-wrap: wrap; margin-top: 1.75rem; }
+        #delivery-company-app .admin-charts-row { display: flex; gap: 1.5rem; flex-wrap: wrap; margin-top: 1.75rem; }
         #delivery-app .admin-chart-card { flex: 1; min-width: 260px; }
         #delivery-customer-app .admin-chart-card { flex: 1; min-width: 260px; }
+        #delivery-company-app .admin-chart-card { flex: 1; min-width: 260px; }
         #delivery-app .order-status-legend { display: flex; flex-direction: column; gap: 0.5rem; margin-top: 1rem; }
         #delivery-customer-app .order-status-legend { display: flex; flex-direction: column; gap: 0.5rem; margin-top: 1rem; }
+        #delivery-company-app .order-status-legend { display: flex; flex-direction: column; gap: 0.5rem; margin-top: 1rem; }
         #delivery-app .order-status-legend-item { display: flex; align-items: center; justify-content: space-between; font-size: 0.8125rem; }
         #delivery-customer-app .order-status-legend-item { display: flex; align-items: center; justify-content: space-between; font-size: 0.8125rem; }
+        #delivery-company-app .order-status-legend-item { display: flex; align-items: center; justify-content: space-between; font-size: 0.8125rem; }
         #delivery-app .order-status-legend-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 0.5rem; }
         #delivery-customer-app .order-status-legend-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 0.5rem; }
+        #delivery-company-app .order-status-legend-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 0.5rem; }
 
         #delivery-app .agent-duty-toggle {
             display: inline-flex; align-items: center; gap: 0.375rem;
@@ -1783,14 +2061,23 @@
             padding: 0.25rem 0.625rem; min-height: 28px; border-radius: 9999px; border: 1px solid transparent;
             font-size: 0.75rem; font-weight: 700; cursor: pointer; transition: all 0.15s;
         }
+        #delivery-company-app .agent-duty-toggle {
+            display: inline-flex; align-items: center; gap: 0.375rem;
+            padding: 0.25rem 0.625rem; min-height: 28px; border-radius: 9999px; border: 1px solid transparent;
+            font-size: 0.75rem; font-weight: 700; cursor: pointer; transition: all 0.15s;
+        }
         #delivery-app .agent-duty-toggle.on-duty { background: #ecfdf5; color: #065f46; border-color: #6ee7b7; }
         #delivery-customer-app .agent-duty-toggle.on-duty { background: #ecfdf5; color: #065f46; border-color: #6ee7b7; }
+        #delivery-company-app .agent-duty-toggle.on-duty { background: #ecfdf5; color: #065f46; border-color: #6ee7b7; }
         #delivery-app .agent-duty-toggle.off-duty { background: #f3f4f6; color: #6b7280; border-color: #d1d5db; }
         #delivery-customer-app .agent-duty-toggle.off-duty { background: #f3f4f6; color: #6b7280; border-color: #d1d5db; }
+        #delivery-company-app .agent-duty-toggle.off-duty { background: #f3f4f6; color: #6b7280; border-color: #d1d5db; }
         #delivery-app .agent-duty-toggle:hover { filter: brightness(0.96); }
         #delivery-customer-app .agent-duty-toggle:hover { filter: brightness(0.96); }
+        #delivery-company-app .agent-duty-toggle:hover { filter: brightness(0.96); }
         #delivery-app .agent-duty-dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
         #delivery-customer-app .agent-duty-dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+        #delivery-company-app .agent-duty-dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
 
         #delivery-app .agent-contact-card {
             background: var(--admin-surface); padding: 1.25rem; border-radius: var(--admin-radius-md);
@@ -1800,11 +2087,19 @@
             background: var(--admin-surface); padding: 1.25rem; border-radius: var(--admin-radius-md);
             box-shadow: var(--admin-shadow-xs); border: 1px solid var(--admin-border);
         }
+        #delivery-company-app .agent-contact-card {
+            background: var(--admin-surface); padding: 1.25rem; border-radius: var(--admin-radius-md);
+            box-shadow: var(--admin-shadow-xs); border: 1px solid var(--admin-border);
+        }
         #delivery-app .agent-contact-avatar {
             width: 2.75rem; height: 2.75rem; border-radius: 50%; background: var(--primary); color: white;
             display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 1.0625rem; flex-shrink: 0;
         }
         #delivery-customer-app .agent-contact-avatar {
+            width: 2.75rem; height: 2.75rem; border-radius: 50%; background: var(--primary); color: white;
+            display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 1.0625rem; flex-shrink: 0;
+        }
+        #delivery-company-app .agent-contact-avatar {
             width: 2.75rem; height: 2.75rem; border-radius: 50%; background: var(--primary); color: white;
             display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 1.0625rem; flex-shrink: 0;
         }
@@ -1818,10 +2113,17 @@
             background: #eef2ff; color: var(--primary); display: flex; align-items: center; justify-content: center;
             transition: background 0.15s;
         }
+        #delivery-company-app .agent-call-btn {
+            width: 2.25rem; height: 2.25rem; min-width: 44px; min-height: 44px; border-radius: 50%;
+            background: #eef2ff; color: var(--primary); display: flex; align-items: center; justify-content: center;
+            transition: background 0.15s;
+        }
         #delivery-app .agent-call-btn:hover { background: #e0e7ff; }
         #delivery-customer-app .agent-call-btn:hover { background: #e0e7ff; }
+        #delivery-company-app .agent-call-btn:hover { background: #e0e7ff; }
         #delivery-app .agent-call-btn svg { width: 16px; height: 16px; }
         #delivery-customer-app .agent-call-btn svg { width: 16px; height: 16px; }
+        #delivery-company-app .agent-call-btn svg { width: 16px; height: 16px; }
 
         .price-preset-row { display: flex; gap: 0.5rem; flex-wrap: wrap; }
         .price-preset-btn {
@@ -1990,8 +2292,10 @@
 
         #delivery-app .admin-view-all-link { color: var(--primary); font-weight: 700; font-size: 0.8125rem; cursor: pointer; }
         #delivery-customer-app .admin-view-all-link { color: var(--primary); font-weight: 700; font-size: 0.8125rem; cursor: pointer; }
+        #delivery-company-app .admin-view-all-link { color: var(--primary); font-weight: 700; font-size: 0.8125rem; cursor: pointer; }
         #delivery-app .admin-view-all-link:hover { text-decoration: underline; }
         #delivery-customer-app .admin-view-all-link:hover { text-decoration: underline; }
+        #delivery-company-app .admin-view-all-link:hover { text-decoration: underline; }
         #delivery-app .recent-delivery-row {
             display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 0;
             border-bottom: 1px solid var(--admin-border); cursor: pointer; min-height: 44px;
@@ -2000,10 +2304,16 @@
             display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 0;
             border-bottom: 1px solid var(--admin-border); cursor: pointer; min-height: 44px;
         }
+        #delivery-company-app .recent-delivery-row {
+            display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 0;
+            border-bottom: 1px solid var(--admin-border); cursor: pointer; min-height: 44px;
+        }
         #delivery-app .recent-delivery-row:last-child { border-bottom: none; }
         #delivery-customer-app .recent-delivery-row:last-child { border-bottom: none; }
+        #delivery-company-app .recent-delivery-row:last-child { border-bottom: none; }
         #delivery-app .recent-delivery-row:hover { background: var(--admin-surface-alt); margin: 0 -0.5rem; padding-left: 0.5rem; padding-right: 0.5rem; border-radius: 0.5rem; }
         #delivery-customer-app .recent-delivery-row:hover { background: var(--admin-surface-alt); margin: 0 -0.5rem; padding-left: 0.5rem; padding-right: 0.5rem; border-radius: 0.5rem; }
+        #delivery-company-app .recent-delivery-row:hover { background: var(--admin-surface-alt); margin: 0 -0.5rem; padding-left: 0.5rem; padding-right: 0.5rem; border-radius: 0.5rem; }
         #delivery-app .recent-delivery-avatar {
             width: 2.25rem; height: 2.25rem; border-radius: 50%; background: var(--primary); color: white;
             display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.875rem; flex-shrink: 0;
@@ -2012,22 +2322,33 @@
             width: 2.25rem; height: 2.25rem; border-radius: 50%; background: var(--primary); color: white;
             display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.875rem; flex-shrink: 0;
         }
+        #delivery-company-app .recent-delivery-avatar {
+            width: 2.25rem; height: 2.25rem; border-radius: 50%; background: var(--primary); color: white;
+            display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.875rem; flex-shrink: 0;
+        }
         #delivery-app .recent-delivery-main { flex: 1; min-width: 0; }
         #delivery-customer-app .recent-delivery-main { flex: 1; min-width: 0; }
+        #delivery-company-app .recent-delivery-main { flex: 1; min-width: 0; }
         #delivery-app .recent-delivery-name { font-weight: 700; font-size: 0.875rem; color: var(--admin-text); }
         #delivery-customer-app .recent-delivery-name { font-weight: 700; font-size: 0.875rem; color: var(--admin-text); }
+        #delivery-company-app .recent-delivery-name { font-weight: 700; font-size: 0.875rem; color: var(--admin-text); }
         #delivery-app .recent-delivery-sub { font-size: 0.75rem; color: var(--admin-text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         #delivery-customer-app .recent-delivery-sub { font-size: 0.75rem; color: var(--admin-text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        #delivery-company-app .recent-delivery-sub { font-size: 0.75rem; color: var(--admin-text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         #delivery-app .recent-delivery-time { font-size: 0.75rem; color: var(--admin-text-tertiary); flex-shrink: 0; }
         #delivery-customer-app .recent-delivery-time { font-size: 0.75rem; color: var(--admin-text-tertiary); flex-shrink: 0; }
+        #delivery-company-app .recent-delivery-time { font-size: 0.75rem; color: var(--admin-text-tertiary); flex-shrink: 0; }
         #delivery-app .recent-delivery-price { font-weight: 700; font-size: 0.875rem; color: var(--admin-text); flex-shrink: 0; }
         #delivery-customer-app .recent-delivery-price { font-weight: 700; font-size: 0.875rem; color: var(--admin-text); flex-shrink: 0; }
+        #delivery-company-app .recent-delivery-price { font-weight: 700; font-size: 0.875rem; color: var(--admin-text); flex-shrink: 0; }
         #delivery-app .recent-deliveries-count { text-align: right; font-size: 0.75rem; color: var(--admin-text-secondary); margin-top: 0.75rem; }
         #delivery-customer-app .recent-deliveries-count { text-align: right; font-size: 0.75rem; color: var(--admin-text-secondary); margin-top: 0.75rem; }
+        #delivery-company-app .recent-deliveries-count { text-align: right; font-size: 0.75rem; color: var(--admin-text-secondary); margin-top: 0.75rem; }
 
         @media (max-width: 1100px) {
             #delivery-app .admin-two-col { grid-template-columns: 1fr; }
         #delivery-customer-app .admin-two-col { grid-template-columns: 1fr; }
+        #delivery-company-app .admin-two-col { grid-template-columns: 1fr; }
         }
 
         /* ---- KPI cards ---- */
@@ -2048,17 +2369,32 @@
             padding: 1.375rem 1.5rem;
             transition: box-shadow 0.2s ease, transform 0.2s ease;
         }
+        #delivery-company-app .stat-card {
+            background: var(--admin-surface);
+            border: 1px solid var(--admin-border);
+            border-radius: var(--admin-radius-lg);
+            box-shadow: var(--admin-shadow-xs);
+            padding: 1.375rem 1.5rem;
+            transition: box-shadow 0.2s ease, transform 0.2s ease;
+        }
         #delivery-app .stat-card::before { display: none; }
         #delivery-customer-app .stat-card::before { display: none; }
+        #delivery-company-app .stat-card::before { display: none; }
         #delivery-app .stat-card:hover { transform: translateY(-2px); box-shadow: var(--admin-shadow-md); }
         #delivery-customer-app .stat-card:hover { transform: translateY(-2px); box-shadow: var(--admin-shadow-md); }
+        #delivery-company-app .stat-card:hover { transform: translateY(-2px); box-shadow: var(--admin-shadow-md); }
         #delivery-app .stat-card-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.875rem; }
         #delivery-customer-app .stat-card-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.875rem; }
+        #delivery-company-app .stat-card-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.875rem; }
         #delivery-app .stat-card h4 {
             color: var(--admin-text-secondary); font-weight: 500; font-size: 0.8125rem;
             text-transform: uppercase; letter-spacing: 0.03em; margin: 0;
         }
         #delivery-customer-app .stat-card h4 {
+            color: var(--admin-text-secondary); font-weight: 500; font-size: 0.8125rem;
+            text-transform: uppercase; letter-spacing: 0.03em; margin: 0;
+        }
+        #delivery-company-app .stat-card h4 {
             color: var(--admin-text-secondary); font-weight: 500; font-size: 0.8125rem;
             text-transform: uppercase; letter-spacing: 0.03em; margin: 0;
         }
@@ -2072,16 +2408,26 @@
             display: flex; align-items: center; justify-content: center;
             background: #eef2ff; color: var(--primary); flex-shrink: 0;
         }
+        #delivery-company-app .stat-icon {
+            width: 2rem; height: 2rem; border-radius: var(--admin-radius-sm);
+            display: flex; align-items: center; justify-content: center;
+            background: #eef2ff; color: var(--primary); flex-shrink: 0;
+        }
         #delivery-app .stat-icon svg { width: 16px; height: 16px; }
         #delivery-customer-app .stat-icon svg { width: 16px; height: 16px; }
+        #delivery-company-app .stat-icon svg { width: 16px; height: 16px; }
         #delivery-app .stat-card.success .stat-icon { background: #ecfdf5; color: var(--secondary); }
         #delivery-customer-app .stat-card.success .stat-icon { background: #ecfdf5; color: var(--secondary); }
+        #delivery-company-app .stat-card.success .stat-icon { background: #ecfdf5; color: var(--secondary); }
         #delivery-app .stat-card.warning .stat-icon { background: #fffbeb; color: var(--accent); }
         #delivery-customer-app .stat-card.warning .stat-icon { background: #fffbeb; color: var(--accent); }
+        #delivery-company-app .stat-card.warning .stat-icon { background: #fffbeb; color: var(--accent); }
         #delivery-app .stat-card.pending .stat-icon { background: #f1f5f9; color: var(--admin-text-secondary); }
         #delivery-customer-app .stat-card.pending .stat-icon { background: #f1f5f9; color: var(--admin-text-secondary); }
+        #delivery-company-app .stat-card.pending .stat-icon { background: #f1f5f9; color: var(--admin-text-secondary); }
         #delivery-app .stat-card.cancelled .stat-icon { background: #f3f4f6; color: #9ca3af; }
         #delivery-customer-app .stat-card.cancelled .stat-icon { background: #f3f4f6; color: #9ca3af; }
+        #delivery-company-app .stat-card.cancelled .stat-icon { background: #f3f4f6; color: #9ca3af; }
         #delivery-app .stat-card p {
             font-size: 2rem; font-weight: 700; color: var(--admin-text); letter-spacing: -0.02em;
             font-variant-numeric: tabular-nums;
@@ -2090,35 +2436,52 @@
             font-size: 2rem; font-weight: 700; color: var(--admin-text); letter-spacing: -0.02em;
             font-variant-numeric: tabular-nums;
         }
+        #delivery-company-app .stat-card p {
+            font-size: 2rem; font-weight: 700; color: var(--admin-text); letter-spacing: -0.02em;
+            font-variant-numeric: tabular-nums;
+        }
         #delivery-app .stat-card.success p { color: var(--secondary); }
         #delivery-customer-app .stat-card.success p { color: var(--secondary); }
+        #delivery-company-app .stat-card.success p { color: var(--secondary); }
         #delivery-app .stat-card.warning p { color: var(--accent); }
         #delivery-customer-app .stat-card.warning p { color: var(--accent); }
+        #delivery-company-app .stat-card.warning p { color: var(--accent); }
         #delivery-app .stat-card.pending p { color: var(--admin-text-secondary); }
         #delivery-customer-app .stat-card.pending p { color: var(--admin-text-secondary); }
+        #delivery-company-app .stat-card.pending p { color: var(--admin-text-secondary); }
         #delivery-app .stat-card.cancelled p { color: #9ca3af; }
         #delivery-customer-app .stat-card.cancelled p { color: #9ca3af; }
+        #delivery-company-app .stat-card.cancelled p { color: #9ca3af; }
         #delivery-app .stat-card.on-duty p { color: #0284c7; }
         #delivery-customer-app .stat-card.on-duty p { color: #0284c7; }
+        #delivery-company-app .stat-card.on-duty p { color: #0284c7; }
         #delivery-app .weekly-revenue-card { cursor: pointer; }
         #delivery-customer-app .weekly-revenue-card { cursor: pointer; }
+        #delivery-company-app .weekly-revenue-card { cursor: pointer; }
         #delivery-app .weekly-revenue-card:hover { transform: translateY(-2px); box-shadow: var(--admin-shadow-md); border-color: var(--primary); }
         #delivery-customer-app .weekly-revenue-card:hover { transform: translateY(-2px); box-shadow: var(--admin-shadow-md); border-color: var(--primary); }
+        #delivery-company-app .weekly-revenue-card:hover { transform: translateY(-2px); box-shadow: var(--admin-shadow-md); border-color: var(--primary); }
         #delivery-app .weekly-revenue-card:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
         #delivery-customer-app .weekly-revenue-card:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+        #delivery-company-app .weekly-revenue-card:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
         #delivery-app .stat-trend { font-size: 0.8125rem; font-weight: 700; margin-top: 0.375rem; }
         #delivery-customer-app .stat-trend { font-size: 0.8125rem; font-weight: 700; margin-top: 0.375rem; }
+        #delivery-company-app .stat-trend { font-size: 0.8125rem; font-weight: 700; margin-top: 0.375rem; }
         #delivery-app .stat-trend.up { color: var(--secondary); }
         #delivery-customer-app .stat-trend.up { color: var(--secondary); }
+        #delivery-company-app .stat-trend.up { color: var(--secondary); }
         #delivery-app .stat-trend.down { color: #dc2626; }
         #delivery-customer-app .stat-trend.down { color: #dc2626; }
+        #delivery-company-app .stat-trend.down { color: #dc2626; }
         #delivery-app .stat-trend.flat { color: var(--admin-text-secondary); }
         #delivery-customer-app .stat-trend.flat { color: var(--admin-text-secondary); }
+        #delivery-company-app .stat-trend.flat { color: var(--admin-text-secondary); }
 
         /* ---- Order cards ---- */
         #delivery-app .section-title { font-size: 1.125rem; font-weight: 600; color: var(--admin-text); }
         /* ---- Order cards ---- */
         #delivery-customer-app .section-title { font-size: 1.125rem; font-weight: 600; color: var(--admin-text); }
+        #delivery-company-app .section-title { font-size: 1.125rem; font-weight: 600; color: var(--admin-text); }
         #delivery-app .order-card {
             background: var(--admin-surface);
             border: 1px solid var(--admin-border);
@@ -2135,24 +2498,42 @@
             padding: 1.375rem;
             transition: box-shadow 0.2s ease, border-color 0.2s ease;
         }
+        #delivery-company-app .order-card {
+            background: var(--admin-surface);
+            border: 1px solid var(--admin-border);
+            border-radius: var(--admin-radius-lg);
+            box-shadow: var(--admin-shadow-xs);
+            padding: 1.375rem;
+            transition: box-shadow 0.2s ease, border-color 0.2s ease;
+        }
         #delivery-app .order-card::before { display: none; }
         #delivery-customer-app .order-card::before { display: none; }
+        #delivery-company-app .order-card::before { display: none; }
         #delivery-app .order-card:hover { transform: none; box-shadow: var(--admin-shadow-sm); border-color: var(--admin-border-strong); }
         #delivery-customer-app .order-card:hover { transform: none; box-shadow: var(--admin-shadow-sm); border-color: var(--admin-border-strong); }
+        #delivery-company-app .order-card:hover { transform: none; box-shadow: var(--admin-shadow-sm); border-color: var(--admin-border-strong); }
         #delivery-app .order-id { color: var(--admin-text-secondary); }
         #delivery-customer-app .order-id { color: var(--admin-text-secondary); }
+        #delivery-company-app .order-id { color: var(--admin-text-secondary); }
         #delivery-app .order-detail-label { color: var(--admin-text-tertiary); font-weight: 600; }
         #delivery-customer-app .order-detail-label { color: var(--admin-text-tertiary); font-weight: 600; }
+        #delivery-company-app .order-detail-label { color: var(--admin-text-tertiary); font-weight: 600; }
         #delivery-app .order-detail-value { color: var(--admin-text); }
         #delivery-customer-app .order-detail-value { color: var(--admin-text); }
+        #delivery-company-app .order-detail-value { color: var(--admin-text); }
         #delivery-app .order-actions { border-top-color: var(--admin-border); }
         #delivery-customer-app .order-actions { border-top-color: var(--admin-border); }
+        #delivery-company-app .order-actions { border-top-color: var(--admin-border); }
         #delivery-app .status-badge { display: inline-flex; align-items: center; gap: 0.375rem; }
         #delivery-customer-app .status-badge { display: inline-flex; align-items: center; gap: 0.375rem; }
+        #delivery-company-app .status-badge { display: inline-flex; align-items: center; gap: 0.375rem; }
         #delivery-app .status-badge::before {
             content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex-shrink: 0;
         }
         #delivery-customer-app .status-badge::before {
+            content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex-shrink: 0;
+        }
+        #delivery-company-app .status-badge::before {
             content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex-shrink: 0;
         }
 
@@ -2168,10 +2549,17 @@
             gap: 0.75rem; padding: 3rem 1.5rem; width: 100%;
             color: var(--admin-text-secondary); text-align: center;
         }
+        #delivery-company-app .admin-empty-state {
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            gap: 0.75rem; padding: 3rem 1.5rem; width: 100%;
+            color: var(--admin-text-secondary); text-align: center;
+        }
         #delivery-app .admin-empty-state svg { width: 40px; height: 40px; color: var(--admin-text-tertiary); }
         #delivery-customer-app .admin-empty-state svg { width: 40px; height: 40px; color: var(--admin-text-tertiary); }
+        #delivery-company-app .admin-empty-state svg { width: 40px; height: 40px; color: var(--admin-text-tertiary); }
         #delivery-app .admin-empty-state span { font-size: 0.9375rem; font-weight: 500; }
         #delivery-customer-app .admin-empty-state span { font-size: 0.9375rem; font-weight: 500; }
+        #delivery-company-app .admin-empty-state span { font-size: 0.9375rem; font-weight: 500; }
 
         /* ---- Loading skeletons ---- */
         #delivery-app .admin-skeleton {
@@ -2182,6 +2570,12 @@
         }
         /* ---- Loading skeletons ---- */
         #delivery-customer-app .admin-skeleton {
+            background: linear-gradient(90deg, var(--admin-surface-alt) 25%, #e2e8f0 37%, var(--admin-surface-alt) 63%);
+            background-size: 400% 100%;
+            animation: admin-skeleton-shimmer 1.4s ease infinite;
+            border-radius: var(--admin-radius-md);
+        }
+        #delivery-company-app .admin-skeleton {
             background: linear-gradient(90deg, var(--admin-surface-alt) 25%, #e2e8f0 37%, var(--admin-surface-alt) 63%);
             background-size: 400% 100%;
             animation: admin-skeleton-shimmer 1.4s ease infinite;
@@ -2199,18 +2593,27 @@
             height: 210px; border: 1px solid var(--admin-border); border-radius: var(--admin-radius-lg);
             padding: 1.375rem; background-color: var(--admin-surface);
         }
+        #delivery-company-app .admin-skeleton-card {
+            height: 210px; border: 1px solid var(--admin-border); border-radius: var(--admin-radius-lg);
+            padding: 1.375rem; background-color: var(--admin-surface);
+        }
 
         @media (max-width: 960px) {
             #delivery-app .admin-shell { grid-template-columns: 1fr; }
         #delivery-customer-app .admin-shell { grid-template-columns: 1fr; }
+        #delivery-company-app .admin-shell { grid-template-columns: 1fr; }
             #delivery-app .admin-sidebar { position: static; min-height: auto; }
         #delivery-customer-app .admin-sidebar { position: static; min-height: auto; }
+        #delivery-company-app .admin-sidebar { position: static; min-height: auto; }
             #delivery-app .admin-main { padding: 1.5rem; }
         #delivery-customer-app .admin-main { padding: 1.5rem 1.5rem calc(5.5rem + env(safe-area-inset-bottom)); }
+        #delivery-company-app .admin-main { padding: 1.5rem 1.5rem calc(5.5rem + env(safe-area-inset-bottom)); }
             #delivery-app .sidebar-toggle-btn { left: auto; right: 1.25rem; }
         #delivery-customer-app .sidebar-toggle-btn { left: auto; right: 1.25rem; }
+        #delivery-company-app .sidebar-toggle-btn { left: auto; right: 1.25rem; }
             #delivery-app .admin-shell.sidebar-collapsed .sidebar-toggle-btn { left: auto; right: 1.25rem; }
         #delivery-customer-app .admin-shell.sidebar-collapsed .sidebar-toggle-btn { left: auto; right: 1.25rem; }
+        #delivery-company-app .admin-shell.sidebar-collapsed .sidebar-toggle-btn { left: auto; right: 1.25rem; }
         }
 
         /* ---- Customer/sender delivery dashboard: real desktop sidebar
@@ -2231,13 +2634,16 @@
            original @media block always intended. */
         @media (min-width: 1024px) {
             #delivery-customer-app .admin-shell { grid-template-columns: 272px 1fr; }
+            #delivery-company-app .admin-shell { grid-template-columns: 272px 1fr; }
             #delivery-customer-app .admin-sidebar { display: flex; }
+            #delivery-company-app .admin-sidebar { display: flex; }
             /* The sidebar's own "+ Create New Order" button duplicated
                the "Create New Order" nav item right below it once the
                sidebar was visible — hide the duplicate on desktop, where
                the nav item is always reachable (unlike mobile, where the
                sidebar itself is normally hidden). */
             #delivery-customer-app #dcust-sidebar-new-order-btn { display: none; }
+            #delivery-company-app #dcust-sidebar-new-order-btn { display: none; }
         }
     </style>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
@@ -3045,120 +3451,202 @@
 
     <!-- Delivery Company Dashboard — a company's own fleet + orders,
          scoped entirely to their own account server-side. -->
-    <div id="delivery-company-app" style="display:none; min-height:100vh; background:var(--bg-light);">
-        <div style="background:white; border-bottom:1px solid var(--border); padding:1.25rem 1.5rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;">
-            <div style="display:flex; align-items:center; gap:0.875rem;">
-                <div class="mp-account-hero-avatar" id="dc-avatar" style="width:2.75rem; height:2.75rem; font-size:1.125rem; background:var(--primary); color:white; border:none;">D</div>
-                <div>
-                    <div style="font-weight:800; font-size:1.0625rem;" id="dc-company-name">—</div>
-                    <div style="font-size:0.8125rem; color:var(--slate-light);">Delivery Company</div>
+    <div id="delivery-company-app" style="display:none;">
+        <div class="admin-shell" id="dc-shell">
+            <aside class="admin-sidebar">
+                <div class="admin-sidebar-logo">
+                    <img src="assets/logo.png" alt="ONLib Delivery">
                 </div>
-            </div>
-            <div style="display:flex; gap:0.75rem;">
-                <button type="button" class="btn-small btn-secondary" id="dc-reports-btn">📊 Reports</button>
-                <button type="button" class="btn-small btn-secondary" id="dc-settings-btn">Settings</button>
-                <button type="button" class="btn-small btn-secondary" id="dc-logout-btn">Logout</button>
-            </div>
-        </div>
-
-        <div style="max-width:1100px; margin:0 auto; padding:1.5rem;">
-            <!-- Overview -->
-            <!-- Pending Orders — real, unassigned orders any approved
-                 company can see and accept, live via Socket.io. -->
-            <div class="mobile-section" style="margin-top:0;">
-                <div class="mobile-section-header"><div class="mobile-section-title">Pending Orders</div></div>
-                <div id="dc-pending-orders-list"></div>
-            </div>
-
-            <div id="dc-view-overview">
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
-                    <div class="stat-card">
-                        <div class="stat-card-top"><h4>Total Agents</h4></div>
-                        <p id="dc-stat-total-agents">0</p>
+                <nav class="admin-nav">
+                    <button type="button" class="admin-nav-item active" id="dc-nav-dashboard">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+                        Dashboard
+                    </button>
+                    <button type="button" class="admin-nav-item" id="dc-nav-fleet">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                        Fleet
+                    </button>
+                    <button type="button" class="admin-nav-item" id="dc-nav-orders">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
+                        Orders
+                    </button>
+                    <button type="button" class="admin-nav-item" id="dc-nav-reports">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+                        Reports
+                    </button>
+                    <button type="button" class="admin-nav-item" id="dc-nav-settings">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                        Settings
+                    </button>
+                    <button type="button" class="admin-nav-item" id="dc-nav-back-to-chooser">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+                        Back to service selector
+                    </button>
+                </nav>
+                <div class="admin-sidebar-spacer"></div>
+                <div class="admin-sidebar-footer">
+                    <div class="admin-profile">
+                        <div class="user-avatar" id="dc-avatar">D</div>
+                        <div class="admin-profile-label" id="dc-company-name">—</div>
                     </div>
-                    <div class="stat-card success">
-                        <div class="stat-card-top"><h4>On Duty</h4></div>
-                        <p id="dc-stat-on-duty">0</p>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-card-top"><h4>Total Orders</h4></div>
-                        <p id="dc-stat-total-orders">0</p>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-card-top"><h4>Revenue</h4></div>
-                        <p id="dc-stat-revenue">$0.00</p>
-                    </div>
+                    <button type="button" class="admin-nav-item admin-logout" id="dc-logout-btn">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+                        Logout
+                    </button>
                 </div>
-            </div>
+            </aside>
 
-            <!-- Fleet -->
-            <div class="mobile-section" style="margin-top:0;">
-                <div class="mobile-section-header">
-                    <div class="mobile-section-title">Fleet</div>
-                    <button type="button" class="btn-small btn-success" id="dc-add-agent-btn">+ Add Agent</button>
+            <main class="admin-main">
+                <!-- Mobile-only topbar — hidden on desktop (≥1024px),
+                     where the real sidebar shows instead. -->
+                <div class="dcust-mobile-topbar">
+                    <img src="assets/logo.png" alt="ONLib Delivery" style="height: 32px; object-fit: contain;">
                 </div>
-                <div id="dc-agents-list"></div>
-            </div>
 
-            <!-- Add/Edit Agent form (inline, toggled) -->
-            <div class="mobile-section" id="dc-agent-form-section" style="display:none;">
-                <div class="mobile-section-header"><div class="mobile-section-title" id="dc-agent-form-title">Add Agent</div></div>
-                <form id="dc-agent-form" style="background:white; border-radius:1rem; padding:1.25rem; border:1px solid var(--border); box-shadow:var(--shadow-sm);">
-                    <div class="form-group">
-                        <label class="form-label">Name</label>
-                        <input type="text" class="form-input" id="dc-agent-name-input" required>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Phone</label>
-                        <input type="tel" class="form-input" id="dc-agent-phone-input" required>
-                    </div>
-                    <div id="dc-agent-form-error" style="color:#dc2626; font-size:0.875rem; margin-bottom:1rem; display:none;"></div>
-                    <div style="display:flex; gap:0.75rem;">
-                        <button type="button" class="btn-small btn-secondary" id="dc-agent-form-cancel">Cancel</button>
-                        <button type="submit" class="btn-small btn-success" id="dc-agent-form-submit">Save Agent</button>
-                    </div>
-                </form>
-            </div>
-
-            <!-- Order History -->
-            <div class="mobile-section">
-                <div class="mobile-section-header"><div class="mobile-section-title">Order History</div></div>
-                <div id="dc-order-history-filters"></div>
-                <div id="dc-orders-list"></div>
-            </div>
-
-            <!-- Settings -->
-            <div class="mobile-section" id="dc-view-settings" style="display:none;">
-                <div class="mobile-section-header"><div class="mobile-section-title">Company Settings</div></div>
-                <form id="dc-settings-form" style="background:white; border-radius:1rem; padding:1.25rem; border:1px solid var(--border); box-shadow:var(--shadow-sm);">
-                    <div style="display:flex; align-items:center; gap:1rem; margin-bottom:1.5rem;">
-                        <div class="mp-account-hero-avatar" id="dc-settings-avatar-preview" style="width:64px; height:64px; font-size:1.5rem; background:var(--primary); color:white; border:none;">D</div>
+                <div class="admin-topbar">
+                    <div class="dcust-topbar-row">
                         <div>
-                            <button type="button" class="btn-small btn-secondary" id="dc-settings-photo-btn">Change Photo</button>
-                            <input type="file" accept="image/*" id="dc-settings-photo-input" style="display:none;">
-                            <p style="font-size:0.75rem; color:var(--slate-lighter); margin-top:0.375rem;">JPG or PNG, under 500KB</p>
+                            <div class="admin-welcome-role" id="dc-welcome-name">Welcome!</div>
+                            <div id="dc-welcome-subtitle" style="font-size:0.875rem; color:var(--slate-light);">Here's your fleet at a glance.</div>
+                        </div>
+                        <button type="button" class="dcust-topbar-back-link" id="dc-topbar-back-btn" title="Back to service selector">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+                            <span>Back to service selector</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Dashboard view: at-a-glance stats + pending orders to accept -->
+                <div id="dc-view-dashboard">
+                    <div class="dc-stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-card-top">
+                                <h4>Total Agents</h4>
+                                <div class="dcust-stat-icon" style="background:#ede9fe; color:#7c3aed;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg></div>
+                            </div>
+                            <p id="dc-stat-total-agents">0</p>
+                        </div>
+                        <div class="stat-card success">
+                            <div class="stat-card-top">
+                                <h4>On Duty</h4>
+                                <div class="dcust-stat-icon" style="background:#dcfce7; color:#16a34a;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg></div>
+                            </div>
+                            <p id="dc-stat-on-duty">0</p>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-card-top">
+                                <h4>Total Orders</h4>
+                                <div class="dcust-stat-icon" style="background:#dbeafe; color:#2563eb;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg></div>
+                            </div>
+                            <p id="dc-stat-total-orders">0</p>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-card-top">
+                                <h4>Revenue</h4>
+                                <div class="dcust-stat-icon" style="background:#ede9fe; color:#7c3aed;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="6" x2="12" y2="18"></line><path d="M15 9.5a3 3 0 0 0-3-1.5c-1.66 0-3 1-3 2.5s1.34 2.5 3 2.5 3 1 3 2.5-1.34 2.5-3 2.5a3 3 0 0 1-3-1.5"></path></svg></div>
+                            </div>
+                            <p id="dc-stat-revenue">$0.00</p>
                         </div>
                     </div>
-                    <div class="form-group">
-                        <label class="form-label">Company Name</label>
-                        <input type="text" class="form-input" id="dc-settings-name-input" required>
+
+                    <!-- Pending Orders — real, unassigned orders any approved
+                         company can see and accept, live via Socket.io. -->
+                    <section class="dc-section-card">
+                        <div class="mobile-section-header"><div class="mobile-section-title">Pending Orders</div></div>
+                        <div id="dc-pending-orders-list" class="dc-cards-grid"></div>
+                    </section>
+                </div>
+
+                <!-- Fleet view -->
+                <div id="dc-view-fleet" style="display:none;">
+                    <div class="mobile-section-header">
+                        <div class="mobile-section-title">Fleet</div>
+                        <button type="button" class="btn-small btn-success" id="dc-add-agent-btn">+ Add Agent</button>
                     </div>
-                    <div class="form-group">
-                        <label class="form-label">Phone</label>
-                        <div class="phone-input-row">
-                            <select class="form-input country-code-select" id="dc-settings-phone-country"></select>
-                            <input type="tel" class="form-input" id="dc-settings-phone-input">
+                    <div id="dc-agents-list" class="dc-cards-grid"></div>
+
+                    <!-- Add/Edit Agent form (inline, toggled) -->
+                    <div class="mobile-section" id="dc-agent-form-section" style="display:none;">
+                        <div class="mobile-section-header"><div class="mobile-section-title" id="dc-agent-form-title">Add Agent</div></div>
+                        <form id="dc-agent-form" style="background:white; border-radius:1rem; padding:1.25rem; border:1px solid var(--border); box-shadow:var(--shadow-sm);">
+                            <div class="form-group">
+                                <label class="form-label">Name</label>
+                                <input type="text" class="form-input" id="dc-agent-name-input" required>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Phone</label>
+                                <input type="tel" class="form-input" id="dc-agent-phone-input" required>
+                            </div>
+                            <div id="dc-agent-form-error" style="color:#dc2626; font-size:0.875rem; margin-bottom:1rem; display:none;"></div>
+                            <div style="display:flex; gap:0.75rem;">
+                                <button type="button" class="btn-small btn-secondary" id="dc-agent-form-cancel">Cancel</button>
+                                <button type="submit" class="btn-small btn-success" id="dc-agent-form-submit">Save Agent</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Orders view: full order history with date filters -->
+                <div id="dc-view-orders" style="display:none;">
+                    <div class="mobile-section-header"><div class="mobile-section-title">Order History</div></div>
+                    <div id="dc-order-history-filters"></div>
+                    <div id="dc-orders-list" class="dc-cards-grid"></div>
+                </div>
+
+                <!-- Settings view -->
+                <div id="dc-view-settings" style="display:none;">
+                    <div class="mobile-section-header"><div class="mobile-section-title">Company Settings</div></div>
+                    <form id="dc-settings-form" style="background:white; border-radius:1rem; padding:1.25rem; border:1px solid var(--border); box-shadow:var(--shadow-sm); max-width:520px;">
+                        <div style="display:flex; align-items:center; gap:1rem; margin-bottom:1.5rem;">
+                            <div class="mp-account-hero-avatar" id="dc-settings-avatar-preview" style="width:64px; height:64px; font-size:1.5rem; background:var(--primary); color:white; border:none;">D</div>
+                            <div>
+                                <button type="button" class="btn-small btn-secondary" id="dc-settings-photo-btn">Change Photo</button>
+                                <input type="file" accept="image/*" id="dc-settings-photo-input" style="display:none;">
+                                <p style="font-size:0.75rem; color:var(--slate-lighter); margin-top:0.375rem;">JPG or PNG, under 500KB</p>
+                            </div>
                         </div>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Email</label>
-                        <input type="email" class="form-input" id="dc-settings-email" disabled style="background:var(--bg-light); color:var(--slate-light);">
-                    </div>
-                    <div id="dc-settings-error" style="color:#dc2626; font-size:0.875rem; margin-bottom:1rem; display:none;"></div>
-                    <button type="submit" class="btn-small btn-success" id="dc-settings-submit">Save Changes</button>
-                    <button type="button" class="btn-small btn-secondary" id="dc-settings-back-btn">Back to Overview</button>
-                </form>
-            </div>
+                        <div class="form-group">
+                            <label class="form-label">Company Name</label>
+                            <input type="text" class="form-input" id="dc-settings-name-input" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Phone</label>
+                            <div class="phone-input-row">
+                                <select class="form-input country-code-select" id="dc-settings-phone-country"></select>
+                                <input type="tel" class="form-input" id="dc-settings-phone-input">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Email</label>
+                            <input type="email" class="form-input" id="dc-settings-email" disabled style="background:var(--bg-light); color:var(--slate-light);">
+                        </div>
+                        <div id="dc-settings-error" style="color:#dc2626; font-size:0.875rem; margin-bottom:1rem; display:none;"></div>
+                        <button type="submit" class="btn-small btn-success" id="dc-settings-submit">Save Changes</button>
+                        <button type="button" class="btn-small btn-secondary" id="dc-settings-back-btn">Back to Dashboard</button>
+                    </form>
+                </div>
+            </main>
+            <nav class="mobile-bottom-nav">
+                <button type="button" class="mobile-nav-item active" id="dc-mnav-dashboard">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+                    Dashboard
+                </button>
+                <button type="button" class="mobile-nav-item" id="dc-mnav-fleet">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                    Fleet
+                </button>
+                <button type="button" class="mobile-nav-item mobile-nav-item-prominent" id="dc-mnav-add-agent" aria-label="Add Agent">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                </button>
+                <button type="button" class="mobile-nav-item" id="dc-mnav-orders">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
+                    Orders
+                </button>
+                <button type="button" class="mobile-nav-item" id="dc-mnav-more">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle><circle cx="5" cy="12" r="1"></circle></svg>
+                    More
+                </button>
+            </nav>
         </div>
     </div>
 
@@ -5174,6 +5662,33 @@
         </div>
     </div>
 
+    <div class="modal-overlay" id="dc-more-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>More</h3>
+                <button class="close-btn" id="close-dc-more-modal">&times;</button>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:0.5rem;">
+                <button type="button" class="admin-nav-item" id="dc-more-reports" style="width:100%; text-align:left;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+                    Reports
+                </button>
+                <button type="button" class="admin-nav-item" id="dc-more-settings" style="width:100%; text-align:left;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                    Settings
+                </button>
+                <button type="button" class="admin-nav-item" id="dc-more-back-to-chooser" style="width:100%; text-align:left;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+                    Back to service selector
+                </button>
+                <button type="button" class="admin-nav-item admin-logout" id="dc-more-logout" style="width:100%; text-align:left;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+                    Logout
+                </button>
+            </div>
+        </div>
+    </div>
+
     <div class="modal-overlay" id="dcust-payment-modal">
         <div class="modal">
             <div class="modal-header">
@@ -6209,10 +6724,11 @@
             hideAllTopLevelViews();
             document.getElementById('dc-company-name').textContent = currentUser.businessName;
             document.getElementById('dc-avatar').textContent = currentUser.businessName.charAt(0).toUpperCase();
+            document.getElementById('dc-welcome-name').textContent = `Welcome, ${currentUser.businessName}! 👋`;
             refreshMyAvatarDisplays();
             document.getElementById('delivery-company-app').style.display = 'block';
-            document.getElementById('dc-view-settings').style.display = 'none';
             document.getElementById('dc-agent-form-section').style.display = 'none';
+            setDcView('dashboard');
             loadDeliveryCompanyOverview();
             loadDeliveryCompanyAgents();
             loadDeliveryCompanyOrders();
@@ -6239,13 +6755,23 @@
                 return;
             }
             container.innerHTML = deliveryCompanyPendingOrdersCache.map(o => `
-                <div class="address-card">
-                    <div class="address-card-body">
-                        <div class="address-card-label-row"><span class="address-card-label">${o.id}</span></div>
-                        <div class="address-card-text">${o.pickupAddress} → ${o.dropoffAddress}</div>
-                        <div class="address-card-text">${o.itemDescription}</div>
+                <div class="dc-card">
+                    <div class="dcust-order-card-top">
+                        <div class="dcust-order-card-id">${o.id}</div>
+                        <button type="button" class="btn-small btn-success dc-accept-order-btn" data-id="${o.id}">Accept</button>
                     </div>
-                    <button type="button" class="btn-small btn-success dc-accept-order-btn" data-id="${o.id}">Accept</button>
+                    <div class="dcust-order-card-body">
+                        <div class="dcust-order-card-row">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+                            <span class="dcust-order-card-label">Route</span>
+                            <span class="dcust-order-card-value">${o.pickupAddress} → ${o.dropoffAddress}</span>
+                        </div>
+                        <div class="dcust-order-card-row">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8v13H3V8"></path><path d="M1 3h22v5H1z"></path><line x1="10" y1="12" x2="14" y2="12"></line></svg>
+                            <span class="dcust-order-card-label">Item</span>
+                            <span class="dcust-order-card-value">${o.itemDescription}</span>
+                        </div>
+                    </div>
                 </div>
             `).join('');
         }
@@ -6289,16 +6815,21 @@
                     return;
                 }
                 container.innerHTML = deliveryCompanyAgentsCache.map(a => `
-                    <div class="address-card">
-                        <div class="address-card-body">
-                            <div class="address-card-label-row"><span class="address-card-label">${a.name}</span></div>
-                            <div class="address-card-text">${a.phone}</div>
+                    <div class="dc-card">
+                        <div class="dcust-order-card-top">
+                            <div>
+                                <div class="dcust-order-card-id">${a.name}</div>
+                                <div class="dcust-order-card-time">${a.phone}</div>
+                            </div>
+                            <span class="status-badge ${a.dutyStatus === 'on_duty' ? 'status-delivered' : 'status-off-duty'}">${a.dutyStatus === 'on_duty' ? 'On Duty' : 'Off Duty'}</span>
                         </div>
-                        <select class="form-input dc-agent-duty-select" data-id="${a.id}" style="max-width:130px; padding:0.375rem 0.5rem; font-size:0.8125rem;">
-                            <option value="off_duty" ${a.dutyStatus === 'off_duty' ? 'selected' : ''}>Off Duty</option>
-                            <option value="on_duty" ${a.dutyStatus === 'on_duty' ? 'selected' : ''}>On Duty</option>
-                        </select>
-                        <button type="button" class="btn-small btn-secondary dc-edit-agent-btn" data-id="${a.id}">Edit</button>
+                        <div style="display:flex; gap:0.625rem; margin-top:0.875rem;">
+                            <select class="form-input dc-agent-duty-select" data-id="${a.id}" style="flex:1; padding:0.375rem 0.5rem; font-size:0.8125rem;">
+                                <option value="off_duty" ${a.dutyStatus === 'off_duty' ? 'selected' : ''}>Off Duty</option>
+                                <option value="on_duty" ${a.dutyStatus === 'on_duty' ? 'selected' : ''}>On Duty</option>
+                            </select>
+                            <button type="button" class="btn-small btn-secondary dc-edit-agent-btn" data-id="${a.id}">Edit</button>
+                        </div>
                     </div>
                 `).join('');
             } catch (err) {
@@ -6343,12 +6874,24 @@
                 const statusClass = `status-${o.status.replace(' ', '-')}`;
                 const statusText = o.status.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
                 return `
-                    <div class="address-card">
-                        <div class="address-card-body">
-                            <div class="address-card-label-row"><span class="address-card-label">${o.id}</span></div>
-                            <div class="address-card-text">${o.pickupAddress} → ${o.dropoffAddress} · Agent: ${o.acceptedBy || '—'}</div>
+                    <div class="dc-card">
+                        <div class="dcust-order-card-top">
+                            <div class="dcust-order-card-id">${o.id}</div>
+                            <span class="status-badge ${statusClass}">${statusText}</span>
                         </div>
-                        <span class="status-badge ${statusClass}">${statusText}</span>
+                        <div class="dcust-order-card-body">
+                            <div class="dcust-order-card-row">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+                                <span class="dcust-order-card-label">Route</span>
+                                <span class="dcust-order-card-value">${o.pickupAddress} → ${o.dropoffAddress}</span>
+                            </div>
+                            ${o.acceptedBy ? `
+                            <div class="dcust-order-card-row">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                                <span class="dcust-order-card-label">Agent</span>
+                                <span class="dcust-order-card-value">${o.acceptedBy}</span>
+                            </div>` : ''}
+                        </div>
                     </div>
                 `;
             }).join('');
@@ -6376,21 +6919,85 @@
             editingDeliveryCompanyAgentId = null;
         }
 
+        // Which of the four top-level Delivery Company pages is showing —
+        // same pattern as setDeliveryCustomerView, keeps the sidebar/
+        // bottom-nav "active" state and the visible section in sync.
+        function setDcView(view) {
+            document.getElementById('dc-view-dashboard').style.display = view === 'dashboard' ? 'block' : 'none';
+            document.getElementById('dc-view-fleet').style.display = view === 'fleet' ? 'block' : 'none';
+            document.getElementById('dc-view-orders').style.display = view === 'orders' ? 'block' : 'none';
+            document.getElementById('dc-view-settings').style.display = view === 'settings' ? 'block' : 'none';
+            document.getElementById('dc-nav-dashboard').classList.toggle('active', view === 'dashboard');
+            document.getElementById('dc-nav-fleet').classList.toggle('active', view === 'fleet');
+            document.getElementById('dc-nav-orders').classList.toggle('active', view === 'orders');
+            document.getElementById('dc-nav-settings').classList.toggle('active', view === 'settings');
+            document.getElementById('dc-mnav-dashboard').classList.toggle('active', view === 'dashboard');
+            document.getElementById('dc-mnav-fleet').classList.toggle('active', view === 'fleet');
+            document.getElementById('dc-mnav-orders').classList.toggle('active', view === 'orders');
+            if (view === 'settings') {
+                document.getElementById('dc-settings-name-input').value = currentUser.businessName || '';
+                document.getElementById('dc-settings-email').value = currentUser.email || '';
+                populateCountryCodeSelects();
+                splitPhoneNumber(currentUser.phone, 'dc-settings-phone-country', 'dc-settings-phone-input');
+            }
+        }
+
+        function openDcReportModal() {
+            const yearSelect = document.getElementById('dc-report-year-select');
+            const orderYears = [...new Set(deliveryCompanyOrdersCache.map(o => new Date(o.createdAt).getFullYear()))].sort((a, b) => b - a);
+            const now = new Date();
+            if (orderYears.length === 0) orderYears.push(now.getFullYear());
+            yearSelect.innerHTML = orderYears.map(y => `<option value="${y}" ${y === now.getFullYear() ? 'selected' : ''}>${y}</option>`).join('');
+            document.getElementById('dc-report-month-select').value = String(now.getMonth() + 1);
+            document.getElementById('dc-report-modal').classList.add('active');
+        }
+
         function wireDeliveryCompanyEvents() {
             document.getElementById('dc-logout-btn').addEventListener('click', async () => {
                 await clearAuth();
                 showAppChooser();
             });
-            document.getElementById('dc-settings-btn').addEventListener('click', () => {
-                document.getElementById('dc-settings-name-input').value = currentUser.businessName || '';
-                document.getElementById('dc-settings-email').value = currentUser.email || '';
-                populateCountryCodeSelects();
-                splitPhoneNumber(currentUser.phone, 'dc-settings-phone-country', 'dc-settings-phone-input');
-                document.getElementById('dc-view-settings').style.display = 'block';
-                document.getElementById('dc-view-settings').scrollIntoView({ behavior: 'smooth' });
+            document.getElementById('dc-more-logout').addEventListener('click', async () => {
+                document.getElementById('dc-more-modal').classList.remove('active');
+                await clearAuth();
+                showAppChooser();
             });
+
+            // ---- Sidebar nav (desktop) ----
+            document.getElementById('dc-nav-dashboard').addEventListener('click', () => setDcView('dashboard'));
+            document.getElementById('dc-nav-fleet').addEventListener('click', () => setDcView('fleet'));
+            document.getElementById('dc-nav-orders').addEventListener('click', () => setDcView('orders'));
+            document.getElementById('dc-nav-settings').addEventListener('click', () => setDcView('settings'));
+            document.getElementById('dc-nav-reports').addEventListener('click', openDcReportModal);
+            document.getElementById('dc-nav-back-to-chooser').addEventListener('click', showAppChooser);
+            document.getElementById('dc-topbar-back-btn').addEventListener('click', showAppChooser);
+
+            // ---- Bottom nav (mobile) ----
+            document.getElementById('dc-mnav-dashboard').addEventListener('click', () => setDcView('dashboard'));
+            document.getElementById('dc-mnav-fleet').addEventListener('click', () => setDcView('fleet'));
+            document.getElementById('dc-mnav-orders').addEventListener('click', () => setDcView('orders'));
+            document.getElementById('dc-mnav-add-agent').addEventListener('click', () => {
+                setDcView('fleet');
+                openDeliveryCompanyAgentForm(null);
+            });
+            document.getElementById('dc-mnav-more').addEventListener('click', () => {
+                document.getElementById('dc-more-modal').classList.add('active');
+            });
+            document.getElementById('close-dc-more-modal').addEventListener('click', () => {
+                document.getElementById('dc-more-modal').classList.remove('active');
+            });
+            document.getElementById('dc-more-reports').addEventListener('click', () => {
+                document.getElementById('dc-more-modal').classList.remove('active');
+                openDcReportModal();
+            });
+            document.getElementById('dc-more-settings').addEventListener('click', () => {
+                document.getElementById('dc-more-modal').classList.remove('active');
+                setDcView('settings');
+            });
+            document.getElementById('dc-more-back-to-chooser').addEventListener('click', showAppChooser);
+
             document.getElementById('dc-settings-back-btn').addEventListener('click', () => {
-                document.getElementById('dc-view-settings').style.display = 'none';
+                setDcView('dashboard');
             });
             document.getElementById('dc-settings-form').addEventListener('submit', async (e) => {
                 e.preventDefault();
@@ -6479,15 +7086,6 @@
                 else if (e.target.id === 'dc-oh-day-select') { dcSelectedDay = e.target.value ? parseInt(e.target.value) : null; renderDeliveryCompanyOrderHistory(); }
             });
 
-            document.getElementById('dc-reports-btn').addEventListener('click', () => {
-                const yearSelect = document.getElementById('dc-report-year-select');
-                const orderYears = [...new Set(deliveryCompanyOrdersCache.map(o => new Date(o.createdAt).getFullYear()))].sort((a, b) => b - a);
-                const now = new Date();
-                if (orderYears.length === 0) orderYears.push(now.getFullYear());
-                yearSelect.innerHTML = orderYears.map(y => `<option value="${y}" ${y === now.getFullYear() ? 'selected' : ''}>${y}</option>`).join('');
-                document.getElementById('dc-report-month-select').value = String(now.getMonth() + 1);
-                document.getElementById('dc-report-modal').classList.add('active');
-            });
             document.getElementById('close-dc-report-modal').addEventListener('click', () => {
                 document.getElementById('dc-report-modal').classList.remove('active');
             });
