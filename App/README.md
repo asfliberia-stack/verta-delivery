@@ -4984,3 +4984,49 @@ never asserted on label/placeholder text), and
 assertion updated to match the new copy and now passes 7/7 again.
 Re-ran the rest of the accumulated suite from this session afterward —
 all still passing with zero failures.
+
+## Home banner admin — dual mobile/desktop crop preview
+
+**Reported:** after being asked what image size the home banner slides
+need and whether one upload can serve both desktop and mobile, and
+explaining that yes — there's only one image upload field per slide,
+and the storefront renders it with CSS `background-size: cover` so it
+self-crops to whatever screen shows it — the user asked to build the
+preview feature that was offered: show the uploaded image cropped both
+ways inside the admin form, so it can be checked before publishing.
+
+**What changed:** the single small thumbnail preview in the "Add/Edit
+Banner Slide" form (Super Admin → Home Banners) was replaced with two
+labeled preview boxes, "Desktop preview (~1076px wide)" and "Mobile
+preview (~339px wide)." Both use the exact same CSS technique as the
+real storefront banner (`background-size: cover; background-position:
+center`) so what's shown is a true crop preview, not just a resized
+thumbnail. The two boxes are built with CSS `aspect-ratio: 1076/168`
+and `aspect-ratio: 339/168` respectively — the real pixel dimensions
+of the app's actual banner containers (1076px is the desktop content
+column width after the sidebar, at the widest viewport; 339px is a
+typical mobile content width; 168px is the shared `min-height` of the
+banner on both) — so the two boxes render at the correct relative
+proportions to each other: same height, with the mobile box roughly a
+third as wide as the desktop box. A new `setBannerImagePreview(url)`
+helper sets (or clears) the background image on both boxes together,
+and is now called from both places an image reaches the form: opening
+the form to edit an existing slide with an image already saved, and
+uploading a new file via `uploadBannerImageStaged()`. The old
+`<img id="banner-image-preview">` element and its `.src` assignments
+were removed entirely, replaced by the two new div-based preview
+boxes.
+
+**Verified:** a new Playwright pass
+(`verify_banner_dual_preview.js`, 14 checks) confirms the old single
+`<img>` preview element is gone, both new preview boxes exist with the
+correct computed `aspect-ratio` values, the `setBannerImagePreview()`
+helper both sets and clears the background image on both boxes
+together, opening the form to edit an existing banner with a saved
+image populates both boxes and shows the preview area, and opening the
+form fresh (Add, not Edit) correctly hides the preview area. A
+screenshot of the populated edit form (`screenshot_banner_dual_preview2.png`)
+was also captured and visually confirms the desktop box renders
+noticeably wider than the mobile box, at the same height, matching the
+intended proportions. Re-ran the full accumulated Playwright suite
+from this session afterward — all still passing with zero failures.

@@ -5851,12 +5851,24 @@
                 </div>
                 <div class="form-group">
                     <label>Background image (optional)</label>
+                    <!-- Dual crop preview — the same uploaded image is used on
+                         both mobile and desktop (there's only ever one upload
+                         field), rendered with background-size:cover just like
+                         the real .discovery-banner on the storefront. These two
+                         boxes share the exact real-world height (168px) but
+                         differ in width (desktop ~1076px vs mobile ~339px, the
+                         app's actual banner container widths), so what's shown
+                         here is an accurate preview of how much gets cropped on
+                         each, not just a generic thumbnail. -->
                     <div id="banner-image-preview-wrap" style="display:none; margin-bottom:0.625rem;">
-                        <img id="banner-image-preview" src="" alt="" style="width:100%; max-height:140px; object-fit:cover; border-radius:0.625rem; border:1px solid var(--border);">
-                        <button type="button" class="btn-small btn-danger" id="remove-banner-image-btn" style="margin-top:0.5rem;">Remove image</button>
+                        <div style="font-size:0.75rem; font-weight:700; color:var(--slate-light); margin-bottom:0.25rem;">Desktop preview (~1076px wide)</div>
+                        <div id="banner-image-preview-desktop" style="width:100%; aspect-ratio:1076/168; background-size:cover; background-position:center; background-color:#f1f5f9; border-radius:0.625rem; border:1px solid var(--border); margin-bottom:0.625rem;"></div>
+                        <div style="font-size:0.75rem; font-weight:700; color:var(--slate-light); margin-bottom:0.25rem;">Mobile preview (~339px wide)</div>
+                        <div id="banner-image-preview-mobile" style="width:31.5%; aspect-ratio:339/168; background-size:cover; background-position:center; background-color:#f1f5f9; border-radius:0.625rem; border:1px solid var(--border);"></div>
+                        <button type="button" class="btn-small btn-danger" id="remove-banner-image-btn" style="margin-top:0.625rem;">Remove image</button>
                     </div>
                     <input type="file" accept="image/*" id="banner-image-input">
-                    <small style="color: var(--slate-light);">Under ~500KB. Without one, the slide uses the default navy gradient.</small>
+                    <small style="color: var(--slate-light);">Under ~500KB. The same image is used on both mobile and desktop — the previews above show roughly how much gets cropped on each. Without one, the slide uses the default navy gradient.</small>
                 </div>
                 <div class="form-group" style="display:flex; align-items:center; gap:0.5rem;">
                     <input type="checkbox" id="banner-active-input" checked style="width:auto;">
@@ -10455,6 +10467,7 @@
             });
             document.getElementById('remove-banner-image-btn').addEventListener('click', () => {
                 pendingBannerImageDataUrl = '';
+                setBannerImagePreview('');
                 document.getElementById('banner-image-preview-wrap').style.display = 'none';
                 document.getElementById('banner-image-input').value = '';
             });
@@ -11273,6 +11286,16 @@
             `).join('');
         }
 
+        // Sets (or clears, when url is falsy) the background image on both
+        // the desktop-width and mobile-width crop preview boxes at once —
+        // shared by openBannerForm (editing an existing slide) and
+        // uploadBannerImageStaged (a fresh upload), so the two boxes never
+        // fall out of sync with each other.
+        function setBannerImagePreview(url) {
+            document.getElementById('banner-image-preview-desktop').style.backgroundImage = url ? `url('${url}')` : '';
+            document.getElementById('banner-image-preview-mobile').style.backgroundImage = url ? `url('${url}')` : '';
+        }
+
         function openBannerForm(id) {
             editingBannerId = id;
             pendingBannerImageDataUrl = undefined;
@@ -11291,7 +11314,7 @@
                 document.getElementById('banner-cta-link-input').value = b.ctaLink || '';
                 document.getElementById('banner-active-input').checked = b.isActive;
                 if (b.imageDataUrl) {
-                    document.getElementById('banner-image-preview').src = b.imageDataUrl;
+                    setBannerImagePreview(b.imageDataUrl);
                     previewWrap.style.display = 'block';
                 } else {
                     previewWrap.style.display = 'none';
@@ -11319,7 +11342,7 @@
             const reader = new FileReader();
             reader.onload = () => {
                 pendingBannerImageDataUrl = reader.result;
-                document.getElementById('banner-image-preview').src = reader.result;
+                setBannerImagePreview(reader.result);
                 document.getElementById('banner-image-preview-wrap').style.display = 'block';
             };
             reader.readAsDataURL(file);
