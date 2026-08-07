@@ -4765,3 +4765,44 @@ be verified:** this sandbox has no live Postgres, so the actual
 `home_banners` table and its queries have never run against a real
 database — only the SQL text and the surrounding JS logic (mocked
 network calls) were checked.
+
+### Starter slides — 3 seeded default banners
+
+Rather than launch with an empty carousel, `server/seed-data/default-home-banners.js`
+defines 3 starter slides ("New Arrivals," "Free Delivery," "Top Rated
+Vendors"), and `seedHomeBannersIfEmpty()` in `server.js` inserts them
+automatically the first time the app boots against an empty
+`home_banners` table — same one-time, empty-table-guarded pattern
+already used for the default delivery agents (`seedAgentsIfEmpty`), so
+it runs once on your next deploy and never re-seeds or fights with
+whatever Super Admin does afterward (including deleting all 3 — that's
+treated as a deliberate choice, not an uninitialized table).
+
+No real product photography was available to use, so each slide's
+background is a small generated graphic (a gradient in the app's own
+brand colors plus a simple shape — a shopping bag, a delivery box, a
+storefront with a star rating) rather than a photo — a placeholder
+that reads clean, not a stand-in for real marketing images. Swap any
+of them for real photos whenever you have them, the same way you'd
+edit any other slide, from Home Banners. One color note: the first
+version of the "Free Delivery" slide used a red/orange background,
+which fought with the shared red headline color every slide uses
+(faint text-on-background contrast) — it was regenerated in the app's
+blue instead, which keeps the red headline legible while still reading
+as distinct from the other two slides' navy tones.
+
+**Verified:** a Node script asserting the seed data's shape (exactly 3
+slides, each with a non-empty headline, non-empty CTA text, a valid
+`data:image/...` URL under the 700KB server-side cap, and no baked-in
+`id` since that's assigned at insert time) and distinctness (3 unique
+headlines, 3 unique images), plus a simulation of
+`seedHomeBannersIfEmpty()`'s own empty-table-guard logic against a
+fake db (seeds exactly 3 when the table is empty, seeds nothing when
+it already has rows) — 24 checks, all passing. A Playwright screenshot
+pass rendered all 3 slides with their real generated images and
+confirmed each headline is legible against its background. **What
+could not be verified:** the actual boot-time seeding, again because
+this sandbox has no live Postgres to boot the real app against —
+`seedHomeBannersIfEmpty()`'s wiring into the `db.init()` chain was
+reviewed by hand (same shape as the existing `seedAgentsIfEmpty`
+directly above it in the chain) but never executed for real.

@@ -11,6 +11,7 @@ const { Server } = require('socket.io');
 const db = require('./db');
 const { notifyNewOrder, sendMessage, notifyNewVendorApplication, sendEmail } = require('./notify');
 const momo = require('./momo');
+const DEFAULT_HOME_BANNERS = require('./seed-data/default-home-banners');
 const { OAuth2Client } = require('google-auth-library');
 const {
   hashPassword,
@@ -3366,12 +3367,31 @@ async function seedVertaDeliveryCompanyIfPossible() {
   }
 }
 
+// Storefront hero carousel's starting content — 3 generic slides (no
+// real product photos were available at build time; see the comment
+// in seed-data/default-home-banners.js) so the carousel launches with
+// real, distinct visuals instead of empty. Same empty-table guard as
+// seedAgentsIfEmpty above: runs once, only while home_banners is
+// empty, so it never fights with anything Super Admin does afterward
+// (editing, reordering, hiding, deleting — including deleting all 3,
+// which is left empty rather than re-seeded, since that's a deliberate
+// admin choice at that point, not an uninitialized table anymore).
+async function seedHomeBannersIfEmpty() {
+  const count = await db.countHomeBanners();
+  if (count > 0) return; // already seeded (or admin has since managed the list)
+  for (const banner of DEFAULT_HOME_BANNERS) {
+    await db.createHomeBanner({ id: crypto.randomUUID(), ...banner });
+  }
+  console.log(`[seed] Seeded ${DEFAULT_HOME_BANNERS.length} default home banner slides`);
+}
+
 db.init()
   .then(migrateManageAgentToOnlib)
   .then(seedAdminIfConfigured)
   .then(seedSuperAdminIfConfigured)
   .then(seedVendorIfConfigured)
   .then(seedAgentsIfEmpty)
+  .then(seedHomeBannersIfEmpty)
   .then(migrateAgentsToDeliveryCompany)
   .then(seedVertaDeliveryCompanyIfPossible)
   .then(() => {
