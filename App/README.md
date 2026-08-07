@@ -4806,3 +4806,39 @@ this sandbox has no live Postgres to boot the real app against —
 `seedHomeBannersIfEmpty()`'s wiring into the `db.init()` chain was
 reviewed by hand (same shape as the existing `seedAgentsIfEmpty`
 directly above it in the chain) but never executed for real.
+
+## Bug fix — vendors couldn't edit their own products
+
+Reported symptom: a vendor's "Edit" (and "Delete") button on their own
+Products page was missing/not clickable. Root cause was a CSS rule, not
+the edit logic itself — `server.js`'s PUT endpoint, its ownership
+check, and the frontend's save handler were all already correct and
+covered by tests.
+
+The real bug: `.product-card-actions { display: none; }` (added earlier
+to hide the customer storefront's redundant inline "Add to Cart" button
+— the storefront card already opens the full product page, where Add
+to Cart actually lives) was written as a bare, unscoped selector. The
+vendor dashboard's own product management cards reuse that exact same
+class name (`.product-card-actions`) for their real Edit/Delete
+buttons — and `.product-card-vendor` for a real category label — so
+the unscoped rule silently hid both everywhere, not just on the
+storefront it was meant for.
+
+Fixed by scoping both rules to `#home-screen` (the customer storefront
+container), matching the same scoping convention already used
+elsewhere in this file (e.g. `#home-screen .add-to-cart-btn`) — the
+vendor dashboard lives in its own separate `#vendor-app` container, so
+it was never meant to be affected in the first place.
+
+**Verified:** a Playwright pass that renders the vendor dashboard's
+actual product card, confirms the Edit and Delete buttons and the
+category label are genuinely visible (real computed style plus
+`offsetParent` checks, not just present in the DOM), confirms clicking
+Edit opens the modal pre-filled with that product's data, and — in the
+same pass — confirms the storefront's own product card still correctly
+hides its inline actions and vendor name, so the original intent of
+this CSS wasn't lost in the fix. All 10 checks passed with zero page
+errors. Re-ran the existing home-banner-carousel and admin test suites
+afterward as a regression check (43 checks) — all still passing,
+confirming this CSS-only change didn't affect anything else.
