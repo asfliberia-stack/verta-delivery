@@ -2828,8 +2828,8 @@
                 <!-- Customer fields -->
                 <div id="register-customer-fields">
                     <div class="form-group">
-                        <label class="form-label">Business / Sender Name</label>
-                        <input type="text" class="form-input" id="register-business-name" placeholder="Enter your name or business name">
+                        <label class="form-label">First and Last Name</label>
+                        <input type="text" class="form-input" id="register-business-name" placeholder="Enter your first and last name">
                     </div>
                 </div>
 
@@ -9157,7 +9157,7 @@
                 const businessName = document.getElementById('register-business-name').value.trim();
 
                 if (!businessName) {
-                    errorEl.textContent = 'Please enter your name or business name.';
+                    errorEl.textContent = 'Please enter your first and last name.';
                     errorEl.style.display = 'block';
                     return;
                 }

@@ -4949,3 +4949,38 @@ Re-ran the full accumulated Playwright suite from this session (13
 scripts covering home banners, vendor edit, product grids, stock
 enforcement, product moderation, product gallery, storefront search,
 and payment badges) afterward — all still passing with zero failures.
+
+## Follow-up — Customer field relabeled "First and Last Name"
+
+**Reported:** a follow-up screenshot of the same Customer signup tab
+asking to change the "Business / Sender Name" field specifically to
+"First and Last name."
+
+**What changed:** on the Customer tab only, the label was changed from
+"Business / Sender Name" to "First and Last Name" and the placeholder
+from "Enter your name or business name" to "Enter your first and last
+name"; the client-side validation error was updated to match ("Please
+enter your first and last name."). The underlying `<input>` element's
+id (`register-business-name`) and the payload field name (`businessName`)
+were left unchanged, since those are internal wiring, not user-facing
+text, and changing them would have meant touching the registration API
+contract for no visible benefit. The Vendor tab's separate "Store /
+Business Name" field and the Delivery Company tab's fields were not
+touched — they are distinct DOM elements from the Customer tab's field
+and this request was specifically about the Customer signup flow shown
+in the screenshot.
+
+**Verified:** a new Playwright pass
+(`verify_register_first_last_name.js`, 9 checks) confirms the new
+label and placeholder text are in place, that the old label text is
+gone, that the Vendor tab's own "Store / Business Name" label is
+untouched, and re-confirms the full submit flow still works end-to-end
+(a real form submit reaches the register API with the typed name in
+`businessName`, and an empty name blocks submission with the updated
+error text). The two Playwright scripts from the prior fix were also
+re-run — `verify_register_submit_e2e.js` passed unchanged (8/8, it
+never asserted on label/placeholder text), and
+`verify_register_business_name.js` had its one placeholder-text
+assertion updated to match the new copy and now passes 7/7 again.
+Re-ran the rest of the accumulated suite from this session afterward —
+all still passing with zero failures.
