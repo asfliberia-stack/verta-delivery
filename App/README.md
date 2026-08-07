@@ -4717,3 +4717,51 @@ around them is unit-testable in isolation, but a first real run against
 the sandbox (via the provisioning script + a real sandbox test
 transaction) is the genuine next step before trusting this in
 production, not something this session could complete on your behalf.
+
+## Home banner carousel — storefront hero section
+
+The customer storefront's home screen used to open on a single, hardcoded
+"Discover Amazing Products" banner. It's now a real carousel: Super Admin
+manages up to 3 slides (Platform Overview → Quick Actions → "🖼️ Home
+Banners"), and the storefront auto-advances through them every 5 seconds,
+supports swipe navigation on touch devices, and shows dot indicators for
+manual jumping to any slide.
+
+Each slide has a headline (required), an optional eyebrow line, optional
+subtext, a button with editable text, an optional link (leave it blank
+and the button scrolls to Categories instead — the original behavior),
+and an optional background image (capped at ~500KB, same limit as
+product photos). Slides without an image keep the original navy gradient
+look; slides with one get a dark gradient overlay automatically so the
+text stays readable over any picture. Hiding a slide (vs. removing it)
+keeps it around to re-enable later, mirroring the product moderation
+"Hide"/"Remove" pattern elsewhere in this admin console. Reordering is
+two arrow buttons per slide (move up/down) rather than drag-and-drop —
+simple and sufficient for a list capped at 3 items.
+
+If no slides are configured (a fresh install, or every slide hidden/
+removed), the storefront falls back to the original single default
+slide client-side, so the home screen is never left with an empty
+banner area — `GET /api/marketplace/home-banners` returning an empty
+list is treated as expected, not an error.
+
+**Verified:** `node --check` on `server.js` and `db.js`; two Playwright
+passes — one exercising the storefront carousel directly (empty-API
+fallback to the default slide, rendering a real 3-slide response with
+correct dot count and active state, dot-click navigation updating both
+the track's transform and the active dot, a CTA with no link scrolling
+to Categories vs. a CTA with a link opening it instead, the auto-advance
+timer existing only when there's more than one slide, and simulated
+touch swipes in both directions changing slides — 17 checks), and one
+exercising the Super Admin management UI (list rendering with correct
+move-button disabled state at the ends of the list, the "+ Add Slide"
+button hiding once 3 slides exist, the edit form correctly populating
+from an existing slide vs. resetting to defaults for a new one, image
+upload staging through `FileReader`, the submit handler posting the
+right payload and blocking client-side on an empty headline, and the
+move-up/down endpoint receiving the right slide id and direction — 26
+checks). All 43 checks passed with zero page errors. **What could not
+be verified:** this sandbox has no live Postgres, so the actual
+`home_banners` table and its queries have never run against a real
+database — only the SQL text and the surrounding JS logic (mocked
+network calls) were checked.

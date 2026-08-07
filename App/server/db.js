@@ -81,6 +81,23 @@ function rowToProduct(r) {
   };
 }
 
+function rowToHomeBanner(r) {
+  if (!r) return null;
+  return {
+    id: r.id,
+    position: r.position,
+    eyebrow: r.eyebrow,
+    headline: r.headline,
+    subtext: r.subtext,
+    ctaText: r.cta_text,
+    ctaLink: r.cta_link,
+    imageDataUrl: r.image_data_url,
+    isActive: r.is_active,
+    createdAt: r.created_at,
+    updatedAt: r.updated_at,
+  };
+}
+
 function rowToPurchase(r) {
   if (!r) return null;
   return {
@@ -1328,6 +1345,76 @@ const db = {
   async deleteProductImage(id, productId) {
     const { rowCount } = await pool.query('DELETE FROM product_images WHERE id = $1 AND product_id = $2', [id, productId]);
     return rowCount > 0;
+  },
+
+  // ---- Marketplace: home-screen hero carousel ---------------------------
+
+  // Public — storefront-facing, active slides only, in display order.
+  async getActiveHomeBanners() {
+    const { rows } = await pool.query('SELECT * FROM home_banners WHERE is_active = true ORDER BY position ASC, created_at ASC');
+    return rows.map(rowToHomeBanner);
+  },
+
+  // Super Admin — every slide (including hidden ones), in display order.
+  async getAllHomeBanners() {
+    const { rows } = await pool.query('SELECT * FROM home_banners ORDER BY position ASC, created_at ASC');
+    return rows.map(rowToHomeBanner);
+  },
+
+  async countHomeBanners() {
+    const { rows } = await pool.query('SELECT COUNT(*)::int AS count FROM home_banners');
+    return rows[0].count;
+  },
+
+  async getHomeBannerById(id) {
+    const { rows } = await pool.query('SELECT * FROM home_banners WHERE id = $1', [id]);
+    return rowToHomeBanner(rows[0]);
+  },
+
+  async createHomeBanner({ id, eyebrow, headline, subtext, ctaText, ctaLink, imageDataUrl }) {
+    const { rows: posRows } = await pool.query('SELECT COALESCE(MAX(position), -1) + 1 AS next_position FROM home_banners');
+    const { rows } = await pool.query(
+      `INSERT INTO home_banners (id, position, eyebrow, headline, subtext, cta_text, cta_link, image_data_url)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
+      [id, posRows[0].next_position, eyebrow || null, headline, subtext || null, ctaText || 'Shop Now', ctaLink || null, imageDataUrl || null]
+    );
+    return rowToHomeBanner(rows[0]);
+  },
+
+  async updateHomeBanner(id, fields) {
+    const colMap = {
+      eyebrow: 'eyebrow', headline: 'headline', subtext: 'subtext', ctaText: 'cta_text',
+      ctaLink: 'cta_link', imageDataUrl: 'image_data_url', isActive: 'is_active',
+    };
+    const sets = ['updated_at = now()']; const values = []; let i = 1;
+    for (const [key, col] of Object.entries(colMap)) {
+      if (Object.prototype.hasOwnProperty.call(fields, key)) {
+        sets.push(`${col} = $${i}`); values.push(fields[key]); i += 1;
+      }
+    }
+    if (sets.length === 1) return this.getHomeBannerById(id);
+    values.push(id);
+    const { rows } = await pool.query(`UPDATE home_banners SET ${sets.join(', ')} WHERE id = $${i} RETURNING *`, values);
+    return rowToHomeBanner(rows[0]);
+  },
+
+  async deleteHomeBanner(id) {
+    await pool.query('DELETE FROM home_banners WHERE id = $1', [id]);
+  },
+
+  // Swaps this slide's position with its immediate neighbor in the
+  // requested direction — simple, dependency-free reordering for a
+  // list capped at 3 items (no need for a full drag-and-drop reorder).
+  async moveHomeBanner(id, direction) {
+    const banners = await this.getAllHomeBanners();
+    const idx = banners.findIndex(b => b.id === id);
+    if (idx === -1) return null;
+    const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
+    if (swapIdx < 0 || swapIdx >= banners.length) return banners;
+    const a = banners[idx]; const b = banners[swapIdx];
+    await pool.query('UPDATE home_banners SET position = $1 WHERE id = $2', [b.position, a.id]);
+    await pool.query('UPDATE home_banners SET position = $1 WHERE id = $2', [a.position, b.id]);
+    return this.getAllHomeBanners();
   },
 
   // ---- Marketplace: checkout + purchases -------------------------------

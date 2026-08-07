@@ -2292,6 +2292,119 @@ app.delete('/api/super-admin/marketplace/products/:id', requireAuth, requireSupe
   }
 });
 
+// ============================================================
+// Storefront home-screen hero carousel — Super Admin manages up to 3
+// slides; the public endpoint below is what the customer storefront
+// actually renders (falls back to a single hardcoded slide client-side
+// when this returns none — see loadHomeBanners() in index.html).
+// ============================================================
+const MAX_HOME_BANNERS = 3;
+
+app.get('/api/super-admin/marketplace/home-banners', requireAuth, requireSuperAdmin, async (req, res) => {
+  try {
+    const banners = await db.getAllHomeBanners();
+    res.json({ banners });
+  } catch (err) {
+    console.error('GET /api/super-admin/marketplace/home-banners failed', err);
+    res.status(500).json({ error: 'Failed to load banners' });
+  }
+});
+
+app.post('/api/super-admin/marketplace/home-banners', requireAuth, requireSuperAdmin, async (req, res) => {
+  const { eyebrow, headline, subtext, ctaText, ctaLink, imageDataUrl } = req.body || {};
+  if (!headline || !headline.trim()) {
+    return res.status(400).json({ error: 'A headline is required' });
+  }
+  if (imageDataUrl && imageDataUrl.length > MAX_PRODUCT_IMAGE_BYTES) {
+    return res.status(400).json({ error: 'Banner image is too large — please use an image under ~500KB.' });
+  }
+  try {
+    const count = await db.countHomeBanners();
+    if (count >= MAX_HOME_BANNERS) {
+      return res.status(400).json({ error: `You can have at most ${MAX_HOME_BANNERS} banner slides. Remove one before adding another.` });
+    }
+    const banner = await db.createHomeBanner({
+      id: crypto.randomUUID(), eyebrow, headline: headline.trim(), subtext, ctaText, ctaLink, imageDataUrl,
+    });
+    await logAudit(req, 'banner.create', { targetType: 'home_banner', targetId: banner.id, targetLabel: banner.headline });
+    res.json({ ok: true, banner });
+  } catch (err) {
+    console.error('POST /api/super-admin/marketplace/home-banners failed', err);
+    res.status(500).json({ error: 'Failed to create banner' });
+  }
+});
+
+app.put('/api/super-admin/marketplace/home-banners/:id', requireAuth, requireSuperAdmin, async (req, res) => {
+  const { eyebrow, headline, subtext, ctaText, ctaLink, imageDataUrl, isActive } = req.body || {};
+  if (headline !== undefined && !headline.trim()) {
+    return res.status(400).json({ error: 'Headline cannot be empty' });
+  }
+  if (imageDataUrl && imageDataUrl.length > MAX_PRODUCT_IMAGE_BYTES) {
+    return res.status(400).json({ error: 'Banner image is too large — please use an image under ~500KB.' });
+  }
+  try {
+    const existing = await db.getHomeBannerById(req.params.id);
+    if (!existing) return res.status(404).json({ error: 'Banner not found' });
+    const fields = {};
+    if (eyebrow !== undefined) fields.eyebrow = eyebrow;
+    if (headline !== undefined) fields.headline = headline.trim();
+    if (subtext !== undefined) fields.subtext = subtext;
+    if (ctaText !== undefined) fields.ctaText = ctaText;
+    if (ctaLink !== undefined) fields.ctaLink = ctaLink;
+    if (imageDataUrl !== undefined) fields.imageDataUrl = imageDataUrl;
+    if (isActive !== undefined) fields.isActive = !!isActive;
+    const banner = await db.updateHomeBanner(req.params.id, fields);
+    await logAudit(req, 'banner.update', { targetType: 'home_banner', targetId: banner.id, targetLabel: banner.headline });
+    res.json({ ok: true, banner });
+  } catch (err) {
+    console.error('PUT /api/super-admin/marketplace/home-banners/:id failed', err);
+    res.status(500).json({ error: 'Failed to update banner' });
+  }
+});
+
+app.put('/api/super-admin/marketplace/home-banners/:id/move', requireAuth, requireSuperAdmin, async (req, res) => {
+  const { direction } = req.body || {};
+  if (direction !== 'up' && direction !== 'down') {
+    return res.status(400).json({ error: 'direction must be "up" or "down"' });
+  }
+  try {
+    const existing = await db.getHomeBannerById(req.params.id);
+    if (!existing) return res.status(404).json({ error: 'Banner not found' });
+    const banners = await db.moveHomeBanner(req.params.id, direction);
+    res.json({ ok: true, banners });
+  } catch (err) {
+    console.error('PUT /api/super-admin/marketplace/home-banners/:id/move failed', err);
+    res.status(500).json({ error: 'Failed to reorder banners' });
+  }
+});
+
+app.delete('/api/super-admin/marketplace/home-banners/:id', requireAuth, requireSuperAdmin, async (req, res) => {
+  try {
+    const existing = await db.getHomeBannerById(req.params.id);
+    if (!existing) return res.status(404).json({ error: 'Banner not found' });
+    await db.deleteHomeBanner(req.params.id);
+    await logAudit(req, 'banner.remove', { targetType: 'home_banner', targetId: existing.id, targetLabel: existing.headline });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('DELETE /api/super-admin/marketplace/home-banners/:id failed', err);
+    res.status(500).json({ error: 'Failed to remove banner' });
+  }
+});
+
+// Public — no requireAuth. Empty result is a valid, expected response
+// (fresh install / every slide removed) — the storefront falls back to
+// its own hardcoded default slide in that case rather than treating it
+// as an error.
+app.get('/api/marketplace/home-banners', async (req, res) => {
+  try {
+    const banners = await db.getActiveHomeBanners();
+    res.json({ banners });
+  } catch (err) {
+    console.error('GET /api/marketplace/home-banners failed', err);
+    res.status(500).json({ error: 'Failed to load banners' });
+  }
+});
+
 app.get('/api/vendor/sales-overview', requireAuth, requireVendor, async (req, res) => {
   try {
     const overview = await db.getVendorSalesOverview(req.user.id, 30);

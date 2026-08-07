@@ -450,10 +450,24 @@
         .mp-guest-gate-title { font-weight: 800; font-size: 1.125rem; color: var(--slate); margin-bottom: 0.5rem; }
         .mp-guest-gate-desc { color: var(--slate-light); font-size: 0.9375rem; margin-bottom: 1.5rem; max-width: 320px; margin-left: auto; margin-right: auto; }
 
-        .discovery-banner {
-            background: linear-gradient(135deg, var(--golib-navy) 0%, var(--golib-navy-light) 100%);
-            border-radius: 1.125rem; padding: 1.5rem; color: white; position: relative; overflow: hidden;
+        .discovery-banner-carousel {
+            position: relative; border-radius: 1.125rem; overflow: hidden;
+            touch-action: pan-y; -webkit-user-select: none; user-select: none;
         }
+        .discovery-banner-track {
+            display: flex; transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .discovery-banner {
+            flex: 0 0 100%; width: 100%; box-sizing: border-box; min-height: 168px;
+            background: linear-gradient(135deg, var(--golib-navy) 0%, var(--golib-navy-light) 100%);
+            background-size: cover; background-position: center;
+            padding: 1.5rem; color: white; position: relative; display: flex; align-items: flex-end;
+        }
+        .discovery-banner.has-image::before {
+            content: ''; position: absolute; inset: 0;
+            background: linear-gradient(180deg, rgba(15,23,42,0.1) 0%, rgba(15,23,42,0.7) 100%);
+        }
+        .discovery-banner-content { position: relative; z-index: 1; width: 100%; }
         .discovery-banner-eyebrow { font-size: 0.8125rem; font-weight: 700; letter-spacing: 0.05em; opacity: 0.85; }
         .discovery-banner-headline { font-size: 1.375rem; font-weight: 800; color: var(--golib-red); margin: 0.125rem 0 0.5rem; line-height: 1.2; }
         .discovery-banner-sub { font-size: 0.875rem; opacity: 0.9; margin-bottom: 1rem; max-width: 70%; }
@@ -461,6 +475,15 @@
             background: var(--golib-red); color: white; border: none; padding: 0.625rem 1.25rem;
             border-radius: 0.625rem; font-weight: 700; font-size: 0.875rem; min-height: 44px; cursor: pointer;
         }
+        .discovery-banner-dots {
+            position: absolute; left: 0; right: 0; bottom: 0.625rem;
+            display: flex; justify-content: center; gap: 0.375rem; z-index: 2;
+        }
+        .discovery-banner-dot {
+            width: 8px; height: 8px; border-radius: 9999px; background: rgba(255,255,255,0.5);
+            border: none; padding: 0; cursor: pointer; transition: background 0.2s, width 0.2s;
+        }
+        .discovery-banner-dot.active { background: white; width: 20px; }
         #home-screen .add-to-cart-btn {
             background: var(--golib-blue); box-shadow: none;
         }
@@ -3079,11 +3102,15 @@
             <!-- Home / Categories (shared feed — Categories just focuses the category picker) -->
             <div id="mp-view-shop">
                 <div id="mp-shop-real-content">
-                    <div class="discovery-banner">
-                        <div class="discovery-banner-eyebrow">DISCOVER</div>
-                        <div class="discovery-banner-headline">AMAZING PRODUCTS</div>
-                        <div class="discovery-banner-sub">Shop the best, delivered to your door.</div>
-                        <button type="button" class="discovery-banner-cta" id="discovery-shop-now-btn">Shop Now</button>
+                    <!-- Home hero carousel — up to 3 admin-managed slides (see
+                         Super Admin's Home Banners quick action), auto-advancing
+                         with swipe + dot navigation. Rendered entirely by
+                         renderHomeBannerCarousel(); falls back to a single
+                         hardcoded slide when no slides are configured, so this
+                         area is never empty. -->
+                    <div class="discovery-banner-carousel" id="discovery-banner-carousel">
+                        <div class="discovery-banner-track" id="discovery-banner-track"></div>
+                        <div class="discovery-banner-dots" id="discovery-banner-dots"></div>
                     </div>
 
                     <div class="mobile-section" id="mp-category-section">
@@ -4311,6 +4338,7 @@
                             <button type="button" class="btn-small btn-secondary" id="sa-quick-customers-btn" style="padding:1rem; text-align:left;">👥 View Customers</button>
                             <button type="button" class="btn-small btn-secondary" id="sa-quick-delivery-ops-btn" style="padding:1rem; text-align:left;">🚚 Delivery Operations</button>
                             <button type="button" class="btn-small btn-secondary" id="sa-quick-products-btn" style="padding:1rem; text-align:left;">🛒 Marketplace Products</button>
+                            <button type="button" class="btn-small btn-secondary" id="sa-quick-banners-btn" style="padding:1rem; text-align:left;">🖼️ Home Banners</button>
                         </div>
                     </section>
                 </div>
@@ -5764,6 +5792,81 @@
             <div id="product-moderation-modal-content">
                 <p style="text-align: center; color: var(--slate-light); padding: 2rem 0;">Loading…</p>
             </div>
+        </div>
+    </div>
+
+    <!-- Home Banners (Super Admin only) — up to 3 slides for the
+         customer storefront's home-screen hero carousel. Each slide
+         swaps a "Hide" (isActive=false) for a real delete, same
+         reversible-by-default pattern as product moderation above. -->
+    <div class="modal-overlay" id="home-banners-modal">
+        <div class="modal" style="max-width: 700px; width: 95%; max-height: 85vh; overflow-y: auto;">
+            <div class="modal-header">
+                <h3>🖼️ Home Banners</h3>
+                <div style="display:flex; gap:0.5rem; align-items:center;">
+                    <button type="button" class="btn-small btn-success" id="open-add-banner-btn">+ Add Slide</button>
+                    <button class="close-btn" id="close-home-banners-modal">&times;</button>
+                </div>
+            </div>
+            <p style="color: var(--slate-light); margin-bottom: 1rem; font-size: 0.875rem;">
+                Up to 3 slides for the storefront home screen's hero carousel — it auto-advances and
+                supports swipe. With none configured (or all hidden), customers see a single built-in
+                default slide instead of an empty banner.
+            </p>
+            <div id="home-banners-modal-content">
+                <p style="text-align: center; color: var(--slate-light); padding: 2rem 0;">Loading…</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add/Edit Home Banner slide (Super Admin only) -->
+    <div class="modal-overlay" id="banner-form-modal">
+        <div class="modal" style="max-width: 480px; width: 95%; max-height: 90vh; overflow-y: auto;">
+            <div class="modal-header">
+                <h3 id="banner-form-title">Add Banner Slide</h3>
+                <button class="close-btn" id="close-banner-form-modal">&times;</button>
+            </div>
+            <form id="banner-form">
+                <div class="form-group">
+                    <label>Eyebrow text (optional)</label>
+                    <input type="text" class="form-input" id="banner-eyebrow-input" placeholder="DISCOVER" maxlength="40">
+                </div>
+                <div class="form-group">
+                    <label>Headline *</label>
+                    <input type="text" class="form-input" id="banner-headline-input" placeholder="AMAZING PRODUCTS" maxlength="60" required>
+                </div>
+                <div class="form-group">
+                    <label>Subtext (optional)</label>
+                    <input type="text" class="form-input" id="banner-subtext-input" placeholder="Shop the best, delivered to your door." maxlength="120">
+                </div>
+                <div class="form-group">
+                    <label>Button text</label>
+                    <input type="text" class="form-input" id="banner-cta-text-input" placeholder="Shop Now" maxlength="24">
+                </div>
+                <div class="form-group">
+                    <label>Button link (optional)</label>
+                    <input type="url" class="form-input" id="banner-cta-link-input" placeholder="https://…">
+                    <small style="color: var(--slate-light);">Leave blank to scroll to Categories (the default behavior).</small>
+                </div>
+                <div class="form-group">
+                    <label>Background image (optional)</label>
+                    <div id="banner-image-preview-wrap" style="display:none; margin-bottom:0.625rem;">
+                        <img id="banner-image-preview" src="" alt="" style="width:100%; max-height:140px; object-fit:cover; border-radius:0.625rem; border:1px solid var(--border);">
+                        <button type="button" class="btn-small btn-danger" id="remove-banner-image-btn" style="margin-top:0.5rem;">Remove image</button>
+                    </div>
+                    <input type="file" accept="image/*" id="banner-image-input">
+                    <small style="color: var(--slate-light);">Under ~500KB. Without one, the slide uses the default navy gradient.</small>
+                </div>
+                <div class="form-group" style="display:flex; align-items:center; gap:0.5rem;">
+                    <input type="checkbox" id="banner-active-input" checked style="width:auto;">
+                    <label for="banner-active-input" style="margin:0;">Active (shown on the storefront)</label>
+                </div>
+                <p id="banner-form-error" style="color:#dc2626; font-size:0.875rem; display:none;"></p>
+                <div style="display:flex; gap:0.75rem; justify-content:flex-end; margin-top:1rem;">
+                    <button type="button" class="btn-small btn-secondary" id="banner-form-cancel-btn">Cancel</button>
+                    <button type="submit" class="btn-small btn-success" id="banner-form-submit-btn">Save Slide</button>
+                </div>
+            </form>
         </div>
     </div>
 
@@ -8559,9 +8662,7 @@
             document.querySelectorAll('.mobile-view-all[data-mp-tab]').forEach(link => {
                 link.addEventListener('click', () => setMarketplaceTab(link.dataset.mpTab));
             });
-            document.getElementById('discovery-shop-now-btn').addEventListener('click', () => {
-                document.getElementById('mp-category-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
-            });
+            wireHomeBannerCarousel();
 
             const mpBell = document.getElementById('mp-notification-btn');
             const mpPanel = document.getElementById('mp-notification-panel');
@@ -10334,6 +10435,37 @@
                 if (e.target.classList.contains('sa-review-btn')) openVendorReviewModal(e.target.dataset.id);
             });
 
+            // ---- Home Banners (storefront hero carousel) ----
+            document.getElementById('sa-quick-banners-btn').addEventListener('click', () => {
+                document.getElementById('home-banners-modal').classList.add('active');
+                loadAdminHomeBanners();
+            });
+            document.getElementById('close-home-banners-modal').addEventListener('click', () => {
+                document.getElementById('home-banners-modal').classList.remove('active');
+            });
+            document.getElementById('open-add-banner-btn').addEventListener('click', () => openBannerForm(null));
+            document.getElementById('home-banners-modal-content').addEventListener('click', (e) => {
+                const editBtn = e.target.closest('.edit-banner-btn');
+                if (editBtn) { openBannerForm(editBtn.dataset.id); return; }
+                const toggleBtn = e.target.closest('.toggle-banner-active-btn');
+                if (toggleBtn) { toggleBannerActive(toggleBtn.dataset.id, toggleBtn.dataset.active === 'true'); return; }
+                const removeBtn = e.target.closest('.remove-banner-btn');
+                if (removeBtn) { removeBannerWithConfirm(removeBtn.dataset.id, removeBtn.dataset.headline); return; }
+                const moveBtn = e.target.closest('.move-banner-btn');
+                if (moveBtn) { moveBannerSlide(moveBtn.dataset.id, moveBtn.dataset.direction); return; }
+            });
+            document.getElementById('close-banner-form-modal').addEventListener('click', closeBannerForm);
+            document.getElementById('banner-form-cancel-btn').addEventListener('click', closeBannerForm);
+            document.getElementById('banner-form').addEventListener('submit', handleBannerFormSubmit);
+            document.getElementById('banner-image-input').addEventListener('change', (e) => {
+                if (e.target.files && e.target.files[0]) uploadBannerImageStaged(e.target.files[0]);
+            });
+            document.getElementById('remove-banner-image-btn').addEventListener('click', () => {
+                pendingBannerImageDataUrl = '';
+                document.getElementById('banner-image-preview-wrap').style.display = 'none';
+                document.getElementById('banner-image-input').value = '';
+            });
+
             // ---- Customers ----
             document.getElementById('open-customers-btn').addEventListener('click', () => {
                 document.getElementById('customers-modal').classList.add('active');
@@ -11097,6 +11229,192 @@
             }
         }
 
+        // ---- Home Banners (Super Admin) — storefront hero carousel -----
+        let adminHomeBanners = [];
+        let editingBannerId = null;
+        // Staged base64 image for the form currently open — '' means "no
+        // image" (explicitly cleared), undefined/unset means "unchanged"
+        // (only relevant on edit, where a banner may already have one).
+        let pendingBannerImageDataUrl;
+        const MAX_HOME_BANNERS = 3;
+
+        async function loadAdminHomeBanners() {
+            const container = document.getElementById('home-banners-modal-content');
+            container.innerHTML = '<p style="text-align: center; color: var(--slate-light); padding: 2rem 0;">Loading…</p>';
+            try {
+                const data = await apiFetch('/api/super-admin/marketplace/home-banners');
+                adminHomeBanners = data.banners || [];
+                renderAdminHomeBannersList();
+            } catch (err) {
+                container.innerHTML = `<p style="text-align: center; color: #dc2626; padding: 2rem 0;">${err.message}</p>`;
+            }
+        }
+
+        function renderAdminHomeBannersList() {
+            const container = document.getElementById('home-banners-modal-content');
+            const addBtn = document.getElementById('open-add-banner-btn');
+            addBtn.style.display = adminHomeBanners.length >= MAX_HOME_BANNERS ? 'none' : '';
+
+            if (adminHomeBanners.length === 0) {
+                container.innerHTML = '<p style="text-align: center; color: var(--slate-light); padding: 1.5rem 0;">No slides configured yet — customers currently see the default "Discover Amazing Products" slide. Add up to 3 of your own.</p>';
+                return;
+            }
+
+            container.innerHTML = adminHomeBanners.map((b, i) => `
+                <div style="display:flex; gap:0.875rem; align-items:center; padding:0.875rem 0; border-bottom:1px solid var(--border);${!b.isActive ? ' opacity:0.55;' : ''}">
+                    <div style="width:64px; height:44px; flex-shrink:0; border-radius:0.5rem; overflow:hidden; background:linear-gradient(135deg, var(--golib-navy) 0%, var(--golib-navy-light) 100%); ${b.imageDataUrl ? `background-image:url('${b.imageDataUrl}'); background-size:cover; background-position:center;` : ''}"></div>
+                    <div style="flex:1; min-width:0;">
+                        <div style="font-weight:700; color:var(--slate); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${b.headline}</div>
+                        <div style="font-size:0.8125rem; color:var(--slate-light); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${b.subtext || 'No subtext'}</div>
+                    </div>
+                    <div style="display:flex; flex-direction:column; gap:0.25rem;">
+                        <button type="button" class="move-banner-btn" data-id="${b.id}" data-direction="up" ${i === 0 ? 'disabled' : ''} title="Move up" style="border:none; background:none; cursor:${i === 0 ? 'default' : 'pointer'}; opacity:${i === 0 ? '0.3' : '1'}; font-size:0.75rem; padding:0.125rem;">▲</button>
+                        <button type="button" class="move-banner-btn" data-id="${b.id}" data-direction="down" ${i === adminHomeBanners.length - 1 ? 'disabled' : ''} title="Move down" style="border:none; background:none; cursor:${i === adminHomeBanners.length - 1 ? 'default' : 'pointer'}; opacity:${i === adminHomeBanners.length - 1 ? '0.3' : '1'}; font-size:0.75rem; padding:0.125rem;">▼</button>
+                    </div>
+                    <div style="display:flex; gap:0.5rem; white-space:nowrap;">
+                        <button type="button" class="btn-small edit-banner-btn" data-id="${b.id}">Edit</button>
+                        <button type="button" class="btn-small toggle-banner-active-btn" data-id="${b.id}" data-active="${b.isActive}" style="background:${b.isActive ? '#fef3c7' : '#dcfce7'}; color:${b.isActive ? '#92400e' : '#15803d'};">${b.isActive ? 'Hide' : 'Unhide'}</button>
+                        <button type="button" class="btn-small btn-danger remove-banner-btn" data-id="${b.id}" data-headline="${b.headline.replace(/"/g, '&quot;')}">Remove</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function openBannerForm(id) {
+            editingBannerId = id;
+            pendingBannerImageDataUrl = undefined;
+            document.getElementById('banner-form').reset();
+            document.getElementById('banner-form-error').style.display = 'none';
+            document.getElementById('banner-image-input').value = '';
+            const previewWrap = document.getElementById('banner-image-preview-wrap');
+
+            if (id) {
+                const b = adminHomeBanners.find(x => x.id === id);
+                document.getElementById('banner-form-title').textContent = 'Edit Banner Slide';
+                document.getElementById('banner-eyebrow-input').value = b.eyebrow || '';
+                document.getElementById('banner-headline-input').value = b.headline || '';
+                document.getElementById('banner-subtext-input').value = b.subtext || '';
+                document.getElementById('banner-cta-text-input').value = b.ctaText || 'Shop Now';
+                document.getElementById('banner-cta-link-input').value = b.ctaLink || '';
+                document.getElementById('banner-active-input').checked = b.isActive;
+                if (b.imageDataUrl) {
+                    document.getElementById('banner-image-preview').src = b.imageDataUrl;
+                    previewWrap.style.display = 'block';
+                } else {
+                    previewWrap.style.display = 'none';
+                }
+            } else {
+                document.getElementById('banner-form-title').textContent = 'Add Banner Slide';
+                document.getElementById('banner-cta-text-input').value = 'Shop Now';
+                document.getElementById('banner-active-input').checked = true;
+                previewWrap.style.display = 'none';
+            }
+            document.getElementById('banner-form-modal').classList.add('active');
+        }
+
+        function closeBannerForm() {
+            document.getElementById('banner-form-modal').classList.remove('active');
+            editingBannerId = null;
+            pendingBannerImageDataUrl = undefined;
+        }
+
+        function uploadBannerImageStaged(file) {
+            if (file.size > 500 * 1024) {
+                showToast('Please choose an image under 500KB.', 'error');
+                return;
+            }
+            const reader = new FileReader();
+            reader.onload = () => {
+                pendingBannerImageDataUrl = reader.result;
+                document.getElementById('banner-image-preview').src = reader.result;
+                document.getElementById('banner-image-preview-wrap').style.display = 'block';
+            };
+            reader.readAsDataURL(file);
+        }
+
+        async function handleBannerFormSubmit(e) {
+            e.preventDefault();
+            const errorEl = document.getElementById('banner-form-error');
+            const btn = document.getElementById('banner-form-submit-btn');
+            errorEl.style.display = 'none';
+            const payload = {
+                eyebrow: document.getElementById('banner-eyebrow-input').value.trim(),
+                headline: document.getElementById('banner-headline-input').value.trim(),
+                subtext: document.getElementById('banner-subtext-input').value.trim(),
+                ctaText: document.getElementById('banner-cta-text-input').value.trim() || 'Shop Now',
+                ctaLink: document.getElementById('banner-cta-link-input').value.trim(),
+                isActive: document.getElementById('banner-active-input').checked,
+            };
+            // pendingBannerImageDataUrl: undefined = leave unchanged (edit,
+            // no new upload/removal), '' = explicitly cleared, string = new image.
+            if (pendingBannerImageDataUrl !== undefined) payload.imageDataUrl = pendingBannerImageDataUrl;
+
+            if (!payload.headline) {
+                errorEl.textContent = 'Headline is required.';
+                errorEl.style.display = 'block';
+                return;
+            }
+            btn.disabled = true;
+            btn.textContent = 'Saving…';
+            try {
+                if (editingBannerId) {
+                    await apiFetch(`/api/super-admin/marketplace/home-banners/${editingBannerId}`, { method: 'PUT', body: JSON.stringify(payload) });
+                } else {
+                    if (adminHomeBanners.length >= MAX_HOME_BANNERS) {
+                        throw new Error(`You can have at most ${MAX_HOME_BANNERS} banner slides. Remove one before adding another.`);
+                    }
+                    await apiFetch('/api/super-admin/marketplace/home-banners', { method: 'POST', body: JSON.stringify(payload) });
+                }
+                closeBannerForm();
+                showToast(editingBannerId ? 'Slide updated' : 'Slide added', 'success');
+                await loadAdminHomeBanners();
+            } catch (err) {
+                errorEl.textContent = err.message;
+                errorEl.style.display = 'block';
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Save Slide';
+            }
+        }
+
+        async function toggleBannerActive(id, currentlyActive) {
+            try {
+                await apiFetch(`/api/super-admin/marketplace/home-banners/${id}`, {
+                    method: 'PUT',
+                    body: JSON.stringify({ isActive: !currentlyActive }),
+                });
+                showToast(currentlyActive ? 'Slide hidden' : 'Slide unhidden', 'success');
+                await loadAdminHomeBanners();
+            } catch (err) {
+                showToast(err.message, 'error');
+            }
+        }
+
+        async function removeBannerWithConfirm(id, headline) {
+            const confirmed = confirm(`Remove the "${headline}" slide? This cannot be undone.`);
+            if (!confirmed) return;
+            try {
+                await apiFetch(`/api/super-admin/marketplace/home-banners/${id}`, { method: 'DELETE' });
+                showToast('Slide removed', 'success');
+                await loadAdminHomeBanners();
+            } catch (err) {
+                showToast(err.message, 'error');
+            }
+        }
+
+        async function moveBannerSlide(id, direction) {
+            try {
+                const data = await apiFetch(`/api/super-admin/marketplace/home-banners/${id}/move`, {
+                    method: 'PUT',
+                    body: JSON.stringify({ direction }),
+                });
+                adminHomeBanners = data.banners || adminHomeBanners;
+                renderAdminHomeBannersList();
+            } catch (err) {
+                showToast(err.message, 'error');
+            }
+        }
+
         let vendorsCache = [];
         let deliveryCompaniesCache = [];
 
@@ -11361,6 +11679,9 @@
             'product.hide': 'Product hidden',
             'product.reactivate': 'Product unhidden',
             'product.remove': 'Product removed',
+            'banner.create': 'Home banner created',
+            'banner.update': 'Home banner updated',
+            'banner.remove': 'Home banner removed',
             'user.disable': 'Account disabled',
             'user.enable': 'Account enabled',
             'settings.commission_update': 'Commission settings updated',
@@ -14463,8 +14784,134 @@
             return `<span class="star-rating">${starSvg.repeat(Math.min(5, Math.max(1, full)))} <span style="color:var(--slate-light); font-weight:600;">${avgRating.toFixed(1)} (${reviewCount})</span></span>`;
         }
 
+        // ---- Home hero banner carousel (storefront) ---------------------
+        // Up to 3 admin-managed slides (Super Admin → Home Banners quick
+        // action), auto-advancing on a timer with swipe + dot navigation.
+        // Falls back to a single hardcoded slide (matching the original
+        // static banner) whenever the server has none configured, so a
+        // fresh install or an admin clearing every slide never leaves the
+        // home screen with an empty banner area.
+        let homeBanners = [];
+        let currentBannerIndex = 0;
+        let bannerAutoTimer = null;
+        let bannerTouchStartX = null;
+        let bannerTouchDeltaX = 0;
+        const BANNER_AUTO_ADVANCE_MS = 5000;
+        const BANNER_SWIPE_THRESHOLD_PX = 40;
+        const DEFAULT_HOME_BANNER = {
+            id: null, eyebrow: 'DISCOVER', headline: 'AMAZING PRODUCTS',
+            subtext: 'Shop the best, delivered to your door.', ctaText: 'Shop Now',
+            ctaLink: null, imageDataUrl: null,
+        };
+
+        async function loadHomeBanners() {
+            try {
+                const data = await apiFetch('/api/marketplace/home-banners');
+                homeBanners = (data.banners && data.banners.length) ? data.banners : [DEFAULT_HOME_BANNER];
+            } catch (err) {
+                console.error('Failed to load home banners', err);
+                homeBanners = [DEFAULT_HOME_BANNER];
+            }
+            renderHomeBannerCarousel();
+        }
+
+        function renderHomeBannerCarousel() {
+            const track = document.getElementById('discovery-banner-track');
+            const dotsEl = document.getElementById('discovery-banner-dots');
+            if (!track || !dotsEl) return;
+            track.innerHTML = homeBanners.map(b => `
+                <div class="discovery-banner${b.imageDataUrl ? ' has-image' : ''}"${b.imageDataUrl ? ` style="background-image:url('${b.imageDataUrl}')"` : ''}>
+                    <div class="discovery-banner-content">
+                        ${b.eyebrow ? `<div class="discovery-banner-eyebrow">${b.eyebrow}</div>` : ''}
+                        <div class="discovery-banner-headline">${b.headline}</div>
+                        ${b.subtext ? `<div class="discovery-banner-sub">${b.subtext}</div>` : ''}
+                        <button type="button" class="discovery-banner-cta" data-banner-link="${(b.ctaLink || '').replace(/"/g, '&quot;')}">${b.ctaText || 'Shop Now'}</button>
+                    </div>
+                </div>
+            `).join('');
+            dotsEl.innerHTML = homeBanners.length > 1
+                ? homeBanners.map((b, i) => `<button type="button" class="discovery-banner-dot${i === 0 ? ' active' : ''}" data-index="${i}" aria-label="Go to slide ${i + 1}"></button>`).join('')
+                : '';
+            currentBannerIndex = 0;
+            applyBannerTransform();
+            startBannerAutoAdvance();
+        }
+
+        function applyBannerTransform() {
+            const track = document.getElementById('discovery-banner-track');
+            if (!track) return;
+            track.style.transform = `translateX(-${currentBannerIndex * 100}%)`;
+            document.querySelectorAll('#discovery-banner-dots .discovery-banner-dot').forEach((dot, i) => {
+                dot.classList.toggle('active', i === currentBannerIndex);
+            });
+        }
+
+        function goToBannerSlide(index) {
+            if (!homeBanners.length) return;
+            currentBannerIndex = ((index % homeBanners.length) + homeBanners.length) % homeBanners.length;
+            applyBannerTransform();
+            startBannerAutoAdvance();
+        }
+
+        function startBannerAutoAdvance() {
+            stopBannerAutoAdvance();
+            if (homeBanners.length <= 1) return;
+            bannerAutoTimer = setInterval(() => { goToBannerSlide(currentBannerIndex + 1); }, BANNER_AUTO_ADVANCE_MS);
+        }
+
+        function stopBannerAutoAdvance() {
+            if (bannerAutoTimer) { clearInterval(bannerAutoTimer); bannerAutoTimer = null; }
+        }
+
+        // Wired once (guarded by dataset.wired) since the carousel
+        // container itself is never re-created — only its track/dots
+        // innerHTML gets replaced on each renderHomeBannerCarousel() call,
+        // so a single delegated listener keeps working across reloads.
+        function wireHomeBannerCarousel() {
+            const carousel = document.getElementById('discovery-banner-carousel');
+            if (!carousel || carousel.dataset.wired) return;
+            carousel.dataset.wired = 'true';
+
+            carousel.addEventListener('click', (e) => {
+                const dot = e.target.closest('.discovery-banner-dot');
+                if (dot) { goToBannerSlide(parseInt(dot.dataset.index, 10)); return; }
+                const cta = e.target.closest('.discovery-banner-cta');
+                if (cta) {
+                    const link = cta.dataset.bannerLink;
+                    if (link) {
+                        window.open(link, '_blank', 'noopener');
+                    } else {
+                        document.getElementById('mp-category-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                }
+            });
+
+            carousel.addEventListener('touchstart', (e) => {
+                bannerTouchStartX = e.touches[0].clientX;
+                bannerTouchDeltaX = 0;
+                stopBannerAutoAdvance();
+            }, { passive: true });
+            carousel.addEventListener('touchmove', (e) => {
+                if (bannerTouchStartX === null) return;
+                bannerTouchDeltaX = e.touches[0].clientX - bannerTouchStartX;
+            }, { passive: true });
+            carousel.addEventListener('touchend', () => {
+                if (bannerTouchStartX === null) return;
+                if (bannerTouchDeltaX > BANNER_SWIPE_THRESHOLD_PX) {
+                    goToBannerSlide(currentBannerIndex - 1);
+                } else if (bannerTouchDeltaX < -BANNER_SWIPE_THRESHOLD_PX) {
+                    goToBannerSlide(currentBannerIndex + 1);
+                } else {
+                    startBannerAutoAdvance();
+                }
+                bannerTouchStartX = null;
+                bannerTouchDeltaX = 0;
+            });
+        }
+
         async function loadStorefront() {
             try {
+                loadHomeBanners();
                 const data = await apiFetch('/api/marketplace/products');
                 storefrontProducts = data.products || [];
                 cacheProducts(storefrontProducts);

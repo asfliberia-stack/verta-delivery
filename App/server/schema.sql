@@ -252,6 +252,26 @@ CREATE TABLE IF NOT EXISTS product_images (
 CREATE INDEX IF NOT EXISTS idx_product_images_product_id ON product_images (product_id);
 CREATE INDEX IF NOT EXISTS idx_products_vendor_id ON products (vendor_id);
 
+-- Storefront home-screen hero carousel. Super Admin manages up to 3
+-- slides here; the storefront falls back to a single hardcoded
+-- "Discover Amazing Products" slide when this table is empty (fresh
+-- installs, or every slide temporarily removed), so the home screen is
+-- never left with an empty banner area.
+CREATE TABLE IF NOT EXISTS home_banners (
+    id            TEXT PRIMARY KEY,
+    position      INTEGER NOT NULL DEFAULT 0,
+    eyebrow       TEXT,
+    headline      TEXT NOT NULL,
+    subtext       TEXT,
+    cta_text      TEXT NOT NULL DEFAULT 'Shop Now',
+    cta_link      TEXT,
+    image_data_url TEXT,
+    is_active     BOOLEAN NOT NULL DEFAULT true,
+    created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_home_banners_position ON home_banners (position);
+
 -- A purchase is a shopping-cart checkout — one customer, one vendor
 -- (carts don't mix vendors, so multi-vendor carts split into separate
 -- purchases at checkout), optionally linked to the delivery order
