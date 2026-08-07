@@ -4842,3 +4842,110 @@ this CSS wasn't lost in the fix. All 10 checks passed with zero page
 errors. Re-ran the existing home-banner-carousel and admin test suites
 afterward as a regression check (43 checks) — all still passing,
 confirming this CSS-only change didn't affect anything else.
+
+## Bug fix — product grids stuck in one non-wrapping row on desktop
+
+Reported symptom: the vendor's "Your Products" page showed all product
+cards in a single long horizontal line instead of wrapping into rows
+like a normal grid (confirmed against a reference screenshot showing
+the intended layout — 6 cards per row, extra cards dropping to a
+second row).
+
+Root cause: `.product-grid` — used by the vendor's Products page and
+also by the customer storefront's Wishlist, Deals, and main product
+listing — was `display: flex; overflow-x: auto` on desktop, a
+single-row horizontal-scroll layout. Only the `<768px` mobile version
+had ever been given real wrapping (`display: grid`, 2 fixed columns).
+None of these four pages is actually a small "preview carousel" — each
+is a full page of results with its own search/sort/filter UI above it
+— so a non-wrapping single row was wrong for all of them, not just the
+vendor's page that happened to get reported.
+
+This went through three iterations as the actual requirement got
+clearer:
+
+1. `display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr))`
+   — wraps correctly, but sizes the column count to whatever fits the
+   container's width (it happened to land on 6 at the exact viewport
+   first tested).
+2. Changed to a hardcoded `repeat(6, 1fr)` when it turned out an
+   always-exactly-6 row was wanted regardless of window width,
+   mirroring how the `<768px` mobile version already hardcodes exactly
+   2 columns.
+3. Changed back to `repeat(auto-fill, minmax(160px, 1fr))` (i.e. back
+   to option 1) once the actual want was clarified as the opposite —
+   column count should scale with the desktop window's width instead
+   of staying fixed at 6 on every size. `.product-card`'s desktop width
+   was changed to fill its grid cell (no hardcoded pixel width) as part
+   of this work, so cards size themselves off the grid's column tracks
+   rather than a fixed pixel value, in both the fixed and auto-fill
+   versions. The `<768px` mobile 2-column grid was never touched by any
+   of the three passes.
+
+One relevant existing constraint this interacts with, not something
+this fix added: the whole desktop layout (`.desktop-layout-wrapper`,
+shared by every page in `#home-screen`/`#vendor-app`, not specific to
+this grid) is already capped at `max-width: 1400px` and centered — so
+the column count still grows with window width as expected, but
+plateaus once the window is wide enough to hit that existing cap
+rather than growing without bound on an ultrawide monitor.
+
+**Verified:** a Playwright pass measuring the vendor's Products page
+(14 products) at 4 desktop widths — 1024px → 4 columns, 1280px → 5,
+1440px → 6, 1920px → 6 (the 1400px layout cap correctly holding it at
+6 rather than growing further) — confirming the column count actually
+tracks window width instead of staying fixed, that rows fill
+correctly at each width (e.g. 6-6-2 at 1440px for 14 products), and
+that a trailing partial row's cards keep their normal width rather
+than stretching to fill the row (checked by comparing the first card's
+rendered width against the last row's first card's width at each
+size). Re-ran every existing Playwright suite from this session
+afterward (vendor edit, home banners, stock enforcement, product
+moderation, product gallery, storefront search, payment badges) — all
+still passing with zero failures, confirming this shared-class CSS
+change didn't regress anything else that also renders a
+`.product-grid`.
+
+## Bug fix — "Business / Sender Name" field on registration was a preset dropdown
+
+**Reported:** a screenshot of the "Create your account" signup form
+with the "Business / Sender Name" field circled in red, and the
+instruction to "set this to name import instead of selection."
+
+**Root cause:** the field was a `<select id="register-business-name">`
+hardcoded with 13 preset business-name options (e.g. "Roberta Business
+HUB") plus a trailing "Others (type below)" option. Choosing "Others"
+revealed a second hidden text input (`#register-custom-name-group` /
+`#register-custom-name`) that the submit handler would read from
+instead. This forced every new sender/vendor signing up under a name
+not already in the hardcoded list to go through an awkward two-step
+"select Others, then type the real name" flow, and any name changes
+required editing the hardcoded list in the HTML.
+
+**What changed:** replaced the `<select>` and its hidden fallback
+input with a single plain `<input type="text" id="register-business-name"
+placeholder="Enter your name or business name">`. Removed the now-dead
+`change` event listener that toggled the fallback input's visibility.
+Simplified the registration submit handler to read `businessName`
+directly from the text input via `.value.trim()`, with the validation
+error message updated to "Please enter your name or business name."
+Confirmed by search that no other code anywhere in the file still
+references `register-custom-name` or `register-custom-name-group`.
+
+**Verified:** two Playwright passes. The first
+(`verify_register_business_name.js`, 7 checks) confirms the element is
+now a real text input with the correct placeholder, that no leftover
+`<option>` elements or fallback-input elements remain in the DOM, and
+that free-text values (including a name containing an apostrophe) are
+preserved and that whitespace-only input trims to falsy exactly as the
+validation branch expects. The second
+(`verify_register_submit_e2e.js`, 8 checks) drives a real form submit
+end-to-end: filling in name/email/password/confirm-password/phone and
+dispatching the form's `submit` event confirms the handler calls
+`apiFetch('/api/auth/register', ...)` with `businessName` correctly
+present in the JSON payload, and that leaving the name empty blocks
+the API call client-side and shows a visible error mentioning "name."
+Re-ran the full accumulated Playwright suite from this session (13
+scripts covering home banners, vendor edit, product grids, stock
+enforcement, product moderation, product gallery, storefront search,
+and payment badges) afterward — all still passing with zero failures.
