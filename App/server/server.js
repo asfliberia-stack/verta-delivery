@@ -496,7 +496,27 @@ io.on('connection', (socket) => {
     }
   }
 
-  socket.on('agent:create', async ({ name, phone }, ack) => {
+  // Admin/staff accounts aren't a delivery company themselves — they're
+  // just the platform operator — so every agent they add or reassign
+  // must be explicitly pointed at a real, active delivery company
+  // (Verta or any other registered one), never left owned by the admin
+  // account itself the way legacy agents were. Returns the validated
+  // company id, or throws an object with an .ack error message the
+  // caller can hand straight to its ack() callback. A delivery_company
+  // account is unaffected either way — it can only ever act on its own
+  // fleet, so this isn't called for that role at all.
+  async function resolveAdminChosenDeliveryCompanyId(deliveryCompanyId) {
+    if (!deliveryCompanyId) {
+      throw { ack: { ok: false, error: 'Please select a delivery company for this agent.' } };
+    }
+    const company = await db.getUserById(deliveryCompanyId);
+    if (!company || company.role !== 'delivery_company' || company.approvalStatus !== 'approved' || company.isDisabled) {
+      throw { ack: { ok: false, error: 'That delivery company is not available. Please pick another.' } };
+    }
+    return company.id;
+  }
+
+  socket.on('agent:create', async ({ name, phone, deliveryCompanyId }, ack) => {
     if (!isAdminLike(socket.user.role) && socket.user.role !== 'delivery_company') {
       return ack && ack({ ok: false, error: 'Only admins can add agents' });
     }
@@ -507,16 +527,23 @@ io.on('connection', (socket) => {
       return ack && ack({ ok: false, error: 'Name and phone are required' });
     }
     try {
-      const agent = await db.createAgent({ id: crypto.randomUUID(), name: name.trim(), phone: phone.trim(), deliveryCompanyId: socket.user.id });
+      // A delivery_company account adding its own agent is unambiguous:
+      // always assigned to itself, ignoring any deliveryCompanyId the
+      // client might send. An admin/staff account must pick a real one.
+      const resolvedCompanyId = socket.user.role === 'delivery_company'
+        ? socket.user.id
+        : await resolveAdminChosenDeliveryCompanyId(deliveryCompanyId);
+      const agent = await db.createAgent({ id: crypto.randomUUID(), name: name.trim(), phone: phone.trim(), deliveryCompanyId: resolvedCompanyId });
       emitAgentEvent('agent:created', agent);
       ack && ack({ ok: true, agent });
     } catch (err) {
+      if (err && err.ack) return ack && ack(err.ack);
       console.error('agent:create failed', err);
       ack && ack({ ok: false, error: 'Failed to add agent' });
     }
   });
 
-  socket.on('agent:update', async ({ id, name, phone }, ack) => {
+  socket.on('agent:update', async ({ id, name, phone, deliveryCompanyId }, ack) => {
     if (!isAdminLike(socket.user.role) && socket.user.role !== 'delivery_company') {
       return ack && ack({ ok: false, error: 'Only admins can edit agents' });
     }
@@ -527,17 +554,28 @@ io.on('connection', (socket) => {
       return ack && ack({ ok: false, error: 'Name and phone are required' });
     }
     try {
+      // resolvedCompanyId stays undefined (= leave the agent's current
+      // company unchanged in db.updateAgent) unless an admin/staff
+      // account explicitly sent a new one to reassign it — e.g. fixing
+      // up a legacy agent still owned by the admin account, or moving
+      // an agent to a different company. A delivery_company account can
+      // rename/re-phone its own agent but can never reassign it away to
+      // another company; that stays admin-only.
+      let resolvedCompanyId;
       if (socket.user.role === 'delivery_company') {
         const existing = await db.getAgentById(id);
         if (!existing || existing.deliveryCompanyId !== socket.user.id) {
           return ack && ack({ ok: false, error: 'Agent not found' });
         }
+      } else if (deliveryCompanyId !== undefined) {
+        resolvedCompanyId = await resolveAdminChosenDeliveryCompanyId(deliveryCompanyId);
       }
-      const agent = await db.updateAgent(id, { name: name.trim(), phone: phone.trim() });
+      const agent = await db.updateAgent(id, { name: name.trim(), phone: phone.trim(), deliveryCompanyId: resolvedCompanyId });
       if (!agent) return ack && ack({ ok: false, error: 'Agent not found' });
       emitAgentEvent('agent:updated', agent);
       ack && ack({ ok: true, agent });
     } catch (err) {
+      if (err && err.ack) return ack && ack(err.ack);
       console.error('agent:update failed', err);
       ack && ack({ ok: false, error: 'Failed to update agent' });
     }
@@ -1599,6 +1637,24 @@ app.post('/api/super-admin/vendors/:id/reject', requireAuth, requireSuperAdmin, 
   } catch (err) {
     console.error('POST vendor reject failed', err);
     res.status(500).json({ error: 'Failed to reject vendor' });
+  }
+});
+
+// Any admin-like account (Manage Agent staff, not just Super Admin)
+// needs a delivery company list to route Fleet Directory agents to a
+// real company — Admin itself is no longer a valid owner (see the
+// agent:create/agent:update comment below). Deliberately lighter than
+// the Super Admin route right below it: only companies that can
+// actually receive an agent right now (approved, not disabled), none
+// of the pending-application/rejection/disable-toggle fields that
+// route is for.
+app.get('/api/admin/delivery-companies', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const deliveryCompanies = await db.getActiveDeliveryCompaniesForFleetPicker();
+    res.json({ deliveryCompanies });
+  } catch (err) {
+    console.error('GET /api/admin/delivery-companies failed', err);
+    res.status(500).json({ error: 'Failed to load delivery companies' });
   }
 });
 

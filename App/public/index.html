@@ -5278,6 +5278,17 @@
                     <label class="form-label">Phone Number</label>
                     <input type="text" class="form-input" id="agent-phone-input" required>
                 </div>
+                <!-- Which real delivery company this agent belongs to — Admin
+                     isn't a delivery company itself, just the platform
+                     operator, so every agent it manages here must be
+                     explicitly assigned to one (Verta or any other
+                     registered company). Populated from
+                     fleetDeliveryCompanies by openAgentModal(). -->
+                <div class="form-group">
+                    <label class="form-label">Delivery Company</label>
+                    <select class="form-input" id="agent-delivery-company-input"></select>
+                    <small style="color: var(--slate-light);">Which company's fleet this agent belongs to.</small>
+                </div>
                 <div id="agent-form-error" style="color: #dc2626; font-size: 0.875rem; margin-bottom: 1rem; display: none;"></div>
                 <div class="modal-footer">
                     <button type="button" class="btn-small btn-secondary" id="cancel-agent-form">Cancel</button>
@@ -6633,6 +6644,15 @@
         // ============================================================
         let agents = {};
         let agentRecords = [];
+        // Real, active delivery companies an admin/staff account can assign
+        // a Fleet Directory agent to — { id, businessName }[], loaded from
+        // /api/admin/delivery-companies. Admin itself is never a valid
+        // owner of an agent (it's the platform operator, not a delivery
+        // company), so every agent add/reassign in the Add/Edit Agent
+        // modal picks from this list. Empty until loadFleetDeliveryCompanies()
+        // runs (admin/staff app init only — delivery_company accounts
+        // don't need this, their own Fleet tab always assigns to themselves).
+        let fleetDeliveryCompanies = [];
         let settings = {}; // business profile / regional settings, from Settings > Business Profile
         let pricePresets = []; // admin-defined reference prices, from Settings > Pricing
         let myDisabledFeatures = []; // this admin's own restricted features, set by a Super Admin
@@ -6656,6 +6676,40 @@
             agentRecords = records;
             agents = {};
             records.forEach(a => { agents[a.name] = a.phone; });
+        }
+
+        // Loads the delivery companies an admin/staff account can assign
+        // Fleet Directory agents to, then reflects whether any exist onto
+        // both "+ Add Agent" entry points (Manage Agent's inline button and
+        // Super Admin's dedicated Fleet Directory modal) — with zero
+        // companies registered, there's nothing valid to assign a new
+        // agent to, so adding one is disabled with a hint instead of
+        // letting the modal open into a dead end.
+        async function loadFleetDeliveryCompanies() {
+            try {
+                const data = await apiFetch('/api/admin/delivery-companies');
+                fleetDeliveryCompanies = data.deliveryCompanies || [];
+            } catch (err) {
+                console.error('Failed to load delivery companies for Fleet Directory', err);
+                fleetDeliveryCompanies = [];
+            }
+            applyFleetAddAgentAvailability();
+            // renderAgentContacts() reads fleetDeliveryCompanies to label
+            // each agent card's owner — this call may resolve after the
+            // page's first render, so re-render now that it's current.
+            // (No-op if neither Fleet Directory container is in the DOM.)
+            renderAgentContacts();
+        }
+
+        function applyFleetAddAgentAvailability() {
+            const hasCompanies = fleetDeliveryCompanies.length > 0;
+            const hint = 'Add a delivery company first (Delivery Companies panel) — agents must belong to one.';
+            ['add-agent-btn', 'sa-add-agent-btn'].forEach(id => {
+                const btn = document.getElementById(id);
+                if (!btn) return;
+                btn.disabled = !hasCompanies;
+                btn.title = hasCompanies ? '' : hint;
+            });
         }
 
         function getDateKey(date) {
@@ -8803,6 +8857,7 @@
                     expenses = [];
                 }
                 refreshAllViews();
+                loadFleetDeliveryCompanies();
 
                 // Super Admin's real landing view is platform oversight,
                 // not the delivery-ops queue (which is still one click
@@ -9465,6 +9520,35 @@
         // ---- Fleet Directory: add / edit agent ----
         let editingAgentId = null; // null = "Add Agent" mode; an id = "Edit Agent" mode
 
+        // Sentinel option value for an existing agent that predates this
+        // company-picker feature and is still owned by the Admin account
+        // itself rather than a real delivery company. Selecting/leaving
+        // this option means "don't touch the company assignment" —
+        // handleAgentFormSubmit omits deliveryCompanyId from the payload
+        // entirely when it sees this, rather than sending the literal
+        // string as if it were a real company id.
+        const AGENT_LEGACY_COMPANY_VALUE = '__legacy__';
+
+        // Fills the Add/Edit Agent modal's "Delivery Company" dropdown from
+        // fleetDeliveryCompanies. currentCompanyId is the agent's existing
+        // deliveryCompanyId when editing (null when adding a new agent).
+        function populateAgentDeliveryCompanySelect(currentCompanyId) {
+            const select = document.getElementById('agent-delivery-company-input');
+            const isLegacy = !currentCompanyId || !fleetDeliveryCompanies.some(c => c.id === currentCompanyId);
+            const options = fleetDeliveryCompanies.map(c =>
+                `<option value="${c.id}"${c.id === currentCompanyId ? ' selected' : ''}>${c.businessName}</option>`
+            );
+            if (editingAgentId && isLegacy) {
+                options.unshift(`<option value="${AGENT_LEGACY_COMPANY_VALUE}" selected>— Unassigned (owned by Admin) — pick a company to fix —</option>`);
+            } else if (!editingAgentId) {
+                // Adding a brand-new agent: required, no legacy fallback —
+                // Admin isn't a valid owner going forward (see the
+                // agent:create comment in server.js).
+                options.unshift(`<option value="">-- Select delivery company --</option>`);
+            }
+            select.innerHTML = options.join('');
+        }
+
         // Super Admin's dedicated Fleet Directory — opens directly from
         // any view (no need to switch into the Manage Agent operational
         // dashboard first). renderAgentContacts() fills both this modal's
@@ -9484,10 +9568,12 @@
                 document.getElementById('agent-modal-title').textContent = 'Edit Agent';
                 document.getElementById('agent-name-input').value = agent ? agent.name : '';
                 document.getElementById('agent-phone-input').value = agent ? agent.phone : '';
+                populateAgentDeliveryCompanySelect(agent ? agent.deliveryCompanyId : null);
             } else {
                 document.getElementById('agent-modal-title').textContent = 'Add Agent';
                 document.getElementById('agent-name-input').value = '';
                 document.getElementById('agent-phone-input').value = '';
+                populateAgentDeliveryCompanySelect(null);
             }
             document.getElementById('agent-modal').classList.add('active');
             document.getElementById('agent-name-input').focus();
@@ -9504,13 +9590,31 @@
             const submitBtn = document.getElementById('agent-form-submit-btn');
             const name = document.getElementById('agent-name-input').value.trim();
             const phone = document.getElementById('agent-phone-input').value.trim();
+            const companyValue = document.getElementById('agent-delivery-company-input').value;
             errorEl.style.display = 'none';
+
+            if (!editingAgentId && !companyValue) {
+                errorEl.textContent = 'Please select a delivery company for this agent.';
+                errorEl.style.display = 'block';
+                return;
+            }
+
+            const payload = { name, phone };
+            // Omit deliveryCompanyId entirely when editing and the dropdown
+            // is still on the legacy placeholder — that means "leave
+            // unchanged," not "reassign to a company literally named
+            // __legacy__." Always included when adding (already validated
+            // non-empty above) or when a real company is selected.
+            if (!editingAgentId || companyValue !== AGENT_LEGACY_COMPANY_VALUE) {
+                payload.deliveryCompanyId = companyValue;
+            }
+
             submitBtn.disabled = true;
             submitBtn.textContent = 'Saving…';
             try {
                 const result = editingAgentId
-                    ? await emitWithAck('agent:update', { id: editingAgentId, name, phone })
-                    : await emitWithAck('agent:create', { name, phone });
+                    ? await emitWithAck('agent:update', { id: editingAgentId, ...payload })
+                    : await emitWithAck('agent:create', payload);
                 if (!result.ok) {
                     errorEl.textContent = result.error || 'Failed to save agent';
                     errorEl.style.display = 'block';
@@ -12533,6 +12637,15 @@
                 const todaysOrders = orders.filter(o => o.acceptedBy === agent.name && isToday(o.createdAt));
                 const todaysDelivered = todaysOrders.filter(o => o.status === 'delivered');
                 const todaysEarned = todaysDelivered.reduce((sum, o) => sum + (o.amount || 0), 0);
+                // Which real delivery company this agent belongs to —
+                // surfaced here so it's obvious at a glance which agents
+                // still predate the company-picker feature (still owned by
+                // the Admin account, not a real company) and need fixing
+                // via Edit. See populateAgentDeliveryCompanySelect().
+                const ownerCompany = fleetDeliveryCompanies.find(c => c.id === agent.deliveryCompanyId);
+                const companyLabel = ownerCompany
+                    ? `<span style="color: var(--slate-light);">${ownerCompany.businessName}</span>`
+                    : `<span style="color: #b45309;">⚠ Unassigned — owned by Admin</span>`;
                 html += `
                     <div class="agent-contact-card">
                         <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 0.75rem; margin-bottom: 0.75rem;">
@@ -12547,6 +12660,7 @@
                             </div>
                             <button type="button" class="btn-small btn-secondary edit-agent-btn" data-id="${agent.id}" style="padding: 0.375rem 0.875rem; font-size: 0.8125rem;">Edit</button>
                         </div>
+                        <div style="font-size: 0.75rem; margin-bottom: 0.375rem;">${companyLabel}</div>
                         <div style="font-size: 0.8125rem; color: var(--slate-light); margin-bottom: 0.75rem;">
                             ${todaysDelivered.length} ${todaysDelivered.length === 1 ? 'delivery' : 'deliveries'} today · <strong style="color: var(--slate);">$${todaysEarned.toFixed(2)} earned</strong>
                         </div>

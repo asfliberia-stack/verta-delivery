@@ -5030,3 +5030,95 @@ was also captured and visually confirms the desktop box renders
 noticeably wider than the mobile box, at the same height, matching the
 intended proportions. Re-ran the full accumulated Playwright suite
 from this session afterward — all still passing with zero failures.
+
+## Fleet Directory — agents must belong to a real delivery company, not Admin
+
+**Reported:** while investigating why "Verta Delivery Service" (a
+`delivery_company` account) showed no agents in its own "Fleet" tab
+even though the Admin dashboard's Fleet Directory had agents listed,
+it turned out every agent added through Admin's Fleet Directory was
+being tagged with the *Admin account's own* user id as its
+`delivery_company_id` — not a real delivery company's id. Architecturally
+this dates back to before the app supported multiple delivery
+companies, when Admin's account effectively *was* Verta. The user's
+framing of the fix: Admin isn't a delivery company itself, it's just
+the platform operator, so it should stop being a valid "owner" of
+agents — every agent added through the Fleet Directory from now on
+must be explicitly assigned to a real, registered delivery company
+(Verta or any other).
+
+**What changed:** the Add/Edit Agent modal (`#agent-modal`, shared by
+both Manage Agent's inline Fleet Directory section and Super Admin's
+dedicated Fleet Directory modal — the same one either entry point has
+always used) gained a new required "Delivery Company" dropdown. On the
+backend, the `agent:create` Socket.io handler no longer defaults a new
+agent's `delivery_company_id` to `socket.user.id` for admin/staff
+accounts — it now requires an explicit `deliveryCompanyId` in the
+payload and validates it against a real, approved, non-disabled
+`delivery_company` account via a new shared `resolveAdminChosenDeliveryCompanyId()`
+helper, rejecting the request with "Please select a delivery company
+for this agent." if none was chosen. `agent:update` gained the same
+validation as an *optional* reassignment path — an admin can now move
+an existing agent to a different (or, for a legacy agent, its first
+real) company by changing the dropdown, but leaving it untouched sends
+no `deliveryCompanyId` at all, which `db.updateAgent()` treats as
+"don't touch the current company." A `delivery_company` account's own
+"Fleet" tab is completely unaffected by any of this — it never sends
+or needs a `deliveryCompanyId`; the server still always assigns those
+agents to the logged-in company itself, and a delivery company still
+can't reassign its own agents elsewhere.
+
+A new `GET /api/admin/delivery-companies` route (gated by `requireAdmin`,
+so both plain Admin/staff and Super Admin can call it, unlike the
+existing Super Admin-only `/api/super-admin/delivery-companies`) feeds
+the dropdown a lightweight list — just approved, non-disabled
+companies — via a new `db.getActiveDeliveryCompaniesForFleetPicker()`.
+
+Two decisions were confirmed with the user before building this,
+since they affect existing data and UX: (1) agents already owned by
+the Admin account are **left as-is** rather than bulk-migrated — the
+Fleet Directory now visibly flags each one with "⚠ Unassigned — owned
+by Admin" next to its name (computed by matching `agent.deliveryCompanyId`
+against the loaded company list), and an admin fixes each one
+individually via Edit, at their own pace; and (2) picking a company
+for a **new** agent is **required, with no fallback** — if zero
+delivery companies are registered yet, both "+ Add Agent" entry points
+(`add-agent-btn` and `sa-add-agent-btn`) are disabled outright via a
+new `applyFleetAddAgentAvailability()` helper, with a title tooltip
+explaining why, rather than opening a modal with nothing valid to
+select.
+
+**Verified:** a new Playwright pass (`verify_fleet_company_picker.js`,
+20 checks) confirms: the Add-mode dropdown requires an explicit
+selection (a blank placeholder, no legacy option) and lists real
+companies; both "+ Add Agent" buttons disable (with a tooltip) when
+the company list is empty and re-enable once companies exist; editing
+a legacy agent (still owned by the Admin id) shows the "Unassigned —
+owned by Admin" placeholder pre-selected with no real company
+pre-selected; editing an agent already owned by a real company
+pre-selects that company correctly with no legacy option present;
+submitting Add with no company chosen is blocked client-side with the
+correct error and makes no `agent:create` call; submitting Add with a
+company chosen emits `agent:create` with `deliveryCompanyId` in the
+payload; submitting Edit on a legacy agent without touching the
+dropdown emits `agent:update` with the `deliveryCompanyId` key
+entirely absent (proving it leaves the existing — unassigned — state
+alone rather than accidentally reassigning it); submitting Edit after
+actively picking a real company includes it in the payload; and
+`renderAgentContacts()` correctly labels a legacy agent's card with
+the unassigned warning and a properly-owned agent's card with its real
+company name. A screenshot (`screenshot_fleet_company_picker.png`) of
+the Edit Agent modal for a legacy agent visually confirms the
+"Unassigned (owned by Admin)" option renders pre-selected in the
+dropdown. `node --check` passed on both the extracted client script
+and on `server/server.js` and `server/db.js` directly (these are
+already plain Node files, unlike the browser-side script embedded in
+`index.html`). Re-ran the full accumulated Playwright suite from this
+session afterward — all still passing with zero failures. What could
+not be verified in this sandbox: the actual Postgres round-trip of the
+new `resolveAdminChosenDeliveryCompanyId()` validation and
+`getActiveDeliveryCompaniesForFleetPicker()` query, since there's no
+live database connection here — the SQL was checked by hand against
+the existing `agents`/`users` schema and follows the same query
+patterns already proven elsewhere in `db.js` (e.g.
+`getDeliveryCompanies()`, `getAgentsByCompany()`).

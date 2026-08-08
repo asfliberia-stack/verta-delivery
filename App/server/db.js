@@ -769,7 +769,20 @@ const db = {
     return rowToAgent(rows[0]);
   },
 
-  async updateAgent(id, { name, phone }) {
+  // deliveryCompanyId: undefined = leave the agent's current company
+  // unchanged (the normal case — a delivery company editing its own
+  // agent's name/phone, or an admin doing the same without reassigning
+  // it). Any other value (including null) is written through, so an
+  // admin reassigning a legacy/unassigned agent to a real company goes
+  // through this same path as a name/phone edit.
+  async updateAgent(id, { name, phone, deliveryCompanyId }) {
+    if (deliveryCompanyId !== undefined) {
+      const { rows } = await pool.query(
+        `UPDATE agents SET name = $1, phone = $2, delivery_company_id = $3 WHERE id = $4 RETURNING *`,
+        [name, phone, deliveryCompanyId, id]
+      );
+      return rowToAgent(rows[0]);
+    }
     const { rows } = await pool.query(
       `UPDATE agents SET name = $1, phone = $2 WHERE id = $3 RETURNING *`,
       [name, phone, id]
@@ -1134,6 +1147,20 @@ const db = {
       isDisabled: r.is_disabled,
       commissionRateOverride: r.commission_rate_override !== null && r.commission_rate_override !== undefined ? Number(r.commission_rate_override) : null,
     }));
+  },
+
+  // Lightweight list for the Fleet Directory's "which delivery company
+  // owns this agent" picker (see the agent:create/agent:update comment
+  // in server.js). Any admin-like account needs this, not just Super
+  // Admin — but unlike getDeliveryCompanies() above, this only returns
+  // companies actually able to receive a new agent right now (approved,
+  // not disabled), and skips management-only fields (rejection reason,
+  // commission override) the picker has no use for.
+  async getActiveDeliveryCompaniesForFleetPicker() {
+    const { rows } = await pool.query(
+      "SELECT id, business_name FROM users WHERE role = 'delivery_company' AND approval_status = 'approved' AND is_disabled = false ORDER BY business_name ASC"
+    );
+    return rows.map(r => ({ id: r.id, businessName: r.business_name }));
   },
 
   // reason is required by the caller (server.js) when status ===
