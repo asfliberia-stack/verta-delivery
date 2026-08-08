@@ -5289,3 +5289,65 @@ What could not be verified in this sandbox: real mouse-driven
 click-and-drag or touch behavior on an actual small-screen device,
 since Playwright here drives the DOM/CSS directly rather than through
 a physical browser session.
+
+## Mobile "More" menu — redesigned as a card list
+
+**Reported:** a mockup showing a professionally redesigned version of the
+mobile "More" bottom-sheet (the menu that holds destinations that don't
+fit in the 5-item bottom nav bar). The old sheet was a bare list of
+single-line buttons — icon and label only, no description, no visual
+separation between everyday destinations and account-level actions like
+logging out. The mockup showed each destination as its own card: an icon
+in a soft rounded-square badge, a bold title with a one-line description
+underneath, and a trailing chevron, plus a subtitle under the "More"
+heading and a divider setting "Back to service selector" and "Logout"
+apart with their own tinted backgrounds (indigo and red respectively).
+
+**What changed:** all three "More" sheets in the app — the delivery
+customer's, the delivery company's, and Admin/Manage Agent's/Super
+Admin's (`#dcust-more-modal`, `#dc-more-modal`, `#admin-more-modal`) —
+were redesigned to match, since they're the same component reused three
+times and leaving two of them in the old style would have looked
+inconsistent. Every destination kept its exact id and its exact click
+behavior (the JS that opens each modal/view was untouched); only the
+markup inside each button changed, from a plain icon+label row to an
+icon badge + title + one-line subtitle + chevron, and each `<h3>More</h3>`
+gained a subtitle line underneath. A new divider separates the app's real
+destinations from the two account-level actions at the bottom, which now
+render as their own tinted cards — a light indigo card for "Back to
+service selector," a light red one for "Logout" — so they read as a
+different kind of action rather than just more items in the same list.
+The items that only Super Admin sees (Delivery Companies, Staff Accounts,
+Payouts & Commission, Disputes, Audit Log, Platform Settings) keep the
+exact same `display:none`-by-default/JS-reveal mechanism as before,
+unchanged.
+
+**Verified:** a new Playwright pass (`verify_more_menu_redesign.js`, 26
+checks) confirms: all three sheets exist with the new subtitle line under
+"More"; every item in every sheet has an icon badge, a title, a subtitle,
+and a chevron; every sheet has the new divider; "Back to service
+selector" carries the accent (indigo) styling and "Logout" carries the
+danger (red) styling in all three sheets; every original id on the Admin
+sheet (the largest of the three, 15 items) still exists and is still a
+real `<button>` element (so the existing `addEventListener` wiring, which
+targets ids directly, needed no changes); the six Super-Admin-only items
+still default to hidden. A duplicate-static-id scan across the whole file
+found zero collisions from the new markup. `node --check` passed on the
+extracted client script. Two screenshots at a 430px mobile viewport
+(`screenshot_admin_more_menu_redesign.png`,
+`screenshot_admin_more_menu_bottom.png`) visually confirm the top and
+bottom of the Admin sheet match the mockup — icon badges, titles,
+subtitles, chevrons, the divider, and the indigo/red tinted action cards.
+Re-ran the accumulated Playwright suite from this session afterward —
+every boolean-assertion script (fleet company picker, agent delete,
+sidebar groups, banners, payment badges, momo checkout) still passes at
+100% with zero page errors; a handful of older scripts in `/tmp` that
+predate this session's testing convention log raw diagnostic values
+instead of pass/fail booleans (staff, disputes, fleet modal/fleet fix)
+and were mistakenly flagged as regressions by an automated True/False
+scan on the first pass — inspecting their actual output showed no errors
+and no connection to the "More" menu markup this change touched, so
+that was a false alarm from the scan, not a real regression. What could
+not be verified in this sandbox: how the card list scrolls and feels
+under a real touch/swipe gesture on physical mobile hardware, since
+Playwright here simulates a mobile viewport rather than an actual device.
