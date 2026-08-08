@@ -1496,7 +1496,13 @@
         #delivery-app .admin-sidebar {
             background: #ffffff;
             border-right: 1px solid #e2e8f0;
-            min-height: 100vh;
+            /* height (not min-height, unlike the other two app roots below)
+               — the grouped nav can now be taller than the viewport, and
+               #delivery-app .admin-nav below needs a hard-capped parent to
+               scroll independently inside, with the logo and footer pinned
+               in place. See the "Sidebar navigation groups" comment further
+               down for why. */
+            height: 100vh;
             padding: 1.75rem 1.25rem;
             display: flex;
             flex-direction: column;
@@ -1545,9 +1551,56 @@
         #delivery-app .admin-sidebar-logo img { height: 42px; max-width: 100%; object-fit: contain; }
         #delivery-customer-app .admin-sidebar-logo img { height: 42px; max-width: 100%; object-fit: contain; }
         #delivery-company-app .admin-sidebar-logo img { height: 42px; max-width: 100%; object-fit: contain; }
-        #delivery-app .admin-nav { display: flex; flex-direction: column; gap: 0.25rem; }
+        /* #delivery-app's nav is grouped into collapsible sections (see
+           the "Sidebar navigation groups" HTML comment above the markup
+           and the matching JS section) — it grows taller than the old flat
+           list, so it scrolls independently within the sidebar's fixed
+           100vh height (flex:1 1 auto + min-height:0 is what lets the
+           overflow:auto region actually bound itself instead of just
+           pushing the footer off-screen). The other two app roots keep
+           their original short, flat, non-scrolling nav unchanged. */
+        #delivery-app .admin-nav {
+            display: flex; flex-direction: column; gap: 0.375rem;
+            flex: 1 1 auto; overflow-y: auto; overflow-x: hidden; min-height: 0;
+            padding-right: 0.25rem; margin-right: -0.25rem;
+        }
+        #delivery-app .admin-nav::-webkit-scrollbar { width: 6px; }
+        #delivery-app .admin-nav::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 9999px; }
+        #delivery-app .admin-nav::-webkit-scrollbar-thumb:hover { background: #cbd5e1; }
+        #delivery-app .admin-nav::-webkit-scrollbar-track { background: transparent; }
         #delivery-customer-app .admin-nav { display: flex; flex-direction: column; gap: 0.25rem; }
         #delivery-company-app .admin-nav { display: flex; flex-direction: column; gap: 0.25rem; }
+
+        /* ---- Sidebar navigation groups (#delivery-app only) ----
+           Collapsible section headers wrapping the nav items above. The
+           height/opacity collapse uses the CSS-grid 1fr/0fr trick (animates
+           smoothly without JS ever measuring scrollHeight, and correctly
+           handles a group whose item count varies by role/feature flags —
+           see refreshAdminSidebarGroupVisibility() in the script). Behavior
+           (expand/collapse, session-remembered state, auto-expanding the
+           active view's group, hiding an empty group) all lives in
+           initAdminSidebarGroups() and friends in the main script. */
+        #delivery-app .admin-nav-group { display: flex; flex-direction: column; }
+        #delivery-app .admin-nav-group.is-empty { display: none; }
+        #delivery-app .admin-nav-group-header {
+            display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;
+            width: 100%; background: none; border: none; cursor: pointer;
+            padding: 0.5rem 0.875rem;
+            font-size: 0.6875rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+            color: #94a3b8; transition: color 0.15s ease; border-radius: var(--admin-radius-sm);
+        }
+        #delivery-app .admin-nav-group-header:hover { color: #475569; }
+        #delivery-app .admin-nav-group-header:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+        #delivery-app .admin-nav-group-chevron { width: 14px; height: 14px; flex-shrink: 0; transition: transform 0.2s ease; }
+        #delivery-app .admin-nav-group.collapsed .admin-nav-group-chevron { transform: rotate(-90deg); }
+        #delivery-app .admin-nav-group-body {
+            display: grid; grid-template-rows: 1fr; opacity: 1;
+            transition: grid-template-rows 0.25s ease, opacity 0.2s ease;
+        }
+        #delivery-app .admin-nav-group.collapsed .admin-nav-group-body { grid-template-rows: 0fr; opacity: 0; }
+        #delivery-app .admin-nav-group-body-inner {
+            overflow: hidden; display: flex; flex-direction: column; gap: 0.25rem;
+        }
         #delivery-app .admin-nav-item {
             display: flex; align-items: center; gap: 0.75rem;
             min-height: 44px;
@@ -4016,72 +4069,159 @@
                 <div class="admin-sidebar-logo">
                     <img src="assets/logo.png" alt="ONLib Delivery">
                 </div>
+                <!-- Collapsible grouped nav. Each .admin-nav-group is an
+                     independently expandable section (chevron header +
+                     body), wired up by initAdminSidebarGroups() in the
+                     main script — see the "Sidebar navigation groups"
+                     comment there for the full behavior (session-only
+                     remembered state, auto-expand of whichever group holds
+                     the active view, auto-hide of a group whose items are
+                     all hidden for the current role/feature flags). The
+                     underlying buttons (ids, click wiring, role/feature
+                     show-hide) are UNCHANGED from before this redesign —
+                     only their layout container changed, so nothing
+                     downstream that reads these ids needed to change.
+                     Monthly Report and Add Expense intentionally appear
+                     twice (Operations and Finance) per the requested
+                     grouping — the second instance is a distinct element
+                     with a "-finance" id suffix wired to the exact same
+                     handler as the original, not a duplicate id. -->
                 <nav class="admin-nav">
-                    <button type="button" class="admin-nav-item" id="sa-platform-overview-nav-btn" style="display:none;">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"></path><path d="M18.7 8 12 14.7 8.5 11.2 4 15.7"></path></svg>
-                        Platform Overview
-                    </button>
-                    <button type="button" class="admin-nav-item active" id="admin-overview-nav-btn">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
-                        <span id="admin-overview-nav-label">Overview</span>
-                    </button>
-                    <button type="button" class="admin-nav-item" id="view-order-history-delivery">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
-                        Order History
-                    </button>
-                    <button type="button" class="admin-nav-item" id="open-monthly-report-btn">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
-                        Monthly Report
-                    </button>
-                    <button type="button" class="admin-nav-item" id="add-expense-btn">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
-                        Add Expense
-                    </button>
-                    <button type="button" class="admin-nav-item" id="scroll-to-agents-btn">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
-                        Fleet Directory
-                    </button>
-                    <button type="button" class="admin-nav-item" id="open-customers-btn">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><path d="M20 8v6M23 11h-6"></path></svg>
-                        Customers
-                    </button>
-                    <button type="button" class="admin-nav-item" id="open-vendors-btn" style="display:none;">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
-                        Vendors
-                    </button>
-                    <button type="button" class="admin-nav-item" id="open-delivery-companies-btn" style="display:none;">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13"></rect><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon><circle cx="5.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle></svg>
-                        Delivery Companies
-                    </button>
-                    <button type="button" class="admin-nav-item" id="open-staff-btn" style="display:none;">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-                        Staff Accounts
-                    </button>
-                    <button type="button" class="admin-nav-item" id="open-payouts-btn" style="display:none;">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
-                        Payouts &amp; Commission
-                    </button>
-                    <button type="button" class="admin-nav-item" id="open-disputes-btn" style="display:none;">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
-                        Disputes
-                        <span id="disputes-open-count-badge" style="display:none; margin-left:auto; background:#dc2626; color:white; border-radius:9999px; font-size:0.6875rem; font-weight:700; padding:0.0625rem 0.5rem;"></span>
-                    </button>
-                    <button type="button" class="admin-nav-item" id="open-audit-log-btn" style="display:none;">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="9" y1="15" x2="15" y2="15"></line><line x1="9" y1="11" x2="15" y2="11"></line></svg>
-                        Audit Log
-                    </button>
-                    <button type="button" class="admin-nav-item" id="open-platform-settings-btn" style="display:none;">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
-                        Platform Settings
-                    </button>
-                    <button type="button" class="admin-nav-item" id="open-settings-btn">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
-                        Settings
-                    </button>
-                    <button type="button" class="admin-nav-item" id="open-help-support-btn">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
-                        Help &amp; Support
-                    </button>
+                    <div class="admin-nav-group" data-group="overview">
+                        <button type="button" class="admin-nav-group-header" data-group-toggle="overview" aria-expanded="true">
+                            <span class="admin-nav-group-title">Overview</span>
+                            <svg class="admin-nav-group-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                        </button>
+                        <div class="admin-nav-group-body"><div class="admin-nav-group-body-inner">
+                            <button type="button" class="admin-nav-item" id="sa-platform-overview-nav-btn" style="display:none;">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"></path><path d="M18.7 8 12 14.7 8.5 11.2 4 15.7"></path></svg>
+                                Platform Overview
+                            </button>
+                        </div></div>
+                    </div>
+
+                    <div class="admin-nav-group" data-group="operations">
+                        <button type="button" class="admin-nav-group-header" data-group-toggle="operations" aria-expanded="true">
+                            <span class="admin-nav-group-title">Operations</span>
+                            <svg class="admin-nav-group-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                        </button>
+                        <div class="admin-nav-group-body"><div class="admin-nav-group-body-inner">
+                            <button type="button" class="admin-nav-item active" id="admin-overview-nav-btn">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+                                <span id="admin-overview-nav-label">Overview</span>
+                            </button>
+                            <button type="button" class="admin-nav-item" id="view-order-history-delivery">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
+                                Order History
+                            </button>
+                            <button type="button" class="admin-nav-item" id="open-monthly-report-btn">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+                                Monthly Report
+                            </button>
+                            <button type="button" class="admin-nav-item" id="add-expense-btn">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
+                                Add Expense
+                            </button>
+                        </div></div>
+                    </div>
+
+                    <div class="admin-nav-group" data-group="network">
+                        <button type="button" class="admin-nav-group-header" data-group-toggle="network" aria-expanded="true">
+                            <span class="admin-nav-group-title">Network</span>
+                            <svg class="admin-nav-group-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                        </button>
+                        <div class="admin-nav-group-body"><div class="admin-nav-group-body-inner">
+                            <button type="button" class="admin-nav-item" id="scroll-to-agents-btn">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                                Fleet Directory
+                            </button>
+                            <button type="button" class="admin-nav-item" id="open-customers-btn">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><path d="M20 8v6M23 11h-6"></path></svg>
+                                Customers
+                            </button>
+                            <button type="button" class="admin-nav-item" id="open-vendors-btn" style="display:none;">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+                                Vendors
+                            </button>
+                            <button type="button" class="admin-nav-item" id="open-delivery-companies-btn" style="display:none;">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13"></rect><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon><circle cx="5.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle></svg>
+                                Delivery Companies
+                            </button>
+                        </div></div>
+                    </div>
+
+                    <div class="admin-nav-group" data-group="finance">
+                        <button type="button" class="admin-nav-group-header" data-group-toggle="finance" aria-expanded="true">
+                            <span class="admin-nav-group-title">Finance</span>
+                            <svg class="admin-nav-group-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                        </button>
+                        <div class="admin-nav-group-body"><div class="admin-nav-group-body-inner">
+                            <button type="button" class="admin-nav-item" id="open-payouts-btn" style="display:none;">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+                                Payouts &amp; Commission
+                            </button>
+                            <button type="button" class="admin-nav-item" id="add-expense-btn-finance">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
+                                Add Expense
+                            </button>
+                            <button type="button" class="admin-nav-item" id="open-monthly-report-btn-finance">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+                                Monthly Report
+                            </button>
+                        </div></div>
+                    </div>
+
+                    <div class="admin-nav-group" data-group="management">
+                        <button type="button" class="admin-nav-group-header" data-group-toggle="management" aria-expanded="true">
+                            <span class="admin-nav-group-title">Management</span>
+                            <svg class="admin-nav-group-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                        </button>
+                        <div class="admin-nav-group-body"><div class="admin-nav-group-body-inner">
+                            <button type="button" class="admin-nav-item" id="open-staff-btn" style="display:none;">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                                Staff Accounts
+                            </button>
+                            <button type="button" class="admin-nav-item" id="open-disputes-btn" style="display:none;">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+                                Disputes
+                                <span id="disputes-open-count-badge" style="display:none; margin-left:auto; background:#dc2626; color:white; border-radius:9999px; font-size:0.6875rem; font-weight:700; padding:0.0625rem 0.5rem;"></span>
+                            </button>
+                            <button type="button" class="admin-nav-item" id="open-audit-log-btn" style="display:none;">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="9" y1="15" x2="15" y2="15"></line><line x1="9" y1="11" x2="15" y2="11"></line></svg>
+                                Audit Log
+                            </button>
+                        </div></div>
+                    </div>
+
+                    <div class="admin-nav-group" data-group="system">
+                        <button type="button" class="admin-nav-group-header" data-group-toggle="system" aria-expanded="true">
+                            <span class="admin-nav-group-title">System</span>
+                            <svg class="admin-nav-group-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                        </button>
+                        <div class="admin-nav-group-body"><div class="admin-nav-group-body-inner">
+                            <button type="button" class="admin-nav-item" id="open-platform-settings-btn" style="display:none;">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
+                                Platform Settings
+                            </button>
+                            <button type="button" class="admin-nav-item" id="open-settings-btn">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                                Settings
+                            </button>
+                        </div></div>
+                    </div>
+
+                    <div class="admin-nav-group" data-group="support">
+                        <button type="button" class="admin-nav-group-header" data-group-toggle="support" aria-expanded="true">
+                            <span class="admin-nav-group-title">Support</span>
+                            <svg class="admin-nav-group-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                        </button>
+                        <div class="admin-nav-group-body"><div class="admin-nav-group-body-inner">
+                            <button type="button" class="admin-nav-item" id="open-help-support-btn">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+                                Help &amp; Support
+                            </button>
+                        </div></div>
+                    </div>
                 </nav>
                 <div class="admin-sidebar-spacer"></div>
                 <div class="admin-sidebar-footer">
@@ -7478,6 +7618,12 @@
                 refreshAllViews();
             });
 
+            socket.on('agent:removed', (agent) => {
+                agentRecords = agentRecords.filter(a => a.id !== agent.id);
+                setAgents(agentRecords);
+                refreshAllViews();
+            });
+
             socket.on('settings:updated', (updated) => {
                 settings = updated;
                 // Only refresh the visible form if the Settings modal is
@@ -7606,7 +7752,7 @@
             const hide = (id) => { const el = document.getElementById(id); if (el) el.style.display = 'none'; };
             if (myDisabledFeatures.includes('new_order')) hide('open-admin-new-order-btn');
             if (myDisabledFeatures.includes('fleet')) hide('scroll-to-agents-btn');
-            if (myDisabledFeatures.includes('expenses')) hide('add-expense-btn');
+            if (myDisabledFeatures.includes('expenses')) { hide('add-expense-btn'); hide('add-expense-btn-finance'); }
             if (myDisabledFeatures.includes('customers')) { hide('open-customers-btn'); hide('sa-quick-customers-btn'); }
             document.querySelectorAll('.settings-tab-btn').forEach(btn => {
                 const tab = btn.dataset.settingsTab;
@@ -7815,12 +7961,30 @@
                                 <option value="on_duty" ${a.dutyStatus === 'on_duty' ? 'selected' : ''}>On Duty</option>
                             </select>
                             <button type="button" class="btn-small btn-secondary dc-edit-agent-btn" data-id="${a.id}">Edit</button>
+                            <button type="button" class="btn-small btn-danger dc-delete-agent-btn" data-id="${a.id}" data-name="${a.name.replace(/"/g, '&quot;')}">Delete</button>
                         </div>
                     </div>
                 `).join('');
             } catch (err) {
                 container.innerHTML = `<p style="text-align:center; color:#dc2626;">${err.message}</p>`;
             }
+        }
+
+        // Delivery company removing one of its own agents. Server-side,
+        // agent:remove already restricts a delivery_company account to
+        // only its own agents (same ownership check as agent:update) —
+        // this is just the confirm + refresh on the client.
+        async function deleteDeliveryCompanyAgentWithConfirm(agentId, agentName) {
+            const confirmed = confirm(`Remove ${agentName} from your fleet? This cannot be undone.`);
+            if (!confirmed) return;
+            const result = await emitWithAck('agent:remove', { id: agentId });
+            if (!result.ok) {
+                showToast(result.error || 'Failed to remove agent', 'error');
+                return;
+            }
+            showToast('Agent removed', 'success');
+            await loadDeliveryCompanyAgents();
+            await loadDeliveryCompanyOverview();
         }
 
         let deliveryCompanyOrdersCache = [];
@@ -8050,9 +8214,11 @@
                 }
             });
 
-            document.getElementById('dc-agents-list').addEventListener('click', (e) => {
+            document.getElementById('dc-agents-list').addEventListener('click', async (e) => {
                 const editBtn = e.target.closest('.dc-edit-agent-btn');
-                if (editBtn) openDeliveryCompanyAgentForm(editBtn.dataset.id);
+                if (editBtn) { openDeliveryCompanyAgentForm(editBtn.dataset.id); return; }
+                const deleteBtn = e.target.closest('.dc-delete-agent-btn');
+                if (deleteBtn) await deleteDeliveryCompanyAgentWithConfirm(deleteBtn.dataset.id, deleteBtn.dataset.name);
             });
             document.getElementById('dc-agents-list').addEventListener('change', async (e) => {
                 const select = e.target.closest('.dc-agent-duty-select');
@@ -8858,6 +9024,14 @@
                 }
                 refreshAllViews();
                 loadFleetDeliveryCompanies();
+                // Sets up the grouped sidebar's expand/collapse behavior —
+                // must run after the isSuperAdmin display-toggles above and
+                // applyMyFeatureRestrictions() so it captures final,
+                // settled item visibility (an empty group hides itself),
+                // and before the setAdminMainView() calls below so the
+                // active view's group correctly overrides any stale
+                // collapsed state from a previous same-session visit.
+                initAdminSidebarGroups();
 
                 // Super Admin's real landing view is platform oversight,
                 // not the delivery-ops queue (which is still one click
@@ -9279,6 +9453,10 @@
             document.getElementById('order-sort-select').addEventListener('change', renderOrdersDelivery);
 
             document.getElementById('add-expense-btn').addEventListener('click', openAddExpenseModal);
+            // Add Expense's second sidebar entry point (Finance group) —
+            // same handler, distinct element, per the grouped-sidebar
+            // redesign putting it in both Operations and Finance.
+            document.getElementById('add-expense-btn-finance').addEventListener('click', openAddExpenseModal);
             document.getElementById('close-add-expense-modal').addEventListener('click', closeAddExpenseModal);
             document.getElementById('cancel-add-expense').addEventListener('click', closeAddExpenseModal);
             document.getElementById('add-expense-form').addEventListener('submit', handleAddExpenseSubmit);
@@ -9303,6 +9481,7 @@
             document.getElementById('add-delivery-company-form').addEventListener('submit', handleAddDeliveryCompanyFormSubmit);
             document.getElementById('agent-contacts-container').addEventListener('click', (e) => {
                 if (e.target.classList.contains('edit-agent-btn')) openAgentModal(e.target.dataset.id);
+                if (e.target.classList.contains('delete-agent-btn')) deleteAgentWithConfirm(e.target.dataset.id, e.target.dataset.name);
                 const dutyBtn = e.target.closest('.agent-duty-toggle');
                 if (dutyBtn) toggleAgentDutyStatus(dutyBtn.dataset.id, dutyBtn.dataset.current);
             });
@@ -9368,6 +9547,7 @@
             });
             document.getElementById('sa-agent-contacts-container').addEventListener('click', (e) => {
                 if (e.target.classList.contains('edit-agent-btn')) openAgentModal(e.target.dataset.id);
+                if (e.target.classList.contains('delete-agent-btn')) deleteAgentWithConfirm(e.target.dataset.id, e.target.dataset.name);
                 const dutyBtn = e.target.closest('.agent-duty-toggle');
                 if (dutyBtn) toggleAgentDutyStatus(dutyBtn.dataset.id, dutyBtn.dataset.current);
             });
@@ -9407,6 +9587,10 @@
             });
 
             document.getElementById('open-monthly-report-btn').addEventListener('click', openMonthlyReportModal);
+            // Monthly Report's second sidebar entry point (Finance group) —
+            // same handler, distinct element, same reasoning as Add
+            // Expense's "-finance" duplicate right above.
+            document.getElementById('open-monthly-report-btn-finance').addEventListener('click', openMonthlyReportModal);
             document.getElementById('close-monthly-report-modal').addEventListener('click', closeMonthlyReportModal);
             document.getElementById('cancel-monthly-report').addEventListener('click', closeMonthlyReportModal);
             document.getElementById('generate-monthly-report-btn').addEventListener('click', () => {
@@ -9629,6 +9813,24 @@
                 submitBtn.disabled = false;
                 submitBtn.textContent = 'Save Agent';
             }
+        }
+
+        // Admin/staff side (both Fleet Directory entry points share this).
+        // A delivery_company account removing its own agent uses the
+        // separate deleteDeliveryCompanyAgentWithConfirm() below instead,
+        // since that surface re-fetches from a REST endpoint rather than
+        // relying on the socket-driven `agentRecords` list.
+        async function deleteAgentWithConfirm(agentId, agentName) {
+            const confirmed = confirm(`Remove ${agentName} from the Fleet Directory? This cannot be undone.`);
+            if (!confirmed) return;
+            const result = await emitWithAck('agent:remove', { id: agentId });
+            if (!result.ok) {
+                showToast(result.error || 'Failed to remove agent', 'error');
+                return;
+            }
+            showToast('Agent removed', 'success');
+            // agent:removed broadcast (received by this tab too) drops it
+            // from agentRecords and re-renders — see the socket handler.
         }
 
         function openAddVendorModal() {
@@ -10052,6 +10254,99 @@
         // Super Admin can still reach Delivery Operations in one click
         // when they need to, without it being their default view.
         // ============================================================
+        // ---- Sidebar navigation groups (Super Admin / Manage Agent's
+        // #delivery-app left sidebar only) ----
+        // The redesigned sidebar groups its ~16 nav items into labeled,
+        // independently collapsible sections (Overview, Operations,
+        // Network, Finance, Management, System, Support) instead of one
+        // long flat list. State is intentionally sessionStorage, not
+        // localStorage — "remember during the current session" per the
+        // redesign spec, resetting back to all-expanded on a fresh
+        // session rather than persisting indefinitely across visits.
+        const ADMIN_SIDEBAR_GROUP_STATE_KEY = 'onlib_admin_sidebar_groups';
+
+        function loadAdminSidebarGroupState() {
+            try {
+                return JSON.parse(sessionStorage.getItem(ADMIN_SIDEBAR_GROUP_STATE_KEY)) || {};
+            } catch (err) {
+                return {};
+            }
+        }
+
+        function saveAdminSidebarGroupState(state) {
+            try {
+                sessionStorage.setItem(ADMIN_SIDEBAR_GROUP_STATE_KEY, JSON.stringify(state));
+            } catch (err) {
+                // sessionStorage unavailable (private-browsing edge cases,
+                // storage quota) — groups just won't remember state this
+                // session; not fatal, the sidebar still works.
+            }
+        }
+
+        function setAdminSidebarGroupExpanded(groupKey, expanded, persist = true) {
+            const group = document.querySelector(`#delivery-app .admin-nav-group[data-group="${groupKey}"]`);
+            if (!group) return;
+            group.classList.toggle('collapsed', !expanded);
+            const header = group.querySelector('.admin-nav-group-header');
+            if (header) header.setAttribute('aria-expanded', String(expanded));
+            if (persist) {
+                const state = loadAdminSidebarGroupState();
+                state[groupKey] = expanded;
+                saveAdminSidebarGroupState(state);
+            }
+        }
+
+        // Hides an entire group (header + body) when none of its nav items
+        // are currently visible — e.g. Network's Vendors/Delivery Companies
+        // items are Super-Admin-only, so a Manage Agent account would
+        // otherwise see an empty, pointless section header for a group with
+        // nothing expandable inside it. Re-run whenever anything toggles a
+        // nav item's visibility (role-based show/hide in enterApp, or
+        // applyMyFeatureRestrictions()) — safe to call as often as needed,
+        // it just re-reads the DOM each time.
+        function refreshAdminSidebarGroupVisibility() {
+            document.querySelectorAll('#delivery-app .admin-nav-group').forEach((group) => {
+                const items = group.querySelectorAll('.admin-nav-item');
+                const hasVisibleItem = Array.from(items).some(el => el.style.display !== 'none');
+                group.classList.toggle('is-empty', !hasVisibleItem);
+            });
+        }
+
+        // Ensures the group containing whichever nav item is the current
+        // "active" persistent view is expanded — in practice that's only
+        // ever Platform Overview or Delivery Operations (see
+        // setAdminMainView below; everything else in the sidebar opens a
+        // modal rather than tracking a persistent active view). Doesn't
+        // collapse any other group the admin deliberately opened — just
+        // guarantees the active one isn't hidden away.
+        function expandAdminSidebarGroupContaining(itemId) {
+            const item = document.getElementById(itemId);
+            const group = item && item.closest('.admin-nav-group');
+            if (group) setAdminSidebarGroupExpanded(group.dataset.group, true);
+        }
+
+        function initAdminSidebarGroups() {
+            const savedState = loadAdminSidebarGroupState();
+            document.querySelectorAll('#delivery-app .admin-nav-group').forEach((group) => {
+                const key = group.dataset.group;
+                const header = group.querySelector('.admin-nav-group-header');
+                if (header && !header.dataset.wired) {
+                    header.dataset.wired = 'true';
+                    header.addEventListener('click', () => {
+                        const expanded = group.classList.contains('collapsed');
+                        setAdminSidebarGroupExpanded(key, expanded);
+                    });
+                }
+                // Default expanded unless this session explicitly collapsed
+                // it — first-ever load shows everything, same as the old
+                // flat sidebar did, so the redesign never hides something
+                // the admin could already see by default.
+                const expanded = savedState[key] !== undefined ? savedState[key] : true;
+                setAdminSidebarGroupExpanded(key, expanded, false);
+            });
+            refreshAdminSidebarGroupVisibility();
+        }
+
         function setAdminMainView(view) {
             document.getElementById('admin-operational-view').style.display = view === 'operational' ? 'block' : 'none';
             document.getElementById('super-admin-overview-view').style.display = view === 'platform' ? 'block' : 'none';
@@ -10059,6 +10354,7 @@
             const overviewBtn = document.getElementById('admin-overview-nav-btn');
             if (platformBtn) platformBtn.classList.toggle('active', view === 'platform');
             if (overviewBtn) overviewBtn.classList.toggle('active', view === 'operational');
+            expandAdminSidebarGroupContaining(view === 'platform' ? 'sa-platform-overview-nav-btn' : 'admin-overview-nav-btn');
             const mnavPlatformBtn = document.getElementById('admin-mnav-platform');
             const mnavOverviewBtn = document.getElementById('admin-mnav-overview');
             if (mnavPlatformBtn) mnavPlatformBtn.classList.toggle('active', view === 'platform');
@@ -12658,7 +12954,10 @@
                                     </button>
                                 </div>
                             </div>
-                            <button type="button" class="btn-small btn-secondary edit-agent-btn" data-id="${agent.id}" style="padding: 0.375rem 0.875rem; font-size: 0.8125rem;">Edit</button>
+                            <div style="display: flex; gap: 0.375rem; flex-shrink: 0;">
+                                <button type="button" class="btn-small btn-secondary edit-agent-btn" data-id="${agent.id}" style="padding: 0.375rem 0.875rem; font-size: 0.8125rem;">Edit</button>
+                                <button type="button" class="btn-small btn-danger delete-agent-btn" data-id="${agent.id}" data-name="${agent.name.replace(/"/g, '&quot;')}" style="padding: 0.375rem 0.875rem; font-size: 0.8125rem;">Delete</button>
+                            </div>
                         </div>
                         <div style="font-size: 0.75rem; margin-bottom: 0.375rem;">${companyLabel}</div>
                         <div style="font-size: 0.8125rem; color: var(--slate-light); margin-bottom: 0.75rem;">

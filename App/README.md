@@ -5122,3 +5122,170 @@ live database connection here — the SQL was checked by hand against
 the existing `agents`/`users` schema and follows the same query
 patterns already proven elsewhere in `db.js` (e.g.
 `getDeliveryCompanies()`, `getAgentsByCompany()`).
+
+## Fleet Directory / Fleet — delete an agent
+
+**Reported:** a follow-up ask, right after the company-picker fix
+above, to add a way to delete an agent — there wasn't one anywhere:
+neither Admin's Fleet Directory nor a delivery company's own "Fleet"
+tab had ever had more than Add and Edit.
+
+**What changed:** a "Delete" button now sits next to "Edit" on every
+agent card, in both places agents are managed: Admin/staff's Fleet
+Directory (both entry points — Manage Agent's inline section and Super
+Admin's dedicated modal, which already shared one render function,
+`renderAgentContacts()`) and a delivery company's own "Fleet" tab
+(`dc-agents-list`). Clicking it shows a plain `confirm()` dialog naming
+the agent (matching the existing pattern used for removing a home
+banner slide), then emits a new `agent:remove` Socket.io event.
+
+On the backend, `agent:remove` mirrors `agent:update`'s authorization
+exactly: an admin/staff account can remove any agent (same
+unrestricted rights it already has to edit/reassign any agent), a
+`delivery_company` account can only remove its own (same ownership
+check, "Agent not found" on mismatch rather than leaking that the
+agent exists under someone else). A new `db.deleteAgent(id)` does a
+straightforward hard delete — safe because nothing in the schema has a
+foreign key pointing at `agents.id`; `accepted_by` on orders is a
+free-text snapshot of the agent's name at acceptance time, not a
+reference (see the existing comment on the `agents` table in
+schema.sql), so a deleted agent's historical deliveries stay intact
+and readable, they just no longer resolve back to a live agent record.
+
+On the client, Admin's side gets a live `socket.on('agent:removed', …)`
+handler (mirroring the existing `agent:created`/`agent:updated`
+handlers) that filters the removed agent out of `agentRecords` and
+re-renders everywhere that list feeds — the same broadcast-and-sync
+pattern already used for creates and updates. The delivery company's
+own Fleet tab doesn't have a live socket sync for its agent list at
+all (creates/edits there have always just re-fetched via
+`loadDeliveryCompanyAgents()` afterward, not listened for broadcasts),
+so delete follows that same established pattern rather than
+introducing a new one: it re-fetches the agents list and the overview
+stats after a successful delete.
+
+**Verified:** a new Playwright pass (`verify_agent_delete.js`, 15
+checks) confirms: a Delete button renders on every Fleet Directory
+agent card with the correct agent id/name in its data attributes;
+cancelling the confirm dialog makes no `agent:remove` call; confirming
+it emits `agent:remove` with the right id; a server-side rejection
+shows an error toast and leaves the agent in the local list untouched
+(no optimistic removal before the server confirms); the removal
+side-effect correctly filters `agentRecords` and rebuilds the
+name→phone `agents` lookup other parts of the app read from; the
+delivery company's own Fleet tab renders its own Delete button per
+agent card; and deleting there emits `agent:remove` and triggers
+exactly one re-fetch each of the agents list and the overview stats.
+`node --check` passed on `server/server.js` and `server/db.js`
+directly. Re-ran the full accumulated Playwright suite from this
+session afterward — all still passing with zero failures. What could
+not be verified in this sandbox: the actual Postgres `DELETE` and its
+interaction with a live Socket.io broadcast across multiple connected
+clients, since there's no live database or multi-client environment
+here — the query was checked by hand and the broadcast reuses the
+already-proven `emitAgentEvent()` helper unchanged.
+
+## Super Admin sidebar — grouped, collapsible navigation
+
+**Reported:** a full redesign request for the left sidebar of the
+Super Admin dashboard. The old sidebar was a single flat list of 16
+nav buttons (Platform Overview, Delivery Operations, Order History,
+Monthly Report, Add Expense, Fleet Directory, Customers, Vendors,
+Delivery Companies, Payouts & Commission, Staff Accounts, Disputes,
+Audit Log, Platform Settings, Settings, Help & Support) stacked
+top-to-bottom with no organization — already tall enough to overflow
+short viewports (the sidebar's CSS clips overflow, so items past the
+bottom were silently unreachable), and only getting taller as features
+get added. The ask was to reorganize it into labelled, collapsible
+sections — Overview, Operations, Network, Finance, Management, System,
+Support — each with a clickable header, a chevron that rotates to show
+expanded/collapsed state, a smooth open/close animation, the section
+containing whatever's currently on-screen auto-expanded, the
+expand/collapse choice remembered for the session, and no section left
+empty-looking.
+
+**What changed:** every existing nav button keeps its exact id, label,
+icon, and click behavior — nothing was rewritten, only re-parented.
+The flat `<nav class="admin-nav">` became seven `.admin-nav-group`
+wrapper sections (`data-group="overview|operations|network|finance
+|management|system|support"`), each with a header (title + chevron)
+and a body holding the original buttons, grouped exactly per the
+spec's mapping. Add Expense and Monthly Report were asked for in two
+groups (Operations and Finance) — rather than duplicate an id, each
+got a second real button with a distinct id
+(`add-expense-btn-finance`, `open-monthly-report-btn-finance`, same
+label/icon as the original) wired to the exact same handler function,
+so there's one source of truth for what happens on click and no risk
+of the two copies drifting apart.
+
+The collapse/expand animation uses a CSS-grid trick
+(`grid-template-rows: 1fr` → `0fr` on an inner wrapper with
+`overflow: hidden`) instead of measuring `scrollHeight` in JS, so it
+animates smoothly regardless of how many items are visible in a group
+at the time (which varies by role — see below). A header click toggles
+its group, updates `aria-expanded`, and saves the expanded/collapsed
+state for all seven groups to `sessionStorage` — deliberately
+`sessionStorage`, not `localStorage`, per "remember during the current
+session," so it resets on tab close rather than persisting forever.
+`setAdminMainView()` now also auto-expands whichever group holds the
+view just switched to (Overview for Platform Overview, Operations for
+the operational dashboard), so the active section is never hidden
+behind a collapsed header.
+
+Two groups (Overview, Management) are Super-Admin-only in their
+entirety for a Manage Agent account, and feature toggles can hide
+individual items inside other groups — so a group can end up with zero
+visible items depending on who's logged in. A new
+`refreshAdminSidebarGroupVisibility()` checks each group's actual
+children for `display !== 'none'` and adds an `is-empty` class (which
+hides the group) when none are visible, rather than hardcoding
+per-role assumptions — so it stays correct automatically if roles or
+feature flags change later. It's called once on init and again
+whenever `applyMyFeatureRestrictions()` runs.
+
+Fixing the "already overflowing, silently clipped" problem meant
+`.admin-sidebar` needed a real scroll region instead of a fixed
+`min-height` with hidden overflow: it's now a fixed-height flex column
+with the logo pinned at the top, the footer pinned at the bottom, and
+only the middle `.admin-nav` scrolling internally (with a thin styled
+scrollbar) when its seven groups don't all fit — a net improvement
+over the prior behavior (which had the same problem but no way to
+reach the clipped items at all), not just a side effect of the
+redesign.
+
+**Verified:** a new Playwright pass (`verify_sidebar_groups.js`, 28
+checks) confirms: all seven groups render with the correct titles and
+a chevron each; every one of the 18 original nav items still exists
+and sits in its spec-mapped group; the two Finance duplicates have
+correct labels, no id collisions, and clicking either opens the same
+modal the original button opens; all groups start expanded on a fresh
+session; clicking a header collapses its group, flips `aria-expanded`,
+and persists the choice to `sessionStorage`; re-running
+`initAdminSidebarGroups()` (simulating a fresh page load) correctly
+restores the collapsed/expanded state from that saved session data
+without touching other groups; empty groups (Overview/Management for
+a Manage Agent account) get marked `is-empty` and un-mark themselves
+the moment a Super-Admin-only item inside them is revealed; and
+`setAdminMainView('platform')` / `setAdminMainView('operational')`
+each auto-expand the correct group for the view being switched to.
+Four screenshots (`screenshot_sidebar_groups_expanded.png`,
+`screenshot_sidebar_groups_collapsed.png`,
+`screenshot_sidebar_scrolled_bottom.png`,
+`screenshot_sidebar_full.png`) visually confirm the grouped design,
+correct chevron rotation on collapse, correct active-item highlighting,
+and correct internal scrolling with the footer staying pinned below
+the last group. `node --check` passed on the extracted client script.
+Re-ran the full accumulated Playwright suite from this session
+afterward, several times — including runs specifically designed to
+reproduce a one-off flake seen mid-session (a single assertion showing
+a stale value only when `verify_sidebar_groups.js` ran last in a long
+sequential loop of many scripts) — every re-run since, standalone and
+as part of the full suite, has passed cleanly at 28/28 with zero
+failures, and the flake never reproduced again; the code path in
+question is fully synchronous with no timing dependency, so this is
+attributed to transient resource contention from launching many
+Chromium instances back-to-back in this sandbox, not a product bug.
+What could not be verified in this sandbox: real mouse-driven
+click-and-drag or touch behavior on an actual small-screen device,
+since Playwright here drives the DOM/CSS directly rather than through
+a physical browser session.

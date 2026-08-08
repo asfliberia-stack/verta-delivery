@@ -798,6 +798,16 @@ const db = {
     return rowToAgent(rows[0]);
   },
 
+  // Hard delete — safe to do: nothing in the schema has a foreign key
+  // pointing at agents.id (accepted_by on orders is a free-text
+  // snapshot of the agent's name, not a reference — see the comment on
+  // the agents table in schema.sql), so removing an agent never breaks
+  // historical order records.
+  async deleteAgent(id) {
+    const { rowCount } = await pool.query('DELETE FROM agents WHERE id = $1', [id]);
+    return rowCount > 0;
+  },
+
   // ---- Password resets -----------------------------------------------
 
   async createPasswordReset({ id, userId, codeHash, expiresAt }) {

@@ -581,6 +581,38 @@ io.on('connection', (socket) => {
     }
   });
 
+  // Removing an agent — same authorization shape as agent:update: an
+  // admin/staff account can remove any agent (mirrors its unrestricted
+  // edit/reassign rights), a delivery_company can only remove its own.
+  // Hard delete is safe (see the comment on db.deleteAgent) — no
+  // historical order data references agents.id.
+  socket.on('agent:remove', async ({ id }, ack) => {
+    if (!isAdminLike(socket.user.role) && socket.user.role !== 'delivery_company') {
+      return ack && ack({ ok: false, error: 'Only admins can remove agents' });
+    }
+    if (isAdminLike(socket.user.role) && !(await checkFeatureEnabled(socket.user, 'fleet'))) {
+      return ack && ack({ ok: false, error: `This feature has been turned off for your account by a Super Admin: ${FEATURE_KEYS.fleet}` });
+    }
+    try {
+      const existing = await db.getAgentById(id);
+      if (!existing) return ack && ack({ ok: false, error: 'Agent not found' });
+      if (socket.user.role === 'delivery_company' && existing.deliveryCompanyId !== socket.user.id) {
+        return ack && ack({ ok: false, error: 'Agent not found' });
+      }
+      const removed = await db.deleteAgent(id);
+      if (!removed) return ack && ack({ ok: false, error: 'Agent not found' });
+      // Broadcast the pre-deletion record (it has the id and
+      // deliveryCompanyId emitAgentEvent needs to route the event) so
+      // every connected admin/staff tab and the owning company's tab
+      // can drop it from their local list.
+      emitAgentEvent('agent:removed', existing);
+      ack && ack({ ok: true });
+    } catch (err) {
+      console.error('agent:remove failed', err);
+      ack && ack({ ok: false, error: 'Failed to remove agent' });
+    }
+  });
+
   // "On Duty / Off Duty" — explicitly admin-set, not automatic presence
   // (see the duty_status comment in schema.sql for why).
   socket.on('agent:set-duty-status', async ({ id, dutyStatus }, ack) => {
