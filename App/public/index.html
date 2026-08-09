@@ -2573,6 +2573,11 @@
             -webkit-overflow-scrolling: touch; scrollbar-width: none; -ms-overflow-style: none; padding-bottom: 0.25rem;
         }
         .store-row-scroll::-webkit-scrollbar { display: none; }
+        .dcust-food-section { margin-bottom: 1.75rem; }
+        .dcust-food-tabs { display: flex; gap: 0.625rem; }
+        .dcust-food-tab { border-radius: 999px; padding: 0.5rem 1.25rem; }
+        .store-grid-full { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 1rem; margin-top: 1rem; }
+        .store-grid-full .store-card { width: auto; cursor: pointer; }
         .store-row-scroll .store-card { flex-shrink: 0; width: 100px; scroll-snap-align: start; }
 
         .cart-line-item {
@@ -4200,6 +4205,30 @@
 
                 <!-- Dashboard view -->
                 <div id="dcust-view-dashboard">
+                    <!-- Order Food — lives inside ONLib Delivery, alongside
+                         package sending below. A restaurant is a real
+                         vendor (vendor_type = 'restaurant'); its dishes are
+                         real products; "Add to Cart" → checkout reuses the
+                         exact same cart/checkout modal and
+                         /api/marketplace/checkout endpoint the Marketplace
+                         already uses — which already creates a real linked
+                         delivery order (pickup = restaurant address,
+                         dropoff = customer address), so this order shows
+                         up in "Your Orders" below like any other delivery. -->
+                    <section class="dcust-food-section" id="dcust-food-section">
+                        <div class="form-group" style="margin-bottom:0.75rem;">
+                            <input type="text" class="form-input" id="dcust-food-search" placeholder="Search food or restaurant…">
+                        </div>
+                        <div class="dcust-food-tabs">
+                            <button type="button" class="btn-small btn-primary dcust-food-tab active" data-food-tab="food" id="dcust-food-tab-food">Food</button>
+                            <button type="button" class="btn-small btn-secondary dcust-food-tab" data-food-tab="grocery" id="dcust-food-tab-grocery">Grocery</button>
+                        </div>
+                        <div class="dcust-table-controls" style="margin-top:1.25rem;">
+                            <div class="section-title" style="margin:0;" id="dcust-food-section-title">Popular Restaurants</div>
+                        </div>
+                        <div id="dcust-food-cards-grid" class="store-grid-full"></div>
+                    </section>
+
                     <div class="dcust-stats-grid">
                         <div class="stat-card">
                             <div class="stat-card-top">
@@ -4279,6 +4308,22 @@
                 <div id="dcust-view-my-orders" style="display:none;">
                     <div class="mobile-section-header"><div class="section-title">My Orders</div></div>
                     <div class="orders-grid" id="dcust-my-orders-grid"></div>
+                </div>
+
+                <!-- Restaurant menu — opened from a Popular Restaurants
+                     card. Dishes are just that vendor's real products
+                     (already loaded into storefrontProducts by
+                     loadStorefront); "Add to Cart" is the exact same
+                     addToCart() the Marketplace PDP uses. -->
+                <div id="dcust-view-restaurant-menu" style="display:none;">
+                    <div class="dcust-table-controls" style="margin-bottom:1rem;">
+                        <button type="button" class="btn-small btn-secondary" id="dcust-restaurant-back-btn">&larr; Back</button>
+                        <div class="section-title" style="margin:0;" id="dcust-restaurant-menu-title">Menu</div>
+                        <button type="button" class="btn-small btn-primary" id="dcust-restaurant-cart-btn" style="position:relative;">
+                            Cart <span id="dcust-restaurant-cart-count">(0)</span>
+                        </button>
+                    </div>
+                    <div id="dcust-restaurant-menu-grid" class="product-grid"></div>
                 </div>
             </main>
             <nav class="mobile-bottom-nav">
@@ -8886,6 +8931,13 @@
                 }
                 refreshAllViews();
                 renderDeliveryCustomerStats();
+                setDeliveryCustomerView('dashboard');
+                // Food ordering shares the Marketplace's product/vendor
+                // data (a restaurant is just a vendor) — load it here too
+                // so "Order Food" works even for someone who opens
+                // Delivery directly without ever visiting Marketplace.
+                loadStorefront();
+                loadFollowedVendorIds();
             }
         }
 
@@ -8913,11 +8965,54 @@
         function setDeliveryCustomerView(view) {
             document.getElementById('dcust-view-dashboard').style.display = view === 'dashboard' ? 'block' : 'none';
             document.getElementById('dcust-view-my-orders').style.display = view === 'my-orders' ? 'block' : 'none';
+            document.getElementById('dcust-view-restaurant-menu').style.display = view === 'restaurant-menu' ? 'block' : 'none';
             document.getElementById('dcust-nav-dashboard').classList.toggle('active', view === 'dashboard');
             document.getElementById('dcust-nav-my-orders').classList.toggle('active', view === 'my-orders');
             document.getElementById('dcust-mnav-dashboard').classList.toggle('active', view === 'dashboard');
             document.getElementById('dcust-mnav-my-orders').classList.toggle('active', view === 'my-orders');
             if (view === 'my-orders') renderSenderOrdersTable('dcust-my-orders-grid');
+        }
+
+        // Restaurant menu drill-down — the dishes are just that
+        // vendor's real products (already in storefrontProducts from
+        // loadStorefront), so no new fetch is needed to open this.
+        function openDcustRestaurantMenu(restaurantId) {
+            const restaurant = popularRestaurantsCache.find(r => r.id === restaurantId);
+            if (!restaurant) return;
+            document.getElementById('dcust-restaurant-menu-title').textContent = restaurant.businessName;
+            const dishes = storefrontProducts.filter(p => p.vendorId === restaurantId);
+            const grid = document.getElementById('dcust-restaurant-menu-grid');
+            if (dishes.length === 0) {
+                renderEmptyState(grid, `${restaurant.businessName} hasn't listed any dishes yet.`);
+            } else {
+                grid.innerHTML = dishes.map(d => `
+                    <div class="product-card">
+                        <img class="product-card-image" src="${d.imageDataUrl || 'assets/logo.png'}" alt="${d.name}">
+                        <div class="product-card-body">
+                            <div class="product-card-name">${d.name}</div>
+                            <div class="product-card-price">$${d.price.toFixed(2)}</div>
+                        </div>
+                        <div class="product-card-actions" style="display:flex;">
+                            <button type="button" class="btn-small btn-primary dcust-dish-add-btn" data-id="${d.id}" style="flex:1;" ${d.stockQuantity <= 0 ? 'disabled' : ''}>
+                                ${d.stockQuantity <= 0 ? 'Out of stock' : 'Add to Cart'}
+                            </button>
+                        </div>
+                    </div>
+                `).join('');
+            }
+            updateDcustCartCount();
+            setDeliveryCustomerView('restaurant-menu');
+        }
+
+        function updateDcustCartCount() {
+            const count = cart.reduce((sum, c) => sum + c.quantity, 0);
+            const el = document.getElementById('dcust-restaurant-cart-count');
+            if (el) el.textContent = `(${count})`;
+        }
+
+        function openCartModal() {
+            renderCartModal();
+            document.getElementById('cart-modal').classList.add('active');
         }
 
         async function openDcustAddressesModal() {
@@ -15964,19 +16059,50 @@
                 // Popular Stores preview on the Home tab — real data,
                 // capped to a handful for a compact preview row.
                 const storesData = await apiFetch('/api/marketplace/stores').catch(() => ({ stores: [] }));
-                renderStoreCards(document.getElementById('mp-popular-stores-preview'), (storesData.stores || []).slice(0, 4));
+                popularStoresCache = storesData.stores || [];
+                renderStoreCards(document.getElementById('mp-popular-stores-preview'), popularStoresCache.slice(0, 4));
 
                 // Popular Restaurants preview — same pattern, only shown
                 // once at least one restaurant vendor exists so the
                 // section doesn't sit there permanently empty on a
                 // marketplace with no restaurants yet.
                 const restaurantsData = await apiFetch('/api/marketplace/restaurants').catch(() => ({ restaurants: [] }));
-                const restaurants = restaurantsData.restaurants || [];
+                popularRestaurantsCache = restaurantsData.restaurants || [];
                 const restaurantsSection = document.getElementById('mp-popular-restaurants-section');
-                if (restaurantsSection) restaurantsSection.style.display = restaurants.length > 0 ? 'block' : 'none';
-                renderRestaurantCards(document.getElementById('mp-popular-restaurants-preview'), restaurants.slice(0, 4));
+                if (restaurantsSection) restaurantsSection.style.display = popularRestaurantsCache.length > 0 ? 'block' : 'none';
+                renderRestaurantCards(document.getElementById('mp-popular-restaurants-preview'), popularRestaurantsCache.slice(0, 4));
+
+                // Also refresh the ONLib Delivery "Order Food" section —
+                // it shares this exact same data (a restaurant is just a
+                // vendor), so no separate fetch, just a separate render
+                // target when that section is the one currently visible.
+                renderDcustFoodSection();
             } catch (err) {
                 console.error('Failed to load storefront', err);
+            }
+        }
+
+        // Real data shared between the Marketplace's Popular Stores/
+        // Restaurants preview rows and ONLib Delivery's own "Order Food"
+        // section (same vendors, same endpoints — see loadStorefront).
+        let popularStoresCache = [];
+        let popularRestaurantsCache = [];
+        let dcustFoodTab = 'food';
+
+        function renderDcustFoodSection() {
+            const grid = document.getElementById('dcust-food-cards-grid');
+            const title = document.getElementById('dcust-food-section-title');
+            if (!grid) return;
+            if (dcustFoodTab === 'food') {
+                if (title) title.textContent = 'Popular Restaurants';
+                if (popularRestaurantsCache.length === 0) {
+                    grid.innerHTML = '<p style="grid-column: 1 / -1; text-align:center; color:var(--slate-light); font-size:0.875rem;">No restaurants yet.</p>';
+                } else {
+                    renderRestaurantCards(grid, popularRestaurantsCache);
+                }
+            } else {
+                if (title) title.textContent = 'Grocery & Other Stores';
+                renderStoreCards(grid, popularStoresCache);
             }
         }
 
@@ -15984,7 +16110,7 @@
             if (!container) return;
             const canFollow = currentUser && currentUser.role === 'sender';
             container.innerHTML = restaurants.map(r => `
-                <div class="store-card">
+                <div class="store-card" data-restaurant-id="${r.id}">
                     ${canFollow ? `
                         <button type="button" class="store-card-follow-btn ${followedVendorIds.has(r.id) ? 'following' : ''}" data-id="${r.id}" aria-label="Follow restaurant" title="${followedVendorIds.has(r.id) ? 'Following' : 'Follow this restaurant'}">
                             <svg viewBox="0 0 24 24" fill="${followedVendorIds.has(r.id) ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
@@ -16708,6 +16834,7 @@
                 stockQuantity: availableStock, selectedColor: color, selectedSize: size,
             });
             updateCartCount();
+            updateDcustCartCount();
             const variantSuffix = [color, size].filter(Boolean).join(', ');
             showToast(`Added ${product.name}${variantSuffix ? ` (${variantSuffix})` : ''} to cart`, 'success');
         }
@@ -17173,6 +17300,59 @@
                 popularRestaurantsPreview.addEventListener('click', (e) => {
                     const btn = e.target.closest('.store-card-follow-btn');
                     if (btn) toggleFollowStore(btn.dataset.id);
+                });
+            }
+
+            // ---- ONLib Delivery — Order Food section ----
+            const dcustFoodGrid = document.getElementById('dcust-food-cards-grid');
+            if (dcustFoodGrid) {
+                dcustFoodGrid.addEventListener('click', (e) => {
+                    const followBtn = e.target.closest('.store-card-follow-btn');
+                    if (followBtn) { toggleFollowStore(followBtn.dataset.id); return; }
+                    const card = e.target.closest('.store-card[data-restaurant-id]');
+                    if (card) openDcustRestaurantMenu(card.dataset.restaurantId);
+                });
+            }
+            const dcustFoodTabFood = document.getElementById('dcust-food-tab-food');
+            const dcustFoodTabGrocery = document.getElementById('dcust-food-tab-grocery');
+            if (dcustFoodTabFood && dcustFoodTabGrocery) {
+                dcustFoodTabFood.addEventListener('click', () => {
+                    dcustFoodTab = 'food';
+                    dcustFoodTabFood.classList.replace('btn-secondary', 'btn-primary');
+                    dcustFoodTabGrocery.classList.replace('btn-primary', 'btn-secondary');
+                    renderDcustFoodSection();
+                });
+                dcustFoodTabGrocery.addEventListener('click', () => {
+                    dcustFoodTab = 'grocery';
+                    dcustFoodTabGrocery.classList.replace('btn-secondary', 'btn-primary');
+                    dcustFoodTabFood.classList.replace('btn-primary', 'btn-secondary');
+                    renderDcustFoodSection();
+                });
+            }
+            const dcustFoodSearch = document.getElementById('dcust-food-search');
+            if (dcustFoodSearch) {
+                dcustFoodSearch.addEventListener('input', () => {
+                    const q = dcustFoodSearch.value.trim().toLowerCase();
+                    const source = dcustFoodTab === 'food' ? popularRestaurantsCache : popularStoresCache;
+                    const filtered = q ? source.filter(s => s.businessName.toLowerCase().includes(q)) : source;
+                    const grid = document.getElementById('dcust-food-cards-grid');
+                    if (dcustFoodTab === 'food') renderRestaurantCards(grid, filtered);
+                    else renderStoreCards(grid, filtered);
+                });
+            }
+            const dcustRestaurantBackBtn = document.getElementById('dcust-restaurant-back-btn');
+            if (dcustRestaurantBackBtn) {
+                dcustRestaurantBackBtn.addEventListener('click', () => setDeliveryCustomerView('dashboard'));
+            }
+            const dcustRestaurantCartBtn = document.getElementById('dcust-restaurant-cart-btn');
+            if (dcustRestaurantCartBtn) {
+                dcustRestaurantCartBtn.addEventListener('click', openCartModal);
+            }
+            const dcustRestaurantMenuGrid = document.getElementById('dcust-restaurant-menu-grid');
+            if (dcustRestaurantMenuGrid) {
+                dcustRestaurantMenuGrid.addEventListener('click', (e) => {
+                    const btn = e.target.closest('.dcust-dish-add-btn');
+                    if (btn) addToCart(btn.dataset.id, { quantity: 1 });
                 });
             }
 
