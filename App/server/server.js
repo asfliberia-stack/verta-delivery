@@ -687,9 +687,12 @@ const MAX_DOCUMENT_BYTES = 2 * 1024 * 1024; // ~2MB raw per document — these a
 const VALID_ID_DOCUMENT_TYPES = ['passport', 'national_id', 'drivers_license'];
 
 app.post('/api/auth/register-vendor', authLimiter, async (req, res) => {
-  const { businessName, email, password, phone, businessRegistrationDoc, idDocumentType, idDocumentDoc } = req.body || {};
+  const { businessName, email, password, phone, businessRegistrationDoc, idDocumentType, idDocumentDoc, vendorType } = req.body || {};
   if (!businessName || !email || !password || !phone) {
     return res.status(400).json({ error: 'Business name, email, phone, and password are required' });
+  }
+  if (vendorType !== undefined && vendorType !== 'store' && vendorType !== 'restaurant') {
+    return res.status(400).json({ error: 'Invalid business type' });
   }
   if (password.length < 8) {
     return res.status(400).json({ error: 'Password must be at least 8 characters' });
@@ -720,6 +723,7 @@ app.post('/api/auth/register-vendor', authLimiter, async (req, res) => {
       idDocumentType,
       idDocumentDoc,
       appliedAt: new Date().toISOString(),
+      vendorType: vendorType === 'restaurant' ? 'restaurant' : 'store',
     });
 
     // Real notification attempt — fire-and-forget, never blocks the
@@ -732,7 +736,7 @@ app.post('/api/auth/register-vendor', authLimiter, async (req, res) => {
     const token = signToken(user, sessionId);
     res.json({
       token,
-      user: { id: user.id, businessName: user.businessName, email: user.email, phone: user.phone, storeAddress: user.storeAddress, profileImageUrl: user.profileImageUrl, role: user.role, approvalStatus: user.approvalStatus, rejectionReason: user.rejectionReason },
+      user: { id: user.id, businessName: user.businessName, email: user.email, phone: user.phone, storeAddress: user.storeAddress, vendorType: user.vendorType, profileImageUrl: user.profileImageUrl, role: user.role, approvalStatus: user.approvalStatus, rejectionReason: user.rejectionReason },
     });
   } catch (err) {
     console.error('register-vendor failed', err);
@@ -2760,6 +2764,18 @@ app.get('/api/marketplace/stores', async (req, res) => {
   } catch (err) {
     console.error('GET /api/marketplace/stores failed', err);
     res.status(500).json({ error: 'Failed to load stores' });
+  }
+});
+
+// Public — Popular Restaurants, same real-data pattern as
+// /api/marketplace/stores above, scoped to vendor_type = 'restaurant'.
+app.get('/api/marketplace/restaurants', async (req, res) => {
+  try {
+    const restaurants = await db.getPopularRestaurants();
+    res.json({ restaurants });
+  } catch (err) {
+    console.error('GET /api/marketplace/restaurants failed', err);
+    res.status(500).json({ error: 'Failed to load restaurants' });
   }
 });
 

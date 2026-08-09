@@ -425,6 +425,16 @@ CREATE INDEX IF NOT EXISTS idx_leads_vendor_id ON leads (vendor_id, created_at D
 -- duplicate of it.
 ALTER TABLE users ADD COLUMN IF NOT EXISTS store_address TEXT;
 
+-- Restaurants as a real vendor type, not a separate table/entity — a
+-- restaurant IS a vendor (role = 'vendor'), just one that sells food.
+-- Its dishes are ordinary rows in products (already supports name,
+-- price, image, stock, category), so the entire existing
+-- create/edit/order/review/Q&A pipeline works for a restaurant's menu
+-- with zero duplication. This column only distinguishes how a vendor
+-- is labeled and surfaced on the storefront (Popular Restaurants vs
+-- Popular Stores) — it changes no permissions or data model.
+ALTER TABLE users ADD COLUMN IF NOT EXISTS vendor_type TEXT NOT NULL DEFAULT 'store' CHECK (vendor_type IN ('store', 'restaurant'));
+
 -- Real profile photo, any role — stored as a data URL like the
 -- business logo already is (see MAX_PROFILE_IMAGE_BYTES in server.js
 -- for the size cap enforced on upload).

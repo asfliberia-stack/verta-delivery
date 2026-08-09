@@ -252,6 +252,7 @@ function rowToUser(r) {
     appliedAt: r.applied_at,
     createdAt: r.created_at,
     storeAddress: r.store_address,
+    vendorType: r.vendor_type || 'store',
     profileImageUrl: r.profile_image_url,
     isDisabled: r.is_disabled,
     disabledFeatures: r.disabled_features || [],
@@ -285,11 +286,11 @@ const db = {
 
   // ---- Users -------------------------------------------------------
 
-  async createUser({ id, businessName, email, phone, passwordHash, role, approvalStatus, businessRegistrationDoc, idDocumentType, idDocumentDoc, appliedAt }) {
+  async createUser({ id, businessName, email, phone, passwordHash, role, approvalStatus, businessRegistrationDoc, idDocumentType, idDocumentDoc, appliedAt, vendorType }) {
     const { rows } = await pool.query(
-      `INSERT INTO users (id, business_name, email, phone, password_hash, role, approval_status, business_registration_doc, id_document_type, id_document_doc, applied_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *`,
-      [id, businessName, email.toLowerCase(), phone || null, passwordHash, role, approvalStatus || 'approved', businessRegistrationDoc || null, idDocumentType || null, idDocumentDoc || null, appliedAt || null]
+      `INSERT INTO users (id, business_name, email, phone, password_hash, role, approval_status, business_registration_doc, id_document_type, id_document_doc, applied_at, vendor_type)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING *`,
+      [id, businessName, email.toLowerCase(), phone || null, passwordHash, role, approvalStatus || 'approved', businessRegistrationDoc || null, idDocumentType || null, idDocumentDoc || null, appliedAt || null, vendorType === 'restaurant' ? 'restaurant' : 'store']
     );
     return rowToUser(rows[0]);
   },
@@ -2165,7 +2166,7 @@ const db = {
       FROM users u
       LEFT JOIN products p ON p.vendor_id = u.id AND p.is_active = true
       LEFT JOIN product_reviews r ON r.product_id = p.id
-      WHERE u.role = 'vendor'
+      WHERE u.role = 'vendor' AND u.vendor_type = 'store'
       GROUP BY u.id
       ORDER BY u.business_name ASC
     `);
@@ -2177,6 +2178,43 @@ const db = {
       productCount: r.product_count,
       avgRating: Number(r.avg_rating),
       reviewCount: r.review_count,
+    }));
+  },
+
+  // Restaurants tab — same real-data discipline as getStorefrontVendors
+  // (no fabricated delivery-time/rating placeholders): each card gets a
+  // real dish count, a real aggregate rating from product_reviews on
+  // that restaurant's dishes, and a real "from" price (the cheapest
+  // active dish), or null if the restaurant hasn't listed anything yet.
+  // A restaurant with zero dishes still shows up here (so a newly
+  // approved restaurant isn't invisible) with dishCount 0 and
+  // startingPrice null; the frontend is responsible for hiding a
+  // "from $X" line when startingPrice is null rather than this query
+  // inventing a number.
+  async getPopularRestaurants() {
+    const { rows } = await pool.query(`
+      SELECT u.id, u.business_name, u.store_address, u.phone, u.profile_image_url,
+        COUNT(DISTINCT p.id)::int AS dish_count,
+        COALESCE(AVG(r.rating), 0)::numeric AS avg_rating,
+        COUNT(r.id)::int AS review_count,
+        MIN(p.price) AS starting_price
+      FROM users u
+      LEFT JOIN products p ON p.vendor_id = u.id AND p.is_active = true
+      LEFT JOIN product_reviews r ON r.product_id = p.id
+      WHERE u.role = 'vendor' AND u.vendor_type = 'restaurant'
+      GROUP BY u.id
+      ORDER BY avg_rating DESC, dish_count DESC, u.business_name ASC
+    `);
+    return rows.map(r => ({
+      id: r.id,
+      businessName: r.business_name,
+      storeAddress: r.store_address,
+      phone: r.phone,
+      profileImageUrl: r.profile_image_url,
+      dishCount: r.dish_count,
+      avgRating: Number(r.avg_rating),
+      reviewCount: r.review_count,
+      startingPrice: r.starting_price !== null ? Number(r.starting_price) : null,
     }));
   },
 

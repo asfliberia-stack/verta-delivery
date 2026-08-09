@@ -3072,6 +3072,13 @@
                         <input type="text" class="form-input" id="register-vendor-name" placeholder="e.g. Girlee Fashion">
                     </div>
                     <div class="form-group">
+                        <label class="form-label">Business Type</label>
+                        <select class="form-input" id="register-vendor-type">
+                            <option value="store">Store — general products</option>
+                            <option value="restaurant">Restaurant — food menu</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
                         <label class="form-label">Business Registration Document</label>
                         <div class="auth-upload-row">
                             <img id="register-vendor-biz-doc-preview" class="auth-upload-thumb" style="display:none;" alt="Preview">
@@ -3367,6 +3374,13 @@
                             <button type="button" class="btn-small btn-secondary" id="storefront-clear-filters-btn">Clear</button>
                         </div>
                         <div id="storefront-products-container"></div>
+                    </div>
+
+                    <div class="mobile-section" id="mp-popular-restaurants-section" style="display:none;">
+                        <div class="mobile-section-header">
+                            <div class="mobile-section-title">Popular Restaurants</div>
+                        </div>
+                        <div id="mp-popular-restaurants-preview" class="store-row-scroll"></div>
                     </div>
 
                     <div class="mobile-section">
@@ -9707,6 +9721,7 @@
 
                 if (registerRole === 'vendor') {
                     const businessName = document.getElementById('register-vendor-name').value.trim();
+                    const vendorType = document.getElementById('register-vendor-type').value === 'restaurant' ? 'restaurant' : 'store';
                     const idDocumentType = document.getElementById('register-vendor-id-type').value;
                     if (!businessName) {
                         errorEl.textContent = 'Please enter your store/business name.';
@@ -9724,7 +9739,7 @@
                         const data = await apiFetch('/api/auth/register-vendor', {
                             method: 'POST',
                             body: JSON.stringify({
-                                businessName, email, phone, password,
+                                businessName, email, phone, password, vendorType,
                                 businessRegistrationDoc: pendingBizDocDataUrl,
                                 idDocumentType,
                                 idDocumentDoc: pendingIdDocDataUrl,
@@ -15950,9 +15965,37 @@
                 // capped to a handful for a compact preview row.
                 const storesData = await apiFetch('/api/marketplace/stores').catch(() => ({ stores: [] }));
                 renderStoreCards(document.getElementById('mp-popular-stores-preview'), (storesData.stores || []).slice(0, 4));
+
+                // Popular Restaurants preview — same pattern, only shown
+                // once at least one restaurant vendor exists so the
+                // section doesn't sit there permanently empty on a
+                // marketplace with no restaurants yet.
+                const restaurantsData = await apiFetch('/api/marketplace/restaurants').catch(() => ({ restaurants: [] }));
+                const restaurants = restaurantsData.restaurants || [];
+                const restaurantsSection = document.getElementById('mp-popular-restaurants-section');
+                if (restaurantsSection) restaurantsSection.style.display = restaurants.length > 0 ? 'block' : 'none';
+                renderRestaurantCards(document.getElementById('mp-popular-restaurants-preview'), restaurants.slice(0, 4));
             } catch (err) {
                 console.error('Failed to load storefront', err);
             }
+        }
+
+        function renderRestaurantCards(container, restaurants) {
+            if (!container) return;
+            const canFollow = currentUser && currentUser.role === 'sender';
+            container.innerHTML = restaurants.map(r => `
+                <div class="store-card">
+                    ${canFollow ? `
+                        <button type="button" class="store-card-follow-btn ${followedVendorIds.has(r.id) ? 'following' : ''}" data-id="${r.id}" aria-label="Follow restaurant" title="${followedVendorIds.has(r.id) ? 'Following' : 'Follow this restaurant'}">
+                            <svg viewBox="0 0 24 24" fill="${followedVendorIds.has(r.id) ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
+                        </button>
+                    ` : ''}
+                    <div class="store-card-avatar">${r.businessName.charAt(0).toUpperCase()}</div>
+                    <div class="store-card-name">${r.businessName}</div>
+                    <div class="store-card-rating">${r.reviewCount > 0 ? '★ ' + r.avgRating.toFixed(1) : 'New'}</div>
+                    ${r.startingPrice !== null ? `<div class="store-card-address">From $${r.startingPrice.toFixed(2)}</div>` : ''}
+                </div>
+            `).join('');
         }
 
         function renderStoreCards(container, stores) {
@@ -17121,6 +17164,13 @@
             const popularStoresPreview = document.getElementById('mp-popular-stores-preview');
             if (popularStoresPreview) {
                 popularStoresPreview.addEventListener('click', (e) => {
+                    const btn = e.target.closest('.store-card-follow-btn');
+                    if (btn) toggleFollowStore(btn.dataset.id);
+                });
+            }
+            const popularRestaurantsPreview = document.getElementById('mp-popular-restaurants-preview');
+            if (popularRestaurantsPreview) {
+                popularRestaurantsPreview.addEventListener('click', (e) => {
                     const btn = e.target.closest('.store-card-follow-btn');
                     if (btn) toggleFollowStore(btn.dataset.id);
                 });
