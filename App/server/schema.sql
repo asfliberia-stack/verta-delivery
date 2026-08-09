@@ -435,6 +435,14 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS store_address TEXT;
 -- Popular Stores) — it changes no permissions or data model.
 ALTER TABLE users ADD COLUMN IF NOT EXISTS vendor_type TEXT NOT NULL DEFAULT 'store' CHECK (vendor_type IN ('store', 'restaurant'));
 
+-- Real, vendor-supplied estimate — set by a restaurant vendor in their
+-- own Settings (see PUT /api/me/profile), never fabricated by the
+-- platform. NULL until a restaurant fills it in, matching store_address's
+-- own "unset until the vendor sets it" pattern above. Only meaningful
+-- for vendor_type = 'restaurant', but not DB-constrained to that (a
+-- vendor could flip type later without losing data already entered).
+ALTER TABLE users ADD COLUMN IF NOT EXISTS avg_prep_time_minutes INTEGER;
+
 -- Real profile photo, any role — stored as a data URL like the
 -- business logo already is (see MAX_PROFILE_IMAGE_BYTES in server.js
 -- for the size cap enforced on upload).

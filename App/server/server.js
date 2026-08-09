@@ -670,7 +670,7 @@ app.post('/api/auth/register', authLimiter, async (req, res) => {
     });
     const sessionId = await recordLoginHistory(req, user.id);
     const token = signToken(user, sessionId);
-    res.json({ token, user: { id: user.id, businessName: user.businessName, email: user.email, phone: user.phone, storeAddress: user.storeAddress, profileImageUrl: user.profileImageUrl, role: user.role, approvalStatus: user.approvalStatus, rejectionReason: user.rejectionReason } });
+    res.json({ token, user: { id: user.id, businessName: user.businessName, email: user.email, phone: user.phone, storeAddress: user.storeAddress, vendorType: user.vendorType, avgPrepTimeMinutes: user.avgPrepTimeMinutes, profileImageUrl: user.profileImageUrl, role: user.role, approvalStatus: user.approvalStatus, rejectionReason: user.rejectionReason } });
   } catch (err) {
     console.error('register failed', err);
     res.status(500).json({ error: 'Registration failed' });
@@ -736,7 +736,7 @@ app.post('/api/auth/register-vendor', authLimiter, async (req, res) => {
     const token = signToken(user, sessionId);
     res.json({
       token,
-      user: { id: user.id, businessName: user.businessName, email: user.email, phone: user.phone, storeAddress: user.storeAddress, vendorType: user.vendorType, profileImageUrl: user.profileImageUrl, role: user.role, approvalStatus: user.approvalStatus, rejectionReason: user.rejectionReason },
+      user: { id: user.id, businessName: user.businessName, email: user.email, phone: user.phone, storeAddress: user.storeAddress, vendorType: user.vendorType, avgPrepTimeMinutes: user.avgPrepTimeMinutes, profileImageUrl: user.profileImageUrl, role: user.role, approvalStatus: user.approvalStatus, rejectionReason: user.rejectionReason },
     });
   } catch (err) {
     console.error('register-vendor failed', err);
@@ -791,7 +791,7 @@ app.post('/api/auth/register-delivery-company', authLimiter, async (req, res) =>
     const token = signToken(user, sessionId);
     res.json({
       token,
-      user: { id: user.id, businessName: user.businessName, email: user.email, phone: user.phone, storeAddress: user.storeAddress, profileImageUrl: user.profileImageUrl, role: user.role, approvalStatus: user.approvalStatus, rejectionReason: user.rejectionReason },
+      user: { id: user.id, businessName: user.businessName, email: user.email, phone: user.phone, storeAddress: user.storeAddress, vendorType: user.vendorType, avgPrepTimeMinutes: user.avgPrepTimeMinutes, profileImageUrl: user.profileImageUrl, role: user.role, approvalStatus: user.approvalStatus, rejectionReason: user.rejectionReason },
     });
   } catch (err) {
     console.error('register-delivery-company failed', err);
@@ -811,7 +811,7 @@ app.post('/api/auth/login', authLimiter, async (req, res) => {
 
     const sessionId = await recordLoginHistory(req, user.id);
     const token = signToken(user, sessionId);
-    res.json({ token, user: { id: user.id, businessName: user.businessName, email: user.email, phone: user.phone, storeAddress: user.storeAddress, profileImageUrl: user.profileImageUrl, role: user.role, approvalStatus: user.approvalStatus, rejectionReason: user.rejectionReason } });
+    res.json({ token, user: { id: user.id, businessName: user.businessName, email: user.email, phone: user.phone, storeAddress: user.storeAddress, vendorType: user.vendorType, avgPrepTimeMinutes: user.avgPrepTimeMinutes, profileImageUrl: user.profileImageUrl, role: user.role, approvalStatus: user.approvalStatus, rejectionReason: user.rejectionReason } });
   } catch (err) {
     console.error('login failed', err);
     res.status(500).json({ error: 'Login failed' });
@@ -891,7 +891,7 @@ app.post('/api/auth/google', authLimiter, async (req, res) => {
 
     const sessionId = await recordLoginHistory(req, user.id);
     const token = signToken(user, sessionId);
-    res.json({ token, user: { id: user.id, businessName: user.businessName, email: user.email, phone: user.phone, storeAddress: user.storeAddress, profileImageUrl: user.profileImageUrl, role: user.role, approvalStatus: user.approvalStatus, rejectionReason: user.rejectionReason } });
+    res.json({ token, user: { id: user.id, businessName: user.businessName, email: user.email, phone: user.phone, storeAddress: user.storeAddress, vendorType: user.vendorType, avgPrepTimeMinutes: user.avgPrepTimeMinutes, profileImageUrl: user.profileImageUrl, role: user.role, approvalStatus: user.approvalStatus, rejectionReason: user.rejectionReason } });
   } catch (err) {
     console.error('Google sign-in failed', err);
     res.status(401).json({ error: 'Google sign-in failed — the token could not be verified' });
@@ -1019,24 +1019,34 @@ app.post('/api/auth/admin-login', authLimiter, async (req, res) => {
 app.get('/api/me', requireAuth, async (req, res) => {
   const user = await db.getUserById(req.user.id);
   if (!user) return res.status(401).json({ error: 'Account no longer exists' });
-  res.json({ user: { id: user.id, businessName: user.businessName, email: user.email, phone: user.phone, storeAddress: user.storeAddress, profileImageUrl: user.profileImageUrl, role: user.role, approvalStatus: user.approvalStatus, rejectionReason: user.rejectionReason } });
+  res.json({ user: { id: user.id, businessName: user.businessName, email: user.email, phone: user.phone, storeAddress: user.storeAddress, vendorType: user.vendorType, avgPrepTimeMinutes: user.avgPrepTimeMinutes, profileImageUrl: user.profileImageUrl, role: user.role, approvalStatus: user.approvalStatus, rejectionReason: user.rejectionReason } });
 });
 
 // Self-service profile edit — any authenticated user updating their own
 // name/phone (customer, vendor, admin, or super admin). Email and
 // password stay on their existing separate flows.
 app.put('/api/me/profile', requireAuth, async (req, res) => {
-  const { businessName, phone, storeAddress } = req.body || {};
+  const { businessName, phone, storeAddress, avgPrepTimeMinutes } = req.body || {};
   if (!businessName || !businessName.trim()) {
     return res.status(400).json({ error: 'Name cannot be empty' });
   }
+  if (avgPrepTimeMinutes !== undefined && avgPrepTimeMinutes !== null) {
+    const n = Number(avgPrepTimeMinutes);
+    if (!Number.isFinite(n) || n < 0 || n > 500) {
+      return res.status(400).json({ error: 'Prep time must be a realistic number of minutes' });
+    }
+  }
   try {
+    const existing = await db.getUserById(req.user.id);
     const updated = await db.updateUserProfile(req.user.id, {
       businessName: businessName.trim(),
       phone: phone ? phone.trim() : null,
       storeAddress: req.user.role === 'vendor' && storeAddress !== undefined ? (storeAddress.trim() || null) : undefined,
+      avgPrepTimeMinutes: req.user.role === 'vendor' && existing && existing.vendorType === 'restaurant' && avgPrepTimeMinutes !== undefined
+        ? (avgPrepTimeMinutes === null || avgPrepTimeMinutes === '' ? null : Number(avgPrepTimeMinutes))
+        : undefined,
     });
-    res.json({ user: { id: updated.id, businessName: updated.businessName, email: updated.email, phone: updated.phone, storeAddress: updated.storeAddress, role: updated.role } });
+    res.json({ user: { id: updated.id, businessName: updated.businessName, email: updated.email, phone: updated.phone, storeAddress: updated.storeAddress, vendorType: updated.vendorType, avgPrepTimeMinutes: updated.avgPrepTimeMinutes, role: updated.role } });
   } catch (err) {
     console.error('PUT /api/me/profile failed', err);
     res.status(500).json({ error: 'Failed to update profile' });
@@ -1087,7 +1097,7 @@ app.put('/api/me/profile-image', requireAuth, async (req, res) => {
     res.json({
       user: {
         id: updated.id, businessName: updated.businessName, email: updated.email, phone: updated.phone,
-        storeAddress: updated.storeAddress, profileImageUrl: updated.profileImageUrl,
+        storeAddress: updated.storeAddress, vendorType: updated.vendorType, profileImageUrl: updated.profileImageUrl,
         role: updated.role, approvalStatus: updated.approvalStatus,
       },
     });

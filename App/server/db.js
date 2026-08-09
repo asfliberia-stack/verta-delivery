@@ -253,6 +253,7 @@ function rowToUser(r) {
     createdAt: r.created_at,
     storeAddress: r.store_address,
     vendorType: r.vendor_type || 'store',
+    avgPrepTimeMinutes: r.avg_prep_time_minutes,
     profileImageUrl: r.profile_image_url,
     isDisabled: r.is_disabled,
     disabledFeatures: r.disabled_features || [],
@@ -311,18 +312,22 @@ const db = {
   // authenticated user updating their own account. Email/password stay
   // on their existing separate, more careful flows (uniqueness checks,
   // re-auth) rather than folding into this simpler update.
-  async updateUserProfile(userId, { businessName, phone, storeAddress }) {
+  async updateUserProfile(userId, { businessName, phone, storeAddress, avgPrepTimeMinutes }) {
     // storeAddress === undefined means "don't touch this field" (e.g. a
     // non-vendor caller, where it's never part of the payload at all).
     // Anything else — including an explicit null/empty string — means
     // "set it to this," so a vendor can actually clear their address,
-    // not just ever replace it with a new non-empty value.
+    // not just ever replace it with a new non-empty value. Same
+    // untouched-vs-explicit-null convention for avgPrepTimeMinutes.
     const touchingAddress = storeAddress !== undefined;
+    const touchingPrepTime = avgPrepTimeMinutes !== undefined;
     const { rows } = await pool.query(
       `UPDATE users SET business_name = $1, phone = $2,
-         store_address = CASE WHEN $3 THEN $4 ELSE store_address END
-       WHERE id = $5 RETURNING *`,
-      [businessName, phone || null, touchingAddress, touchingAddress ? (storeAddress || null) : null, userId]
+         store_address = CASE WHEN $3 THEN $4 ELSE store_address END,
+         avg_prep_time_minutes = CASE WHEN $5 THEN $6 ELSE avg_prep_time_minutes END
+       WHERE id = $7 RETURNING *`,
+      [businessName, phone || null, touchingAddress, touchingAddress ? (storeAddress || null) : null,
+       touchingPrepTime, touchingPrepTime ? avgPrepTimeMinutes : null, userId]
     );
     return rowToUser(rows[0]);
   },
@@ -2193,7 +2198,7 @@ const db = {
   // inventing a number.
   async getPopularRestaurants() {
     const { rows } = await pool.query(`
-      SELECT u.id, u.business_name, u.store_address, u.phone, u.profile_image_url,
+      SELECT u.id, u.business_name, u.store_address, u.phone, u.profile_image_url, u.avg_prep_time_minutes,
         COUNT(DISTINCT p.id)::int AS dish_count,
         COALESCE(AVG(r.rating), 0)::numeric AS avg_rating,
         COUNT(r.id)::int AS review_count,
@@ -2211,6 +2216,7 @@ const db = {
       storeAddress: r.store_address,
       phone: r.phone,
       profileImageUrl: r.profile_image_url,
+      avgPrepTimeMinutes: r.avg_prep_time_minutes,
       dishCount: r.dish_count,
       avgRating: Number(r.avg_rating),
       reviewCount: r.review_count,
