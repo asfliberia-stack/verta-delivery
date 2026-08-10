@@ -5781,6 +5781,13 @@
                     <input type="text" class="form-input" id="add-vendor-name-input" required>
                 </div>
                 <div class="form-group">
+                    <label class="form-label">Business Type</label>
+                    <select class="form-input" id="add-vendor-type-input">
+                        <option value="store">Store — general products</option>
+                        <option value="restaurant">Restaurant — food menu</option>
+                    </select>
+                </div>
+                <div class="form-group">
                     <label class="form-label">Email</label>
                     <input type="email" class="form-input" id="add-vendor-email-input" required>
                 </div>
@@ -10357,9 +10364,10 @@
                 const email = document.getElementById('add-vendor-email-input').value.trim();
                 const password = document.getElementById('add-vendor-password-input').value;
                 const phone = combinePhoneNumber('add-vendor-phone-country', 'add-vendor-phone-input');
+                const vendorType = document.getElementById('add-vendor-type-input').value === 'restaurant' ? 'restaurant' : 'store';
                 await apiFetch('/api/super-admin/vendors', {
                     method: 'POST',
-                    body: JSON.stringify({ businessName, email, phone, password }),
+                    body: JSON.stringify({ businessName, email, phone, password, vendorType }),
                 });
                 closeAddVendorModal();
                 showToast('Vendor created — share the password with them directly', 'success');
@@ -12024,10 +12032,11 @@
                         };
                         return map[status] || status;
                     };
-                    html += '<div style="overflow-x: auto;"><table class="settings-table"><thead><tr><th>Business</th><th>Email</th><th>Since</th><th>Status</th><th></th></tr></thead><tbody>';
+                    html += '<div style="overflow-x: auto;"><table class="settings-table"><thead><tr><th>Business</th><th>Type</th><th>Email</th><th>Since</th><th>Status</th><th></th></tr></thead><tbody>';
                     vendors.forEach(v => {
                         html += `<tr${v.isDisabled ? ' style="opacity:0.55;"' : ''}>
                             <td style="font-weight:700;">${v.businessName}${v.isDisabled ? ' <span style="background:#fee2e2; color:#991b1b; padding:0.125rem 0.5rem; border-radius:9999px; font-size:0.6875rem; font-weight:700;">Disabled</span>' : ''}</td>
+                            <td>${v.vendorType === 'restaurant' ? '<span style="background:#fde68a; color:#92400e; padding:0.1875rem 0.625rem; border-radius:9999px; font-size:0.75rem; font-weight:700;">Restaurant</span>' : '<span style="background:#e0e7ff; color:#4338ca; padding:0.1875rem 0.625rem; border-radius:9999px; font-size:0.75rem; font-weight:700;">Store</span>'}</td>
                             <td>${v.email}</td>
                             <td>${new Date(v.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</td>
                             <td>${statusPill(v.approvalStatus, v.rejectionReason)}</td>

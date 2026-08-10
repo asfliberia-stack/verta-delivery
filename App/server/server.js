@@ -1420,12 +1420,15 @@ app.get('/api/super-admin/vendors', requireAuth, requireSuperAdmin, async (req, 
 // Super Admin creating this account IS the approval. Skips the
 // pending-review queue entirely.
 app.post('/api/super-admin/vendors', requireAuth, requireSuperAdmin, async (req, res) => {
-  const { businessName, email, phone, password } = req.body || {};
+  const { businessName, email, phone, password, vendorType } = req.body || {};
   if (!businessName || !email || !password) {
     return res.status(400).json({ error: 'Business name, email, and password are required' });
   }
   if (password.length < 8) {
     return res.status(400).json({ error: 'Password must be at least 8 characters' });
+  }
+  if (vendorType !== undefined && vendorType !== 'store' && vendorType !== 'restaurant') {
+    return res.status(400).json({ error: 'Invalid business type' });
   }
   try {
     const existing = await db.getUserByEmail(email);
@@ -1440,6 +1443,7 @@ app.post('/api/super-admin/vendors', requireAuth, requireSuperAdmin, async (req,
       passwordHash,
       role: 'vendor',
       approvalStatus: 'approved',
+      vendorType: vendorType === 'restaurant' ? 'restaurant' : 'store',
     });
     await logAudit(req, 'vendor.create', { targetType: 'user', targetId: vendor.id, targetLabel: vendor.businessName });
     res.json({ vendor });

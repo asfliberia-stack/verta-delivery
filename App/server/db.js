@@ -1122,7 +1122,7 @@ const db = {
   // real vendor accounts existed.
   async getVendors() {
     const { rows } = await pool.query(
-      "SELECT id, business_name, email, phone, approval_status, rejection_reason, applied_at, created_at, is_disabled, commission_rate_override FROM users WHERE role = 'vendor' ORDER BY created_at DESC"
+      "SELECT id, business_name, email, phone, approval_status, rejection_reason, applied_at, created_at, is_disabled, commission_rate_override, vendor_type FROM users WHERE role = 'vendor' ORDER BY created_at DESC"
     );
     return rows.map(r => ({
       id: r.id,
@@ -1135,6 +1135,7 @@ const db = {
       createdAt: r.created_at,
       isDisabled: r.is_disabled,
       commissionRateOverride: r.commission_rate_override !== null && r.commission_rate_override !== undefined ? Number(r.commission_rate_override) : null,
+      vendorType: r.vendor_type || 'store',
     }));
   },
 
