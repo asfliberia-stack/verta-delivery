@@ -2327,6 +2327,42 @@ const db = {
     };
   },
 
+  // Admin Overview's Marketplace/Restaurant sections — same purchases
+  // table as getMarketplacePlatformStats above, just split by the
+  // purchased vendor's vendor_type instead of lumped together, since
+  // a restaurant order and a store order are the same DB row shape
+  // (both a "purchases" row, both possibly linked to a delivery order)
+  // but are two distinct lines of business to an admin reading a
+  // dashboard.
+  async getBusinessOverviewStats() {
+    const [byType, vendorCounts, pendingCount] = await Promise.all([
+      pool.query(`
+        SELECT u.vendor_type, COUNT(p.*)::int AS total_orders, COALESCE(SUM(p.total_amount), 0)::numeric AS total_revenue
+        FROM purchases p JOIN users u ON u.id = p.vendor_id
+        GROUP BY u.vendor_type
+      `),
+      pool.query("SELECT vendor_type, COUNT(*)::int AS count FROM users WHERE role = 'vendor' AND approval_status = 'approved' GROUP BY vendor_type"),
+      pool.query("SELECT COUNT(*)::int AS count FROM users WHERE role = 'vendor' AND approval_status = 'pending'"),
+    ]);
+    const forType = (type) => byType.rows.find(r => r.vendor_type === type) || { total_orders: 0, total_revenue: 0 };
+    const countForType = (type) => (vendorCounts.rows.find(r => r.vendor_type === type) || { count: 0 }).count;
+    const store = forType('store');
+    const restaurant = forType('restaurant');
+    return {
+      marketplace: {
+        totalOrders: store.total_orders,
+        totalRevenue: Number(store.total_revenue),
+        vendorCount: countForType('store'),
+      },
+      restaurants: {
+        totalOrders: restaurant.total_orders,
+        totalRevenue: Number(restaurant.total_revenue),
+        vendorCount: countForType('restaurant'),
+      },
+      pendingVendorApplications: pendingCount.rows[0].count,
+    };
+  },
+
   // ---- Commission & payouts (Super Admin) ---------------------------
   // Single-row table, same upsert pattern as Business settings above.
 

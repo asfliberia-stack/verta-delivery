@@ -1403,6 +1403,19 @@ app.get('/api/super-admin/overview', requireAuth, requireSuperAdmin, async (req,
 // Agent accounts and unrelated Delivery-service stats — fixed to show
 // actual vendor data now that real vendor accounts exist.
 // ============================================================
+// Admin Overview's Marketplace/Restaurant sections — available to any
+// admin-like role (not Super-Admin-only like /api/super-admin/vendors),
+// since a regular Admin should see the same combined business picture.
+app.get('/api/admin/business-overview', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const stats = await db.getBusinessOverviewStats();
+    res.json(stats);
+  } catch (err) {
+    console.error('GET /api/admin/business-overview failed', err);
+    res.status(500).json({ error: 'Failed to load business overview' });
+  }
+});
+
 app.get('/api/super-admin/vendors', requireAuth, requireSuperAdmin, async (req, res) => {
   try {
     const [vendors, platformStats] = await Promise.all([

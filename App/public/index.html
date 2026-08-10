@@ -4418,23 +4418,19 @@
                             <svg class="admin-nav-group-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
                         </button>
                         <div class="admin-nav-group-body"><div class="admin-nav-group-body-inner">
-                            <button type="button" class="admin-nav-item" id="sa-platform-overview-nav-btn" style="display:none;">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"></path><path d="M18.7 8 12 14.7 8.5 11.2 4 15.7"></path></svg>
-                                Platform Overview
+                            <button type="button" class="admin-nav-item active" id="admin-overview-nav-btn">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+                                <span id="admin-overview-nav-label">Overview</span>
                             </button>
                         </div></div>
                     </div>
 
                     <div class="admin-nav-group" data-group="operations">
                         <button type="button" class="admin-nav-group-header" data-group-toggle="operations" aria-expanded="true">
-                            <span class="admin-nav-group-title">Operations</span>
+                            <span class="admin-nav-group-title">Delivery Operations</span>
                             <svg class="admin-nav-group-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
                         </button>
                         <div class="admin-nav-group-body"><div class="admin-nav-group-body-inner">
-                            <button type="button" class="admin-nav-item active" id="admin-overview-nav-btn">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
-                                <span id="admin-overview-nav-label">Overview</span>
-                            </button>
                             <button type="button" class="admin-nav-item" id="view-order-history-delivery">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
                                 Order History
@@ -4447,30 +4443,30 @@
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
                                 Add Expense
                             </button>
+                            <button type="button" class="admin-nav-item" id="scroll-to-agents-btn">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                                Fleet Directory
+                            </button>
+                            <button type="button" class="admin-nav-item" id="open-delivery-companies-btn" style="display:none;">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13"></rect><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon><circle cx="5.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle></svg>
+                                Delivery Companies
+                            </button>
                         </div></div>
                     </div>
 
                     <div class="admin-nav-group" data-group="network">
                         <button type="button" class="admin-nav-group-header" data-group-toggle="network" aria-expanded="true">
-                            <span class="admin-nav-group-title">Network</span>
+                            <span class="admin-nav-group-title">Marketplace</span>
                             <svg class="admin-nav-group-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
                         </button>
                         <div class="admin-nav-group-body"><div class="admin-nav-group-body-inner">
-                            <button type="button" class="admin-nav-item" id="scroll-to-agents-btn">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
-                                Fleet Directory
+                            <button type="button" class="admin-nav-item" id="open-vendors-btn" style="display:none;">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+                                Vendors &amp; Restaurants
                             </button>
                             <button type="button" class="admin-nav-item" id="open-customers-btn">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><path d="M20 8v6M23 11h-6"></path></svg>
                                 Customers
-                            </button>
-                            <button type="button" class="admin-nav-item" id="open-vendors-btn" style="display:none;">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
-                                Vendors
-                            </button>
-                            <button type="button" class="admin-nav-item" id="open-delivery-companies-btn" style="display:none;">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13"></rect><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon><circle cx="5.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle></svg>
-                                Delivery Companies
                             </button>
                         </div></div>
                     </div>
@@ -4759,24 +4755,54 @@
                                 <div class="stat-card-top"><h4>New Customers (7 Days)</h4><div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline></svg></div></div>
                                 <p id="sa-new-customers-7d">0</p>
                             </div>
+                        </div>
+                    </section>
+
+                    <!-- Marketplace (stores) and Restaurants are now two
+                         clearly separate sections — both are "vendor
+                         purchases" under the hood, but they're two
+                         distinct lines of business to read on a
+                         dashboard, split via vendor_type at the query
+                         level (see db.getBusinessOverviewStats), not
+                         just relabeled here. -->
+                    <div class="admin-section-label">MARKETPLACE</div>
+                    <section class="stats-section" style="margin-bottom: 1.5rem;">
+                        <div class="stats-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.5rem;">
+                            <div class="stat-card success">
+                                <div class="stat-card-top"><h4>Store Vendors</h4><div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg></div></div>
+                                <p id="ov-marketplace-vendors">0</p>
+                            </div>
                             <div class="stat-card success">
                                 <div class="stat-card-top"><h4>Marketplace Orders</h4><div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path><line x1="3" y1="6" x2="21" y2="6"></line><path d="M16 10a4 4 0 0 1-8 0"></path></svg></div></div>
-                                <p id="sa-marketplace-orders">0</p>
+                                <p id="ov-marketplace-orders">0</p>
                             </div>
                             <div class="stat-card">
                                 <div class="stat-card-top"><h4>Marketplace Revenue</h4><div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg></div></div>
-                                <p id="sa-marketplace-revenue">$0.00</p>
-                            </div>
-                            <div class="stat-card warning">
-                                <div class="stat-card-top"><h4>Delivery Orders</h4><div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13"></rect><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon><circle cx="5.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle></svg></div></div>
-                                <p id="sa-delivery-orders">0</p>
-                            </div>
-                            <div class="stat-card">
-                                <div class="stat-card-top"><h4>Delivery Revenue</h4><div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg></div></div>
-                                <p id="sa-delivery-revenue">$0.00</p>
+                                <p id="ov-marketplace-revenue">$0.00</p>
                             </div>
                         </div>
                     </section>
+
+                    <div class="admin-section-label">RESTAURANTS</div>
+                    <section class="stats-section" style="margin-bottom: 1.5rem;">
+                        <div class="stats-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.5rem;">
+                            <div class="stat-card warning">
+                                <div class="stat-card-top"><h4>Restaurant Vendors</h4><div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg></div></div>
+                                <p id="ov-restaurant-vendors">0</p>
+                            </div>
+                            <div class="stat-card warning">
+                                <div class="stat-card-top"><h4>Restaurant Orders</h4><div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path><line x1="3" y1="6" x2="21" y2="6"></line><path d="M16 10a4 4 0 0 1-8 0"></path></svg></div></div>
+                                <p id="ov-restaurant-orders">0</p>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-card-top"><h4>Restaurant Revenue</h4><div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg></div></div>
+                                <p id="ov-restaurant-revenue">$0.00</p>
+                            </div>
+                        </div>
+                    </section>
+
+                    <div class="admin-section-label">DELIVERY</div>
+                    <p style="color:var(--slate-light); font-size:0.875rem; margin:-0.75rem 0 1.25rem;">See "Today's Snapshot" below for today's delivery numbers in detail.</p>
 
                     <section class="orders-section" style="margin-bottom: 1.5rem;">
                         <h2 class="section-title">Staff Accounts</h2>
@@ -4819,10 +4845,6 @@
                  clicks the equivalent, already-wired sidebar/topbar button
                  so there is exactly one code path per action. -->
             <nav class="mobile-bottom-nav">
-                <button type="button" class="mobile-nav-item" id="admin-mnav-platform" style="display:none;">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"></path><path d="M18.7 8 12 14.7 8.5 11.2 4 15.7"></path></svg>
-                    Platform
-                </button>
                 <button type="button" class="mobile-nav-item active" id="admin-mnav-overview">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
                     <span id="admin-mnav-overview-label">Overview</span>
@@ -9532,13 +9554,16 @@
                 if (auditLogNavBtn) auditLogNavBtn.style.display = isSuperAdmin ? 'flex' : 'none';
                 const platformSettingsNavBtn = document.getElementById('open-platform-settings-btn');
                 if (platformSettingsNavBtn) platformSettingsNavBtn.style.display = isSuperAdmin ? 'flex' : 'none';
-                const platformOverviewNavBtn = document.getElementById('sa-platform-overview-nav-btn');
-                if (platformOverviewNavBtn) platformOverviewNavBtn.style.display = isSuperAdmin ? 'flex' : 'none';
-                document.getElementById('admin-overview-nav-label').textContent = isSuperAdmin ? 'Delivery Operations' : 'Overview';
+                // The Marketplace/Restaurant/Platform stats block is part
+                // of the one combined Overview page now (not a separate
+                // page to navigate to) — its visibility is purely a role
+                // check, same as the nav items above, not a "which view
+                // is active" state.
+                const superAdminOverviewBlock = document.getElementById('super-admin-overview-view');
+                if (superAdminOverviewBlock) superAdminOverviewBlock.style.display = isSuperAdmin ? 'block' : 'none';
+                document.getElementById('admin-overview-nav-label').textContent = 'Overview';
                 // Mobile bottom nav — same role split as the sidebar above,
                 // just mirrored onto the mobile-only nav buttons.
-                const mnavPlatformBtn = document.getElementById('admin-mnav-platform');
-                if (mnavPlatformBtn) mnavPlatformBtn.style.display = isSuperAdmin ? 'flex' : 'none';
                 const mnavFleetBtn = document.getElementById('admin-mnav-fleet');
                 if (mnavFleetBtn) mnavFleetBtn.style.display = isSuperAdmin ? 'none' : 'flex';
                 const mnavOrderHistoryBtn = document.getElementById('admin-mnav-order-history');
@@ -9546,7 +9571,7 @@
                 const mnavVendorsBtn = document.getElementById('admin-mnav-vendors');
                 if (mnavVendorsBtn) mnavVendorsBtn.style.display = isSuperAdmin ? 'flex' : 'none';
                 const mnavOverviewLabelEl = document.getElementById('admin-mnav-overview-label');
-                if (mnavOverviewLabelEl) mnavOverviewLabelEl.textContent = isSuperAdmin ? 'Ops' : 'Overview';
+                if (mnavOverviewLabelEl) mnavOverviewLabelEl.textContent = 'Overview';
                 const moreDeliveryCompaniesBtn = document.getElementById('admin-more-delivery-companies');
                 if (moreDeliveryCompaniesBtn) moreDeliveryCompaniesBtn.style.display = isSuperAdmin ? 'flex' : 'none';
                 const moreStaffBtn = document.getElementById('admin-more-staff');
@@ -9595,16 +9620,13 @@
                 // collapsed state from a previous same-session visit.
                 initAdminSidebarGroups();
 
-                // Super Admin's real landing view is platform oversight,
-                // not the delivery-ops queue (which is still one click
-                // away via "Delivery Operations"). Manage Agent's
-                // experience is completely unaffected — they never see
-                // Platform Overview at all.
+                // Marketplace/Restaurant/Platform stats render inline as
+                // part of this one Overview page for Super Admin only —
+                // Manage Agent's experience is unaffected, they still see
+                // just the delivery-operations content.
+                setAdminMainView('operational');
                 if (isSuperAdmin) {
-                    setAdminMainView('platform');
                     loadSuperAdminOverview();
-                } else {
-                    setAdminMainView('operational');
                 }
             } else if (currentUser.role === 'delivery_company') {
                 // Same pending-approval gate as vendor above — a
@@ -10912,37 +10934,41 @@
         }
 
         function setAdminMainView(view) {
-            document.getElementById('admin-operational-view').style.display = view === 'operational' ? 'block' : 'none';
-            document.getElementById('super-admin-overview-view').style.display = view === 'platform' ? 'block' : 'none';
-            const platformBtn = document.getElementById('sa-platform-overview-nav-btn');
+            // Only one Overview page now — Marketplace/Restaurant/Platform
+            // stats (#super-admin-overview-view) render inline above the
+            // delivery Today's Snapshot content for Super Admin, purely a
+            // role check (set once when entering the dashboard), not a
+            // separate page to switch to. This function just marks the
+            // single Overview nav item active and scrolls to it.
+            document.getElementById('admin-operational-view').style.display = 'block';
             const overviewBtn = document.getElementById('admin-overview-nav-btn');
-            if (platformBtn) platformBtn.classList.toggle('active', view === 'platform');
-            if (overviewBtn) overviewBtn.classList.toggle('active', view === 'operational');
-            expandAdminSidebarGroupContaining(view === 'platform' ? 'sa-platform-overview-nav-btn' : 'admin-overview-nav-btn');
-            const mnavPlatformBtn = document.getElementById('admin-mnav-platform');
+            if (overviewBtn) overviewBtn.classList.add('active');
+            expandAdminSidebarGroupContaining('admin-overview-nav-btn');
             const mnavOverviewBtn = document.getElementById('admin-mnav-overview');
-            if (mnavPlatformBtn) mnavPlatformBtn.classList.toggle('active', view === 'platform');
-            if (mnavOverviewBtn) mnavOverviewBtn.classList.toggle('active', view === 'operational');
+            if (mnavOverviewBtn) mnavOverviewBtn.classList.add('active');
         }
 
         async function loadSuperAdminOverview() {
             try {
-                const [vendorsData, overviewData] = await Promise.all([
+                const [vendorsData, overviewData, businessData] = await Promise.all([
                     apiFetch('/api/super-admin/vendors'),
                     apiFetch('/api/super-admin/overview'),
+                    apiFetch('/api/admin/business-overview'),
                 ]);
                 const vendors = vendorsData.vendors || [];
                 vendorsCache = vendors;
-                const totals = vendorsData.platformTotals || { totalMarketplaceOrders: 0, totalMarketplaceRevenue: 0, pendingVendorApplications: 0 };
+                const biz = businessData || { marketplace: { totalOrders: 0, totalRevenue: 0, vendorCount: 0 }, restaurants: { totalOrders: 0, totalRevenue: 0, vendorCount: 0 }, pendingVendorApplications: 0 };
 
                 document.getElementById('sa-total-vendors').textContent = vendors.length;
-                document.getElementById('sa-pending-count').textContent = totals.pendingVendorApplications;
-                document.getElementById('sa-marketplace-orders').textContent = totals.totalMarketplaceOrders;
-                document.getElementById('sa-marketplace-revenue').textContent = `$${totals.totalMarketplaceRevenue.toFixed(2)}`;
+                document.getElementById('sa-pending-count').textContent = biz.pendingVendorApplications;
+                document.getElementById('ov-marketplace-vendors').textContent = biz.marketplace.vendorCount;
+                document.getElementById('ov-marketplace-orders').textContent = biz.marketplace.totalOrders;
+                document.getElementById('ov-marketplace-revenue').textContent = `$${biz.marketplace.totalRevenue.toFixed(2)}`;
+                document.getElementById('ov-restaurant-vendors').textContent = biz.restaurants.vendorCount;
+                document.getElementById('ov-restaurant-orders').textContent = biz.restaurants.totalOrders;
+                document.getElementById('ov-restaurant-revenue').textContent = `$${biz.restaurants.totalRevenue.toFixed(2)}`;
                 document.getElementById('sa-total-customers').textContent = overviewData.totalCustomers;
                 document.getElementById('sa-new-customers-7d').textContent = overviewData.newCustomersLast7Days;
-                document.getElementById('sa-delivery-orders').textContent = overviewData.delivery.totalOrders;
-                document.getElementById('sa-delivery-revenue').textContent = `$${overviewData.delivery.totalRevenue.toFixed(2)}`;
 
                 const pending = vendors.filter(v => v.approvalStatus === 'pending');
                 const listEl = document.getElementById('sa-pending-applications-list');
@@ -11305,26 +11331,14 @@
                 });
             }
 
-            // Super Admin's two main views — Platform Overview (their
-            // real landing view) and Delivery Operations (the exact same
-            // operational dashboard Manage Agent uses — Super Admin
-            // already has legitimate direct access to it, no
-            // impersonation needed, unlike entering a specific vendor's
-            // dashboard). Manage Agent never sees the Platform Overview
-            // button at all (hidden), so this doesn't change their
-            // experience.
-            const platformOverviewBtn = document.getElementById('sa-platform-overview-nav-btn');
-            if (platformOverviewBtn) {
-                platformOverviewBtn.addEventListener('click', () => {
-                    setAdminMainView('platform');
-                    loadSuperAdminOverview();
-                });
-            }
+            // The single Overview nav item — Platform/Marketplace/
+            // Restaurant stats (Super Admin only, shown/hidden by role)
+            // plus the delivery-operations content below it.
             document.getElementById('admin-overview-nav-btn').addEventListener('click', () => {
                 setAdminMainView('operational');
             });
 
-            // Platform Overview's Quick Actions + interactive elements
+            // Overview page's Quick Actions + interactive elements
             document.getElementById('sa-pending-card').addEventListener('click', () => {
                 document.getElementById('sa-pending-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
             });
@@ -11385,6 +11399,7 @@
             });
             document.getElementById('sa-quick-delivery-ops-btn').addEventListener('click', () => {
                 setAdminMainView('operational');
+                document.getElementById('admin-operational-view').scrollIntoView({ behavior: 'smooth', block: 'start' });
             });
             document.getElementById('sa-quick-products-btn').addEventListener('click', () => {
                 document.getElementById('product-moderation-modal').classList.add('active');
@@ -11631,9 +11646,6 @@
             // Every button just re-clicks the equivalent, already-wired
             // sidebar/topbar control — one code path per action, no
             // duplicated logic to drift out of sync.
-            document.getElementById('admin-mnav-platform').addEventListener('click', () => {
-                document.getElementById('sa-platform-overview-nav-btn').click();
-            });
             document.getElementById('admin-mnav-overview').addEventListener('click', () => {
                 document.getElementById('admin-overview-nav-btn').click();
             });
