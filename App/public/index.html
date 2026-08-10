@@ -1470,6 +1470,13 @@
             align-items: start;
             transition: grid-template-columns 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
+        /* Guest browsing ONLib Delivery — no sidebar (nothing account-
+           specific to show yet), so the shell is always single-column
+           here regardless of the logged-in-customer breakpoint rules
+           above. */
+        #delivery-customer-app .admin-shell.dcust-guest-mode {
+            grid-template-columns: 1fr !important;
+        }
         #delivery-company-app .admin-shell {
             display: grid;
             grid-template-columns: 1fr;
@@ -4155,7 +4162,7 @@
         </div>
 
         <div class="admin-shell" id="dcust-shell">
-            <aside class="admin-sidebar">
+            <aside class="admin-sidebar" id="dcust-sidebar">
                 <div class="admin-sidebar-logo">
                     <img src="assets/logo.png" alt="ONLib Delivery">
                 </div>
@@ -4231,6 +4238,7 @@
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
                             <span>Back to service selector</span>
                         </button>
+                        <button type="button" class="btn-primary" id="dcust-topbar-login-btn" style="display:none; white-space:nowrap;">Login / Sign Up</button>
                     </div>
                 </div>
 
@@ -4263,6 +4271,12 @@
                         <div id="dcust-order-banner" style="display:none;"></div>
                     </section>
 
+                    <!-- Everything below is account-specific (order
+                         stats, "Send a Package", order history) — kept
+                         in one wrapper so it can be hidden as a unit for
+                         a guest, who can browse/order food above but has
+                         no account data down here yet. -->
+                    <div id="dcust-account-content">
                     <div class="dcust-stats-grid">
                         <div class="stat-card">
                             <div class="stat-card-top">
@@ -4335,6 +4349,7 @@
                             <div class="orders-grid" id="orders-grid"></div>
                         </div>
                     </section>
+                    </div>
                 </div>
 
                 <!-- My Orders view — same real data/table as Dashboard's
@@ -8962,16 +8977,29 @@
         // (original indigo branding), a separate product from the
         // ONLib Marketplace, not a tab within it.
         function setDeliveryHeaderState(mode) {
-            // The guest prompt is a fully independent element (not
-            // nested in the sidebar/grid layout), so for guests the
-            // entire dashboard shell just hides — no grid-column
-            // tricks needed, no empty topbar left behind.
+            // Guests now land in the same dashboard shell as a logged-in
+            // customer — just with the account sidebar and account-only
+            // content (order stats, "Send a Package", order history)
+            // hidden, and a Login button in their place. Only
+            // #dcust-account-content and the sidebar are gated by mode;
+            // #dcust-food-section (browsing) is always visible here.
             const shellEl = document.getElementById('dcust-shell');
-            if (shellEl) shellEl.style.display = mode === 'customer' ? 'grid' : 'none';
-            document.getElementById('delivery-guest-prompt').style.display = mode === 'guest' ? 'flex' : 'none';
-            document.getElementById('dcust-view-dashboard').style.display = mode === 'customer' ? 'block' : 'none';
+            if (shellEl) shellEl.style.display = 'grid';
+            shellEl.classList.toggle('dcust-guest-mode', mode === 'guest');
+            document.getElementById('delivery-guest-prompt').style.display = 'none';
+            document.getElementById('dcust-sidebar').style.display = mode === 'customer' ? 'flex' : 'none';
+            document.getElementById('dcust-sidebar-toggle-btn').style.display = mode === 'customer' ? 'flex' : 'none';
+            document.getElementById('dcust-view-dashboard').style.display = 'block';
+            document.getElementById('dcust-account-content').style.display = mode === 'customer' ? 'block' : 'none';
             document.getElementById('dcust-welcome-name').style.display = mode === 'customer' ? 'block' : 'none';
             document.getElementById('dcust-welcome-subtitle').style.display = mode === 'customer' ? 'block' : 'none';
+            document.getElementById('dcust-topbar-login-btn').style.display = mode === 'guest' ? 'inline-flex' : 'none';
+            // The location pill needs a logged-in customer's saved
+            // address; for a guest it would just be a dead "Add your
+            // delivery address" link that logs them out of browsing, so
+            // it's hidden entirely rather than shown half-broken.
+            const locationPill = document.getElementById('dcust-location-pill');
+            if (locationPill) locationPill.style.display = mode === 'customer' ? 'inline-flex' : 'none';
         }
 
         async function enterDeliveryMode(headerMode) {
@@ -9000,15 +9028,17 @@
                 refreshAllViews();
                 renderDeliveryCustomerStats();
                 setDeliveryCustomerView('dashboard');
-                // Food ordering shares the Marketplace's product/vendor
-                // data (a restaurant is just a vendor) — load it here too
-                // so "Order Food" works even for someone who opens
-                // Delivery directly without ever visiting Marketplace.
-                loadStorefront();
-                loadFollowedVendorIds();
                 renderDcustLocationPill();
                 renderDcustOrderBanner();
             }
+            // Food ordering shares the Marketplace's product/vendor data
+            // (a restaurant is just a vendor) — load it for guests too,
+            // not just logged-in customers, so browsing works before
+            // login. Adding to cart is already unauthenticated-friendly
+            // (client-side only); checkout itself still prompts login,
+            // via openCheckoutModal's existing currentUser check.
+            loadStorefront();
+            if (headerMode === 'customer') loadFollowedVendorIds();
         }
 
         // Real stats computed from the customer's own orders — no
@@ -9381,6 +9411,7 @@
             document.getElementById('dcust-settings-form').addEventListener('submit', handleDcustSettingsSubmit);
             document.getElementById('delivery-guest-back-btn').addEventListener('click', showAppChooser);
             document.getElementById('delivery-guest-login-btn-2').addEventListener('click', showAuthScreen);
+            document.getElementById('dcust-topbar-login-btn').addEventListener('click', showAuthScreen);
             document.getElementById('delivery-sender-logout-btn').addEventListener('click', async () => {
                 await clearAuth();
                 await chooseAppMode('delivery');
