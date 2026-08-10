@@ -1477,6 +1477,14 @@
         #delivery-customer-app .admin-shell.dcust-guest-mode {
             grid-template-columns: 1fr !important;
         }
+        /* With the sidebar hidden for a guest, its "Back to service
+           selector" nav item goes with it — so the topbar's own copy of
+           that link (normally mobile-only, since desktop relies on the
+           sidebar) needs to show for guests at every width, not just
+           below the mobile breakpoint. */
+        #delivery-customer-app .admin-shell.dcust-guest-mode .dcust-topbar-back-link {
+            display: flex !important;
+        }
         #delivery-company-app .admin-shell {
             display: grid;
             grid-template-columns: 1fr;
@@ -4271,10 +4279,26 @@
                         <div id="dcust-order-banner" style="display:none;"></div>
                     </section>
 
+                    <!-- "Send a Package" hero — visible for guests too
+                         (unlike the stats/orders below), but the button
+                         itself prompts login for a guest rather than
+                         opening the order form; see btn-new-order's
+                         click handler. -->
+                    <section class="hero" id="hero-section">
+                        <h2>Send a Package Today!</h2>
+                        <p>Fast, Secure, and Reliable Delivery Solution You Can Trust</p>
+                        <button class="btn-primary dcust-hero-cta" id="btn-new-order">
+                            Create New Order
+                            <span class="dcust-hero-cta-icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                            </span>
+                        </button>
+                    </section>
+
                     <!-- Everything below is account-specific (order
-                         stats, "Send a Package", order history) — kept
-                         in one wrapper so it can be hidden as a unit for
-                         a guest, who can browse/order food above but has
+                         stats, order history) — kept in one wrapper so
+                         it can be hidden as a unit for a guest, who can
+                         browse/order food and see the hero above but has
                          no account data down here yet. -->
                     <div id="dcust-account-content">
                     <div class="dcust-stats-grid">
@@ -4314,17 +4338,6 @@
                             <p id="dcust-stat-spent">$0.00</p>
                         </div>
                     </div>
-
-                    <section class="hero" id="hero-section">
-                        <h2>Send a Package Today!</h2>
-                        <p>Fast, Secure, and Reliable Delivery Solution You Can Trust</p>
-                        <button class="btn-primary dcust-hero-cta" id="btn-new-order">
-                            Create New Order
-                            <span class="dcust-hero-cta-icon">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-                            </span>
-                        </button>
-                    </section>
 
                     <section class="orders-section" id="your-orders-section">
                         <div class="dcust-table-card">
@@ -10049,7 +10062,14 @@
         // server instead of a picked "sender name".
         // ============================================================
         function wireAppEvents() {
-            document.getElementById('btn-new-order').addEventListener('click', openNewOrderModal);
+            document.getElementById('btn-new-order').addEventListener('click', () => {
+                if (!currentUser || currentUser.role !== 'sender') {
+                    showToast('Log in to send a package.', 'info');
+                    showAuthScreen();
+                    return;
+                }
+                openNewOrderModal();
+            });
             document.getElementById('close-new-order').addEventListener('click', closeNewOrderModal);
             document.getElementById('cancel-new-order').addEventListener('click', closeNewOrderModal);
             document.getElementById('close-order-details').addEventListener('click', closeOrderDetailsModal);
