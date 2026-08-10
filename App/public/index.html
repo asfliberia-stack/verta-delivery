@@ -2579,6 +2579,39 @@
         .dcust-food-tab { border-radius: 999px; padding: 0.5rem 1.25rem; }
         .store-grid-full { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 1rem; margin-top: 1rem; }
         .store-grid-full .store-card { width: auto; cursor: pointer; }
+        .dcust-location-pill {
+            display: inline-flex; align-items: center; gap: 0.375rem; background: var(--bg-light, #f1f5f9);
+            color: var(--slate); font-size: 0.8125rem; font-weight: 600; padding: 0.375rem 0.75rem;
+            border-radius: 999px; margin-bottom: 0.875rem; max-width: 100%;
+        }
+        .dcust-location-pill span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .dcust-location-pill a { color: var(--primary); text-decoration: none; }
+        .dcust-wide-card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 1rem; margin-top: 1rem; }
+        .dcust-wide-card {
+            display: flex; background: white; border: 1px solid var(--border); border-radius: 0.875rem;
+            overflow: hidden; cursor: pointer; transition: box-shadow 0.15s;
+        }
+        .dcust-wide-card:hover { box-shadow: var(--shadow-md, 0 4px 12px rgba(0,0,0,0.08)); }
+        .dcust-wide-card-photo { width: 40%; min-width: 96px; object-fit: cover; }
+        .dcust-wide-card-photo-fallback {
+            width: 40%; min-width: 96px; background: var(--golib-navy, #16234a); color: white;
+            display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 1.5rem;
+        }
+        .dcust-wide-card-body { flex: 1; padding: 0.75rem 0.875rem; display: flex; flex-direction: column; gap: 0.25rem; min-width: 0; }
+        .dcust-wide-card-name { font-weight: 700; font-size: 0.9375rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .dcust-wide-card-meta { display: flex; align-items: center; gap: 0.25rem; font-size: 0.8125rem; color: var(--slate-light); }
+        .dcust-wide-card-row { display: flex; align-items: center; gap: 0.875rem; font-size: 0.8125rem; color: var(--slate-light); margin-top: auto; }
+        .dcust-wide-card-price { color: var(--slate); font-weight: 700; }
+        .dcust-order-banner {
+            display: flex; align-items: center; gap: 1rem; background: #ede9fe; border-radius: 1rem;
+            padding: 1rem 1.25rem; margin-top: 1.25rem;
+        }
+        .dcust-order-banner img { width: 56px; height: 56px; object-fit: contain; }
+        .dcust-order-banner-body { flex: 1; }
+        .dcust-order-banner-title { font-weight: 700; font-size: 0.9375rem; }
+        .dcust-order-banner-sub { font-size: 0.8125rem; color: var(--slate-light); margin: 0.125rem 0 0.5rem; }
+        .dcust-order-banner-track { height: 6px; background: #ddd6fe; border-radius: 999px; position: relative; }
+        .dcust-order-banner-track-fill { height: 100%; background: var(--primary); border-radius: 999px; }
         .store-row-scroll .store-card { flex-shrink: 0; width: 100px; scroll-snap-align: start; }
 
         .cart-line-item {
@@ -3382,13 +3415,10 @@
                         <div id="storefront-products-container"></div>
                     </div>
 
-                    <div class="mobile-section" id="mp-popular-restaurants-section" style="display:none;">
-                        <div class="mobile-section-header">
-                            <div class="mobile-section-title">Popular Restaurants</div>
-                        </div>
-                        <div id="mp-popular-restaurants-preview" class="store-row-scroll"></div>
-                    </div>
-
+                    <!-- Restaurants deliberately do NOT get a section
+                         here — restaurant browsing/ordering lives only
+                         in ONLib Delivery (see #delivery-customer-app),
+                         never in Marketplace. -->
                     <div class="mobile-section">
                         <div class="mobile-section-header">
                             <div class="mobile-section-title">Popular Stores</div>
@@ -4217,6 +4247,7 @@
                          dropoff = customer address), so this order shows
                          up in "Your Orders" below like any other delivery. -->
                     <section class="dcust-food-section" id="dcust-food-section">
+                        <div id="dcust-location-pill" class="dcust-location-pill"></div>
                         <div class="form-group" style="margin-bottom:0.75rem;">
                             <input type="text" class="form-input" id="dcust-food-search" placeholder="Search food or restaurant…">
                         </div>
@@ -4226,8 +4257,10 @@
                         </div>
                         <div class="dcust-table-controls" style="margin-top:1.25rem;">
                             <div class="section-title" style="margin:0;" id="dcust-food-section-title">Popular Restaurants</div>
+                            <a href="#" class="mobile-view-all" id="dcust-food-view-all" style="display:none;">View all ›</a>
                         </div>
-                        <div id="dcust-food-cards-grid" class="store-grid-full"></div>
+                        <div id="dcust-food-cards-grid" class="dcust-wide-card-grid"></div>
+                        <div id="dcust-order-banner" style="display:none;"></div>
                     </section>
 
                     <div class="dcust-stats-grid">
@@ -8951,6 +8984,8 @@
                 // Delivery directly without ever visiting Marketplace.
                 loadStorefront();
                 loadFollowedVendorIds();
+                renderDcustLocationPill();
+                renderDcustOrderBanner();
             }
         }
 
@@ -8989,15 +9024,36 @@
         // Restaurant menu drill-down — the dishes are just that
         // vendor's real products (already in storefrontProducts from
         // loadStorefront), so no new fetch is needed to open this.
-        function openDcustRestaurantMenu(restaurantId) {
-            const restaurant = popularRestaurantsCache.find(r => r.id === restaurantId);
-            if (!restaurant) return;
+        async function openDcustRestaurantMenu(vendorId, kind) {
+            const source = kind === 'store' ? popularStoresCache : popularRestaurantsCache;
+            const vendor = source.find(v => v.id === vendorId);
+            if (!vendor) return;
             const titleEl = document.getElementById('dcust-restaurant-menu-title');
-            titleEl.innerHTML = `${restaurant.businessName}${restaurant.avgPrepTimeMinutes ? ` <span style="font-weight:400; font-size:0.8125rem; color:var(--slate-light);">· ~${restaurant.avgPrepTimeMinutes} mins</span>` : ''}`;
-            const dishes = storefrontProducts.filter(p => p.vendorId === restaurantId);
+            titleEl.innerHTML = `${vendor.businessName}${vendor.avgPrepTimeMinutes ? ` <span style="font-weight:400; font-size:0.8125rem; color:var(--slate-light);">· ~${vendor.avgPrepTimeMinutes} mins</span>` : ''}`;
             const grid = document.getElementById('dcust-restaurant-menu-grid');
+            setDeliveryCustomerView('restaurant-menu');
+            grid.innerHTML = '<p style="grid-column: 1 / -1; text-align:center; color:var(--slate-light);">Loading…</p>';
+
+            // Store products still live in storefrontProducts (Marketplace
+            // feed); restaurant dishes deliberately don't — they're
+            // Delivery-only, so they're fetched from their own endpoint
+            // instead of ever touching the Marketplace product list.
+            let dishes;
+            if (kind === 'store') {
+                dishes = storefrontProducts.filter(p => p.vendorId === vendorId);
+            } else {
+                try {
+                    const data = await apiFetch(`/api/marketplace/restaurants/${vendorId}/menu`);
+                    dishes = data.dishes || [];
+                } catch (err) {
+                    console.error('Failed to load restaurant menu', err);
+                    dishes = [];
+                }
+            }
+            dishes.forEach(d => { productCache[d.id] = d; });
+
             if (dishes.length === 0) {
-                renderEmptyState(grid, `${restaurant.businessName} hasn't listed any dishes yet.`);
+                renderEmptyState(grid, `${vendor.businessName} hasn't listed any items yet.`);
             } else {
                 grid.innerHTML = dishes.map(d => `
                     <div class="product-card">
@@ -9015,7 +9071,6 @@
                 `).join('');
             }
             updateDcustCartCount();
-            setDeliveryCustomerView('restaurant-menu');
         }
 
         function updateDcustCartCount() {
@@ -16089,20 +16144,16 @@
                 popularStoresCache = storesData.stores || [];
                 renderStoreCards(document.getElementById('mp-popular-stores-preview'), popularStoresCache.slice(0, 4));
 
-                // Popular Restaurants preview — same pattern, only shown
-                // once at least one restaurant vendor exists so the
-                // section doesn't sit there permanently empty on a
-                // marketplace with no restaurants yet.
+                // Restaurants are fetched here too (not rendered into any
+                // Marketplace element — there isn't one) purely so the
+                // data is cached and ready the instant someone opens
+                // ONLib Delivery, which is the only place restaurants are
+                // ever shown or ordered from.
                 const restaurantsData = await apiFetch('/api/marketplace/restaurants').catch(() => ({ restaurants: [] }));
                 popularRestaurantsCache = restaurantsData.restaurants || [];
-                const restaurantsSection = document.getElementById('mp-popular-restaurants-section');
-                if (restaurantsSection) restaurantsSection.style.display = popularRestaurantsCache.length > 0 ? 'block' : 'none';
-                renderRestaurantCards(document.getElementById('mp-popular-restaurants-preview'), popularRestaurantsCache.slice(0, 4));
 
-                // Also refresh the ONLib Delivery "Order Food" section —
-                // it shares this exact same data (a restaurant is just a
-                // vendor), so no separate fetch, just a separate render
-                // target when that section is the one currently visible.
+                // Refresh the ONLib Delivery "Order Food" section when
+                // that's the section currently visible.
                 renderDcustFoodSection();
             } catch (err) {
                 console.error('Failed to load storefront', err);
@@ -16116,43 +16167,106 @@
         let popularRestaurantsCache = [];
         let dcustFoodTab = 'food';
 
+        let dcustFoodShowAll = false;
+
         function renderDcustFoodSection() {
             const grid = document.getElementById('dcust-food-cards-grid');
             const title = document.getElementById('dcust-food-section-title');
+            const viewAllLink = document.getElementById('dcust-food-view-all');
             if (!grid) return;
             if (dcustFoodTab === 'food') {
                 if (title) title.textContent = 'Popular Restaurants';
                 if (popularRestaurantsCache.length === 0) {
                     grid.innerHTML = '<p style="grid-column: 1 / -1; text-align:center; color:var(--slate-light); font-size:0.875rem;">No restaurants yet.</p>';
+                    if (viewAllLink) viewAllLink.style.display = 'none';
                 } else {
-                    renderRestaurantCards(grid, popularRestaurantsCache);
+                    const shown = dcustFoodShowAll ? popularRestaurantsCache : popularRestaurantsCache.slice(0, 6);
+                    renderDcustWideCards(grid, shown, 'restaurant');
+                    if (viewAllLink) {
+                        viewAllLink.style.display = popularRestaurantsCache.length > 6 ? 'block' : 'none';
+                        viewAllLink.textContent = dcustFoodShowAll ? '‹ Show less' : 'View all ›';
+                    }
                 }
             } else {
                 if (title) title.textContent = 'Grocery & Other Stores';
-                renderStoreCards(grid, popularStoresCache);
+                if (viewAllLink) viewAllLink.style.display = 'none';
+                if (popularStoresCache.length === 0) {
+                    grid.innerHTML = '<p style="grid-column: 1 / -1; text-align:center; color:var(--slate-light); font-size:0.875rem;">No stores yet.</p>';
+                } else {
+                    renderDcustWideCards(grid, popularStoresCache, 'store');
+                }
             }
         }
 
-        function renderRestaurantCards(container, restaurants) {
-            if (!container) return;
-            const canFollow = currentUser && currentUser.role === 'sender';
-            container.innerHTML = restaurants.map(r => `
-                <div class="store-card" data-restaurant-id="${r.id}">
-                    ${canFollow ? `
-                        <button type="button" class="store-card-follow-btn ${followedVendorIds.has(r.id) ? 'following' : ''}" data-id="${r.id}" aria-label="Follow restaurant" title="${followedVendorIds.has(r.id) ? 'Following' : 'Follow this restaurant'}">
-                            <svg viewBox="0 0 24 24" fill="${followedVendorIds.has(r.id) ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
-                        </button>
-                    ` : ''}
-                    ${r.profileImageUrl
-                        ? `<img class="store-card-avatar store-card-avatar-photo" src="${r.profileImageUrl}" alt="${r.businessName}">`
-                        : `<div class="store-card-avatar">${r.businessName.charAt(0).toUpperCase()}</div>`
+        // Wide photo-left cards for ONLib Delivery's Order Food section.
+        // Real photo when the vendor set one (same profileImageUrl as
+        // everywhere else in the app); an honest initials fallback
+        // otherwise — never a stock/fabricated food photo.
+        function renderDcustWideCards(container, list, kind) {
+            container.innerHTML = list.map(item => `
+                <div class="dcust-wide-card" data-vendor-id="${item.id}" data-vendor-kind="${kind}">
+                    ${item.profileImageUrl
+                        ? `<img class="dcust-wide-card-photo" src="${item.profileImageUrl}" alt="${item.businessName}">`
+                        : `<div class="dcust-wide-card-photo-fallback">${item.businessName.charAt(0).toUpperCase()}</div>`
                     }
-                    <div class="store-card-name">${r.businessName}</div>
-                    <div class="store-card-rating">${r.reviewCount > 0 ? '★ ' + r.avgRating.toFixed(1) : 'New'}</div>
-                    ${r.avgPrepTimeMinutes ? `<div class="store-card-address">~${r.avgPrepTimeMinutes} mins</div>` : ''}
-                    ${r.startingPrice !== null ? `<div class="store-card-address">From $${r.startingPrice.toFixed(2)}</div>` : ''}
+                    <div class="dcust-wide-card-body">
+                        <div class="dcust-wide-card-name">${item.businessName}</div>
+                        <div class="dcust-wide-card-meta">${item.reviewCount > 0 ? `★ ${item.avgRating.toFixed(1)}` : 'New'}</div>
+                        <div class="dcust-wide-card-row">
+                            ${item.avgPrepTimeMinutes ? `<span>🕐 ${item.avgPrepTimeMinutes} mins</span>` : ''}
+                            ${item.startingPrice !== null && item.startingPrice !== undefined ? `<span class="dcust-wide-card-price">From $${item.startingPrice.toFixed(2)}</span>` : ''}
+                        </div>
+                    </div>
                 </div>
             `).join('');
+        }
+
+        // Location pill — the customer's own real default saved address
+        // (never a fabricated city, since this platform has no
+        // geolocation service — see schema.sql's login_history note on
+        // the same principle).
+        async function renderDcustLocationPill() {
+            const pill = document.getElementById('dcust-location-pill');
+            if (!pill) return;
+            try {
+                const data = await apiFetch('/api/addresses');
+                savedAddressesCache = data.addresses || [];
+            } catch (err) {
+                pill.style.display = 'none';
+                return;
+            }
+            const addr = savedAddressesCache.find(a => a.isDefault) || savedAddressesCache[0];
+            if (addr) {
+                pill.innerHTML = `📍 <span title="${addr.address.replace(/"/g, '&quot;')}">${addr.label}</span>`;
+            } else {
+                pill.innerHTML = `📍 <a href="#" id="dcust-location-pill-add">Add your delivery address</a>`;
+                const link = document.getElementById('dcust-location-pill-add');
+                if (link) link.addEventListener('click', (e) => { e.preventDefault(); document.getElementById('dcust-nav-addresses')?.click(); });
+            }
+        }
+
+        // Order-on-the-way banner — only rendered when the customer has
+        // a real order that's actually in transit (accepted or
+        // picked-up), using its real status; hidden entirely otherwise.
+        // No fake "order on the way" for a customer with nothing moving.
+        function renderDcustOrderBanner() {
+            const banner = document.getElementById('dcust-order-banner');
+            if (!banner) return;
+            const active = orders.find(o => o.status === 'accepted' || o.status === 'picked-up');
+            if (!active) { banner.style.display = 'none'; return; }
+            const pct = active.status === 'picked-up' ? 80 : 40;
+            const statusLabel = active.status === 'picked-up' ? 'Picked up — on the way' : 'Agent assigned — heading to pickup';
+            banner.innerHTML = `
+                <img src="assets/delivery-truck.png" alt="">
+                <div class="dcust-order-banner-body">
+                    <div class="dcust-order-banner-title">Order on the way</div>
+                    <p class="dcust-order-banner-sub">${statusLabel} · ${active.itemDescription || 'Order #' + active.id.slice(0, 8)}</p>
+                    <div class="dcust-order-banner-track"><div class="dcust-order-banner-track-fill" style="width:${pct}%;"></div></div>
+                </div>
+            `;
+            banner.style.display = 'flex';
+            banner.style.cursor = 'pointer';
+            banner.onclick = () => setDeliveryCustomerView('my-orders');
         }
 
         function renderStoreCards(container, stores) {
@@ -17326,22 +17440,21 @@
                     if (btn) toggleFollowStore(btn.dataset.id);
                 });
             }
-            const popularRestaurantsPreview = document.getElementById('mp-popular-restaurants-preview');
-            if (popularRestaurantsPreview) {
-                popularRestaurantsPreview.addEventListener('click', (e) => {
-                    const btn = e.target.closest('.store-card-follow-btn');
-                    if (btn) toggleFollowStore(btn.dataset.id);
-                });
-            }
 
             // ---- ONLib Delivery — Order Food section ----
             const dcustFoodGrid = document.getElementById('dcust-food-cards-grid');
             if (dcustFoodGrid) {
                 dcustFoodGrid.addEventListener('click', (e) => {
-                    const followBtn = e.target.closest('.store-card-follow-btn');
-                    if (followBtn) { toggleFollowStore(followBtn.dataset.id); return; }
-                    const card = e.target.closest('.store-card[data-restaurant-id]');
-                    if (card) openDcustRestaurantMenu(card.dataset.restaurantId);
+                    const card = e.target.closest('.dcust-wide-card[data-vendor-id]');
+                    if (card) openDcustRestaurantMenu(card.dataset.vendorId, card.dataset.vendorKind);
+                });
+            }
+            const dcustFoodViewAll = document.getElementById('dcust-food-view-all');
+            if (dcustFoodViewAll) {
+                dcustFoodViewAll.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    dcustFoodShowAll = !dcustFoodShowAll;
+                    renderDcustFoodSection();
                 });
             }
             const dcustFoodTabFood = document.getElementById('dcust-food-tab-food');
@@ -17349,12 +17462,14 @@
             if (dcustFoodTabFood && dcustFoodTabGrocery) {
                 dcustFoodTabFood.addEventListener('click', () => {
                     dcustFoodTab = 'food';
+                    dcustFoodShowAll = false;
                     dcustFoodTabFood.classList.replace('btn-secondary', 'btn-primary');
                     dcustFoodTabGrocery.classList.replace('btn-primary', 'btn-secondary');
                     renderDcustFoodSection();
                 });
                 dcustFoodTabGrocery.addEventListener('click', () => {
                     dcustFoodTab = 'grocery';
+                    dcustFoodShowAll = false;
                     dcustFoodTabGrocery.classList.replace('btn-secondary', 'btn-primary');
                     dcustFoodTabFood.classList.replace('btn-primary', 'btn-secondary');
                     renderDcustFoodSection();
@@ -17367,8 +17482,9 @@
                     const source = dcustFoodTab === 'food' ? popularRestaurantsCache : popularStoresCache;
                     const filtered = q ? source.filter(s => s.businessName.toLowerCase().includes(q)) : source;
                     const grid = document.getElementById('dcust-food-cards-grid');
-                    if (dcustFoodTab === 'food') renderRestaurantCards(grid, filtered);
-                    else renderStoreCards(grid, filtered);
+                    renderDcustWideCards(grid, filtered, dcustFoodTab === 'food' ? 'restaurant' : 'store');
+                    const viewAllLink = document.getElementById('dcust-food-view-all');
+                    if (viewAllLink) viewAllLink.style.display = 'none';
                 });
             }
             const dcustRestaurantBackBtn = document.getElementById('dcust-restaurant-back-btn');

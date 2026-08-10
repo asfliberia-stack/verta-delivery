@@ -1304,7 +1304,7 @@ const db = {
         WHERE starts_at <= now() AND ends_at > now()
         ORDER BY product_id, ends_at ASC
       ) promo ON promo.product_id = p.id
-      WHERE p.is_active = true AND p.stock_quantity > 0
+      WHERE p.is_active = true AND p.stock_quantity > 0 AND u.vendor_type = 'store'
       GROUP BY p.id, u.business_name, u.phone, u.store_address, sold.units_sold, promo.discount_percent, promo.ends_at
       ORDER BY p.created_at DESC
     `);
@@ -1325,6 +1325,51 @@ const db = {
         discountPercent,
         promoEndsAt: r.promo_ends_at,
         images: r.extra_images || [],
+      };
+    });
+  },
+
+  // ONLib Delivery's restaurant menu — deliberately a separate query
+  // from getActiveProductsForStorefront above, not a client-side filter
+  // of it: that one is now Marketplace-only (vendor_type = 'store'), so
+  // restaurant dishes need their own path that never touches the
+  // Marketplace product feed. Same shape/fields as the Marketplace
+  // query (rating, reviews, promo price) so the dish cards work
+  // identically, just scoped to one restaurant vendor.
+  async getRestaurantMenu(vendorId) {
+    const { rows } = await pool.query(`
+      SELECT p.*, u.business_name AS vendor_name, u.phone AS vendor_phone, u.store_address AS vendor_store_address,
+        COALESCE(AVG(r.rating), 0)::numeric AS avg_rating,
+        COUNT(DISTINCT r.id)::int AS review_count,
+        promo.discount_percent, promo.ends_at AS promo_ends_at
+      FROM products p
+      JOIN users u ON u.id = p.vendor_id
+      LEFT JOIN product_reviews r ON r.product_id = p.id
+      LEFT JOIN (
+        SELECT DISTINCT ON (product_id) product_id, discount_percent, ends_at
+        FROM promotions
+        WHERE starts_at <= now() AND ends_at > now()
+        ORDER BY product_id, ends_at ASC
+      ) promo ON promo.product_id = p.id
+      WHERE p.is_active = true AND p.vendor_id = $1 AND u.vendor_type = 'restaurant'
+      GROUP BY p.id, u.business_name, u.phone, u.store_address, promo.discount_percent, promo.ends_at
+      ORDER BY p.created_at DESC
+    `, [vendorId]);
+    return rows.map(r => {
+      const originalPrice = Number(r.price);
+      const discountPercent = r.discount_percent ? Number(r.discount_percent) : null;
+      const effectivePrice = discountPercent ? Number((originalPrice * (1 - discountPercent / 100)).toFixed(2)) : originalPrice;
+      return {
+        ...rowToProduct(r),
+        vendorName: r.vendor_name,
+        vendorPhone: r.vendor_phone,
+        vendorStoreAddress: r.vendor_store_address,
+        avgRating: Number(r.avg_rating),
+        reviewCount: r.review_count,
+        originalPrice,
+        price: effectivePrice,
+        discountPercent,
+        promoEndsAt: r.promo_ends_at,
       };
     });
   },

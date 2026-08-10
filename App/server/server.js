@@ -2793,6 +2793,19 @@ app.get('/api/marketplace/restaurants', async (req, res) => {
   }
 });
 
+// ONLib Delivery only — a restaurant's dishes. Deliberately not part of
+// /api/marketplace/products (which now excludes restaurants entirely)
+// so restaurant menus can never surface in Marketplace browsing/search.
+app.get('/api/marketplace/restaurants/:id/menu', async (req, res) => {
+  try {
+    const dishes = await db.getRestaurantMenu(req.params.id);
+    res.json({ dishes });
+  } catch (err) {
+    console.error('GET /api/marketplace/restaurants/:id/menu failed', err);
+    res.status(500).json({ error: 'Failed to load menu' });
+  }
+});
+
 app.get('/api/marketplace/products/:id/reviews', async (req, res) => {
   try {
     const reviews = await db.getProductReviews(req.params.id);
