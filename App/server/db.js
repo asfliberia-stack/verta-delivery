@@ -147,6 +147,8 @@ function rowToSettings(r) {
     timezone: r.timezone,
     privacyPolicy: r.privacy_policy,
     termsOfService: r.terms_of_service,
+    adminFaqs: r.admin_faqs || null,
+    customerFaqs: r.customer_faqs || null,
     updatedAt: r.updated_at,
   };
 }
@@ -901,14 +903,21 @@ const db = {
       timezone: 'timezone',
       privacyPolicy: 'privacy_policy',
       termsOfService: 'terms_of_service',
+      adminFaqs: 'admin_faqs',
+      customerFaqs: 'customer_faqs',
     };
+    // JSONB columns — explicit JSON.stringify before binding, same
+    // reasoning as createAuditLogEntry's JSONB write: don't rely on
+    // node-pg's implicit object serialization.
+    const jsonbKeys = new Set(['adminFaqs', 'customerFaqs']);
     const sets = [];
     const values = [];
     let i = 1;
     for (const [key, col] of Object.entries(colMap)) {
       if (Object.prototype.hasOwnProperty.call(fields, key)) {
         sets.push(`${col} = $${i}`);
-        values.push(fields[key]);
+        const raw = fields[key];
+        values.push(jsonbKeys.has(key) && raw != null ? JSON.stringify(raw) : raw);
         i += 1;
       }
     }
@@ -1722,6 +1731,22 @@ const db = {
       ORDER BY p.created_at DESC
     `, [vendorId]);
     return rows.map(r => ({ ...rowToPurchase(r), customerName: r.customer_name, deliveryStatus: r.delivery_status }));
+  },
+
+  // Every purchase on the whole platform, unbounded, with both the
+  // customer and vendor name joined in — used only by Super Admin's
+  // Platform Report (Monthly/Weekly), which needs the full marketplace
+  // picture, not one vendor's slice of it.
+  async getAllPurchases() {
+    const { rows } = await pool.query(`
+      SELECT p.*, cu.business_name AS customer_name, vu.business_name AS vendor_name, o.status AS delivery_status
+      FROM purchases p
+      JOIN users cu ON cu.id = p.customer_id
+      JOIN users vu ON vu.id = p.vendor_id
+      LEFT JOIN orders o ON o.id = p.delivery_order_id
+      ORDER BY p.created_at DESC
+    `);
+    return rows.map(r => ({ ...rowToPurchase(r), customerName: r.customer_name, vendorName: r.vendor_name, deliveryStatus: r.delivery_status }));
   },
 
   // Real customer-facing purchase history — vendor name, real delivery

@@ -88,6 +88,16 @@ CREATE TABLE IF NOT EXISTS settings (
 ALTER TABLE settings ADD COLUMN IF NOT EXISTS privacy_policy TEXT;
 ALTER TABLE settings ADD COLUMN IF NOT EXISTS terms_of_service TEXT;
 
+-- Real, Super-Admin-editable Help & Support FAQ lists — same
+-- null-until-customized fallback pattern as privacy_policy/
+-- terms_of_service above. Two separate lists because Help & Support
+-- has always shown different questions to Admin/Manage Agent
+-- (operating the dashboard) vs. everyone else (customers, vendors,
+-- delivery companies — using the product). Each is a JSON array of
+-- {q, a} objects, in display order.
+ALTER TABLE settings ADD COLUMN IF NOT EXISTS admin_faqs JSONB;
+ALTER TABLE settings ADD COLUMN IF NOT EXISTS customer_faqs JSONB;
+
 -- Real login history — logged on every successful login (sender or
 -- admin). Device/browser are parsed from the request's User-Agent
 -- header; there's no city/location field because that needs a paid

@@ -1133,6 +1133,29 @@ app.put('/api/admin/settings', requireAuth, requireAdmin, requireFeature('busine
   if (fields.openDays && !Array.isArray(fields.openDays)) {
     return res.status(400).json({ error: 'openDays must be a list of day names' });
   }
+  // Help & Support FAQ lists — validated the same shape/cap reasoning
+  // as the vendor product colors/sizes lists elsewhere in this app:
+  // never trust the client, cap array length and per-field size so one
+  // bad request can't bloat the settings row.
+  for (const key of ['adminFaqs', 'customerFaqs']) {
+    if (fields[key] === undefined) continue;
+    if (fields[key] !== null) {
+      if (!Array.isArray(fields[key])) {
+        return res.status(400).json({ error: `${key} must be a list of {q, a} questions` });
+      }
+      if (fields[key].length > 50) {
+        return res.status(400).json({ error: `${key} can have at most 50 questions` });
+      }
+      for (const item of fields[key]) {
+        if (!item || typeof item.q !== 'string' || typeof item.a !== 'string') {
+          return res.status(400).json({ error: `${key} entries must each have a question and an answer` });
+        }
+        if (item.q.length > 300 || item.a.length > 3000) {
+          return res.status(400).json({ error: `${key} question/answer text is too long` });
+        }
+      }
+    }
+  }
   try {
     const settings = await db.upsertSettings(fields);
     io.to('admins').emit('settings:updated', settings); // live-sync to any other open admin sessions
@@ -2689,6 +2712,20 @@ app.get('/api/vendor/purchases/report', requireAuth, requireVendor, async (req, 
     res.json({ purchases });
   } catch (err) {
     console.error('GET /api/vendor/purchases/report failed', err);
+    res.status(500).json({ error: 'Failed to load report data' });
+  }
+});
+
+// Every purchase across the whole platform, unbounded — feeds Super
+// Admin's Platform Report PDF (see generatePlatformReportPDF
+// client-side), which combines this with the already-loaded delivery
+// `orders` array to cover the full business, not just Delivery.
+app.get('/api/super-admin/purchases/report', requireAuth, requireSuperAdmin, async (req, res) => {
+  try {
+    const purchases = await db.getAllPurchases();
+    res.json({ purchases });
+  } catch (err) {
+    console.error('GET /api/super-admin/purchases/report failed', err);
     res.status(500).json({ error: 'Failed to load report data' });
   }
 });

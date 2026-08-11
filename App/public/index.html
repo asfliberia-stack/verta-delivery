@@ -4779,6 +4779,10 @@
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
                                 Monthly Report
                             </button>
+                            <button type="button" class="admin-nav-item" id="open-platform-report-btn" style="display:none;">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+                                Platform Report
+                            </button>
                         </div></div>
                     </div>
 
@@ -5968,6 +5972,62 @@
         </div>
     </div>
 
+    <!-- Platform Report (Super Admin only) — the Monthly Report above
+         only ever covered ONLib Delivery (this app started as a
+         delivery-only product). This is the general report across the
+         whole platform: Delivery orders AND Marketplace/vendor sales
+         together, for either a full month or a single week. -->
+    <div class="modal-overlay" id="platform-report-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>📊 Platform Report</h3>
+                <button class="close-btn" id="close-platform-report-modal">&times;</button>
+            </div>
+            <p style="margin-bottom: 1.25rem; color: var(--slate-light);">A combined Delivery + Marketplace PDF report for the whole platform.</p>
+            <div class="form-group">
+                <label class="form-label">Period</label>
+                <div style="display:flex; gap:0.5rem;">
+                    <button type="button" class="btn-small btn-primary" id="platform-report-mode-monthly" data-mode="monthly">Monthly</button>
+                    <button type="button" class="btn-small btn-secondary" id="platform-report-mode-weekly" data-mode="weekly">Weekly</button>
+                </div>
+            </div>
+            <div id="platform-report-monthly-fields">
+                <div class="form-group">
+                    <label class="form-label">Year</label>
+                    <select class="form-input" id="platform-report-year-select"></select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Month</label>
+                    <select class="form-input" id="platform-report-month-select">
+                        <option value="1">January</option>
+                        <option value="2">February</option>
+                        <option value="3">March</option>
+                        <option value="4">April</option>
+                        <option value="5">May</option>
+                        <option value="6">June</option>
+                        <option value="7">July</option>
+                        <option value="8">August</option>
+                        <option value="9">September</option>
+                        <option value="10">October</option>
+                        <option value="11">November</option>
+                        <option value="12">December</option>
+                    </select>
+                </div>
+            </div>
+            <div id="platform-report-weekly-fields" style="display:none;">
+                <div class="form-group">
+                    <label class="form-label">Week</label>
+                    <input type="week" class="form-input" id="platform-report-week-input">
+                </div>
+            </div>
+            <div id="platform-report-error" style="color: #dc2626; font-size: 0.875rem; margin-bottom: 1rem; display: none;"></div>
+            <div class="modal-footer">
+                <button type="button" class="btn-small btn-secondary" id="cancel-platform-report">Cancel</button>
+                <button type="button" class="btn-small btn-success" id="generate-platform-report-btn">📥 Download PDF</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Delivery Company's own Monthly Report — simpler than the one
          above: no per-customer statement option, since that's a
          Verta-specific concept (this account's orders are all it has). -->
@@ -6645,6 +6705,29 @@
                             </div>
                             <button type="button" class="btn-small btn-success" id="save-legal-content-btn">Save Legal Content</button>
                             <span id="save-legal-content-status" style="font-size:0.8125rem; color:var(--secondary); margin-left:0.75rem; display:none;">Saved</span>
+                        </div>
+
+                        <!-- Super Admin only — add/edit/remove the real
+                             Help & Support FAQ questions, split the same
+                             way Help & Support itself already is: one
+                             list for Admin/Manage Agent, one for
+                             everyone else (customer, vendor, delivery
+                             company). -->
+                        <div id="settings-help-edit-section" style="display:none;">
+                            <h4 class="settings-section-title">Help &amp; Support Content (Super Admin)</h4>
+                            <p class="settings-hint">Add, edit, or remove the questions shown in Help &amp; Support. An empty list falls back to the built-in default questions.</p>
+                            <div class="form-group">
+                                <label class="form-label">Admin &amp; Staff FAQs</label>
+                                <div id="admin-faqs-editor-list"></div>
+                                <button type="button" class="btn-small btn-secondary" id="add-admin-faq-btn">+ Add Question</button>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Customer, Vendor &amp; Delivery Company FAQs</label>
+                                <div id="customer-faqs-editor-list"></div>
+                                <button type="button" class="btn-small btn-secondary" id="add-customer-faq-btn">+ Add Question</button>
+                            </div>
+                            <button type="button" class="btn-small btn-success" id="save-help-support-content-btn">Save Help &amp; Support Content</button>
+                            <span id="save-help-support-content-status" style="font-size:0.8125rem; color:var(--secondary); margin-left:0.75rem; display:none;">Saved</span>
                         </div>
                     </div>
                 </div>
@@ -7591,6 +7674,14 @@
                 <button class="close-btn" id="close-dcust-settings-modal">&times;</button>
             </div>
             <form id="dcust-settings-form">
+                <div style="display:flex; align-items:center; gap:1rem; margin-bottom:1.5rem;">
+                    <div class="user-avatar" id="dcust-settings-avatar-preview" style="width:64px; height:64px; font-size:1.5rem;">V</div>
+                    <div>
+                        <button type="button" class="btn-small btn-secondary" id="dcust-settings-photo-btn">Change Photo</button>
+                        <input type="file" accept="image/*" id="dcust-settings-photo-input" style="display:none;">
+                        <p style="font-size:0.75rem; color:var(--slate-lighter); margin-top:0.375rem;">JPG or PNG, under 500KB</p>
+                    </div>
+                </div>
                 <div class="form-group">
                     <label class="form-label">Name</label>
                     <input type="text" class="form-input" id="dcust-settings-name-input" required>
@@ -8210,7 +8301,7 @@
             ['desktop-profile-avatar', 'delivery-sender-avatar', 'user-avatar', 'topbar-user-avatar',
              'vendor-avatar', 'vendor-profile-avatar-desktop', 'mp-account-hero-avatar',
              'mp-settings-avatar-preview', 'vendor-settings-avatar-preview', 'admin-settings-avatar-preview',
-             'dc-avatar', 'dc-settings-avatar-preview']
+             'dc-avatar', 'dc-settings-avatar-preview', 'dcust-settings-avatar-preview']
                 .forEach(id => applyAvatarImage(id, currentUser.profileImageUrl));
         }
 
@@ -8700,6 +8791,12 @@
             wireProfilePhotoUpload('vendor-settings-photo-btn', 'vendor-settings-photo-input');
             wireProfilePhotoUpload('admin-settings-photo-btn', 'admin-settings-photo-input');
             wireProfilePhotoUpload('dc-settings-photo-btn', 'dc-settings-photo-input');
+            // ONLib Delivery's own Settings modal (#dcust-settings-modal)
+            // never had a photo upload at all — the same account's
+            // Marketplace Settings screen has one, but a customer using
+            // Delivery only had no way to reach it. Same reusable wiring
+            // as every other role's Settings area.
+            wireProfilePhotoUpload('dcust-settings-photo-btn', 'dcust-settings-photo-input');
             wireSettingsEvents();
             wireTopbarEvents();
             wireVendorEvents();
@@ -9863,6 +9960,7 @@
             document.getElementById('dcust-settings-error').style.display = 'none';
             populateCountryCodeSelects();
             splitPhoneNumber(currentUser.phone, 'dcust-settings-phone-country', 'dcust-settings-phone-input');
+            refreshMyAvatarDisplays();
             document.getElementById('dcust-settings-modal').classList.add('active');
         }
 
@@ -9978,6 +10076,43 @@
             });
             document.getElementById('close-legal-modal').addEventListener('click', () => {
                 document.getElementById('legal-modal').classList.remove('active');
+            });
+
+            // Help & Support content editor (Super Admin, Settings > About).
+            document.getElementById('add-admin-faq-btn').addEventListener('click', () => {
+                document.getElementById('admin-faqs-editor-list').insertAdjacentHTML('beforeend', renderFaqEditorRow('', ''));
+            });
+            document.getElementById('add-customer-faq-btn').addEventListener('click', () => {
+                document.getElementById('customer-faqs-editor-list').insertAdjacentHTML('beforeend', renderFaqEditorRow('', ''));
+            });
+            document.getElementById('admin-faqs-editor-list').addEventListener('click', (e) => {
+                if (e.target.classList.contains('faq-editor-remove')) e.target.closest('.faq-editor-row').remove();
+            });
+            document.getElementById('customer-faqs-editor-list').addEventListener('click', (e) => {
+                if (e.target.classList.contains('faq-editor-remove')) e.target.closest('.faq-editor-row').remove();
+            });
+            document.getElementById('save-help-support-content-btn').addEventListener('click', async () => {
+                const btn = document.getElementById('save-help-support-content-btn');
+                const statusEl = document.getElementById('save-help-support-content-status');
+                const adminFaqs = readFaqEditorList('admin-faqs-editor-list');
+                const customerFaqs = readFaqEditorList('customer-faqs-editor-list');
+                btn.disabled = true;
+                btn.textContent = 'Saving…';
+                statusEl.style.display = 'none';
+                try {
+                    const data = await apiFetch('/api/admin/settings', {
+                        method: 'PUT',
+                        body: JSON.stringify({ adminFaqs, customerFaqs }),
+                    });
+                    settings = data.settings;
+                    statusEl.style.display = 'inline';
+                    setTimeout(() => { statusEl.style.display = 'none'; }, 3000);
+                } catch (err) {
+                    showToast(err.message, 'error');
+                } finally {
+                    btn.disabled = false;
+                    btn.textContent = 'Save Help & Support Content';
+                }
             });
 
             document.getElementById('dcust-nav-back-to-chooser').addEventListener('click', showAppChooser);
@@ -10195,6 +10330,11 @@
                 if (auditLogNavBtn) auditLogNavBtn.style.display = isSuperAdmin ? 'flex' : 'none';
                 const platformSettingsNavBtn = document.getElementById('open-platform-settings-btn');
                 if (platformSettingsNavBtn) platformSettingsNavBtn.style.display = isSuperAdmin ? 'flex' : 'none';
+                // Platform Report (Monthly/Weekly, Delivery + Marketplace
+                // combined) — Super Admin only, since Manage Agent has no
+                // marketplace visibility to combine in the first place.
+                const platformReportNavBtn = document.getElementById('open-platform-report-btn');
+                if (platformReportNavBtn) platformReportNavBtn.style.display = isSuperAdmin ? 'flex' : 'none';
                 // Agent Contacts on the Overview page itself was showing
                 // for Super Admin too, duplicating their own dedicated
                 // Fleet Directory modal (same underlying agent list,
@@ -10841,6 +10981,12 @@
                     document.getElementById('settings-privacy-textarea').value = settings.privacyPolicy || '';
                     document.getElementById('settings-terms-textarea').value = settings.termsOfService || '';
                 }
+                const helpEditSection = document.getElementById('settings-help-edit-section');
+                if (helpEditSection) {
+                    helpEditSection.style.display = (currentUser && currentUser.role === 'super_admin') ? 'block' : 'none';
+                    renderFaqEditorList('admin-faqs-editor-list', settings.adminFaqs && settings.adminFaqs.length ? settings.adminFaqs : DEFAULT_ADMIN_FAQS);
+                    renderFaqEditorList('customer-faqs-editor-list', settings.customerFaqs && settings.customerFaqs.length ? settings.customerFaqs : DEFAULT_CUSTOMER_FAQS);
+                }
             });
             document.getElementById('close-settings-modal').addEventListener('click', () => {
                 document.getElementById('settings-modal').classList.remove('active');
@@ -10873,6 +11019,36 @@
                     const senderName = scopeSelect.options[scopeSelect.selectedIndex].textContent;
                     generateCustomerStatementPDF(year, month, scopeValue, senderName);
                 }
+            });
+
+            // Platform Report (Super Admin) — general Delivery +
+            // Marketplace report, Monthly or Weekly.
+            document.getElementById('open-platform-report-btn').addEventListener('click', openPlatformReportModal);
+            document.getElementById('close-platform-report-modal').addEventListener('click', closePlatformReportModal);
+            document.getElementById('cancel-platform-report').addEventListener('click', closePlatformReportModal);
+            document.getElementById('platform-report-mode-monthly').addEventListener('click', () => setPlatformReportMode('monthly'));
+            document.getElementById('platform-report-mode-weekly').addEventListener('click', () => setPlatformReportMode('weekly'));
+            document.getElementById('generate-platform-report-btn').addEventListener('click', () => {
+                const errorEl = document.getElementById('platform-report-error');
+                errorEl.style.display = 'none';
+                let period;
+                if (platformReportMode === 'monthly') {
+                    period = {
+                        mode: 'monthly',
+                        year: parseInt(document.getElementById('platform-report-year-select').value),
+                        month: parseInt(document.getElementById('platform-report-month-select').value),
+                    };
+                } else {
+                    const weekVal = document.getElementById('platform-report-week-input').value;
+                    if (!weekVal) {
+                        errorEl.textContent = 'Please choose a week.';
+                        errorEl.style.display = 'block';
+                        return;
+                    }
+                    const { start, end } = isoWeekToDateRange(weekVal);
+                    period = { mode: 'weekly', start, end };
+                }
+                generatePlatformReportPDF(period, orders, platformReportPurchasesCache);
             });
 
             document.getElementById('order-history-modal').addEventListener('change', (e) => {
@@ -13728,36 +13904,61 @@
         }
 
         // ============================================================
-        // Help & Support — real static content (not a stub). Pulls
-        // support contact from Business Profile settings when set,
-        // falling back to the same defaults shown in Settings > About.
+        // Help & Support — real content, now Super-Admin-editable (see
+        // #settings-help-edit-section in Settings > About). settings.
+        // adminFaqs/customerFaqs (JSONB, null until a Super Admin saves
+        // their own) always win when present; these two arrays are just
+        // the built-in fallback content, same null-until-customized
+        // pattern as DEFAULT privacy/terms content elsewhere in this
+        // file. Pulls support contact from Business Profile settings
+        // when set, falling back to the same defaults shown in
+        // Settings > About.
         // ============================================================
+        const DEFAULT_ADMIN_FAQS = [
+            { q: 'How do I accept an order?', a: 'Open the order card in "Available Orders" and click Accept Order, then choose an agent, a delivery amount (or a saved price preset from Settings > Pricing), and optionally a payment method.' },
+            { q: 'How do I add or edit a delivery agent?', a: 'Go to Fleet Directory in the sidebar, then use "+ Add Agent" or the Edit button on any existing agent card.' },
+            { q: 'What does "On Duty / Off Duty" mean for an agent?', a: 'It\'s a status you set manually — this app doesn\'t track agents\' live location or connection, so it\'s a simple flag you toggle, not automatic presence.' },
+            { q: 'How do I cancel an order?', a: 'Senders can cancel their own order while it\'s still Pending (before an agent accepts it) from their dashboard. Admins can delete any order via "Select" + "Delete Selected".' },
+            { q: 'How do I generate a monthly report?', a: 'Open Monthly Report in the sidebar, choose "Business (All Customers)" or a specific customer, then a month and year.' },
+            { q: 'I forgot my password — what do I do?', a: 'Use "Forgot password?" on the login screen. A reset code is sent to the email on your account, and also by SMS/WhatsApp if there\'s a phone number on file.' },
+        ];
+        const DEFAULT_CUSTOMER_FAQS = [
+            { q: 'What\'s the difference between ONLib Delivery and ONLib Marketplace?', a: 'ONLib Delivery sends a package you already have from one place to another. ONLib Marketplace is for buying products from real vendors — checkout automatically creates a real delivery order to get it to you.' },
+            { q: 'Do I need separate accounts?', a: 'No — one account works for both. Use the ⇄ Switch control in either app to move between them anytime.' },
+            { q: 'How do I track my order?', a: 'Log in and open "Your Orders" in ONLib Delivery — every order, including ones placed through the Marketplace, shows its live status there.' },
+            { q: 'How do I pay?', a: 'Pay on delivery — there\'s no online payment step at checkout today.' },
+            { q: 'I forgot my password — what do I do?', a: 'Use "Forgot password?" on the login screen. A reset code is sent to the email on your account, and also by SMS/WhatsApp if there\'s a phone number on file.' },
+        ];
+
+        // Full HTML-entity escape (including quotes) — safe both as
+        // element text content and inside an attribute value. Needed
+        // now that FAQ content is admin-entered/persisted rather than
+        // hardcoded in source; several of the real default questions
+        // above already contain literal quote characters, which a
+        // naive textContent-only escape wouldn't handle correctly
+        // inside an attribute.
+        function escapeHtmlAttr(str) {
+            return String(str == null ? '' : str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
         function renderHelpSupport(context) {
             const container = document.getElementById('help-support-content');
             const email = settings.businessEmail || 'onlib231@gmail.com';
             const phone = settings.businessPhone || '+231880465612';
-            const adminFaqs = [
-                { q: 'How do I accept an order?', a: 'Open the order card in "Available Orders" and click Accept Order, then choose an agent, a delivery amount (or a saved price preset from Settings > Pricing), and optionally a payment method.' },
-                { q: 'How do I add or edit a delivery agent?', a: 'Go to Fleet Directory in the sidebar, then use "+ Add Agent" or the Edit button on any existing agent card.' },
-                { q: 'What does "On Duty / Off Duty" mean for an agent?', a: 'It\'s a status you set manually — this app doesn\'t track agents\' live location or connection, so it\'s a simple flag you toggle, not automatic presence.' },
-                { q: 'How do I cancel an order?', a: 'Senders can cancel their own order while it\'s still Pending (before an agent accepts it) from their dashboard. Admins can delete any order via "Select" + "Delete Selected".' },
-                { q: 'How do I generate a monthly report?', a: 'Open Monthly Report in the sidebar, choose "Business (All Customers)" or a specific customer, then a month and year.' },
-                { q: 'I forgot my password — what do I do?', a: 'Use "Forgot password?" on the login screen. A reset code is sent to the email on your account, and also by SMS/WhatsApp if there\'s a phone number on file.' },
-            ];
-            const customerFaqs = [
-                { q: 'What\'s the difference between ONLib Delivery and ONLib Marketplace?', a: 'ONLib Delivery sends a package you already have from one place to another. ONLib Marketplace is for buying products from real vendors — checkout automatically creates a real delivery order to get it to you.' },
-                { q: 'Do I need separate accounts?', a: 'No — one account works for both. Use the ⇄ Switch control in either app to move between them anytime.' },
-                { q: 'How do I track my order?', a: 'Log in and open "Your Orders" in ONLib Delivery — every order, including ones placed through the Marketplace, shows its live status there.' },
-                { q: 'How do I pay?', a: 'Pay on delivery — there\'s no online payment step at checkout today.' },
-                { q: 'I forgot my password — what do I do?', a: 'Use "Forgot password?" on the login screen. A reset code is sent to the email on your account, and also by SMS/WhatsApp if there\'s a phone number on file.' },
-            ];
+            const adminFaqs = (settings.adminFaqs && settings.adminFaqs.length) ? settings.adminFaqs : DEFAULT_ADMIN_FAQS;
+            const customerFaqs = (settings.customerFaqs && settings.customerFaqs.length) ? settings.customerFaqs : DEFAULT_CUSTOMER_FAQS;
             const faqs = context === 'customer' ? customerFaqs : adminFaqs;
             container.innerHTML = `
                 <div style="margin-bottom: 1.5rem;">
                     ${faqs.map(f => `
                         <div style="margin-bottom: 1.25rem; padding-bottom: 1.25rem; border-bottom: 1px solid var(--border);">
-                            <div style="font-weight: 700; color: var(--slate); margin-bottom: 0.375rem;">${f.q}</div>
-                            <div style="color: var(--slate-light); font-size: 0.9375rem; line-height: 1.5;">${f.a}</div>
+                            <div style="font-weight: 700; color: var(--slate); margin-bottom: 0.375rem;">${escapeHtmlAttr(f.q)}</div>
+                            <div style="color: var(--slate-light); font-size: 0.9375rem; line-height: 1.5;">${escapeHtmlAttr(f.a)}</div>
                         </div>
                     `).join('')}
                 </div>
@@ -13767,6 +13968,35 @@
                     <div style="color: var(--slate-light);">Phone: <a href="tel:${phone}" style="color: var(--primary); font-weight: 600;">${phone}</a></div>
                 </div>
             `;
+        }
+
+        // ---- Help & Support editor (Super Admin, Settings > About) ----
+        // Add/edit/remove rows directly against the DOM rather than
+        // keeping a parallel JS array in sync — readFaqEditorList() just
+        // reads whatever rows currently exist at save time, which is
+        // simpler and can't drift out of sync with what's on screen.
+        function renderFaqEditorRow(q, a) {
+            return `
+                <div class="faq-editor-row" style="border:1px solid var(--border); border-radius:0.625rem; padding:0.75rem; margin-bottom:0.625rem;">
+                    <input type="text" class="form-input faq-editor-q" placeholder="Question" value="${escapeHtmlAttr(q)}" style="margin-bottom:0.5rem;">
+                    <textarea class="form-input faq-editor-a" placeholder="Answer" rows="2">${escapeHtmlAttr(a)}</textarea>
+                    <button type="button" class="btn-small btn-danger faq-editor-remove" style="margin-top:0.5rem;">Remove</button>
+                </div>
+            `;
+        }
+        function renderFaqEditorList(containerId, faqs) {
+            const container = document.getElementById(containerId);
+            if (!container) return;
+            const list = (faqs && faqs.length) ? faqs : [{ q: '', a: '' }];
+            container.innerHTML = list.map(f => renderFaqEditorRow(f.q, f.a)).join('');
+        }
+        function readFaqEditorList(containerId) {
+            return Array.from(document.querySelectorAll(`#${containerId} .faq-editor-row`))
+                .map(row => ({
+                    q: row.querySelector('.faq-editor-q').value.trim(),
+                    a: row.querySelector('.faq-editor-a').value.trim(),
+                }))
+                .filter(f => f.q || f.a); // drop a blank unused starter row
         }
 
         // Generic template content — not legal advice, and not specific
@@ -13967,6 +14197,44 @@
         }
         function closeMonthlyReportModal() { document.getElementById('monthly-report-modal').classList.remove('active'); }
 
+        // ---- Platform Report (Super Admin) — Delivery + Marketplace, Monthly or Weekly ----
+        let platformReportPurchasesCache = [];
+        let platformReportMode = 'monthly';
+        async function openPlatformReportModal() {
+            try {
+                const data = await apiFetch('/api/super-admin/purchases/report');
+                platformReportPurchasesCache = data.purchases || [];
+            } catch (err) {
+                console.error('Failed to load platform report data', err);
+                showToast('Could not load report data — check your connection and try again.', 'error');
+                return;
+            }
+            document.getElementById('platform-report-error').style.display = 'none';
+            setPlatformReportMode('monthly');
+            const now = new Date();
+            const allYears = getAllYears();
+            document.getElementById('platform-report-year-select').innerHTML =
+                allYears.map(y => `<option value="${y}" ${y === now.getFullYear() ? 'selected' : ''}>${y}</option>`).join('');
+            document.getElementById('platform-report-month-select').value = String(now.getMonth() + 1);
+            // Default the week picker to the current ISO week (yyyy-Www),
+            // matching what <input type="week"> expects.
+            const jan1 = new Date(Date.UTC(now.getFullYear(), 0, 1));
+            const dayOfYear = Math.floor((Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()) - jan1) / 86400000) + 1;
+            const isoWeekNum = Math.max(1, Math.ceil((dayOfYear + (jan1.getUTCDay() || 7) - 1) / 7));
+            document.getElementById('platform-report-week-input').value = `${now.getFullYear()}-W${String(isoWeekNum).padStart(2, '0')}`;
+            document.getElementById('platform-report-modal').classList.add('active');
+        }
+        function closePlatformReportModal() { document.getElementById('platform-report-modal').classList.remove('active'); }
+        function setPlatformReportMode(mode) {
+            platformReportMode = mode;
+            document.getElementById('platform-report-mode-monthly').classList.toggle('btn-primary', mode === 'monthly');
+            document.getElementById('platform-report-mode-monthly').classList.toggle('btn-secondary', mode !== 'monthly');
+            document.getElementById('platform-report-mode-weekly').classList.toggle('btn-primary', mode === 'weekly');
+            document.getElementById('platform-report-mode-weekly').classList.toggle('btn-secondary', mode !== 'weekly');
+            document.getElementById('platform-report-monthly-fields').style.display = mode === 'monthly' ? 'block' : 'none';
+            document.getElementById('platform-report-weekly-fields').style.display = mode === 'weekly' ? 'block' : 'none';
+        }
+
         function renderOrderHistoryToModal() {
             const container = document.getElementById('order-history-modal-content');
             if (!container) return;
@@ -14039,6 +14307,41 @@
                 if (day !== null) match = match && d.getDate() === day;
                 return match;
             });
+        }
+
+        // Half-open range filter [start, end) — used by the Platform
+        // Report's Weekly mode, since a single week can span two
+        // different months/years and filterByDate above only matches a
+        // single calendar month.
+        function filterByDateRange(list, getDate, start, end) {
+            return list.filter(item => {
+                const d = new Date(getDate(item));
+                return d >= start && d < end;
+            });
+        }
+
+        // Converts an <input type="week"> value ("2026-W32") into the
+        // real [Monday 00:00, next Monday 00:00) date range it
+        // represents, per the ISO 8601 definition of week numbering
+        // (week 1 is the week containing the year's first Thursday).
+        // Deliberately computed in LOCAL time (not UTC) — every other
+        // date computation in this file (filterByDate, getDateKey,
+        // groupByDay) already reasons in the browser's local time, so
+        // mixing in UTC here would risk an off-by-one-day mismatch for
+        // any timezone behind UTC.
+        function isoWeekToDateRange(weekStr) {
+            const [yearStr, weekPart] = weekStr.split('-W');
+            const year = parseInt(yearStr, 10);
+            const week = parseInt(weekPart, 10);
+            const jan4 = new Date(year, 0, 4);
+            const jan4Day = jan4.getDay() || 7; // Mon=1..Sun=7
+            const week1Monday = new Date(year, 0, 4 - (jan4Day - 1));
+            const start = new Date(week1Monday);
+            start.setDate(week1Monday.getDate() + (week - 1) * 7);
+            start.setHours(0, 0, 0, 0);
+            const end = new Date(start);
+            end.setDate(start.getDate() + 7);
+            return { start, end };
         }
 
         function groupByDay(filteredOrders, filteredExpenses) {
@@ -14765,6 +15068,142 @@
             }
 
             doc.save(`${currentUser.businessName.replace(/[^a-z0-9]+/gi, '-')}-Monthly-Report-${year}-${String(month).padStart(2, '0')}.pdf`);
+        }
+
+        // Groups a list into per-day {count, amount} totals, sorted by
+        // date — shared by the Delivery and Marketplace sections of the
+        // Platform Report below.
+        function sumByDay(list, getDate, getAmount) {
+            const byDay = {};
+            list.forEach(item => {
+                const key = getDateKey(getDate(item));
+                if (!byDay[key]) byDay[key] = { count: 0, amount: 0 };
+                byDay[key].count += 1;
+                byDay[key].amount += (getAmount(item) || 0);
+            });
+            return Object.keys(byDay).sort().map(key => ({ dateKey: key, ...byDay[key] }));
+        }
+
+        // Super Admin's general Platform Report — combines Delivery
+        // (this app's original product) and Marketplace/vendor sales
+        // (added later) into one report, for either a full calendar
+        // month or a single ISO week. The existing Monthly Report above
+        // only ever covered Delivery, since that's all this app had when
+        // it was first built.
+        function generatePlatformReportPDF(period, deliveryOrders, marketplacePurchases) {
+            const monthOrders = period.mode === 'monthly'
+                ? filterByDate(deliveryOrders, o => o.createdAt, period.year, period.month, null)
+                : filterByDateRange(deliveryOrders, o => o.createdAt, period.start, period.end);
+            const monthPurchases = period.mode === 'monthly'
+                ? filterByDate(marketplacePurchases, p => p.createdAt, period.year, period.month, null)
+                : filterByDateRange(marketplacePurchases, p => p.createdAt, period.start, period.end);
+
+            const deliveryRevenue = monthOrders.filter(o => o.status === 'delivered').reduce((sum, o) => sum + (o.amount || 0), 0);
+            const deliveredCount = monthOrders.filter(o => o.status === 'delivered').length;
+            const marketplaceRevenue = monthPurchases.reduce((sum, p) => sum + (p.totalAmount || 0), 0);
+            const completedCount = monthPurchases.filter(p => p.paymentStatus === 'completed' || p.paymentStatus === 'paid').length;
+
+            const periodLabel = period.mode === 'monthly'
+                ? new Date(period.year, period.month - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+                : `Week of ${period.start.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} – ${new Date(period.end - 1).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
+
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            let yPosition = 20;
+            const pageMargin = 14;
+            const pageWidth = doc.internal.pageSize.getWidth();
+
+            doc.setFontSize(20); doc.setFont('helvetica', 'bold');
+            doc.text('ONLib Platform Report', pageWidth / 2, yPosition, { align: 'center' });
+            yPosition += 10;
+            doc.setFontSize(11); doc.setFont('helvetica', 'normal');
+            doc.text(period.mode === 'monthly' ? 'Monthly' : 'Weekly', pageWidth / 2, yPosition, { align: 'center' });
+            yPosition += 7;
+            doc.setFontSize(14); doc.setFont('helvetica', 'bold');
+            doc.text(periodLabel, pageWidth / 2, yPosition, { align: 'center' });
+            yPosition += 16;
+
+            doc.setFontSize(12); doc.setFont('helvetica', 'bold');
+            doc.text('Combined Overview', pageMargin, yPosition); yPosition += 8;
+            doc.setFont('helvetica', 'normal');
+            doc.text(`• Delivery Orders: ${monthOrders.length}  (${deliveredCount} delivered)`, pageMargin, yPosition); yPosition += 7;
+            doc.text(`• Delivery Revenue: $${deliveryRevenue.toFixed(2)}`, pageMargin, yPosition); yPosition += 7;
+            doc.text(`• Marketplace Purchases: ${monthPurchases.length}  (${completedCount} completed payments)`, pageMargin, yPosition); yPosition += 7;
+            doc.text(`• Marketplace Revenue: $${marketplaceRevenue.toFixed(2)}`, pageMargin, yPosition); yPosition += 7;
+            doc.setFont('helvetica', 'bold');
+            doc.text(`• Grand Total Revenue: $${(deliveryRevenue + marketplaceRevenue).toFixed(2)}`, pageMargin, yPosition); yPosition += 15;
+
+            if (yPosition > 250) { doc.addPage(); yPosition = 20; }
+            doc.setFontSize(14); doc.setFont('helvetica', 'bold');
+            doc.text('Delivery — Daily Breakdown', pageMargin, yPosition); yPosition += 10;
+            doc.setFont('helvetica', 'normal'); doc.setFontSize(10);
+            const deliveryDays = sumByDay(monthOrders, o => o.createdAt, o => o.status === 'delivered' ? o.amount : 0);
+            if (deliveryDays.length === 0) {
+                doc.text('No delivery orders in this period.', pageMargin, yPosition); yPosition += 8;
+            } else {
+                deliveryDays.forEach(d => {
+                    const label = new Date(d.dateKey + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+                    doc.text(`${label} — Orders: ${d.count}   Revenue: $${d.amount.toFixed(2)}`, pageMargin, yPosition);
+                    yPosition += 6;
+                    if (yPosition > 275) { doc.addPage(); yPosition = 20; }
+                });
+                yPosition += 6;
+            }
+
+            if (yPosition > 250) { doc.addPage(); yPosition = 20; }
+            doc.setFontSize(14); doc.setFont('helvetica', 'bold');
+            doc.text('Marketplace — Daily Breakdown', pageMargin, yPosition); yPosition += 10;
+            doc.setFont('helvetica', 'normal'); doc.setFontSize(10);
+            const marketplaceDays = sumByDay(monthPurchases, p => p.createdAt, p => p.totalAmount);
+            if (marketplaceDays.length === 0) {
+                doc.text('No marketplace purchases in this period.', pageMargin, yPosition); yPosition += 8;
+            } else {
+                marketplaceDays.forEach(d => {
+                    const label = new Date(d.dateKey + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+                    doc.text(`${label} — Purchases: ${d.count}   Revenue: $${d.amount.toFixed(2)}`, pageMargin, yPosition);
+                    yPosition += 6;
+                    if (yPosition > 275) { doc.addPage(); yPosition = 20; }
+                });
+                yPosition += 6;
+            }
+
+            if (yPosition > 245) { doc.addPage(); yPosition = 20; }
+            doc.setFontSize(14); doc.setFont('helvetica', 'bold');
+            doc.text('Marketplace — Top Vendors', pageMargin, yPosition); yPosition += 10;
+            doc.setFont('helvetica', 'normal'); doc.setFontSize(10);
+            const vendorTotals = {};
+            monthPurchases.forEach(p => {
+                const name = p.vendorName || 'Unknown vendor';
+                if (!vendorTotals[name]) vendorTotals[name] = { count: 0, amount: 0 };
+                vendorTotals[name].count += 1;
+                vendorTotals[name].amount += (p.totalAmount || 0);
+            });
+            const vendorNames = Object.keys(vendorTotals).sort((a, b) => vendorTotals[b].amount - vendorTotals[a].amount);
+            if (vendorNames.length === 0) {
+                doc.text('No vendor sales in this period.', pageMargin, yPosition); yPosition += 8;
+            } else {
+                const vCol1 = pageMargin, vCol2 = pageMargin + 100, vCol3 = pageMargin + 130;
+                doc.setFont('helvetica', 'bold');
+                doc.text('Vendor', vCol1, yPosition);
+                doc.text('Purchases', vCol2, yPosition);
+                doc.text('Revenue', vCol3, yPosition);
+                yPosition += 8;
+                doc.setFont('helvetica', 'normal');
+                vendorNames.forEach(name => {
+                    const t = vendorTotals[name];
+                    const nameLines = doc.splitTextToSize(cleanText(name), 82);
+                    doc.text(nameLines, vCol1, yPosition);
+                    doc.text(String(t.count), vCol2, yPosition);
+                    doc.text(`$${t.amount.toFixed(2)}`, vCol3, yPosition);
+                    yPosition += 6 * Math.max(1, nameLines.length);
+                    if (yPosition > 275) { doc.addPage(); yPosition = 20; }
+                });
+            }
+
+            const fileLabel = period.mode === 'monthly'
+                ? `${period.year}-${String(period.month).padStart(2, '0')}`
+                : `${getDateKey(period.start)}-to-${getDateKey(new Date(period.end - 1))}`;
+            doc.save(`ONLib-Platform-Report-${fileLabel}.pdf`);
         }
 
         // ---- Admin-only: one customer's monthly statement ----
