@@ -5342,6 +5342,18 @@
                             </div>
                             View Reports
                         </button>
+                        <button type="button" class="vendor-quick-action" id="vendor-send-package-btn">
+                            <div class="vendor-quick-action-icon" style="background:#dbeafe; color:#1d4ed8;">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16.5 9.4 7.55 4.24"></path><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.29 7 12 12 20.71 7"></polyline><line x1="12" y1="22" x2="12" y2="12"></line></svg>
+                            </div>
+                            Send a Package
+                        </button>
+                        <button type="button" class="vendor-quick-action" id="vendor-my-delivery-orders-btn">
+                            <div class="vendor-quick-action-icon" style="background:#dcfce7; color:#15803d;">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13"></rect><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon><circle cx="5.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle></svg>
+                            </div>
+                            My Delivery Orders
+                        </button>
                     </div>
                 </div>
             </div>
@@ -5430,6 +5442,13 @@
                     <div class="vendor-sales-card" style="display:flex; align-items:center; gap:1.5rem; flex-wrap:wrap;">
                         <canvas id="vendor-order-status-chart" width="140" height="140" style="max-width:140px;"></canvas>
                         <div id="vendor-order-status-legend" style="flex:1; min-width:160px;"></div>
+                    </div>
+                </div>
+                <div class="mobile-section">
+                    <div class="mobile-section-header"><div class="mobile-section-title">Monthly Report</div></div>
+                    <div class="vendor-sales-card">
+                        <p style="margin:0 0 1rem; color:var(--slate-light); font-size:0.875rem;">Download a real PDF report of a specific month's sales — every purchase from your store, not just what's shown above.</p>
+                        <button type="button" class="btn-small btn-success" id="open-vendor-report-btn">📥 Download Monthly Report PDF</button>
                     </div>
                 </div>
             </div>
@@ -5790,6 +5809,25 @@
         </div>
     </div>
 
+    <!-- Vendor's own Delivery Orders — a vendor can now place a
+         delivery order for themselves (Send a Package, from the
+         Dashboard Quick Actions), same order:create flow as a regular
+         customer. This is deliberately separate from vendor-view-orders
+         (that tab is the vendor's SALES orders — purchases customers
+         made from their store) to avoid conflating two different kinds
+         of "order". Reuses renderOrdersHome/createOrderCard/
+         openOrderDetails/cancelOrder exactly as the customer delivery
+         view does, just against this container id instead. -->
+    <div class="modal-overlay" id="vendor-delivery-orders-modal">
+        <div class="modal" style="max-width: 720px; width: 95%; max-height: 85vh; overflow-y: auto;">
+            <div class="modal-header">
+                <h3>My Delivery Orders</h3>
+                <button class="close-btn" id="close-vendor-delivery-orders-modal">&times;</button>
+            </div>
+            <div class="orders-grid" id="vendor-delivery-orders-list"></div>
+        </div>
+    </div>
+
     <!-- Report a Problem (customer-facing) — deliberately placed after
          order-details-modal in the DOM (see the .modal-overlay z-index
          comment near staff-modal above): this can be opened either
@@ -5964,6 +6002,44 @@
             <div class="modal-footer">
                 <button type="button" class="btn-small btn-secondary" id="cancel-dc-report">Cancel</button>
                 <button type="button" class="btn-small btn-success" id="generate-dc-report-btn">📥 Download PDF</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Vendor's own Monthly Report — adapted from the Delivery
+         Company's report above: sales/purchases from this store only,
+         no agent/commission section (not applicable to a vendor). -->
+    <div class="modal-overlay" id="vendor-report-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>📊 Monthly Report</h3>
+                <button class="close-btn" id="close-vendor-report-modal">&times;</button>
+            </div>
+            <p style="margin-bottom: 1.5rem; color: var(--slate-light);">Choose a month and year to generate a real PDF report of your store's sales.</p>
+            <div class="form-group">
+                <label class="form-label">Year</label>
+                <select class="form-input" id="vendor-report-year-select"></select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Month</label>
+                <select class="form-input" id="vendor-report-month-select">
+                    <option value="1">January</option>
+                    <option value="2">February</option>
+                    <option value="3">March</option>
+                    <option value="4">April</option>
+                    <option value="5">May</option>
+                    <option value="6">June</option>
+                    <option value="7">July</option>
+                    <option value="8">August</option>
+                    <option value="9">September</option>
+                    <option value="10">October</option>
+                    <option value="11">November</option>
+                    <option value="12">December</option>
+                </select>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-small btn-secondary" id="cancel-vendor-report">Cancel</button>
+                <button type="button" class="btn-small btn-success" id="generate-vendor-report-btn">📥 Download PDF</button>
             </div>
         </div>
     </div>
@@ -8562,6 +8638,14 @@
                 renderOrderHistory();
                 renderAgentContacts();
             }
+            // Vendors can place their own delivery orders now too (Send a
+            // Package) — keep the "My Delivery Orders" list current so a
+            // status change (accepted/picked up/delivered) shows up live,
+            // the same way it does for a regular customer. Cheap no-op if
+            // the container is just empty/hidden behind its unopened modal.
+            if (currentUser && currentUser.role === 'vendor') {
+                renderOrdersHome('vendor-delivery-orders-list');
+            }
         }
 
         // Hides the UI entry points for anything a Super Admin has
@@ -8590,6 +8674,7 @@
             if (myDisabledFeatures.includes('fleet')) hide('scroll-to-agents-btn');
             if (myDisabledFeatures.includes('expenses')) { hide('add-expense-btn'); hide('add-expense-btn-finance'); }
             if (myDisabledFeatures.includes('customers')) { hide('open-customers-btn'); hide('sa-quick-customers-btn'); }
+            if (myDisabledFeatures.includes('reports')) { hide('open-monthly-report-btn'); hide('open-monthly-report-btn-finance'); }
             document.querySelectorAll('.settings-tab-btn').forEach(btn => {
                 const tab = btn.dataset.settingsTab;
                 if ((tab === 'profile' && myDisabledFeatures.includes('business_settings')) ||
@@ -8936,6 +9021,30 @@
             yearSelect.innerHTML = orderYears.map(y => `<option value="${y}" ${y === now.getFullYear() ? 'selected' : ''}>${y}</option>`).join('');
             document.getElementById('dc-report-month-select').value = String(now.getMonth() + 1);
             document.getElementById('dc-report-modal').classList.add('active');
+        }
+
+        // Vendor's own Monthly Report — fetched fresh each time the modal
+        // opens (unlike deliveryCompanyOrdersCache above, which is kept
+        // warm because the Orders tab needs it constantly; this report is
+        // opened rarely enough that a live fetch is simpler than adding
+        // another always-on cache to keep in sync).
+        let vendorReportPurchasesCache = [];
+        async function openVendorReportModal() {
+            try {
+                const data = await apiFetch('/api/vendor/purchases/report');
+                vendorReportPurchasesCache = data.purchases || [];
+            } catch (err) {
+                console.error('Failed to load vendor report data', err);
+                showToast('Could not load report data — check your connection and try again.', 'error');
+                return;
+            }
+            const yearSelect = document.getElementById('vendor-report-year-select');
+            const purchaseYears = [...new Set(vendorReportPurchasesCache.map(p => new Date(p.createdAt).getFullYear()))].sort((a, b) => b - a);
+            const now = new Date();
+            if (purchaseYears.length === 0) purchaseYears.push(now.getFullYear());
+            yearSelect.innerHTML = purchaseYears.map(y => `<option value="${y}" ${y === now.getFullYear() ? 'selected' : ''}>${y}</option>`).join('');
+            document.getElementById('vendor-report-month-select').value = String(now.getMonth() + 1);
+            document.getElementById('vendor-report-modal').classList.add('active');
         }
 
         function wireDeliveryCompanyEvents() {
@@ -10217,6 +10326,19 @@
                     impersonationBanner.style.display = 'flex';
                 } else {
                     impersonationBanner.style.display = 'none';
+                }
+                // A vendor can now place their own delivery orders (Send a
+                // Package, from Quick Actions) — load them the same way a
+                // regular customer's own orders load, into the same shared
+                // `orders` array. /api/state already scopes non-admin roles
+                // to db.getOrdersBySender(their own id), so this "just
+                // works" now that order:create accepts role='vendor' too.
+                try {
+                    const deliveryState = await apiFetch('/api/state');
+                    orders = (deliveryState.orders || []).map(normalizeOrder);
+                } catch (err) {
+                    console.error('Failed to load vendor delivery orders', err);
+                    orders = [];
                 }
                 showVendorDashboardView();
                 setVendorTab('home');
@@ -13989,7 +14111,7 @@
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem; padding-bottom: 1rem; border-bottom: 1px solid #e5e7eb;">
                         <h4 style="color: var(--slate); font-weight: 600; margin: 0; font-size: 1.25rem;">${formattedDate}</h4>
                         <div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
-                            <button class="btn-small btn-success" onclick="generateDailyReportPDF('${dateKey}')">📥 Download PDF</button>
+                            ${myDisabledFeatures.includes('reports') ? '' : `<button class="btn-small btn-success" onclick="generateDailyReportPDF('${dateKey}')">📥 Download PDF</button>`}
                             <div style="display: flex; gap: 2.5rem; flex-wrap: wrap;">
                                 <div style="text-align: center;"><div style="font-size: 0.875rem; color: var(--slate-light); text-transform: uppercase; letter-spacing: 0.05em;">Grand Total Orders</div><div style="font-weight: 800; font-size: 1.5rem; color: var(--slate);">${dailyTotalOrders}</div></div>
                                 <div style="text-align: center;"><div style="font-size: 0.875rem; color: var(--slate-light); text-transform: uppercase; letter-spacing: 0.05em;">Grand Total Amount</div><div style="font-weight: 800; font-size: 1.5rem; color: var(--primary);">$${dailyTotalAmount.toFixed(2)}</div></div>
@@ -14569,6 +14691,76 @@
                     });
                     yPosition += 4;
                     if (yPosition > 275) { doc.addPage(); yPosition = 20; }
+                });
+            }
+
+            doc.save(`${currentUser.businessName.replace(/[^a-z0-9]+/gi, '-')}-Monthly-Report-${year}-${String(month).padStart(2, '0')}.pdf`);
+        }
+
+        // Vendor's own monthly report — adapted from
+        // generateDeliveryCompanyMonthlyReportPDF above: no agent/
+        // commission section (a vendor's sales don't involve delivery
+        // agents), and the breakdown lists purchases (customer, amount,
+        // payment status, delivery status) rather than pickup/dropoff
+        // routes. Reuses the same filterByDate/cleanText helpers.
+        function generateVendorMonthlyReportPDF(year, month, vendorPurchases) {
+            const monthPurchases = filterByDate(vendorPurchases, p => p.createdAt, year, month, null);
+            const totalOrders = monthPurchases.length;
+            const totalAmount = monthPurchases.reduce((sum, p) => sum + (p.totalAmount || 0), 0);
+            const completedCount = monthPurchases.filter(p => p.paymentStatus === 'completed' || p.paymentStatus === 'paid').length;
+            const monthName = new Date(year, month - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            let yPosition = 20;
+            const pageMargin = 14;
+            const pageWidth = doc.internal.pageSize.getWidth();
+
+            doc.setFontSize(20); doc.setFont('helvetica', 'bold');
+            doc.text(`${cleanText(currentUser.businessName)} Monthly Report`, pageWidth / 2, yPosition, { align: 'center' });
+            yPosition += 12;
+            doc.setFontSize(14); doc.text(monthName, pageWidth / 2, yPosition, { align: 'center' });
+            yPosition += 18;
+
+            doc.setFontSize(12); doc.setFont('helvetica', 'bold');
+            doc.text('Monthly Totals', pageMargin, yPosition); yPosition += 8;
+            doc.setFont('helvetica', 'normal');
+            doc.text(`• Total Purchases: ${totalOrders}`, pageMargin, yPosition); yPosition += 7;
+            doc.text(`• Completed Payments: ${completedCount}`, pageMargin, yPosition); yPosition += 7;
+            doc.text(`• Total Sales: $${totalAmount.toFixed(2)}`, pageMargin, yPosition); yPosition += 15;
+
+            if (yPosition > 255) { doc.addPage(); yPosition = 20; }
+            doc.setFontSize(14); doc.setFont('helvetica', 'bold');
+            doc.text('Purchases', pageMargin, yPosition); yPosition += 10;
+            doc.setFont('helvetica', 'normal'); doc.setFontSize(10);
+
+            if (monthPurchases.length === 0) {
+                doc.text('No purchases recorded this month.', pageMargin, yPosition);
+            } else {
+                const pCol1 = pageMargin, pCol2 = pageMargin + 34, pCol3 = pageMargin + 100, pCol4 = pageMargin + 130, pCol5 = pageMargin + 162;
+                doc.setFont('helvetica', 'bold');
+                doc.text('Date', pCol1, yPosition);
+                doc.text('Customer', pCol2, yPosition);
+                doc.text('Amount', pCol3, yPosition);
+                doc.text('Payment', pCol4, yPosition);
+                doc.text('Delivery', pCol5, yPosition);
+                yPosition += 8;
+                doc.setFont('helvetica', 'normal');
+                [...monthPurchases].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt)).forEach(p => {
+                    const dateStr = new Date(p.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                    const customerLines = doc.splitTextToSize(cleanText(p.customerName || '—'), 62);
+                    const maxLines = Math.max(1, customerLines.length);
+                    for (let i = 0; i < maxLines; i++) {
+                        if (i === 0) {
+                            doc.text(dateStr, pCol1, yPosition);
+                            doc.text(`$${(p.totalAmount || 0).toFixed(2)}`, pCol3, yPosition);
+                            doc.text(cleanText(p.paymentStatus || '—'), pCol4, yPosition);
+                            doc.text(cleanText(p.deliveryStatus || '—'), pCol5, yPosition);
+                        }
+                        if (i < customerLines.length) doc.text(customerLines[i], pCol2, yPosition);
+                        yPosition += 6;
+                        if (yPosition > 275) { doc.addPage(); yPosition = 20; }
+                    }
                 });
             }
 
@@ -16515,6 +16707,33 @@
             // Reports shows the real sales chart + order status donut).
             document.getElementById('vendor-manage-promos-btn').addEventListener('click', () => setVendorTab('promotions'));
             document.getElementById('vendor-view-reports-btn').addEventListener('click', () => setVendorTab('reports'));
+
+            // Send a Package — a vendor placing their own delivery order,
+            // same modal/flow a customer uses (see order:create in
+            // server.js, now open to role='vendor' too).
+            document.getElementById('vendor-send-package-btn').addEventListener('click', () => openNewOrderModal());
+            document.getElementById('vendor-my-delivery-orders-btn').addEventListener('click', () => {
+                renderOrdersHome('vendor-delivery-orders-list');
+                document.getElementById('vendor-delivery-orders-modal').classList.add('active');
+            });
+            document.getElementById('close-vendor-delivery-orders-modal').addEventListener('click', () => {
+                document.getElementById('vendor-delivery-orders-modal').classList.remove('active');
+            });
+            document.getElementById('vendor-delivery-orders-list').addEventListener('click', handleOrderGridClick);
+
+            // Vendor's own Monthly Report PDF (Reports tab).
+            document.getElementById('open-vendor-report-btn').addEventListener('click', openVendorReportModal);
+            document.getElementById('close-vendor-report-modal').addEventListener('click', () => {
+                document.getElementById('vendor-report-modal').classList.remove('active');
+            });
+            document.getElementById('cancel-vendor-report').addEventListener('click', () => {
+                document.getElementById('vendor-report-modal').classList.remove('active');
+            });
+            document.getElementById('generate-vendor-report-btn').addEventListener('click', () => {
+                const year = parseInt(document.getElementById('vendor-report-year-select').value);
+                const month = parseInt(document.getElementById('vendor-report-month-select').value);
+                generateVendorMonthlyReportPDF(year, month, vendorReportPurchasesCache);
+            });
 
             // Notification bell — same real notification log as everywhere else.
             const bell = document.getElementById('vendor-notification-btn');

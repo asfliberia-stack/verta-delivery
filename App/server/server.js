@@ -45,6 +45,13 @@ const FEATURE_KEYS = {
   customers: 'Customers panel',
   business_settings: 'Business Profile settings (logo, hours, currency)',
   backup_restore: 'Export & Backup/Restore Database',
+  // Client-side only — the Monthly/Daily Report PDFs are generated in
+  // the browser from data the account already has loaded (same as the
+  // Overview stats), so there's no separate server endpoint to enforce
+  // this against. Unlike every other key above, this is a UI-visibility
+  // toggle, not a hard security boundary; documented here so that stays
+  // obvious rather than assumed.
+  reports: 'Monthly & Daily Reports (view and download PDF)',
 };
 
 // REST middleware version — checked fresh against the database on
@@ -240,12 +247,19 @@ function orderRooms(order) {
 }
 
 io.on('connection', (socket) => {
-  const room = isAdminLike(socket.user.role)
-    ? 'admins'
-    : socket.user.role === 'vendor'
-      ? `vendor:${socket.user.id}`
-      : `user:${socket.user.id}`;
+  const room = isAdminLike(socket.user.role) ? 'admins' : `user:${socket.user.id}`;
   socket.join(room);
+  if (socket.user.role === 'vendor') {
+    // Vendors keep their own `vendor:<id>` room for vendor-specific
+    // broadcasts (new purchase orders, product Q&A, store messages) AND
+    // now also join `user:<id>` above like every other non-admin role —
+    // vendors can place their own delivery orders (order:create below),
+    // and orderRooms() below broadcasts order:created/order:updated to
+    // `user:${order.senderId}`, the same way it already does for a
+    // regular customer's own orders. Without this, a vendor's own
+    // delivery-order status changes wouldn't reach their open tab live.
+    socket.join(`vendor:${socket.user.id}`);
+  }
   if (socket.user.role === 'delivery_company') {
     socket.join('pending-orders');
     socket.join(`delivery-company:${socket.user.id}`);
@@ -256,10 +270,14 @@ io.on('connection', (socket) => {
     console.log(`[socket] disconnected: ${socket.user.email} (${socket.id})`);
   });
 
-  // ---- Orders (create = sender only; everything else = admin only) ----
+  // ---- Orders (create = sender or vendor, on their own behalf; everything else = admin only) ----
 
   socket.on('order:create', async (payload, ack) => {
-    const isSender = socket.user.role === 'sender';
+    // Vendors can place their own delivery orders too (e.g. sending
+    // stock between stores, or a courier pickup) — same flow as a
+    // regular customer sending a package, just gated to their own
+    // account like everything else non-admin here.
+    const isSender = socket.user.role === 'sender' || socket.user.role === 'vendor';
     const isAdmin = isAdminLike(socket.user.role);
     if (!isSender && !isAdmin) {
       return ack && ack({ ok: false, error: 'Not allowed to create orders' });
@@ -321,7 +339,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('order:cancel', async ({ id }, ack) => {
-    if (socket.user.role !== 'sender') {
+    if (socket.user.role !== 'sender' && socket.user.role !== 'vendor') {
       return ack && ack({ ok: false, error: 'Only the sender who placed an order can cancel it' });
     }
     try {
@@ -2658,6 +2676,20 @@ app.get('/api/vendor/purchases', requireAuth, requireVendor, async (req, res) =>
   } catch (err) {
     console.error('GET /api/vendor/purchases failed', err);
     res.status(500).json({ error: 'Failed to load orders' });
+  }
+});
+
+// Every purchase this vendor has ever received, unbounded — feeds the
+// vendor's own Monthly Report PDF (see generateVendorMonthlyReportPDF
+// client-side), which needs a real month's worth of data, not just the
+// most recent 50 the Orders tab list uses.
+app.get('/api/vendor/purchases/report', requireAuth, requireVendor, async (req, res) => {
+  try {
+    const purchases = await db.getAllPurchasesByVendor(req.user.id);
+    res.json({ purchases });
+  } catch (err) {
+    console.error('GET /api/vendor/purchases/report failed', err);
+    res.status(500).json({ error: 'Failed to load report data' });
   }
 });
 

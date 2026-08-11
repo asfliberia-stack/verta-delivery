@@ -1706,6 +1706,24 @@ const db = {
     return rows.map(r => ({ ...rowToPurchase(r), customerName: r.customer_name, deliveryStatus: r.delivery_status }));
   },
 
+  // Unbounded version of the above, used only for the vendor's own
+  // Monthly Report PDF — that needs every purchase in the selected
+  // month/year, not just the most recent 50 (the cap the Orders tab
+  // list uses, which is fine for a UI list but would silently
+  // undercount a busy or older month's totals). Same shape as
+  // getPurchasesByVendor otherwise.
+  async getAllPurchasesByVendor(vendorId) {
+    const { rows } = await pool.query(`
+      SELECT p.*, u.business_name AS customer_name, o.status AS delivery_status
+      FROM purchases p
+      JOIN users u ON u.id = p.customer_id
+      LEFT JOIN orders o ON o.id = p.delivery_order_id
+      WHERE p.vendor_id = $1
+      ORDER BY p.created_at DESC
+    `, [vendorId]);
+    return rows.map(r => ({ ...rowToPurchase(r), customerName: r.customer_name, deliveryStatus: r.delivery_status }));
+  },
+
   // Real customer-facing purchase history — vendor name, real delivery
   // status (via the linked delivery order), and the actual items
   // bought (name/price/quantity + the product's CURRENT image, since
