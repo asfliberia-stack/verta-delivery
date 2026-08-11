@@ -4265,7 +4265,7 @@
                     <section class="dcust-food-section" id="dcust-food-section">
                         <div id="dcust-location-pill" class="dcust-location-pill"></div>
                         <div class="form-group" style="margin-bottom:0.75rem;">
-                            <input type="text" class="form-input" id="dcust-food-search" placeholder="Search food or restaurant…">
+                            <input type="text" class="form-input" id="dcust-food-search" placeholder="Search for food or restaurant…">
                         </div>
                         <div class="dcust-food-tabs">
                             <button type="button" class="btn-small btn-primary dcust-food-tab active" data-food-tab="food" id="dcust-food-tab-food">Food</button>
@@ -9833,9 +9833,21 @@
                 const morePlatformSettingsBtn = document.getElementById('admin-more-platform-settings');
                 if (morePlatformSettingsBtn) morePlatformSettingsBtn.style.display = isSuperAdmin ? 'flex' : 'none';
                 // Super Admin lands on Platform Overview by default — reflect
-                // that in the bottom nav's initial active state too (matches
-                // setAdminMainView('platform') called a few lines down).
-                if (mnavPlatformBtn) mnavPlatformBtn.classList.toggle('active', isSuperAdmin);
+                // that in the bottom nav's initial active state too. This used
+                // to also toggle a separate "Platform" mobile nav button
+                // (`mnavPlatformBtn`), but Platform/Overview were merged into
+                // the single combined Overview page below (see
+                // setAdminMainView()) and that button no longer exists — the
+                // old reference was left behind as a bare, undeclared
+                // identifier, which threw a ReferenceError here on every
+                // single Admin/Super Admin login (both fresh logins and
+                // returning-session page loads) and silently aborted the
+                // rest of enterApp() — including the initial /api/state load,
+                // loadFleetDeliveryCompanies(), and loadSuperAdminOverview()
+                // a few lines down. That one crash was the actual root cause
+                // of "Total Customers" never showing and Fleet Directory
+                // never showing a newly assigned delivery company: neither
+                // function ever got to run on login in the first place.
                 document.getElementById('admin-mnav-overview').classList.toggle('active', !isSuperAdmin);
                 startAdminClock();
                 renderNotificationCenter();
