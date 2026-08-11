@@ -10086,6 +10086,17 @@
                 if (auditLogNavBtn) auditLogNavBtn.style.display = isSuperAdmin ? 'flex' : 'none';
                 const platformSettingsNavBtn = document.getElementById('open-platform-settings-btn');
                 if (platformSettingsNavBtn) platformSettingsNavBtn.style.display = isSuperAdmin ? 'flex' : 'none';
+                // Agent Contacts on the Overview page itself was showing
+                // for Super Admin too, duplicating their own dedicated
+                // Fleet Directory modal (same underlying agent list,
+                // opened via the sidebar's "Fleet Directory" item — see
+                // scroll-to-agents-btn's click handler above, which
+                // already treats these as two different things per
+                // role). Manage Agent has no such modal — this inline
+                // section is their only Fleet Directory access — so it
+                // stays for them; only Super Admin's copy is hidden.
+                const agentContactsSection = document.getElementById('agent-contacts-section');
+                if (agentContactsSection) agentContactsSection.style.display = isSuperAdmin ? 'none' : 'block';
                 // The Marketplace/Restaurant/Platform stats block is part
                 // of the one combined Overview page now (not a separate
                 // page to navigate to) — its visibility is purely a role
@@ -14661,9 +14672,14 @@
 
         // ---- Sender: their own orders ----
         function renderEmptyState(container, message) {
+            // The box/archive icon that used to sit above every empty-
+            // state message throughout the app (Orders, Fleet Directory,
+            // Vendor Applications, Disputes, and every other list that
+            // can be empty — this one shared function backs all of
+            // them) was removed at the user's request; the message
+            // alone is enough.
             container.innerHTML = `
                 <div class="admin-empty-state">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8v13H3V8"></path><path d="M1 3h22v5H1z"></path><line x1="10" y1="12" x2="14" y2="12"></line></svg>
                     <span>${message}</span>
                 </div>
             `;
