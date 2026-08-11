@@ -32,6 +32,15 @@ function rowToOrder(r) {
     pickedUpAt: r.picked_up_at,
     deliveredAt: r.delivered_at,
     deliveryCompanyId: r.delivery_company_id,
+    // Only present when the query joined purchases (see
+    // getOrdersBySender) — a plain package-delivery order (no
+    // marketplace purchase behind it) has nothing to rate, so these
+    // stay undefined for it rather than null-padded.
+    ...(r.purchase_vendor_id !== undefined ? {
+      purchaseId: r.purchase_id,
+      vendorId: r.purchase_vendor_id,
+      vendorName: r.purchase_vendor_name,
+    } : {}),
   };
 }
 
@@ -484,11 +493,21 @@ const db = {
     return rows.map(rowToOrder);
   },
 
+  // Joined to purchases so a customer's order list can tell which
+  // orders are actually a restaurant/store order (has a vendor to
+  // rate) vs a plain package delivery (doesn't) — powers the
+  // post-delivery review prompt without a separate round-trip per
+  // order. LEFT JOIN because most orders have no linked purchase at
+  // all, and that's normal, not missing data.
   async getOrdersBySender(senderId) {
-    const { rows } = await pool.query(
-      'SELECT * FROM orders WHERE sender_id = $1 ORDER BY created_at DESC',
-      [senderId]
-    );
+    const { rows } = await pool.query(`
+      SELECT o.*, pu.id AS purchase_id, pu.vendor_id AS purchase_vendor_id, u.business_name AS purchase_vendor_name
+      FROM orders o
+      LEFT JOIN purchases pu ON pu.delivery_order_id = o.id
+      LEFT JOIN users u ON u.id = pu.vendor_id
+      WHERE o.sender_id = $1
+      ORDER BY o.created_at DESC
+    `, [senderId]);
     return rows.map(rowToOrder);
   },
 

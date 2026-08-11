@@ -5395,6 +5395,30 @@
         </div>
     </div>
 
+    <!-- Post-delivery review prompt — shown right after a
+         restaurant/store order is marked delivered (see
+         maybePromptVendorReview), only if this customer hasn't already
+         reviewed that vendor. Reuses the same star-picker pattern as
+         the PDP/vendor-page review forms. -->
+    <div class="modal-overlay" id="post-order-review-modal">
+        <div class="modal" style="max-width:420px;">
+            <div class="modal-header">
+                <h3>How was <span id="por-vendor-name">your order</span>?</h3>
+                <button class="close-btn" id="por-close-btn">&times;</button>
+            </div>
+            <div style="padding:1.25rem;">
+                <p style="color:var(--slate-light); font-size:0.875rem; margin:0 0 1rem;">Your order was just delivered — rate your experience.</p>
+                <div class="pdp-star-picker" id="por-star-picker" style="justify-content:center; margin-bottom:1rem;"></div>
+                <textarea class="form-input" id="por-comment-input" rows="2" placeholder="Anything else to share? (optional)"></textarea>
+                <div class="auth-error" id="por-form-error" style="display:none; margin-top:0.5rem;"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-small btn-secondary" id="por-skip-btn">Maybe Later</button>
+                <button type="button" class="btn-small btn-success" id="por-submit-btn">Submit Review</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Cart Modal (sender) -->
     <div class="modal-overlay" id="cart-modal">
         <div class="modal">
@@ -8106,6 +8130,7 @@
                     return;
                 }
                 const idx = orders.findIndex(o => o.id === normalized.id);
+                const wasAlreadyDelivered = idx !== -1 && orders[idx].status === 'delivered';
                 if (idx !== -1) orders[idx] = normalized; else orders.unshift(normalized);
                 refreshAllViews();
                 const statusText = normalized.status.split('-').map(w => w[0].toUpperCase() + w.slice(1)).join(' ');
@@ -8114,6 +8139,16 @@
                     requireInteraction: false,
                     tag: `order-updated-${normalized.id}`,
                 });
+                // Right-after-delivery review prompt — only for a real
+                // restaurant/store order (normalized.vendorId present,
+                // via the purchases join in getOrdersBySender) that just
+                // transitioned to delivered, not one that was already
+                // delivered before this update (e.g. some other field
+                // changed) and not a plain package delivery with no
+                // vendor to rate.
+                if (currentUser && currentUser.role === 'sender' && normalized.status === 'delivered' && !wasAlreadyDelivered && normalized.vendorId) {
+                    maybePromptVendorReview(normalized.vendorId, normalized.vendorName);
+                }
             });
 
             // A Super Admin resolved (or rejected) a dispute this
@@ -9054,6 +9089,18 @@
                 setDeliveryCustomerView('dashboard');
                 renderDcustLocationPill();
                 renderDcustOrderBanner();
+                // Covers the case where the order was actually delivered
+                // while the customer wasn't in the app to catch the live
+                // socket event above — the most recently delivered
+                // restaurant/store order that hasn't been reviewed yet
+                // still gets the prompt, just on next visit instead of
+                // instantly.
+                const lastUnreviewedDelivered = orders
+                    .filter(o => o.status === 'delivered' && o.vendorId)
+                    .sort((a, b) => new Date(b.deliveredAt || b.createdAt) - new Date(a.deliveredAt || a.createdAt))[0];
+                if (lastUnreviewedDelivered) {
+                    maybePromptVendorReview(lastUnreviewedDelivered.vendorId, lastUnreviewedDelivered.vendorName);
+                }
             }
             // Food ordering shares the Marketplace's product/vendor data
             // (a restaurant is just a vendor) — load it for guests too,
@@ -9236,6 +9283,65 @@
                 dcustVendorReviewSelectedStars = 0;
                 showToast('Review submitted — thank you!', 'success');
                 loadDcustVendorReviews(currentDcustVendorId);
+            } catch (err) {
+                errorEl.textContent = err.message;
+                errorEl.style.display = 'block';
+            }
+        }
+
+        // ---- Post-delivery review prompt -------------------------------
+        // Vendor ids already prompted (or reviewed) this session, so a
+        // "Maybe Later" dismissal — or a second live update on the same
+        // order — doesn't nag again before the next page load.
+        const vendorReviewPromptedThisSession = new Set();
+        let postOrderReviewVendorId = null;
+        let postOrderReviewSelectedStars = 0;
+
+        async function maybePromptVendorReview(vendorId, vendorName) {
+            if (!vendorId || vendorReviewPromptedThisSession.has(vendorId)) return;
+            vendorReviewPromptedThisSession.add(vendorId);
+            try {
+                const data = await apiFetch(`/api/marketplace/vendors/${vendorId}/reviews`);
+                const alreadyReviewed = (data.reviews || []).some(r => r.customerId === currentUser.id);
+                if (alreadyReviewed) return;
+            } catch (err) {
+                console.error('Failed to check existing vendor review', err);
+                return;
+            }
+            openPostOrderReviewModal(vendorId, vendorName);
+        }
+
+        function openPostOrderReviewModal(vendorId, vendorName) {
+            postOrderReviewVendorId = vendorId;
+            postOrderReviewSelectedStars = 0;
+            document.getElementById('por-vendor-name').textContent = vendorName || 'your order';
+            document.getElementById('por-comment-input').value = '';
+            document.getElementById('por-form-error').style.display = 'none';
+            document.getElementById('por-star-picker').innerHTML = [1, 2, 3, 4, 5]
+                .map(n => `<button type="button" data-star="${n}"><svg viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg></button>`)
+                .join('');
+            document.getElementById('post-order-review-modal').classList.add('active');
+        }
+
+        function closePostOrderReviewModal() {
+            document.getElementById('post-order-review-modal').classList.remove('active');
+        }
+
+        async function submitPostOrderReview() {
+            const errorEl = document.getElementById('por-form-error');
+            errorEl.style.display = 'none';
+            if (!postOrderReviewSelectedStars) {
+                errorEl.textContent = 'Please pick a star rating.';
+                errorEl.style.display = 'block';
+                return;
+            }
+            try {
+                await apiFetch(`/api/marketplace/vendors/${postOrderReviewVendorId}/reviews`, {
+                    method: 'POST',
+                    body: JSON.stringify({ rating: postOrderReviewSelectedStars, comment: document.getElementById('por-comment-input').value.trim() }),
+                });
+                showToast('Thanks for your review!', 'success');
+                closePostOrderReviewModal();
             } catch (err) {
                 errorEl.textContent = err.message;
                 errorEl.style.display = 'block';
@@ -17975,6 +18081,19 @@
                 document.getElementById('dcust-vendor-reviews-panel').style.display = 'block';
                 if (currentDcustVendorId) loadDcustVendorReviews(currentDcustVendorId);
             });
+
+            // ---- Post-delivery review prompt ----
+            document.getElementById('por-star-picker').addEventListener('click', (e) => {
+                const starBtn = e.target.closest('button');
+                if (!starBtn) return;
+                postOrderReviewSelectedStars = Number(starBtn.dataset.star);
+                document.querySelectorAll('#por-star-picker button').forEach(b => {
+                    b.classList.toggle('active', Number(b.dataset.star) <= postOrderReviewSelectedStars);
+                });
+            });
+            document.getElementById('por-submit-btn').addEventListener('click', submitPostOrderReview);
+            document.getElementById('por-skip-btn').addEventListener('click', closePostOrderReviewModal);
+            document.getElementById('por-close-btn').addEventListener('click', closePostOrderReviewModal);
 
             // ---- Q&A: ask form + delegated per-question answer forms ----
             document.getElementById('pdp-qna-ask-wrap').addEventListener('submit', (e) => {
