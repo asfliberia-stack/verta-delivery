@@ -3049,6 +3049,200 @@
             #delivery-customer-app #dcust-sidebar-new-order-btn { display: none; }
             #delivery-company-app #dcust-sidebar-new-order-btn { display: none; }
         }
+
+        /* ============================================================
+           ONLib Delivery — guest/customer landing screen redesign.
+           Scoped to #delivery-customer-app's own dcust-* classes (and,
+           for the hero, the #hero-section id) so none of this touches
+           the Marketplace's separate navy/red brand or Delivery
+           Company's own dashboard. Placed at the very end of this
+           stylesheet on purpose — several of the classes below
+           (.hero, .btn-primary, .form-input, .section-title) already
+           have earlier declarations elsewhere in this file, and this
+           file's own established pattern (see the admin-sidebar and
+           PDP cascade-bug comments above) is that equal-specificity
+           rules declared later in source order win regardless of
+           where else they're declared, so keeping every override here
+           in one place is what makes it reliably win instead of being
+           silently overridden by then-earlier rules again in the
+           future. ============================================================ */
+
+        /* ---- Login / Sign Up button ---- */
+        #delivery-customer-app .dcust-login-btn {
+            display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.75rem 1.5rem;
+            border-radius: 999px; white-space: nowrap;
+        }
+        #delivery-customer-app .dcust-login-btn svg { width: 17px; height: 17px; flex-shrink: 0; }
+        #delivery-customer-app .dcust-topbar-back-link { font-size: 0.875rem; }
+
+        /* ---- Search bar ---- */
+        #delivery-customer-app .dcust-search-group { margin-bottom: 1.25rem; }
+        #delivery-customer-app .dcust-search-wrap { position: relative; display: flex; align-items: center; }
+        #delivery-customer-app .dcust-search-icon {
+            position: absolute; left: 1.125rem; width: 19px; height: 19px; color: var(--slate-lighter); pointer-events: none;
+        }
+        #delivery-customer-app .dcust-search-input {
+            padding: 1rem 1.25rem 1rem 3rem; border-radius: 1rem; border: 1px solid var(--border);
+            background: white; min-height: 56px; box-shadow: var(--shadow-sm); font-size: 0.9375rem;
+        }
+        #delivery-customer-app .dcust-search-input:focus {
+            border-color: var(--primary); box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.12); background: white;
+        }
+
+        /* ---- Food / Grocery toggle ---- */
+        #delivery-customer-app .dcust-food-tabs { gap: 0.625rem; }
+        #delivery-customer-app .dcust-food-tab {
+            display: inline-flex; align-items: center; gap: 0.5rem; border-radius: 999px;
+            padding: 0.625rem 1.375rem; transition: all 0.2s ease; border: 1px solid transparent;
+        }
+        #delivery-customer-app .dcust-food-tab svg { width: 16px; height: 16px; flex-shrink: 0; }
+        #delivery-customer-app .dcust-food-tab.btn-secondary { background: white; color: var(--slate); border-color: var(--border); box-shadow: none; }
+        #delivery-customer-app .dcust-food-tab.btn-secondary:hover { border-color: var(--slate-lighter); transform: none; }
+        #delivery-customer-app .dcust-food-tab.btn-primary { box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3); }
+
+        /* ---- "Popular Restaurants" heading ---- */
+        #delivery-customer-app .dcust-section-heading {
+            flex-direction: column; align-items: flex-start; gap: 0.625rem; padding-bottom: 0.875rem;
+            border-bottom: 1px solid var(--border); position: relative;
+        }
+        #delivery-customer-app .dcust-food-section-heading {
+            font-size: 1.375rem; margin-bottom: 0 !important; position: relative; padding-bottom: 0.625rem;
+        }
+        #delivery-customer-app .dcust-food-section-heading::after {
+            content: ''; position: absolute; left: 0; bottom: -1px; width: 2.5rem; height: 3px;
+            border-radius: 999px; background: linear-gradient(90deg, var(--primary), var(--primary-dark));
+        }
+
+        /* ---- Restaurant / store cards ---- */
+        #delivery-customer-app .dcust-wide-card-grid { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 1.125rem; }
+        #delivery-customer-app .dcust-wide-card {
+            border-radius: 1.125rem; border: 1px solid var(--border); box-shadow: var(--shadow-sm);
+            transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.2s;
+            height: 100%;
+        }
+        #delivery-customer-app .dcust-wide-card:hover,
+        #delivery-customer-app .dcust-wide-card:focus-visible {
+            transform: translateY(-3px); box-shadow: var(--shadow-lg); border-color: var(--primary-light); outline: none;
+        }
+        #delivery-customer-app .dcust-wide-card-media { width: 38%; min-width: 108px; flex-shrink: 0; align-self: stretch; overflow: hidden; }
+        #delivery-customer-app .dcust-wide-card-photo { width: 100%; height: 100%; min-height: 128px; display: block; object-fit: cover; transition: transform 0.3s ease; }
+        #delivery-customer-app .dcust-wide-card:hover .dcust-wide-card-photo { transform: scale(1.05); }
+        #delivery-customer-app .dcust-wide-card-photo-fallback {
+            width: 100%; height: 100%; min-height: 128px;
+            background: linear-gradient(135deg, var(--golib-navy, #16234a) 0%, #1f3163 100%);
+        }
+        #delivery-customer-app .dcust-wide-card-body { padding: 0.875rem 1rem; gap: 0.375rem; }
+        #delivery-customer-app .dcust-wide-card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 0.5rem; }
+        #delivery-customer-app .dcust-wide-card-name { font-size: 1rem; font-weight: 800; color: var(--slate); white-space: normal; overflow: visible; }
+        #delivery-customer-app .dcust-wide-card-badge {
+            flex-shrink: 0; font-size: 0.6875rem; font-weight: 800; padding: 0.1875rem 0.5rem;
+            border-radius: 999px; white-space: nowrap; letter-spacing: 0.01em;
+        }
+        #delivery-customer-app .dcust-wide-card-badge-new { background: #ede9fe; color: var(--primary-dark); }
+        #delivery-customer-app .dcust-wide-card-badge-rating { background: #fef3c7; color: #92400e; }
+        #delivery-customer-app .dcust-wide-card-meta { font-size: 0.75rem; color: var(--slate-light); }
+        #delivery-customer-app .dcust-wide-card-footer { display: flex; align-items: center; justify-content: space-between; margin-top: auto; padding-top: 0.375rem; }
+        #delivery-customer-app .dcust-wide-card-price { font-size: 0.9375rem; font-weight: 800; color: var(--primary-dark); }
+        #delivery-customer-app .dcust-wide-card-chevron {
+            width: 26px; height: 26px; border-radius: 50%; background: var(--bg-light);
+            display: flex; align-items: center; justify-content: center; color: var(--slate-light);
+            transition: background 0.2s, color 0.2s; flex-shrink: 0;
+        }
+        #delivery-customer-app .dcust-wide-card-chevron svg { width: 13px; height: 13px; }
+        #delivery-customer-app .dcust-wide-card:hover .dcust-wide-card-chevron { background: var(--primary); color: white; }
+
+        /* ---- "Send a Package" hero ---- */
+        #delivery-customer-app #hero-section.dcust-hero {
+            text-align: left; padding: 0; overflow: hidden; position: relative;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            border: none; border-radius: 1.5rem;
+        }
+        #delivery-customer-app .dcust-hero-inner { position: relative; z-index: 1; display: flex; align-items: center; gap: 1.75rem; padding: 2.5rem; }
+        #delivery-customer-app .dcust-hero-icon {
+            flex-shrink: 0; width: 84px; height: 84px; border-radius: 50%; background: rgba(255,255,255,0.16);
+            border: 1px solid rgba(255,255,255,0.25); display: flex; align-items: center; justify-content: center;
+        }
+        #delivery-customer-app .dcust-hero-icon svg { width: 38px; height: 38px; color: white; }
+        #delivery-customer-app .dcust-hero-text { min-width: 0; }
+        #delivery-customer-app #hero-section.dcust-hero h2 { font-size: 1.875rem; color: white; margin-bottom: 0.5rem; text-align: left; }
+        #delivery-customer-app #hero-section.dcust-hero p { font-size: 1rem; color: rgba(255,255,255,0.85); margin: 0 0 1.5rem; text-align: left; max-width: none; }
+        #delivery-customer-app #hero-section.dcust-hero .btn-primary.dcust-hero-cta {
+            background: white; color: var(--primary-dark); box-shadow: 0 8px 20px rgba(15, 23, 42, 0.18);
+        }
+        #delivery-customer-app #hero-section.dcust-hero .btn-primary.dcust-hero-cta:hover { box-shadow: 0 12px 28px rgba(15, 23, 42, 0.24); }
+        #delivery-customer-app #hero-section.dcust-hero .dcust-hero-cta-icon { background: rgba(79, 70, 229, 0.12); }
+        #delivery-customer-app .dcust-hero-decor {
+            position: absolute; right: -2.5rem; top: 50%; transform: translateY(-50%); width: 220px; height: 220px;
+            color: rgba(255,255,255,0.08); pointer-events: none;
+        }
+        #delivery-customer-app .dcust-hero-decor svg { width: 100%; height: 100%; }
+
+        /* ---- Trust strip ---- */
+        #delivery-customer-app .dcust-trust-strip {
+            display: grid; grid-template-columns: repeat(4, 1fr); gap: 0; margin: 1.5rem 0 2rem;
+            background: white; border: 1px solid var(--border); border-radius: 1.125rem; box-shadow: var(--shadow-sm);
+            padding: 1.5rem 1rem;
+        }
+        #delivery-customer-app .dcust-trust-item {
+            display: flex; align-items: center; gap: 0.75rem; padding: 0 1rem; position: relative; min-width: 0;
+        }
+        #delivery-customer-app .dcust-trust-item:not(:last-child)::after {
+            content: ''; position: absolute; right: 0; top: 10%; bottom: 10%; width: 1px; background: var(--border);
+        }
+        #delivery-customer-app .dcust-trust-icon {
+            flex-shrink: 0; width: 42px; height: 42px; border-radius: 50%; background: #ede9fe; color: var(--primary-dark);
+            display: flex; align-items: center; justify-content: center;
+        }
+        #delivery-customer-app .dcust-trust-icon svg { width: 20px; height: 20px; }
+        #delivery-customer-app .dcust-trust-title { font-size: 0.875rem; font-weight: 800; color: var(--slate); white-space: nowrap; }
+        #delivery-customer-app .dcust-trust-sub { font-size: 0.75rem; color: var(--slate-light); margin-top: 0.0625rem; }
+
+        @media (max-width: 1023px) {
+            /* Same grid-blowout fix already applied to #delivery-app
+               below (see that rule's comment a bit further up this
+               stylesheet): a 1fr track's default "auto" minimum sizes
+               to its widest child's content, not the viewport, so any
+               nowrap text or minmax(Npx, 1fr) tile inside (the trust
+               strip and restaurant-card grid added above included)
+               could force this whole column — and the phone screen —
+               into horizontal overflow. #delivery-app already carries
+               this fix; #delivery-customer-app never did. */
+            #delivery-customer-app .admin-shell { grid-template-columns: minmax(0, 1fr); }
+            #delivery-customer-app .admin-main { min-width: 0; }
+            #delivery-customer-app .dcust-hero-inner { flex-direction: column; align-items: flex-start; padding: 1.75rem; gap: 1.125rem; }
+            #delivery-customer-app .dcust-hero-icon { width: 60px; height: 60px; }
+            #delivery-customer-app .dcust-hero-icon svg { width: 28px; height: 28px; }
+            #delivery-customer-app #hero-section.dcust-hero h2 { font-size: 1.5rem; }
+            #delivery-customer-app .dcust-hero-decor { display: none; }
+            #delivery-customer-app .dcust-trust-strip { grid-template-columns: repeat(2, 1fr); row-gap: 1.25rem; }
+            #delivery-customer-app .dcust-trust-item:nth-child(2)::after { display: none; }
+            #delivery-customer-app .dcust-trust-item:not(:last-child)::after { display: none; }
+            #delivery-customer-app .dcust-trust-item:nth-child(odd)::after {
+                content: ''; position: absolute; right: 0; top: 10%; bottom: 10%; width: 1px; background: var(--border); display: block;
+            }
+            #delivery-customer-app .dcust-wide-card-name { font-size: 0.9375rem; }
+        }
+        @media (max-width: 640px) {
+            /* "Back to service selector" (flex-shrink: 0, nowrap — see
+               its own pre-existing rule above) and the Login/Sign Up
+               button (also nowrap, so its label stays on one line) are
+               each wide enough on their own that side by side they no
+               longer fit next to each other below ~420px, which was
+               forcing the whole topbar row (and the page) into
+               horizontal overflow. Letting the row wrap keeps both
+               fully visible, stacked, instead of overlapping/clipping
+               or forcing a horizontal scrollbar. */
+            #delivery-customer-app .dcust-topbar-row { flex-wrap: wrap; row-gap: 0.625rem; }
+            #delivery-customer-app .dcust-login-btn { margin-left: auto; }
+            #delivery-customer-app .dcust-search-input { min-height: 50px; padding-top: 0.8125rem; padding-bottom: 0.8125rem; }
+            #delivery-customer-app .dcust-food-tab span { display: inline; }
+            #delivery-customer-app .dcust-hero-inner { padding: 1.5rem; }
+            #delivery-customer-app #hero-section.dcust-hero h2 { font-size: 1.3125rem; }
+            #delivery-customer-app .dcust-trust-strip { grid-template-columns: 1fr; padding: 1.25rem 1.25rem; gap: 1rem; }
+            #delivery-customer-app .dcust-trust-item:nth-child(odd)::after { display: none; }
+            #delivery-customer-app .dcust-trust-item { padding: 0; }
+            #delivery-customer-app .dcust-wide-card-grid { grid-template-columns: 1fr; }
+        }
     </style>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
@@ -4246,7 +4440,10 @@
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
                             <span>Back to service selector</span>
                         </button>
-                        <button type="button" class="btn-primary" id="dcust-topbar-login-btn" style="display:none; white-space:nowrap;">Login / Sign Up</button>
+                        <button type="button" class="btn-primary dcust-login-btn" id="dcust-topbar-login-btn" style="display:none;">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                            <span>Login / Sign Up</span>
+                        </button>
                     </div>
                 </div>
 
@@ -4264,15 +4461,24 @@
                          up in "Your Orders" below like any other delivery. -->
                     <section class="dcust-food-section" id="dcust-food-section">
                         <div id="dcust-location-pill" class="dcust-location-pill"></div>
-                        <div class="form-group" style="margin-bottom:0.75rem;">
-                            <input type="text" class="form-input" id="dcust-food-search" placeholder="Search for food or restaurant…">
+                        <div class="form-group dcust-search-group">
+                            <div class="dcust-search-wrap">
+                                <svg class="dcust-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                                <input type="text" class="form-input dcust-search-input" id="dcust-food-search" placeholder="Search for food or restaurant…">
+                            </div>
                         </div>
                         <div class="dcust-food-tabs">
-                            <button type="button" class="btn-small btn-primary dcust-food-tab active" data-food-tab="food" id="dcust-food-tab-food">Food</button>
-                            <button type="button" class="btn-small btn-secondary dcust-food-tab" data-food-tab="grocery" id="dcust-food-tab-grocery">Grocery</button>
+                            <button type="button" class="btn-small btn-primary dcust-food-tab active" data-food-tab="food" id="dcust-food-tab-food">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2v7c0 1.1.9 2 2 2h0a2 2 0 0 0 2-2V2"></path><path d="M7 2v20"></path><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"></path></svg>
+                                <span>Food</span>
+                            </button>
+                            <button type="button" class="btn-small btn-secondary dcust-food-tab" data-food-tab="grocery" id="dcust-food-tab-grocery">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"></path><path d="M3 6h18"></path><path d="M16 10a4 4 0 0 1-8 0"></path></svg>
+                                <span>Grocery</span>
+                            </button>
                         </div>
-                        <div class="dcust-table-controls" style="margin-top:1.25rem;">
-                            <div class="section-title" style="margin:0;" id="dcust-food-section-title">Popular Restaurants</div>
+                        <div class="dcust-table-controls dcust-section-heading" style="margin-top:1.25rem;">
+                            <div class="section-title dcust-food-section-heading" style="margin:0;" id="dcust-food-section-title">Popular Restaurants</div>
                             <a href="#" class="mobile-view-all" id="dcust-food-view-all" style="display:none;">View all ›</a>
                         </div>
                         <div id="dcust-food-cards-grid" class="dcust-wide-card-grid"></div>
@@ -4284,15 +4490,60 @@
                          itself prompts login for a guest rather than
                          opening the order form; see btn-new-order's
                          click handler. -->
-                    <section class="hero" id="hero-section">
-                        <h2>Send a Package Today!</h2>
-                        <p>Better Shopping. Smarter Delivery.</p>
-                        <button class="btn-primary dcust-hero-cta" id="btn-new-order">
-                            Create New Order
-                            <span class="dcust-hero-cta-icon">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-                            </span>
-                        </button>
+                    <section class="hero dcust-hero" id="hero-section">
+                        <div class="dcust-hero-decor" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="7" width="18" height="13" rx="2"></rect><path d="M3 7l9-4 9 4"></path><path d="M12 3v17"></path></svg>
+                        </div>
+                        <div class="dcust-hero-inner">
+                            <div class="dcust-hero-icon" aria-hidden="true">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7.5 4.27 9 5.15"></path><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4a2 2 0 0 0 1-1.73Z"></path><path d="M3.3 7 12 12l8.7-5"></path><path d="M12 22V12"></path></svg>
+                            </div>
+                            <div class="dcust-hero-text">
+                                <h2>Send a Package Today!</h2>
+                                <p>Better Shopping. Smarter Delivery.</p>
+                                <button class="btn-primary dcust-hero-cta" id="btn-new-order">
+                                    Create New Order
+                                    <span class="dcust-hero-cta-icon">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                                    </span>
+                                </button>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- Trust strip — generic marketing/reassurance content,
+                         not tied to account state, so it's placed outside
+                         #dcust-account-content and shown to guests and
+                         logged-in customers alike. -->
+                    <section class="dcust-trust-strip" id="dcust-trust-strip">
+                        <div class="dcust-trust-item">
+                            <div class="dcust-trust-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"></path><path d="m9 12 2 2 4-4"></path></svg></div>
+                            <div class="dcust-trust-body">
+                                <div class="dcust-trust-title">Secure &amp; Safe</div>
+                                <div class="dcust-trust-sub">Your orders are protected</div>
+                            </div>
+                        </div>
+                        <div class="dcust-trust-item">
+                            <div class="dcust-trust-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg></div>
+                            <div class="dcust-trust-body">
+                                <div class="dcust-trust-title">On Time Delivery</div>
+                                <div class="dcust-trust-sub">We deliver on schedule</div>
+                            </div>
+                        </div>
+                        <div class="dcust-trust-item">
+                            <div class="dcust-trust-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 18v-6a9 9 0 0 1 18 0v6"></path><path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3Zm-18 0a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3Z"></path></svg></div>
+                            <div class="dcust-trust-body">
+                                <div class="dcust-trust-title">24/7 Support</div>
+                                <div class="dcust-trust-sub">We're here to help</div>
+                            </div>
+                        </div>
+                        <div class="dcust-trust-item">
+                            <div class="dcust-trust-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg></div>
+                            <div class="dcust-trust-body">
+                                <div class="dcust-trust-title">Multiple Payment</div>
+                                <div class="dcust-trust-sub">Pay your way</div>
+                            </div>
+                        </div>
                     </section>
 
                     <!-- Everything below is account-specific (order
@@ -9046,7 +9297,22 @@
             if (shellEl) shellEl.style.display = 'grid';
             shellEl.classList.toggle('dcust-guest-mode', mode === 'guest');
             document.getElementById('delivery-guest-prompt').style.display = 'none';
-            document.getElementById('dcust-sidebar').style.display = mode === 'customer' ? 'flex' : 'none';
+            // Same inline-style-vs-media-query trap as the mobile bottom
+            // nav fix below: the sidebar's own CSS already goes
+            // display:none below the 1024px breakpoint and flex above
+            // it (it's a real off-canvas drawer on mobile, toggled by
+            // dcust-sidebar-toggle-btn, not meant to sit permanently
+            // open pushing the page down) — forcing an inline 'flex'
+            // here for every logged-in customer, at any width, beat
+            // that and left the full sidebar permanently expanded at
+            // the top of the mobile view. Clearing the inline override
+            // instead lets the existing responsive CSS (and the
+            // toggle's own collapsed/expanded class) decide.
+            const dcustSidebar = document.getElementById('dcust-sidebar');
+            if (dcustSidebar) {
+                if (mode === 'customer') dcustSidebar.style.removeProperty('display');
+                else dcustSidebar.style.display = 'none';
+            }
             document.getElementById('dcust-sidebar-toggle-btn').style.display = mode === 'customer' ? 'flex' : 'none';
             document.getElementById('dcust-view-dashboard').style.display = 'block';
             document.getElementById('dcust-account-content').style.display = mode === 'customer' ? 'block' : 'none';
@@ -9059,6 +9325,24 @@
             // it's hidden entirely rather than shown half-broken.
             const locationPill = document.getElementById('dcust-location-pill');
             if (locationPill) locationPill.style.display = mode === 'customer' ? 'inline-flex' : 'none';
+            // Mirrors the sidebar gating above for narrow viewports: the
+            // mobile bottom nav's items (My Orders, Addresses, More) are
+            // all account-specific, same as the sidebar it stands in for
+            // below the desktop breakpoint. Previously this stayed
+            // visible for guests too — a fixed-position bar with nothing
+            // functional to show them, sitting on top of (and covering)
+            // whatever page content scrolled underneath it. For the
+            // customer case this clears any inline override instead of
+            // setting one — the existing CSS already toggles this bar
+            // between flex (mobile) and none (desktop, ≥1024px) by
+            // itself, and an inline style always beats that stylesheet
+            // rule regardless of viewport, which would otherwise pin it
+            // visible on desktop too for a logged-in customer.
+            const mobileNav = document.querySelector('#delivery-customer-app .mobile-bottom-nav');
+            if (mobileNav) {
+                if (mode === 'customer') mobileNav.style.removeProperty('display');
+                else mobileNav.style.display = 'none';
+            }
         }
 
         async function enterDeliveryMode(headerMode) {
@@ -16499,25 +16783,58 @@
         // everywhere else in the app); an honest initials fallback
         // otherwise — never a stock/fabricated food photo.
         function renderDcustWideCards(container, list, kind) {
-            container.innerHTML = list.map(item => `
-                <div class="dcust-wide-card" data-vendor-id="${item.id}" data-vendor-kind="${kind}">
-                    ${item.profileImageUrl
-                        ? `<img class="dcust-wide-card-photo" src="${item.profileImageUrl}" alt="${item.businessName}">`
-                        : `<div class="dcust-wide-card-photo-fallback">${item.businessName.charAt(0).toUpperCase()}</div>`
-                    }
+            // Same underlying fields as before (item.profileImageUrl,
+            // reviewCount/avgRating, vendorReviewCount/avgVendorRating,
+            // avgPrepTimeMinutes, startingPrice) — only how they're laid
+            // out changed: a dedicated badge (rating once the vendor has
+            // dish reviews, "New" until then, same threshold as before),
+            // an optional metadata row that only renders when there's
+            // real vendor-rating or prep-time data to show (never both
+            // empty and never fabricated), and a footer row pairing the
+            // price with a chevron affordance. No new data is invented —
+            // a vendor with none of these fields still renders cleanly
+            // with just its name, image/initial, and a chevron.
+            container.innerHTML = list.map(item => {
+                const hasDishRating = item.reviewCount > 0 && typeof item.avgRating === 'number';
+                const badgeHtml = hasDishRating
+                    ? `<span class="dcust-wide-card-badge dcust-wide-card-badge-rating">★ ${item.avgRating.toFixed(1)}</span>`
+                    : `<span class="dcust-wide-card-badge dcust-wide-card-badge-new">New</span>`;
+                const metaParts = [];
+                if (item.vendorReviewCount > 0 && typeof item.avgVendorRating === 'number') {
+                    metaParts.push(`★ ${item.avgVendorRating.toFixed(1)} store (${item.vendorReviewCount})`);
+                }
+                if (item.avgPrepTimeMinutes) {
+                    metaParts.push(`🕐 ${item.avgPrepTimeMinutes} min`);
+                }
+                const metaHtml = metaParts.length
+                    ? `<div class="dcust-wide-card-meta">${metaParts.join(' &middot; ')}</div>`
+                    : '';
+                const hasPrice = item.startingPrice !== null && item.startingPrice !== undefined;
+                const priceHtml = hasPrice
+                    ? `<span class="dcust-wide-card-price">From $${item.startingPrice.toFixed(2)}</span>`
+                    : `<span></span>`;
+                return `
+                <div class="dcust-wide-card" data-vendor-id="${item.id}" data-vendor-kind="${kind}" tabindex="0" role="button">
+                    <div class="dcust-wide-card-media">
+                        ${item.profileImageUrl
+                            ? `<img class="dcust-wide-card-photo" src="${item.profileImageUrl}" alt="${item.businessName}" loading="lazy">`
+                            : `<div class="dcust-wide-card-photo-fallback">${item.businessName.charAt(0).toUpperCase()}</div>`
+                        }
+                    </div>
                     <div class="dcust-wide-card-body">
-                        <div class="dcust-wide-card-name">${item.businessName}</div>
-                        <div class="dcust-wide-card-meta">
-                            ${item.reviewCount > 0 ? `★ ${item.avgRating.toFixed(1)} dishes` : 'New'}
-                            ${item.vendorReviewCount > 0 ? ` · ★ ${item.avgVendorRating.toFixed(1)} store (${item.vendorReviewCount})` : ''}
+                        <div class="dcust-wide-card-top">
+                            <div class="dcust-wide-card-name">${item.businessName}</div>
+                            ${badgeHtml}
                         </div>
-                        <div class="dcust-wide-card-row">
-                            ${item.avgPrepTimeMinutes ? `<span>🕐 ${item.avgPrepTimeMinutes} mins</span>` : ''}
-                            ${item.startingPrice !== null && item.startingPrice !== undefined ? `<span class="dcust-wide-card-price">From $${item.startingPrice.toFixed(2)}</span>` : ''}
+                        ${metaHtml}
+                        <div class="dcust-wide-card-footer">
+                            ${priceHtml}
+                            <span class="dcust-wide-card-chevron" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg></span>
                         </div>
                     </div>
                 </div>
-            `).join('');
+            `;
+            }).join('');
         }
 
         // Location pill — the customer's own real default saved address
