@@ -7102,14 +7102,26 @@
 
             <section style="margin-bottom: 1.5rem;">
                 <h4 style="font-weight:700; margin-bottom:0.75rem;">Platform Commission Rates</h4>
+                <p style="color: var(--slate-light); margin-bottom: 0.75rem; font-size: 0.8125rem;">
+                    Turn a switch off to charge 0% commission for that side of the platform without losing the
+                    rate you had configured — flip it back on later and the rate is still there.
+                </p>
                 <form id="commission-settings-form" style="background: var(--bg-light); border-radius: 0.75rem; padding: 1.25rem; display:flex; gap:1.5rem; flex-wrap:wrap; align-items:flex-end;">
                     <div class="form-group" style="margin-bottom:0; min-width:180px;">
                         <label class="form-label">Marketplace (Vendors) %</label>
                         <input type="number" class="form-input" id="commission-marketplace-input" min="0" max="100" step="0.01" required>
+                        <label style="display:flex; align-items:center; gap:0.4rem; margin-top:0.5rem; font-size:0.8125rem; font-weight:600; cursor:pointer;">
+                            <input type="checkbox" id="commission-marketplace-enabled-input" checked>
+                            Charge marketplace commission
+                        </label>
                     </div>
                     <div class="form-group" style="margin-bottom:0; min-width:180px;">
                         <label class="form-label">Delivery (Companies) %</label>
                         <input type="number" class="form-input" id="commission-delivery-input" min="0" max="100" step="0.01" required>
+                        <label style="display:flex; align-items:center; gap:0.4rem; margin-top:0.5rem; font-size:0.8125rem; font-weight:600; cursor:pointer;">
+                            <input type="checkbox" id="commission-delivery-enabled-input" checked>
+                            Charge delivery commission
+                        </label>
                     </div>
                     <button type="submit" class="btn-small btn-success" id="commission-settings-save-btn">Save Rates</button>
                     <span id="commission-settings-error" class="auth-error" style="display:none; width:100%;"></span>
@@ -13352,23 +13364,29 @@
 
                 document.getElementById('commission-marketplace-input').value = summary.platformSettings.marketplaceCommissionPercent;
                 document.getElementById('commission-delivery-input').value = summary.platformSettings.deliveryCommissionPercent;
+                document.getElementById('commission-marketplace-enabled-input').checked = summary.platformSettings.marketplaceCommissionEnabled !== false;
+                document.getElementById('commission-delivery-enabled-input').checked = summary.platformSettings.deliveryCommissionEnabled !== false;
 
-                renderPayoutStandingTable('payouts-vendors-table', summary.vendors, 'vendor');
-                renderPayoutStandingTable('payouts-companies-table', summary.deliveryCompanies, 'delivery_company');
+                renderPayoutStandingTable('payouts-vendors-table', summary.vendors, 'vendor', summary.platformSettings.marketplaceCommissionEnabled !== false);
+                renderPayoutStandingTable('payouts-companies-table', summary.deliveryCompanies, 'delivery_company', summary.platformSettings.deliveryCommissionEnabled !== false);
                 renderPayoutHistoryTable(history.payouts || []);
             } catch (err) {
                 showToast(err.message, 'error');
             }
         }
 
-        function renderPayoutStandingTable(containerId, rows, recipientType) {
+        function renderPayoutStandingTable(containerId, rows, recipientType, commissionEnabled) {
             const container = document.getElementById(containerId);
             if (!container) return;
             if (rows.length === 0) {
                 container.innerHTML = `<p style="text-align: center; color: var(--slate-light); padding: 1rem 0;">No approved ${recipientType === 'vendor' ? 'vendor' : 'delivery company'} accounts yet.</p>`;
                 return;
             }
-            let html = '<table class="settings-table"><thead><tr><th>Business</th><th>Gross Revenue</th><th>Rate</th><th>Commission</th><th>Net Earned</th><th>Paid Out</th><th>Outstanding</th><th></th></tr></thead><tbody>';
+            let html = '';
+            if (commissionEnabled === false) {
+                html += '<p style="background:#fef3c7; color:#92400e; padding:0.5rem 0.75rem; border-radius:0.5rem; font-size:0.8125rem; font-weight:600; margin-bottom:0.75rem;">Commission is currently switched OFF for this side of the platform — everyone below shows 0% regardless of any custom rate.</p>';
+            }
+            html += '<table class="settings-table"><thead><tr><th>Business</th><th>Gross Revenue</th><th>Rate</th><th>Commission</th><th>Net Earned</th><th>Paid Out</th><th>Outstanding</th><th></th></tr></thead><tbody>';
             rows.forEach(r => {
                 html += `<tr>
                     <td style="font-weight:700;">${r.businessName}${r.commissionRateOverride !== null ? ' <span title="Custom rate override" style="background:#e0e7ff; color:#3730a3; padding:0.125rem 0.5rem; border-radius:9999px; font-size:0.6875rem; font-weight:700;">Override</span>' : ''}</td>
@@ -13426,6 +13444,8 @@
                     body: JSON.stringify({
                         marketplaceCommissionPercent: Number(document.getElementById('commission-marketplace-input').value),
                         deliveryCommissionPercent: Number(document.getElementById('commission-delivery-input').value),
+                        marketplaceCommissionEnabled: document.getElementById('commission-marketplace-enabled-input').checked,
+                        deliveryCommissionEnabled: document.getElementById('commission-delivery-enabled-input').checked,
                     }),
                 });
                 showToast('Commission rates updated', 'success');
@@ -14173,7 +14193,7 @@
         function openOrderHistoryModal() { renderOrderHistoryToModal(); document.getElementById('order-history-modal').classList.add('active'); }
         function closeOrderHistoryModal() { document.getElementById('order-history-modal').classList.remove('active'); }
 
-        function openMonthlyReportModal() {
+        async function openMonthlyReportModal() {
             const yearSelect = document.getElementById('monthly-report-year-select');
             const monthSelect = document.getElementById('monthly-report-month-select');
             const scopeSelect = document.getElementById('monthly-report-scope-select');
@@ -14182,15 +14202,40 @@
             yearSelect.innerHTML = allYears.map(y => `<option value="${y}" ${y === now.getFullYear() ? 'selected' : ''}>${y}</option>`).join('');
             monthSelect.value = String(now.getMonth() + 1);
 
-            // Distinct customers (senders) seen across all orders, so an
-            // admin can pull one customer's statement instead of the
-            // whole-business report.
-            const customers = {};
-            orders.forEach(o => { if (o.senderId && !customers[o.senderId]) customers[o.senderId] = o.senderName; });
-            const customerOptions = Object.entries(customers)
-                .sort((a, b) => a[1].localeCompare(b[1]))
-                .map(([id, name]) => `<option value="${id}">${name}</option>`)
-                .join('');
+            // The "Report For" dropdown used to be built purely from
+            // orders.senderId/senderName — which only ever surfaced a
+            // customer who had actually placed a delivery order. A
+            // registered customer who hasn't ordered yet (or who only
+            // ever bought through Marketplace, before that always
+            // creates a linked delivery order too, but the sender-name
+            // snapshot on old orders could still miss someone) never
+            // showed up, so the dropdown could look effectively empty
+            // beyond "Business (All Customers)". Now sourced from the
+            // real customer list (GET /api/admin/customers, the same
+            // data the Customers panel uses) — every registered
+            // customer, regardless of order history. Falls back to the
+            // old orders-derived list only if that request fails (e.g.
+            // a Manage Agent with the Customers feature disabled for
+            // their account), so the dropdown still works, just with
+            // the narrower pre-existing behavior in that one case.
+            let customerOptions;
+            try {
+                const data = await apiFetch('/api/admin/customers');
+                customersCache = data.customers || [];
+                customerOptions = customersCache
+                    .slice()
+                    .sort((a, b) => (a.businessName || '').localeCompare(b.businessName || ''))
+                    .map(c => `<option value="${c.id}">${escapeHtmlAttr(c.businessName)}</option>`)
+                    .join('');
+            } catch (err) {
+                console.error('Failed to load full customer list for Monthly Report — falling back to orders-derived list', err);
+                const customers = {};
+                orders.forEach(o => { if (o.senderId && !customers[o.senderId]) customers[o.senderId] = o.senderName; });
+                customerOptions = Object.entries(customers)
+                    .sort((a, b) => a[1].localeCompare(b[1]))
+                    .map(([id, name]) => `<option value="${id}">${escapeHtmlAttr(name)}</option>`)
+                    .join('');
+            }
             scopeSelect.innerHTML = `<option value="__all__">Business (All Customers)</option>${customerOptions}`;
 
             document.getElementById('monthly-report-modal').classList.add('active');

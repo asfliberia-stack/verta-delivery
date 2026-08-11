@@ -158,6 +158,8 @@ function rowToPlatformSettings(r) {
   return {
     marketplaceCommissionPercent: Number(r.marketplace_commission_percent),
     deliveryCommissionPercent: Number(r.delivery_commission_percent),
+    marketplaceCommissionEnabled: r.marketplace_commission_enabled !== false,
+    deliveryCommissionEnabled: r.delivery_commission_enabled !== false,
     defaultDeliveryFee: r.default_delivery_fee !== null && r.default_delivery_fee !== undefined ? Number(r.default_delivery_fee) : null,
     serviceArea: r.service_area || null,
     maintenanceMode: !!r.maintenance_mode,
@@ -2501,13 +2503,15 @@ const db = {
   // and the platform-wide settings (default delivery fee, service
   // area, maintenance mode) added later, so both panels can share one
   // upsert path instead of drifting into two near-duplicate ones.
-  async upsertPlatformSettings({ marketplaceCommissionPercent, deliveryCommissionPercent, defaultDeliveryFee, serviceArea, maintenanceMode, maintenanceMessage }) {
+  async upsertPlatformSettings({ marketplaceCommissionPercent, deliveryCommissionPercent, marketplaceCommissionEnabled, deliveryCommissionEnabled, defaultDeliveryFee, serviceArea, maintenanceMode, maintenanceMessage }) {
     await this.getPlatformSettings(); // ensures the row exists
     const sets = [];
     const values = [];
     let i = 1;
     if (marketplaceCommissionPercent !== undefined) { sets.push(`marketplace_commission_percent = $${i}`); values.push(marketplaceCommissionPercent); i += 1; }
     if (deliveryCommissionPercent !== undefined) { sets.push(`delivery_commission_percent = $${i}`); values.push(deliveryCommissionPercent); i += 1; }
+    if (marketplaceCommissionEnabled !== undefined) { sets.push(`marketplace_commission_enabled = $${i}`); values.push(marketplaceCommissionEnabled); i += 1; }
+    if (deliveryCommissionEnabled !== undefined) { sets.push(`delivery_commission_enabled = $${i}`); values.push(deliveryCommissionEnabled); i += 1; }
     if (defaultDeliveryFee !== undefined) { sets.push(`default_delivery_fee = $${i}`); values.push(defaultDeliveryFee); i += 1; }
     if (serviceArea !== undefined) { sets.push(`service_area = $${i}`); values.push(serviceArea); i += 1; }
     if (maintenanceMode !== undefined) { sets.push(`maintenance_mode = $${i}`); values.push(maintenanceMode); i += 1; }
@@ -2567,13 +2571,16 @@ const db = {
     const deliveryRefundMap = new Map(deliveryRefunds.rows.map(r => [r.delivery_company_id, Number(r.refunded)]));
     const paidMap = new Map(paidOut.rows.map(r => [r.recipient_id, Number(r.paid)]));
 
-    const build = (rows, revMap, refundMap, recipientType, defaultRate) => rows.map(r => {
+    const build = (rows, revMap, refundMap, recipientType, defaultRate, commissionEnabled) => rows.map(r => {
       // Clamped at 0 rather than allowed to go negative — refunds can
       // never exceed what was actually sold, but this guards against
       // it visually even if it somehow did.
       const gross = Math.max(0, (revMap.get(r.id) || 0) - (refundMap.get(r.id) || 0));
       const override = r.commission_rate_override !== null && r.commission_rate_override !== undefined ? Number(r.commission_rate_override) : null;
-      const effectiveRate = override !== null ? override : defaultRate;
+      // The master on/off switch wins over any per-account override —
+      // turning commission off for a recipient type means off for
+      // everyone of that type, not just accounts without a custom rate.
+      const effectiveRate = commissionEnabled ? (override !== null ? override : defaultRate) : 0;
       const commissionAmount = Math.round(gross * (effectiveRate / 100) * 100) / 100;
       const netEarned = Math.round((gross - commissionAmount) * 100) / 100;
       const totalPaidOut = paidMap.get(r.id) || 0;
@@ -2594,8 +2601,8 @@ const db = {
 
     return {
       platformSettings,
-      vendors: build(vendorRows.rows, vendorRevMap, vendorRefundMap, 'vendor', platformSettings.marketplaceCommissionPercent),
-      deliveryCompanies: build(companyRows.rows, deliveryRevMap, deliveryRefundMap, 'delivery_company', platformSettings.deliveryCommissionPercent),
+      vendors: build(vendorRows.rows, vendorRevMap, vendorRefundMap, 'vendor', platformSettings.marketplaceCommissionPercent, platformSettings.marketplaceCommissionEnabled),
+      deliveryCompanies: build(companyRows.rows, deliveryRevMap, deliveryRefundMap, 'delivery_company', platformSettings.deliveryCommissionPercent, platformSettings.deliveryCommissionEnabled),
     };
   },
 

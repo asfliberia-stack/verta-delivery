@@ -1929,13 +1929,24 @@ app.get('/api/super-admin/settings/commission', requireAuth, requireSuperAdmin, 
 });
 
 app.put('/api/super-admin/settings/commission', requireAuth, requireSuperAdmin, async (req, res) => {
-  const { marketplaceCommissionPercent, deliveryCommissionPercent } = req.body || {};
-  const fields = { marketplaceCommissionPercent, deliveryCommissionPercent };
-  for (const [key, val] of Object.entries(fields)) {
+  const { marketplaceCommissionPercent, deliveryCommissionPercent, marketplaceCommissionEnabled, deliveryCommissionEnabled } = req.body || {};
+  const fields = { marketplaceCommissionPercent, deliveryCommissionPercent, marketplaceCommissionEnabled, deliveryCommissionEnabled };
+  const percentFields = { marketplaceCommissionPercent, deliveryCommissionPercent };
+  for (const [key, val] of Object.entries(percentFields)) {
     if (val === undefined) continue;
     if (typeof val !== 'number' || isNaN(val) || val < 0 || val > 100) {
       return res.status(400).json({ error: `${key} must be a number between 0 and 100` });
     }
+  }
+  const enabledFields = { marketplaceCommissionEnabled, deliveryCommissionEnabled };
+  for (const [key, val] of Object.entries(enabledFields)) {
+    if (val === undefined) continue;
+    if (typeof val !== 'boolean') {
+      return res.status(400).json({ error: `${key} must be true or false` });
+    }
+  }
+  for (const key of Object.keys(fields)) {
+    if (fields[key] === undefined) delete fields[key];
   }
   try {
     const settings = await db.upsertPlatformSettings(fields);

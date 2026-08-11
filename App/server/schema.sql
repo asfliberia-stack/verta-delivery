@@ -529,6 +529,16 @@ CREATE TABLE IF NOT EXISTS platform_settings (
     updated_at                      TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- Master on/off switches, one per recipient type, independent of the
+-- configured percentage above — Super Admin can flip commission off
+-- (e.g. during a promo period) without losing the rate they had
+-- configured, then flip it back on later without re-entering it.
+-- When a switch is off, that recipient type's effective commission
+-- rate is treated as 0% everywhere it's calculated (see
+-- db.getPayoutSummary), regardless of any per-account override.
+ALTER TABLE platform_settings ADD COLUMN IF NOT EXISTS marketplace_commission_enabled BOOLEAN NOT NULL DEFAULT true;
+ALTER TABLE platform_settings ADD COLUMN IF NOT EXISTS delivery_commission_enabled    BOOLEAN NOT NULL DEFAULT true;
+
 -- Optional per-account override — NULL means "use the platform
 -- default above". Only meaningful for role = 'vendor' (marketplace)
 -- or role = 'delivery_company' (delivery) accounts.
