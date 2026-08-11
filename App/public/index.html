@@ -4286,7 +4286,7 @@
                          click handler. -->
                     <section class="hero" id="hero-section">
                         <h2>Send a Package Today!</h2>
-                        <p>Fast, Secure, and Reliable Delivery Solution You Can Trust</p>
+                        <p>Better Shopping. Smarter Delivery.</p>
                         <button class="btn-primary dcust-hero-cta" id="btn-new-order">
                             Create New Order
                             <span class="dcust-hero-cta-icon">
@@ -6297,7 +6297,7 @@
                     <div class="settings-panel" id="settings-panel-about" style="display:none;">
                         <h4 class="settings-section-title">Application Information</h4>
                         <div class="settings-about-row"><span>App Name</span><strong>ONLib Delivery</strong></div>
-                        <div class="settings-about-row"><span>Current Version</span><strong>v26.5.1</strong></div>
+                        <div class="settings-about-row"><span>Current Version</span><strong>v26.8.0</strong></div>
                         <div class="settings-about-row"><span>Last Update</span><strong>July 18, 2026</strong></div>
                         <div class="settings-about-row"><span>Support Contact</span><strong id="settings-about-support-contact">—</strong></div>
                         <h4 class="settings-section-title">Links</h4>
@@ -10743,6 +10743,18 @@
                 closeAddDeliveryCompanyModal();
                 showToast('Delivery company created — share the password with them directly', 'success');
                 await loadDeliveryCompaniesPanel();
+                // The new company is approved immediately (see the
+                // POST /api/super-admin/delivery-companies route), so it's
+                // already valid to assign Fleet Directory agents to — but
+                // fleetDeliveryCompanies is a separate cache from the one
+                // loadDeliveryCompaniesPanel() just refreshed above, and
+                // without this it stays stale until the next full page
+                // load. That's what previously made a just-added company
+                // invisible in the Add/Edit Agent picker and made any agent
+                // assigned to it show as "Unassigned" for the rest of the
+                // session. loadFleetDeliveryCompanies() also re-renders the
+                // agent contacts list, so no separate refresh is needed.
+                await loadFleetDeliveryCompanies();
             } catch (err) {
                 errorEl.textContent = err.message;
                 errorEl.style.display = 'block';
@@ -13246,7 +13258,12 @@
                 await apiFetch(`/api/super-admin/${endpointBase}/${id}/${decision}`, options);
                 showToast(`${label.charAt(0).toUpperCase() + label.slice(1)} ${decision === 'approve' ? 'approved' : 'rejected'}`, 'success');
                 document.getElementById('vendor-review-modal').classList.remove('active');
-                if (type === 'delivery_company') { loadDeliveryCompaniesPanel(); } else { loadVendors(); }
+                // Same stale-cache issue as handleAddDeliveryCompanyFormSubmit
+                // above: approving a pending delivery-company application
+                // makes it immediately assignable, but fleetDeliveryCompanies
+                // (the Fleet Directory's own cache) only gets refreshed by
+                // loadFleetDeliveryCompanies(), not by loadDeliveryCompaniesPanel().
+                if (type === 'delivery_company') { loadDeliveryCompaniesPanel(); loadFleetDeliveryCompanies(); } else { loadVendors(); }
             } catch (err) {
                 showToast(err.message, 'error');
             }

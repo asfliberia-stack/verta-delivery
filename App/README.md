@@ -5519,3 +5519,80 @@ database plus a `node --check` syntax pass on `server.js`, not as live
 HTTP requests; and, as with the mobile "More" menu above, real touch/
 scroll feel on physical desktop and mobile hardware wasn't tested, since
 Playwright here drives the DOM/CSS directly.
+
+## Super Admin Dashboard — Fleet Directory delivery-company visibility fix, customer-count investigation
+
+**Reported:** the Super Admin Dashboard's "Total Customers" stat wasn't
+showing a number, adding an agent through Fleet Directory didn't show the
+delivery company that had been selected for it, and a general request to
+check the rest of the Super Admin Dashboard for anything else broken.
+
+**What changed.** The Fleet Directory issue was real and is fixed: the
+Add/Edit Agent modal's delivery-company picker, its "Unassigned" warning
+logic, and the Agent Contacts list all read from one in-memory cache,
+`fleetDeliveryCompanies`, which is only ever loaded once, when the
+dashboard first opens. Creating a new delivery company (Delivery
+Companies panel → Add) or approving a pending delivery-company
+application both refreshed the *other* cache used by the Delivery
+Companies panel itself, but never told Fleet Directory's cache to
+refresh — even though the new company is approved and assignable
+immediately. In the same Super Admin session, right after adding or
+approving a delivery company, opening Fleet Directory to add an agent for
+it showed an empty "-- Select delivery company --" dropdown missing that
+company, and any agent that did get assigned to it (for example by the
+delivery company's own account self-assigning one) rendered with a
+bogus "⚠ Unassigned — owned by Admin" warning instead of the real company
+name. `handleAddDeliveryCompanyFormSubmit` and `decideVendorApplication`
+(`public/index.html`) now both call `loadFleetDeliveryCompanies()` after
+a company is created or approved, which refreshes the cache and
+re-renders the agent list immediately — no page reload needed. The
+backend was already correct throughout; this was purely a stale
+client-side cache.
+
+The "Total Customers" stat could not be reproduced as broken. Its full
+path — the `sa-total-customers` element, `loadSuperAdminOverview()`,
+the `/api/super-admin/overview` route, `db.getCustomers()`'s SQL, the
+`role = 'sender'` filter every registration path actually uses, the
+`requireSuperAdmin` check, and the display-toggle/call-order that shows
+the Super Admin Overview block — was traced twice independently (once
+directly, once by a second fresh pass specifically looking for anything
+the first pass might have missed) and tested empirically with mocked API
+responses; in every case the number renders correctly. Given the
+Railway deployment that was previously failing to build, the most likely
+explanation is that the live site was still running older code when this
+was reported, rather than a bug in this codebase — if the number still
+doesn't show after this update reaches the live deployment, the most
+useful next report would be whatever the browser console shows on that
+page (open Developer Tools → Console while viewing the Super Admin
+Overview) or a screenshot of the stat card itself, since that would show
+whether it's landing on "0", staying blank, or throwing an error.
+
+A broader pass across the rest of the Super Admin Dashboard (Vendors,
+Staff Accounts, the Delivery Companies panel itself, Payouts &
+Commission, Disputes, Audit Log) didn't turn up another functional bug
+of the same kind — no missing `await`, wrong SQL, or permission
+mismatch found in a targeted review of each panel's load/submit
+handlers and their server routes. Staff Accounts CRUD and the Platform
+Settings maintenance-mode toggle weren't given the same line-by-line
+pass and should be treated as unreviewed rather than confirmed clean if
+problems show up there later.
+
+**Verified:** `node --check` passed on the extracted client script after
+the change. A Playwright test reproduced the exact failure scenario end
+to end against the real client code — starting from an empty
+`fleetDeliveryCompanies` cache (simulating a session that began before
+any delivery companies existed), submitting the Add Delivery Company
+form, and confirming the brand-new company immediately appears as a
+selectable option in the Add Agent modal's dropdown with no page reload.
+The two previously-written Fleet Directory checks (basic add-agent flow,
+edit-mode pre-selection) and the Super Admin overview stats check were
+re-run afterward with no regressions, and a duplicate-static-id scan
+across `index.html` found none. What could not be verified in this
+sandbox: the real Express/PostgreSQL server still can't boot here
+(`npm install` remains blocked), so this was confirmed at the DOM/JS
+level against the real client code with mocked API responses, not as a
+live HTTP request against the real routes; and there's no way from here
+to confirm what the live Railway deployment is actually running, so the
+customer-count question can't be fully closed out without either
+confirmation that this update has been deployed or more detail from what
+the live site's browser console shows.
