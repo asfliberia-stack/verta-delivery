@@ -335,6 +335,24 @@ CREATE TABLE IF NOT EXISTS product_reviews (
 );
 CREATE INDEX IF NOT EXISTS idx_product_reviews_product_id ON product_reviews (product_id);
 
+-- Vendor-level reviews — separate from product_reviews above. A
+-- product review rates one dish/item; this rates the store or
+-- restaurant as a whole (service, overall experience). Verified-
+-- purchase gated the same way product reviews are (see
+-- hasCustomerPurchasedFromVendor), one review per (vendor, customer)
+-- so a repeat customer updates their existing review instead of
+-- stacking a new one every order.
+CREATE TABLE IF NOT EXISTS vendor_reviews (
+    id          TEXT PRIMARY KEY,
+    vendor_id   TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    customer_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    rating      INTEGER NOT NULL CHECK (rating BETWEEN 1 AND 5),
+    comment     TEXT,
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+    UNIQUE (vendor_id, customer_id)
+);
+CREATE INDEX IF NOT EXISTS idx_vendor_reviews_vendor_id ON vendor_reviews (vendor_id);
+
 -- Real wishlist — one row per (customer, product) they've saved.
 CREATE TABLE IF NOT EXISTS wishlist_items (
     id          TEXT PRIMARY KEY,

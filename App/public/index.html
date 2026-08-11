@@ -4385,7 +4385,18 @@
                             Cart <span id="dcust-restaurant-cart-count">(0)</span>
                         </button>
                     </div>
-                    <div id="dcust-restaurant-menu-grid" class="product-grid"></div>
+                    <div class="dcust-food-tabs" style="margin-bottom:1.25rem;">
+                        <button type="button" class="btn-small btn-primary dcust-vendor-page-tab active" data-vendor-page-tab="menu" id="dcust-vendor-tab-menu">Menu</button>
+                        <button type="button" class="btn-small btn-secondary dcust-vendor-page-tab" data-vendor-page-tab="reviews" id="dcust-vendor-tab-reviews">Reviews</button>
+                    </div>
+                    <div id="dcust-vendor-menu-panel">
+                        <div id="dcust-restaurant-menu-grid" class="product-grid"></div>
+                    </div>
+                    <div id="dcust-vendor-reviews-panel" style="display:none;">
+                        <div id="dcust-vendor-reviews-summary"></div>
+                        <div id="dcust-vendor-review-form-wrap"></div>
+                        <div id="dcust-vendor-reviews-list"></div>
+                    </div>
                 </div>
             </main>
             <nav class="mobile-bottom-nav">
@@ -9093,6 +9104,14 @@
             const source = kind === 'store' ? popularStoresCache : popularRestaurantsCache;
             const vendor = source.find(v => v.id === vendorId);
             if (!vendor) return;
+            currentDcustVendorId = vendorId;
+            currentDcustVendorName = vendor.businessName;
+            // Always land back on the Menu tab when opening a different
+            // vendor, not wherever the last vendor's tab was left.
+            document.getElementById('dcust-vendor-tab-menu').classList.replace('btn-secondary', 'btn-primary');
+            document.getElementById('dcust-vendor-tab-reviews').classList.replace('btn-primary', 'btn-secondary');
+            document.getElementById('dcust-vendor-menu-panel').style.display = 'block';
+            document.getElementById('dcust-vendor-reviews-panel').style.display = 'none';
             const titleEl = document.getElementById('dcust-restaurant-menu-title');
             titleEl.innerHTML = `${vendor.businessName}${vendor.avgPrepTimeMinutes ? ` <span style="font-weight:400; font-size:0.8125rem; color:var(--slate-light);">· ~${vendor.avgPrepTimeMinutes} mins</span>` : ''}`;
             const grid = document.getElementById('dcust-restaurant-menu-grid');
@@ -9142,6 +9161,85 @@
             const count = cart.reduce((sum, c) => sum + c.quantity, 0);
             const el = document.getElementById('dcust-restaurant-cart-count');
             if (el) el.textContent = `(${count})`;
+        }
+
+        // ---- Vendor (store/restaurant) reviews — rates the whole vendor,
+        // not one dish; verified-purchase gated server-side, same pattern
+        // as product reviews on the PDP (see loadPdpReviews/renderPdpReviews).
+        let currentDcustVendorId = null;
+        let currentDcustVendorName = '';
+        let dcustVendorReviews = [];
+        let dcustVendorReviewSelectedStars = 0;
+
+        async function loadDcustVendorReviews(vendorId) {
+            try {
+                const data = await apiFetch(`/api/marketplace/vendors/${vendorId}/reviews`);
+                if (currentDcustVendorId !== vendorId) return; // navigated away before this resolved
+                dcustVendorReviews = data.reviews || [];
+                renderDcustVendorReviews();
+            } catch (err) {
+                console.error('Failed to load vendor reviews', err);
+            }
+        }
+
+        function renderDcustVendorReviews() {
+            const avg = dcustVendorReviews.length ? dcustVendorReviews.reduce((s, r) => s + r.rating, 0) / dcustVendorReviews.length : 0;
+            document.getElementById('dcust-vendor-reviews-summary').innerHTML = dcustVendorReviews.length ? `
+                <div class="pdp-review-summary-row">
+                    <span class="pdp-review-summary-avg">${avg.toFixed(1)}</span>
+                    ${renderStars(avg, dcustVendorReviews.length)}
+                </div>
+            ` : `<p class="pdp-empty-note">No reviews of ${currentDcustVendorName} yet — be the first to leave one.</p>`;
+
+            const formWrap = document.getElementById('dcust-vendor-review-form-wrap');
+            if (currentUser && currentUser.role === 'sender') {
+                formWrap.innerHTML = `
+                    <form class="pdp-review-form" id="dcust-vendor-review-form">
+                        <div class="pdp-star-picker" id="dcust-vendor-review-star-picker">
+                            ${[1, 2, 3, 4, 5].map(n => `<button type="button" data-star="${n}"><svg viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg></button>`).join('')}
+                        </div>
+                        <textarea class="form-input" id="dcust-vendor-review-comment-input" rows="2" placeholder="Share your experience with ${currentDcustVendorName} (optional)"></textarea>
+                        <div class="auth-error" id="dcust-vendor-review-form-error" style="display:none;"></div>
+                        <button type="submit" class="btn-small btn-success" style="margin-top:0.625rem;">Submit Review</button>
+                        <p style="color:var(--slate-light); font-size:0.75rem; margin-top:0.5rem;">You can only review a store or restaurant you've ordered from.</p>
+                    </form>
+                `;
+            } else {
+                formWrap.innerHTML = '<p class="pdp-empty-note">Log in to leave a review.</p>';
+            }
+
+            document.getElementById('dcust-vendor-reviews-list').innerHTML = dcustVendorReviews.length ? dcustVendorReviews.map(r => `
+                <div class="pdp-review-item">
+                    <div class="pdp-review-item-head">
+                        <span class="pdp-review-author">${r.customerName}</span>
+                        <span class="pdp-review-date">${new Date(r.createdAt).toLocaleDateString()}</span>
+                    </div>
+                    ${renderStars(r.rating, 1)}
+                    ${r.comment ? `<div class="pdp-review-comment">${r.comment}</div>` : ''}
+                </div>
+            `).join('') : '';
+        }
+
+        async function submitDcustVendorReview() {
+            const errorEl = document.getElementById('dcust-vendor-review-form-error');
+            errorEl.style.display = 'none';
+            if (!dcustVendorReviewSelectedStars) {
+                errorEl.textContent = 'Please pick a star rating.';
+                errorEl.style.display = 'block';
+                return;
+            }
+            try {
+                await apiFetch(`/api/marketplace/vendors/${currentDcustVendorId}/reviews`, {
+                    method: 'POST',
+                    body: JSON.stringify({ rating: dcustVendorReviewSelectedStars, comment: document.getElementById('dcust-vendor-review-comment-input').value.trim() }),
+                });
+                dcustVendorReviewSelectedStars = 0;
+                showToast('Review submitted — thank you!', 'success');
+                loadDcustVendorReviews(currentDcustVendorId);
+            } catch (err) {
+                errorEl.textContent = err.message;
+                errorEl.style.display = 'block';
+            }
         }
 
         function openCartModal() {
@@ -16274,7 +16372,10 @@
                     }
                     <div class="dcust-wide-card-body">
                         <div class="dcust-wide-card-name">${item.businessName}</div>
-                        <div class="dcust-wide-card-meta">${item.reviewCount > 0 ? `★ ${item.avgRating.toFixed(1)}` : 'New'}</div>
+                        <div class="dcust-wide-card-meta">
+                            ${item.reviewCount > 0 ? `★ ${item.avgRating.toFixed(1)} dishes` : 'New'}
+                            ${item.vendorReviewCount > 0 ? ` · ★ ${item.avgVendorRating.toFixed(1)} store (${item.vendorReviewCount})` : ''}
+                        </div>
                         <div class="dcust-wide-card-row">
                             ${item.avgPrepTimeMinutes ? `<span>🕐 ${item.avgPrepTimeMinutes} mins</span>` : ''}
                             ${item.startingPrice !== null && item.startingPrice !== undefined ? `<span class="dcust-wide-card-price">From $${item.startingPrice.toFixed(2)}</span>` : ''}
@@ -17844,6 +17945,35 @@
                 if (e.target.id !== 'pdp-review-form') return;
                 e.preventDefault();
                 submitPdpReview();
+            });
+
+            // ---- Delivery section: vendor (store/restaurant) reviews —
+            // same delegated star-picker + submit pattern as the PDP. ----
+            document.getElementById('dcust-vendor-review-form-wrap').addEventListener('click', (e) => {
+                const starBtn = e.target.closest('#dcust-vendor-review-star-picker button');
+                if (!starBtn) return;
+                dcustVendorReviewSelectedStars = Number(starBtn.dataset.star);
+                document.querySelectorAll('#dcust-vendor-review-star-picker button').forEach(b => {
+                    b.classList.toggle('active', Number(b.dataset.star) <= dcustVendorReviewSelectedStars);
+                });
+            });
+            document.getElementById('dcust-vendor-review-form-wrap').addEventListener('submit', (e) => {
+                if (e.target.id !== 'dcust-vendor-review-form') return;
+                e.preventDefault();
+                submitDcustVendorReview();
+            });
+            document.getElementById('dcust-vendor-tab-menu').addEventListener('click', () => {
+                document.getElementById('dcust-vendor-tab-menu').classList.replace('btn-secondary', 'btn-primary');
+                document.getElementById('dcust-vendor-tab-reviews').classList.replace('btn-primary', 'btn-secondary');
+                document.getElementById('dcust-vendor-menu-panel').style.display = 'block';
+                document.getElementById('dcust-vendor-reviews-panel').style.display = 'none';
+            });
+            document.getElementById('dcust-vendor-tab-reviews').addEventListener('click', () => {
+                document.getElementById('dcust-vendor-tab-reviews').classList.replace('btn-secondary', 'btn-primary');
+                document.getElementById('dcust-vendor-tab-menu').classList.replace('btn-primary', 'btn-secondary');
+                document.getElementById('dcust-vendor-menu-panel').style.display = 'none';
+                document.getElementById('dcust-vendor-reviews-panel').style.display = 'block';
+                if (currentDcustVendorId) loadDcustVendorReviews(currentDcustVendorId);
             });
 
             // ---- Q&A: ask form + delegated per-question answer forms ----

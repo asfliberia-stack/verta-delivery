@@ -1775,6 +1775,48 @@ const db = {
   // via purchase_items/purchases joined to this customer, matching the
   // rest of this app's "don't trust the client, verify against real
   // records" pattern.
+  async hasCustomerPurchasedFromVendor(customerId, vendorId) {
+    const { rows } = await pool.query(
+      `SELECT 1 FROM purchases WHERE customer_id = $1 AND vendor_id = $2 LIMIT 1`,
+      [customerId, vendorId]
+    );
+    return rows.length > 0;
+  },
+
+  async upsertVendorReview({ id, vendorId, customerId, rating, comment }) {
+    const { rows } = await pool.query(`
+      INSERT INTO vendor_reviews (id, vendor_id, customer_id, rating, comment)
+      VALUES ($1, $2, $3, $4, $5)
+      ON CONFLICT (vendor_id, customer_id) DO UPDATE SET rating = $4, comment = $5, created_at = now()
+      RETURNING *
+    `, [id, vendorId, customerId, rating, comment || null]);
+    return rows[0];
+  },
+
+  // Reviewer name shown as "J*** D***"-style would need real PII
+  // masking logic we don't have — this app already shows full
+  // customer/business names elsewhere (e.g. product reviews), so
+  // vendor reviews follow the same existing convention rather than
+  // inventing a new privacy rule just for this feature.
+  async getVendorReviews(vendorId) {
+    const { rows } = await pool.query(`
+      SELECT vr.*, u.business_name AS customer_name
+      FROM vendor_reviews vr
+      JOIN users u ON u.id = vr.customer_id
+      WHERE vr.vendor_id = $1
+      ORDER BY vr.created_at DESC
+    `, [vendorId]);
+    return rows.map(r => ({
+      id: r.id,
+      vendorId: r.vendor_id,
+      customerId: r.customer_id,
+      customerName: r.customer_name,
+      rating: r.rating,
+      comment: r.comment,
+      createdAt: r.created_at,
+    }));
+  },
+
   async hasCustomerPurchasedProduct(customerId, productId) {
     const { rows } = await pool.query(`
       SELECT 1 FROM purchase_items pi
@@ -2213,12 +2255,17 @@ const db = {
       SELECT u.id, u.business_name, u.store_address, u.phone,
         COUNT(DISTINCT p.id)::int AS product_count,
         COALESCE(AVG(r.rating), 0)::numeric AS avg_rating,
-        COUNT(r.id)::int AS review_count
+        COUNT(DISTINCT r.id)::int AS review_count,
+        vr.avg_vendor_rating, vr.vendor_review_count
       FROM users u
       LEFT JOIN products p ON p.vendor_id = u.id AND p.is_active = true
       LEFT JOIN product_reviews r ON r.product_id = p.id
+      LEFT JOIN (
+        SELECT vendor_id, AVG(rating)::numeric AS avg_vendor_rating, COUNT(*)::int AS vendor_review_count
+        FROM vendor_reviews GROUP BY vendor_id
+      ) vr ON vr.vendor_id = u.id
       WHERE u.role = 'vendor' AND u.vendor_type = 'store'
-      GROUP BY u.id
+      GROUP BY u.id, vr.avg_vendor_rating, vr.vendor_review_count
       ORDER BY u.business_name ASC
     `);
     return rows.map(r => ({
@@ -2229,6 +2276,8 @@ const db = {
       productCount: r.product_count,
       avgRating: Number(r.avg_rating),
       reviewCount: r.review_count,
+      avgVendorRating: r.avg_vendor_rating !== null ? Number(r.avg_vendor_rating) : null,
+      vendorReviewCount: r.vendor_review_count || 0,
     }));
   },
 
@@ -2241,19 +2290,27 @@ const db = {
   // approved restaurant isn't invisible) with dishCount 0 and
   // startingPrice null; the frontend is responsible for hiding a
   // "from $X" line when startingPrice is null rather than this query
-  // inventing a number.
+  // inventing a number. avgVendorRating/vendorReviewCount are the
+  // separate, verified-purchase, whole-restaurant rating (see
+  // vendor_reviews) — kept alongside avgRating (the dish-level
+  // average) rather than replacing it, per how this is meant to read.
   async getPopularRestaurants() {
     const { rows } = await pool.query(`
       SELECT u.id, u.business_name, u.store_address, u.phone, u.profile_image_url, u.avg_prep_time_minutes,
         COUNT(DISTINCT p.id)::int AS dish_count,
         COALESCE(AVG(r.rating), 0)::numeric AS avg_rating,
-        COUNT(r.id)::int AS review_count,
-        MIN(p.price) AS starting_price
+        COUNT(DISTINCT r.id)::int AS review_count,
+        MIN(p.price) AS starting_price,
+        vr.avg_vendor_rating, vr.vendor_review_count
       FROM users u
       LEFT JOIN products p ON p.vendor_id = u.id AND p.is_active = true
       LEFT JOIN product_reviews r ON r.product_id = p.id
+      LEFT JOIN (
+        SELECT vendor_id, AVG(rating)::numeric AS avg_vendor_rating, COUNT(*)::int AS vendor_review_count
+        FROM vendor_reviews GROUP BY vendor_id
+      ) vr ON vr.vendor_id = u.id
       WHERE u.role = 'vendor' AND u.vendor_type = 'restaurant'
-      GROUP BY u.id
+      GROUP BY u.id, vr.avg_vendor_rating, vr.vendor_review_count
       ORDER BY avg_rating DESC, dish_count DESC, u.business_name ASC
     `);
     return rows.map(r => ({
@@ -2266,6 +2323,8 @@ const db = {
       dishCount: r.dish_count,
       avgRating: Number(r.avg_rating),
       reviewCount: r.review_count,
+      avgVendorRating: r.avg_vendor_rating !== null ? Number(r.avg_vendor_rating) : null,
+      vendorReviewCount: r.vendor_review_count || 0,
       startingPrice: r.starting_price !== null ? Number(r.starting_price) : null,
     }));
   },

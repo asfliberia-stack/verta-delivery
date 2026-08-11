@@ -2854,6 +2854,42 @@ app.post('/api/marketplace/products/:id/reviews', requireAuth, async (req, res) 
   }
 });
 
+// Vendor-level reviews (rating the store/restaurant as a whole, not one
+// product) — same verified-purchase gate as product reviews above, just
+// checked against purchases.vendor_id instead of a specific product.
+app.get('/api/marketplace/vendors/:id/reviews', async (req, res) => {
+  try {
+    const reviews = await db.getVendorReviews(req.params.id);
+    res.json({ reviews });
+  } catch (err) {
+    console.error('GET /api/marketplace/vendors/:id/reviews failed', err);
+    res.status(500).json({ error: 'Failed to load reviews' });
+  }
+});
+
+app.post('/api/marketplace/vendors/:id/reviews', requireAuth, async (req, res) => {
+  if (req.user.role !== 'sender') {
+    return res.status(403).json({ error: 'Only customers can leave reviews' });
+  }
+  const { rating, comment } = req.body || {};
+  if (!rating || rating < 1 || rating > 5) {
+    return res.status(400).json({ error: 'A rating from 1 to 5 is required' });
+  }
+  try {
+    const purchased = await db.hasCustomerPurchasedFromVendor(req.user.id, req.params.id);
+    if (!purchased) {
+      return res.status(403).json({ error: 'You can only review a store or restaurant you have ordered from' });
+    }
+    const review = await db.upsertVendorReview({
+      id: crypto.randomUUID(), vendorId: req.params.id, customerId: req.user.id, rating, comment,
+    });
+    res.json({ ok: true, review });
+  } catch (err) {
+    console.error('POST vendor reviews failed', err);
+    res.status(500).json({ error: 'Failed to save review' });
+  }
+});
+
 // ============================================================
 // Product Q&A — any logged-in customer can ask, only the product's own
 // vendor can answer (see db.answerProductQuestion's ownership-checked
