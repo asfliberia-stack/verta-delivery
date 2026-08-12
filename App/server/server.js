@@ -11,6 +11,7 @@ const { Server } = require('socket.io');
 const db = require('./db');
 const { notifyNewOrder, sendMessage, notifyNewVendorApplication, sendEmail } = require('./notify');
 const momo = require('./momo');
+const { parsePriceRowsFromText } = require('./pricePresetPdfParser');
 const DEFAULT_HOME_BANNERS = require('./seed-data/default-home-banners');
 const { OAuth2Client } = require('google-auth-library');
 const {
@@ -860,10 +861,14 @@ app.get('/api/config', async (req, res) => {
       defaultDeliveryFee: platformSettings.defaultDeliveryFee,
       maintenanceMode: platformSettings.maintenanceMode,
       maintenanceMessage: platformSettings.maintenanceMessage || null,
+      // Flat platform service fee, shown at checkout before payment —
+      // same "guest should see it before hitting a wall" reasoning as
+      // the fields above.
+      serviceFee: platformSettings.serviceFee,
     });
   } catch (err) {
     console.error('GET /api/config failed', err);
-    res.json({ googleClientId: GOOGLE_CLIENT_ID || null, privacyPolicy: null, termsOfService: null, serviceArea: null, defaultDeliveryFee: null, maintenanceMode: false, maintenanceMessage: null });
+    res.json({ googleClientId: GOOGLE_CLIENT_ID || null, privacyPolicy: null, termsOfService: null, serviceArea: null, defaultDeliveryFee: null, maintenanceMode: false, maintenanceMessage: null, serviceFee: 0.10 });
   }
 });
 
@@ -920,15 +925,25 @@ app.post('/api/auth/google', authLimiter, async (req, res) => {
 // generic message regardless of whether the email exists — this
 // prevents an attacker from using this endpoint to discover which
 // emails are registered. The code itself only actually gets sent if a
-// matching account with a phone number exists and Twilio is configured.
+// matching account exists and the requested channel is deliverable.
+//
+// `channel` ('email' | 'phone', default 'email') lets the person
+// requesting the reset choose where the code goes, instead of the
+// code always going out on both channels regardless of preference.
+// Choosing 'phone' when the account has no phone on file (e.g. a
+// Google Sign-In account) silently delivers nothing — same
+// intentional non-disclosure as the rest of this endpoint, so trying
+// 'phone' can't be used to probe whether an account has a phone
+// number on file.
 const GENERIC_FORGOT_PASSWORD_RESPONSE = {
   ok: true,
-  message: 'If an account exists for that email with a phone number on file, a reset code has been sent to it.',
+  message: 'If an account exists for that email, a reset code has been sent using the method you selected.',
 };
 
 app.post('/api/auth/forgot-password', authLimiter, async (req, res) => {
-  const { email } = req.body || {};
+  const { email, channel } = req.body || {};
   if (!email) return res.status(400).json({ error: 'Email is required' });
+  const resetChannel = channel === 'phone' ? 'phone' : 'email'; // default to email for any unrecognized/missing value
   try {
     const user = await db.getUserByEmail(email);
     if (user) {
@@ -939,32 +954,22 @@ app.post('/api/auth/forgot-password', authLimiter, async (req, res) => {
 
       const messageBody = `Your ONLib password reset code is: ${code}\nIt expires in 10 minutes. If you didn't request this, ignore this message.`;
 
-      // Two independent delivery paths — SMS (if a phone is on file)
-      // and email (always, since email is the account identifier and
-      // is always present, unlike phone — accounts created via Google
-      // Sign-In in particular never have a phone number on file at
-      // all). Either one succeeding gets the user their code; both are
-      // attempted regardless of the other.
-      const deliveryAttempts = [];
-      if (user.phone) {
-        deliveryAttempts.push(
-          sendMessage(user.phone, messageBody).then(sent => {
-            if (!sent) console.warn(`[forgot-password] Could not deliver reset code by SMS/WhatsApp to ${user.phone} — is Twilio configured? (see server/notify.js)`);
-            return sent;
-          })
-        );
+      // Only the selected channel is attempted now — previously both
+      // were always attempted regardless of what the user wanted.
+      let sent = false;
+      if (resetChannel === 'phone') {
+        if (user.phone) {
+          sent = await sendMessage(user.phone, messageBody);
+          if (!sent) console.warn(`[forgot-password] Could not deliver reset code by SMS/WhatsApp to ${user.phone} — is Twilio configured? (see server/notify.js)`);
+        } else {
+          console.warn(`[forgot-password] ${email} chose the phone channel but has no phone on file — nothing sent`);
+        }
       } else {
-        console.warn(`[forgot-password] ${email} has no phone on file — skipping SMS, trying email instead`);
+        sent = await sendEmail(email, 'Your ONLib password reset code', messageBody);
+        if (!sent) console.warn(`[forgot-password] Could not deliver reset code by email to ${email} — is SMTP configured? (see server/notify.js)`);
       }
-      deliveryAttempts.push(
-        sendEmail(email, 'Your ONLib password reset code', messageBody).then(sent => {
-          if (!sent) console.warn(`[forgot-password] Could not deliver reset code by email to ${email} — is SMTP configured? (see server/notify.js)`);
-          return sent;
-        })
-      );
-      const results = await Promise.all(deliveryAttempts);
-      if (!results.some(Boolean)) {
-        console.warn(`[forgot-password] Neither SMS nor email delivered a reset code to ${email} — check TWILIO_* and SMTP_* environment variables are actually set.`);
+      if (!sent) {
+        console.warn(`[forgot-password] No reset code delivered to ${email} via the ${resetChannel} channel.`);
       }
     }
     // Same response either way — see comment above.
@@ -1981,13 +1986,19 @@ app.get('/api/super-admin/settings/platform', requireAuth, requireSuperAdmin, as
 });
 
 app.put('/api/super-admin/settings/platform', requireAuth, requireSuperAdmin, async (req, res) => {
-  const { defaultDeliveryFee, serviceArea, maintenanceMode, maintenanceMessage } = req.body || {};
+  const { defaultDeliveryFee, serviceArea, maintenanceMode, maintenanceMessage, serviceFee } = req.body || {};
   const fields = {};
   if (defaultDeliveryFee !== undefined) {
     if (defaultDeliveryFee !== null && (typeof defaultDeliveryFee !== 'number' || isNaN(defaultDeliveryFee) || defaultDeliveryFee < 0)) {
       return res.status(400).json({ error: 'defaultDeliveryFee must be a non-negative number, or null to clear it' });
     }
     fields.defaultDeliveryFee = defaultDeliveryFee;
+  }
+  if (serviceFee !== undefined) {
+    if (typeof serviceFee !== 'number' || isNaN(serviceFee) || serviceFee < 0 || serviceFee > 1000) {
+      return res.status(400).json({ error: 'serviceFee must be a non-negative number (under 1000)' });
+    }
+    fields.serviceFee = Math.round(serviceFee * 100) / 100;
   }
   if (serviceArea !== undefined) {
     if (serviceArea !== null && typeof serviceArea !== 'string') {
@@ -2239,6 +2250,79 @@ app.delete('/api/admin/price-presets/:id', requireAuth, requireAdmin, requireFea
   } catch (err) {
     console.error('DELETE /api/admin/price-presets failed', err);
     res.status(500).json({ error: 'Failed to delete price preset' });
+  }
+});
+
+// ------------------------------------------------------------
+// Price Presets — PDF import. Two-step (parse, then commit) so
+// nothing is actually saved off a heuristic PDF-text parse without a
+// human reviewing it first — same "preview before you commit" shape
+// as the existing JSON database Restore flow (see
+// /api/admin/restore/validate + /execute). Step 1 never touches the
+// database; step 2 only ever writes exactly the rows the caller sends
+// back, so a Super Admin who edited/removed a bad row in the preview
+// gets exactly that, not a silent re-parse.
+// ------------------------------------------------------------
+const MAX_PRICE_PRESET_PDF_BYTES = 5 * 1024 * 1024; // ~5MB raw — a multi-page price list PDF, not a scanned book
+
+app.post('/api/admin/price-presets/import/parse', requireAuth, requireAdmin, requireFeature('price_presets'), async (req, res) => {
+  const { pdfDataUrl } = req.body || {};
+  if (!pdfDataUrl || typeof pdfDataUrl !== 'string' || !pdfDataUrl.startsWith('data:application/pdf')) {
+    return res.status(400).json({ error: 'Please upload a PDF file' });
+  }
+  if (pdfDataUrl.length > MAX_PRICE_PRESET_PDF_BYTES * 1.4) {
+    return res.status(400).json({ error: 'PDF is too large — please use a file under ~5MB' });
+  }
+  try {
+    const base64 = pdfDataUrl.slice(pdfDataUrl.indexOf(',') + 1);
+    const buffer = Buffer.from(base64, 'base64');
+    // Lazy-required so a missing/broken pdf-parse install can only
+    // ever fail this one route, never prevent the rest of the server
+    // from booting.
+    let pdfParse;
+    try {
+      pdfParse = require('pdf-parse');
+    } catch (requireErr) {
+      console.error('pdf-parse is not installed', requireErr);
+      return res.status(500).json({ error: 'PDF parsing isn\'t available on this server right now — please try again later or add presets manually.' });
+    }
+    const parsed = await pdfParse(buffer);
+    const { rows, skippedLines, truncated } = parsePriceRowsFromText(parsed.text);
+    if (rows.length === 0) {
+      return res.status(400).json({ error: 'Couldn\'t find any "label — amount" rows in that PDF. You can still add presets manually below.' });
+    }
+    res.json({ ok: true, rows, skippedLines, truncated });
+  } catch (err) {
+    console.error('POST /api/admin/price-presets/import/parse failed', err);
+    res.status(400).json({ error: 'Could not read that PDF — please make sure it\'s a valid, non-password-protected PDF file.' });
+  }
+});
+
+app.post('/api/admin/price-presets/import/commit', requireAuth, requireAdmin, requireFeature('price_presets'), async (req, res) => {
+  const { rows } = req.body || {};
+  if (!Array.isArray(rows) || rows.length === 0) {
+    return res.status(400).json({ error: 'No presets to import' });
+  }
+  if (rows.length > 200) {
+    return res.status(400).json({ error: 'Too many presets in one import — please split into batches of 200 or fewer' });
+  }
+  const cleaned = [];
+  for (const r of rows) {
+    const label = r && typeof r.label === 'string' ? r.label.trim() : '';
+    const amount = r ? Number(r.amount) : NaN;
+    if (!label || label.length > 200 || isNaN(amount) || amount < 0 || amount > 100000) {
+      return res.status(400).json({ error: `Every row needs a label (under 200 characters) and a non-negative amount — check "${label || '(blank)'}"` });
+    }
+    cleaned.push({ label, amount });
+  }
+  try {
+    const created = await db.bulkCreatePricePresets(cleaned);
+    created.forEach(preset => io.to('admins').emit('price-preset:created', preset));
+    await logAudit(req, 'price_presets.pdf_import', { targetType: 'price_presets', details: { count: created.length } });
+    res.json({ ok: true, presets: created });
+  } catch (err) {
+    console.error('POST /api/admin/price-presets/import/commit failed', err);
+    res.status(500).json({ error: 'Failed to import price presets' });
   }
 });
 
@@ -3475,9 +3559,14 @@ app.post('/api/marketplace/checkout/momo', requireAuth, async (req, res) => {
     purchaseId = result.purchaseId;
 
     const purchase = await db.getPurchaseById(purchaseId);
+    // Charge the grand total (items + platform service fee), not just
+    // the item subtotal — otherwise the service fee would be
+    // configured and displayed everywhere but never actually
+    // collected on the one payment path that goes through ONLib
+    // rather than being paid to the vendor in cash.
     await momo.requestToPay({
       referenceId: purchase.momoReferenceId,
-      amount: result.totalAmount,
+      amount: result.grandTotal,
       externalId: purchaseId,
       payerMsisdn: cleanPhone,
       payerMessage: `Order from ONLib Marketplace`,

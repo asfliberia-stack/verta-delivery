@@ -603,6 +603,26 @@ ALTER TABLE platform_settings ADD COLUMN IF NOT EXISTS service_area TEXT;
 ALTER TABLE platform_settings ADD COLUMN IF NOT EXISTS maintenance_mode BOOLEAN NOT NULL DEFAULT false;
 ALTER TABLE platform_settings ADD COLUMN IF NOT EXISTS maintenance_message TEXT;
 
+-- Flat platform service fee, charged on top of a delivery order's
+-- amount or a marketplace purchase's total_amount — real ONLib
+-- platform revenue, deliberately kept in its own column rather than
+-- folded into amount/total_amount, so it never inflates a vendor's or
+-- delivery company's gross revenue (and therefore their commission —
+-- see getPayoutSummary) or a daily/monthly delivery report. Editable
+-- by Super Admin via the same Platform Settings panel as
+-- default_delivery_fee above; publicly exposed via GET /api/config so
+-- the fee is visible before checkout, same reasoning as
+-- default_delivery_fee.
+ALTER TABLE platform_settings ADD COLUMN IF NOT EXISTS service_fee NUMERIC(6, 2) NOT NULL DEFAULT 0.10;
+
+-- Snapshotted onto each order/purchase at the moment money is
+-- actually quoted (order acceptance / marketplace checkout) — same
+-- "never recalculated later" reasoning as payouts.commission_rate,
+-- so a later change to platform_settings.service_fee never silently
+-- rewrites what a customer was already charged.
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS service_fee NUMERIC(6, 2);
+ALTER TABLE purchases ADD COLUMN IF NOT EXISTS service_fee NUMERIC(6, 2) NOT NULL DEFAULT 0;
+
 -- ============================================================
 -- Disputes — the last of the original Super Admin gaps: a real,
 -- structured way for a customer to report a problem with an order and

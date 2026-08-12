@@ -23,6 +23,7 @@ function rowToOrder(r) {
     dropoffAddress: r.dropoff_address,
     itemDescription: r.item_description,
     amount: r.amount === null ? null : Number(r.amount),
+    serviceFee: r.service_fee === null || r.service_fee === undefined ? null : Number(r.service_fee),
     status: r.status,
     acceptedBy: r.accepted_by,
     paymentMethod: r.payment_method,
@@ -122,6 +123,12 @@ function rowToPurchase(r) {
     customerId: r.customer_id,
     vendorId: r.vendor_id,
     totalAmount: Number(r.total_amount),
+    // The flat platform service fee charged at checkout, snapshotted
+    // separately from total_amount so it's never counted as part of
+    // the vendor's gross revenue (see getPayoutSummary) — grandTotal
+    // is what the customer actually paid/owes.
+    serviceFee: r.service_fee !== null && r.service_fee !== undefined ? Number(r.service_fee) : 0,
+    grandTotal: Number(r.total_amount) + (r.service_fee !== null && r.service_fee !== undefined ? Number(r.service_fee) : 0),
     deliveryOrderId: r.delivery_order_id,
     createdAt: r.created_at,
     paymentMethod: r.payment_method,
@@ -164,6 +171,7 @@ function rowToPlatformSettings(r) {
     serviceArea: r.service_area || null,
     maintenanceMode: !!r.maintenance_mode,
     maintenanceMessage: r.maintenance_message || null,
+    serviceFee: Number(r.service_fee),
     updatedAt: r.updated_at,
   };
 }
@@ -534,10 +542,23 @@ const db = {
   // whichever request's UPDATE runs first wins, the second one gets
   // nothing to update and the caller can tell the user honestly that
   // someone else got there first.
+  // service_fee is computed in the same statement, atomically, rather
+  // than fetched beforehand — a CASE that skips it entirely for any
+  // order already linked to a marketplace purchase (via
+  // purchases.delivery_order_id), since that purchase already charged
+  // one service fee at checkout; charging a second one here for the
+  // same transaction's delivery leg would double-charge the customer.
+  // A plain "Send a Package" order (no linked purchase) gets the
+  // platform's current service fee snapshotted, same reasoning as
+  // amount/commission_rate elsewhere in this app.
   async acceptOrderAtomic(id, { amount, acceptedBy, paymentMethod, deliveryCompanyId }) {
     const { rows } = await pool.query(
       `UPDATE orders SET amount = $1, accepted_by = $2, payment_method = $3,
-       status = 'accepted', accepted_at = now(), delivery_company_id = $4
+       status = 'accepted', accepted_at = now(), delivery_company_id = $4,
+       service_fee = CASE
+         WHEN EXISTS (SELECT 1 FROM purchases WHERE delivery_order_id = orders.id) THEN 0
+         ELSE (SELECT service_fee FROM platform_settings WHERE id = 'platform')
+       END
        WHERE id = $5 AND status = 'pending' RETURNING *`,
       [amount, acceptedBy, paymentMethod || null, deliveryCompanyId || null, id]
     );
@@ -1293,6 +1314,35 @@ const db = {
     await pool.query('DELETE FROM price_presets WHERE id = $1', [id]);
   },
 
+  // Bulk-insert path used by the PDF import (Settings > Pricing >
+  // Import from PDF) — takes the reviewed/confirmed rows from the
+  // parse-preview step and creates them all in one transaction, same
+  // "all or nothing" reasoning as everywhere else in this app that
+  // writes several related rows together. Each preset still gets a
+  // real, independently-deletable row afterward — this is just a
+  // faster way to create many of them than the single-add form.
+  async bulkCreatePricePresets(presets) {
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      const created = [];
+      for (const p of presets) {
+        const { rows } = await client.query(
+          'INSERT INTO price_presets (id, label, amount) VALUES ($1, $2, $3) RETURNING *',
+          [crypto.randomUUID(), p.label, p.amount]
+        );
+        created.push(rowToPricePreset(rows[0]));
+      }
+      await client.query('COMMIT');
+      return created;
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
+  },
+
   // ---- Marketplace: products -----------------------------------------
 
   async getProductsByVendor(vendorId) {
@@ -1682,10 +1732,21 @@ const db = {
       // already has these, so there's nothing left to hold onto.
       const pendingPickupAddress = !createDeliveryOrder ? pickupAddress : null;
       const pendingDropoffAddress = !createDeliveryOrder ? dropoffAddress : null;
+
+      // The flat platform service fee, snapshotted at checkout — read
+      // fresh inside this same transaction rather than trusting a
+      // value computed earlier, same "never trust a stale price"
+      // posture as the per-item price/promotion lookups above. Stored
+      // in its own column, never folded into total_amount, so it's
+      // never counted as this vendor's gross revenue (see
+      // getPayoutSummary's commission math).
+      const feeRes = await client.query("SELECT service_fee FROM platform_settings WHERE id = 'platform'");
+      const serviceFee = feeRes.rows[0] ? Number(feeRes.rows[0].service_fee) : 0;
+
       await client.query(
-        `INSERT INTO purchases (id, customer_id, vendor_id, total_amount, delivery_order_id, payment_method, payment_status, momo_reference_id, momo_phone, pending_pickup_address, pending_dropoff_address)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
-        [purchaseId, customerId, vendorId, totalAmount, deliveryOrderId, paymentMethod, paymentStatus, momoReferenceId, momoPhone, pendingPickupAddress, pendingDropoffAddress]
+        `INSERT INTO purchases (id, customer_id, vendor_id, total_amount, service_fee, delivery_order_id, payment_method, payment_status, momo_reference_id, momo_phone, pending_pickup_address, pending_dropoff_address)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
+        [purchaseId, customerId, vendorId, totalAmount, serviceFee, deliveryOrderId, paymentMethod, paymentStatus, momoReferenceId, momoPhone, pendingPickupAddress, pendingDropoffAddress]
       );
       for (const li of lineItems) {
         await client.query(
@@ -1695,7 +1756,8 @@ const db = {
       }
 
       await client.query('COMMIT');
-      return { purchaseId, deliveryOrderId, totalAmount, paymentMethod, paymentStatus };
+      const grandTotal = Math.round((totalAmount + serviceFee) * 100) / 100;
+      return { purchaseId, deliveryOrderId, totalAmount, serviceFee, grandTotal, paymentMethod, paymentStatus };
     } catch (err) {
       await client.query('ROLLBACK');
       throw err;
@@ -2503,7 +2565,7 @@ const db = {
   // and the platform-wide settings (default delivery fee, service
   // area, maintenance mode) added later, so both panels can share one
   // upsert path instead of drifting into two near-duplicate ones.
-  async upsertPlatformSettings({ marketplaceCommissionPercent, deliveryCommissionPercent, marketplaceCommissionEnabled, deliveryCommissionEnabled, defaultDeliveryFee, serviceArea, maintenanceMode, maintenanceMessage }) {
+  async upsertPlatformSettings({ marketplaceCommissionPercent, deliveryCommissionPercent, marketplaceCommissionEnabled, deliveryCommissionEnabled, defaultDeliveryFee, serviceArea, maintenanceMode, maintenanceMessage, serviceFee }) {
     await this.getPlatformSettings(); // ensures the row exists
     const sets = [];
     const values = [];
@@ -2512,6 +2574,7 @@ const db = {
     if (deliveryCommissionPercent !== undefined) { sets.push(`delivery_commission_percent = $${i}`); values.push(deliveryCommissionPercent); i += 1; }
     if (marketplaceCommissionEnabled !== undefined) { sets.push(`marketplace_commission_enabled = $${i}`); values.push(marketplaceCommissionEnabled); i += 1; }
     if (deliveryCommissionEnabled !== undefined) { sets.push(`delivery_commission_enabled = $${i}`); values.push(deliveryCommissionEnabled); i += 1; }
+    if (serviceFee !== undefined) { sets.push(`service_fee = $${i}`); values.push(serviceFee); i += 1; }
     if (defaultDeliveryFee !== undefined) { sets.push(`default_delivery_fee = $${i}`); values.push(defaultDeliveryFee); i += 1; }
     if (serviceArea !== undefined) { sets.push(`service_area = $${i}`); values.push(serviceArea); i += 1; }
     if (maintenanceMode !== undefined) { sets.push(`maintenance_mode = $${i}`); values.push(maintenanceMode); i += 1; }

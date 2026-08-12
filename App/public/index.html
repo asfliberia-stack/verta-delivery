@@ -3418,12 +3418,26 @@
                 <p class="auth-switch-line">Already have an account? <a id="switch-to-login-link" class="auth-inline-link">Login</a></p>
             </form>
 
-            <!-- Forgot password: step 1 (request a code via SMS/WhatsApp and/or email) -->
+            <!-- Forgot password: step 1 (request a code, delivered via the
+                 channel the person picks below — email or phone/SMS) -->
             <form id="forgot-password-request-form" style="display:none;">
-                <p style="margin-bottom: 1.25rem; color: var(--slate-light);">Enter the email on your account — we'll send a reset code to that email, and also by text if there's a phone number on file.</p>
+                <p style="margin-bottom: 1.25rem; color: var(--slate-light);">Enter the email on your account, choose where to send the reset code, and we'll send it there.</p>
                 <div class="form-group">
                     <label class="form-label">Email</label>
                     <input type="email" class="form-input" id="forgot-password-email" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Send reset code via</label>
+                    <div style="display:flex; gap:1.25rem;">
+                        <label class="auth-checkbox-label" style="font-weight:500;">
+                            <input type="radio" name="forgot-password-channel" id="forgot-password-channel-email" value="email" checked>
+                            Email
+                        </label>
+                        <label class="auth-checkbox-label" style="font-weight:500;">
+                            <input type="radio" name="forgot-password-channel" id="forgot-password-channel-phone" value="phone">
+                            Phone (SMS)
+                        </label>
+                    </div>
                 </div>
                 <div class="auth-error" id="forgot-password-error"></div>
                 <button type="submit" class="btn-primary" style="width:100%;" id="forgot-password-submit-btn">Send Reset Code</button>
@@ -5901,6 +5915,7 @@
                 <div class="form-group">
                     <label class="form-label">Delivery Amount ($)</label>
                     <input type="number" class="form-input" id="delivery-amount-input" min="0" step="0.01" required>
+                    <p style="font-size:0.75rem; color:var(--slate-lighter); margin-top:0.375rem;" id="set-amount-service-fee-note"></p>
                 </div>
                 <div class="form-group">
                     <label class="form-label">Payment Method</label>
@@ -6638,6 +6653,19 @@
                             <button type="submit" class="btn-small btn-success">Add Preset</button>
                         </form>
                         <div class="auth-error" id="price-preset-error" style="margin-top: 1rem;"></div>
+
+                        <h4 class="settings-section-title" style="margin-top: 2rem;">Import from PDF</h4>
+                        <p class="settings-hint">Upload a PDF price list (one "label — amount" per line) and we'll read it into a preview below — nothing is saved until you review it and confirm.</p>
+                        <input type="file" class="form-input" id="price-preset-pdf-input" accept="application/pdf" style="max-width: 320px; margin-bottom: 1rem;">
+                        <div id="price-preset-import-preview" style="display:none; background:var(--bg-light); padding:1rem; border-radius:0.75rem; margin-bottom:1rem;">
+                            <div id="price-preset-import-summary" style="font-size:0.875rem; margin-bottom:1rem;"></div>
+                            <div id="price-preset-import-rows" style="margin-bottom:1rem;"></div>
+                            <div style="display:flex; gap:0.75rem; flex-wrap:wrap;">
+                                <button type="button" class="btn-small btn-success" id="price-preset-import-confirm-btn">Import Presets</button>
+                                <button type="button" class="btn-small btn-secondary" id="price-preset-import-cancel-btn">Cancel</button>
+                            </div>
+                            <div class="auth-error" id="price-preset-import-error" style="margin-top:0.75rem;"></div>
+                        </div>
                     </div>
 
                     <div class="settings-panel" id="settings-panel-backup" style="display:none;">
@@ -7287,6 +7315,11 @@
                     <label class="form-label">Default Delivery Fee ($)</label>
                     <input type="number" class="form-input" id="ps-default-delivery-fee-input" min="0" step="0.01" placeholder="e.g. 5.00">
                     <p style="font-size:0.75rem; color:var(--slate-lighter); margin-top:0.375rem;">A suggested starting amount only — never enforced. Admins can still enter any amount when accepting an order.</p>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Service Fee ($)</label>
+                    <input type="number" class="form-input" id="ps-service-fee-input" min="0" step="0.01" required placeholder="e.g. 0.10">
+                    <p style="font-size:0.75rem; color:var(--slate-lighter); margin-top:0.375rem;">Added on top of every delivery order and marketplace purchase at checkout — real ONLib platform revenue, separate from what vendors/delivery companies earn.</p>
                 </div>
                 <div class="form-group">
                     <label class="form-label">Service Area</label>
@@ -8384,7 +8417,7 @@
         // rather than requireAuth's /api/state. defaultDeliveryFee is
         // included here mainly so it's available without a Super Admin
         // session for anywhere a suggested amount might help.
-        let publicPlatformConfig = { maintenanceMode: false, maintenanceMessage: null, serviceArea: null, defaultDeliveryFee: null };
+        let publicPlatformConfig = { maintenanceMode: false, maintenanceMessage: null, serviceArea: null, defaultDeliveryFee: null, serviceFee: 0.10 };
 
         async function loadPublicConfig() {
             try {
@@ -8395,6 +8428,7 @@
                     maintenanceMessage: config.maintenanceMessage || null,
                     serviceArea: config.serviceArea || null,
                     defaultDeliveryFee: config.defaultDeliveryFee !== undefined ? config.defaultDeliveryFee : null,
+                    serviceFee: config.serviceFee !== undefined && config.serviceFee !== null ? Number(config.serviceFee) : 0.10,
                 };
             } catch (err) {
                 console.error('Failed to load public config', err);
@@ -10560,7 +10594,7 @@
                 login: { eyebrow: 'Please enter your details', title: 'Welcome back' },
                 register: { eyebrow: "Let's get you started", title: 'Create your account' },
                 forgotRequest: { eyebrow: 'Forgot your password?', title: 'Reset password' },
-                resetPassword: { eyebrow: 'Check your phone', title: 'Enter your code' },
+                resetPassword: { eyebrow: 'Check your email or phone', title: 'Enter your code' },
             };
             function showAuthPanel(panel) {
                 const heading = document.getElementById('sender-auth-heading');
@@ -10594,19 +10628,21 @@
                 const errorEl = document.getElementById('forgot-password-error');
                 const btn = document.getElementById('forgot-password-submit-btn');
                 const email = document.getElementById('forgot-password-email').value;
+                const channel = document.getElementById('forgot-password-channel-phone').checked ? 'phone' : 'email';
                 errorEl.style.display = 'none';
                 btn.disabled = true;
                 btn.textContent = 'Sending…';
                 try {
                     await apiFetch('/api/auth/forgot-password', {
                         method: 'POST',
-                        body: JSON.stringify({ email })
+                        body: JSON.stringify({ email, channel })
                     });
                     document.getElementById('reset-password-code').value = '';
                     document.getElementById('reset-password-new').value = '';
                     document.getElementById('reset-password-email-value').value = email;
-                    showToast('If that email has a phone on file, a reset code was sent to it.', 'info', 6000);
+                    showToast(`If that account exists, a reset code was sent via ${channel === 'phone' ? 'phone (SMS)' : 'email'}.`, 'info', 6000);
                     showAuthPanel('resetPassword');
+                    document.getElementById('sender-auth-eyebrow').textContent = channel === 'phone' ? 'Check your phone' : 'Check your email';
                 } catch (err) {
                     errorEl.textContent = err.message;
                     errorEl.style.display = 'block';
@@ -11426,6 +11462,94 @@
             `).join('');
         }
 
+        // ---- Price Presets: Import from PDF ----
+        // Two-step, same shape as Restore Database: parse (server reads
+        // the PDF, returns candidate rows — nothing saved yet) -> review
+        // (this list, individual rows removable) -> confirm (only then
+        // does anything get written). The parser is a heuristic (see
+        // server/pricePresetPdfParser.js), so a wrong row is expected
+        // occasionally — that's exactly what this review step is for.
+        let pendingImportRows = null;
+
+        function resetPricePresetImportFlow() {
+            pendingImportRows = null;
+            document.getElementById('price-preset-pdf-input').value = '';
+            document.getElementById('price-preset-import-preview').style.display = 'none';
+            document.getElementById('price-preset-import-error').style.display = 'none';
+        }
+
+        async function handlePricePresetPdfSelected(file) {
+            const previewSection = document.getElementById('price-preset-import-preview');
+            const summaryEl = document.getElementById('price-preset-import-summary');
+            const errorEl = document.getElementById('price-preset-import-error');
+            errorEl.style.display = 'none';
+            previewSection.style.display = 'block';
+            summaryEl.textContent = 'Reading PDF…';
+            document.getElementById('price-preset-import-rows').innerHTML = '';
+            try {
+                const dataUrl = await new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = () => resolve(reader.result);
+                    reader.onerror = () => reject(new Error('Could not read that file'));
+                    reader.readAsDataURL(file);
+                });
+                const result = await apiFetch('/api/admin/price-presets/import/parse', {
+                    method: 'POST', body: JSON.stringify({ pdfDataUrl: dataUrl }),
+                });
+                pendingImportRows = result.rows;
+                renderPricePresetImportRows();
+            } catch (err) {
+                pendingImportRows = null;
+                summaryEl.textContent = '';
+                errorEl.textContent = err.message;
+                errorEl.style.display = 'block';
+            }
+        }
+
+        function renderPricePresetImportRows() {
+            const summaryEl = document.getElementById('price-preset-import-summary');
+            const rowsEl = document.getElementById('price-preset-import-rows');
+            const confirmBtn = document.getElementById('price-preset-import-confirm-btn');
+            if (!pendingImportRows || pendingImportRows.length === 0) {
+                summaryEl.textContent = 'No rows left to import.';
+                rowsEl.innerHTML = '';
+                confirmBtn.disabled = true;
+                return;
+            }
+            confirmBtn.disabled = false;
+            summaryEl.innerHTML = `Found <strong>${pendingImportRows.length}</strong> preset${pendingImportRows.length === 1 ? '' : 's'} in that PDF. Review below and remove anything that doesn't look right before importing.`;
+            rowsEl.innerHTML = pendingImportRows.map((r, idx) => `
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 0.75rem; background: var(--bg-light); border-radius: 0.5rem; margin-bottom: 0.375rem;">
+                    <span>${escapeHtmlAttr(r.label)} — <strong style="color: var(--primary);">$${r.amount.toFixed(2)}</strong></span>
+                    <button type="button" class="price-preset-import-remove-btn" data-idx="${idx}" style="background:none; border:none; color:#dc2626; font-weight:700; cursor:pointer; font-size:1rem;" title="Remove this row">×</button>
+                </div>
+            `).join('');
+        }
+
+        async function executePricePresetImport() {
+            if (!pendingImportRows || pendingImportRows.length === 0) return;
+            const errorEl = document.getElementById('price-preset-import-error');
+            const btn = document.getElementById('price-preset-import-confirm-btn');
+            errorEl.style.display = 'none';
+            btn.disabled = true;
+            btn.textContent = 'Importing…';
+            try {
+                const result = await apiFetch('/api/admin/price-presets/import/commit', {
+                    method: 'POST', body: JSON.stringify({ rows: pendingImportRows }),
+                });
+                result.presets.forEach(p => { if (!pricePresets.some(existing => existing.id === p.id)) pricePresets.push(p); });
+                renderPricePresetsList();
+                showToast(`Imported ${result.presets.length} price preset${result.presets.length === 1 ? '' : 's'}`, 'success');
+                resetPricePresetImportFlow();
+            } catch (err) {
+                errorEl.textContent = err.message;
+                errorEl.style.display = 'block';
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Import Presets';
+            }
+        }
+
         let pendingLogoDataUrl = null;
 
         function wireSettingsEvents() {
@@ -11650,6 +11774,21 @@
                     showToast(err.message, 'error');
                 }
             });
+
+            // ---- Price Presets: Import from PDF ----
+            document.getElementById('price-preset-pdf-input').addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (file) handlePricePresetPdfSelected(file);
+            });
+            document.getElementById('price-preset-import-rows').addEventListener('click', (e) => {
+                const btn = e.target.closest('.price-preset-import-remove-btn');
+                if (!btn) return;
+                const idx = Number(btn.dataset.idx);
+                pendingImportRows.splice(idx, 1);
+                renderPricePresetImportRows();
+            });
+            document.getElementById('price-preset-import-confirm-btn').addEventListener('click', executePricePresetImport);
+            document.getElementById('price-preset-import-cancel-btn').addEventListener('click', resetPricePresetImportFlow);
 
             // ---- Backup & Restore ----
             document.getElementById('export-database-btn').addEventListener('click', exportDatabase);
@@ -13775,6 +13914,7 @@
                 const data = await apiFetch('/api/super-admin/settings/platform');
                 const s = data.settings;
                 document.getElementById('ps-default-delivery-fee-input').value = s.defaultDeliveryFee !== null ? s.defaultDeliveryFee : '';
+                document.getElementById('ps-service-fee-input').value = s.serviceFee;
                 document.getElementById('ps-service-area-input').value = s.serviceArea || '';
                 document.getElementById('ps-maintenance-mode-input').checked = !!s.maintenanceMode;
                 document.getElementById('ps-maintenance-message-input').value = s.maintenanceMessage || '';
@@ -13796,6 +13936,7 @@
                     method: 'PUT',
                     body: JSON.stringify({
                         defaultDeliveryFee: feeRaw === '' ? null : Number(feeRaw),
+                        serviceFee: Number(document.getElementById('ps-service-fee-input').value),
                         serviceArea: document.getElementById('ps-service-area-input').value.trim() || null,
                         maintenanceMode: document.getElementById('ps-maintenance-mode-input').checked,
                         maintenanceMessage: document.getElementById('ps-maintenance-message-input').value.trim() || null,
@@ -14611,6 +14752,20 @@
             // editable before submitting.
             document.getElementById('delivery-amount-input').value = publicPlatformConfig.defaultDeliveryFee !== null ? publicPlatformConfig.defaultDeliveryFee : '';
             document.getElementById('payment-method-select').value = '';
+            // Marketplace-linked orders (a delivery leg created by a
+            // checkout) already had this service fee charged on the
+            // purchase itself — the server won't charge it again here.
+            // Detected via the "Marketplace order: ..." item description
+            // prefix db.checkout() always sets (reliable regardless of
+            // which query populated this order into the local list,
+            // unlike purchaseId which is only joined on for some views).
+            const acceptingOrder = orders.find(o => o.id === orderId);
+            const feeNoteEl = document.getElementById('set-amount-service-fee-note');
+            if (acceptingOrder && acceptingOrder.itemDescription && acceptingOrder.itemDescription.startsWith('Marketplace order:')) {
+                feeNoteEl.textContent = 'This order is linked to a marketplace purchase — its service fee was already charged at checkout.';
+            } else {
+                feeNoteEl.textContent = `A $${(publicPlatformConfig.serviceFee || 0).toFixed(2)} service fee (set by Super Admin) will be added on top of this amount.`;
+            }
 
             // Option value is the agent's real id (not name) — see the
             // matching comment on dc-accept-order-agent-select above for
@@ -15864,6 +16019,7 @@
                     <div class="order-detail"><span class="order-detail-label">Dropoff:</span><span class="order-detail-value">${order.dropoffAddress}${order.deliveredAt ? ` <span class="order-timestamp">- ${formatTime(order.deliveredAt)} </span>` : ''}</span></div>
                     <div class="order-detail"><span class="order-detail-label">Item:</span><span class="order-detail-value">${order.itemDescription}</span></div>
                     ${order.amount !== null ? `<div class="order-detail"><span class="order-detail-label">Amount:</span><span class="order-detail-value" style="font-weight: 700; color: var(--primary);">$${order.amount.toFixed(2)}</span></div>` : ''}
+                    ${order.amount !== null && order.serviceFee ? `<div class="order-detail"><span class="order-detail-label">Service Fee:</span><span class="order-detail-value">$${order.serviceFee.toFixed(2)}</span></div><div class="order-detail"><span class="order-detail-label">Total Due:</span><span class="order-detail-value" style="font-weight: 700;">$${(order.amount + order.serviceFee).toFixed(2)}</span></div>` : ''}
                     ${order.paymentMethod ? `<div class="order-detail"><span class="order-detail-label">Payment:</span><span class="order-detail-value"><span class="payment-method-pill">${order.paymentMethod}</span></span></div>` : ''}
                     ${order.acceptedBy ? `<div class="order-detail"><span class="order-detail-label">Agent:</span><span class="order-detail-value" style="font-weight: 600;">${order.acceptedBy}${agents[order.acceptedBy] ? ` (${agents[order.acceptedBy]})` : ''}</span></div>` : ''}
                 </div>
@@ -15939,6 +16095,7 @@
                     <div class="order-detail"><span class="order-detail-label">Dropoff:</span><span class="order-detail-value">${order.dropoffAddress}</span></div>
                     <div class="order-detail"><span class="order-detail-label">Item:</span><span class="order-detail-value">${order.itemDescription}</span></div>
                     ${order.amount !== null ? `<div class="order-detail"><span class="order-detail-label">Amount:</span><span class="order-detail-value" style="font-weight: 700; color: var(--primary);">$${order.amount.toFixed(2)}</span></div>` : ''}
+                    ${order.amount !== null && order.serviceFee ? `<div class="order-detail"><span class="order-detail-label">Service Fee:</span><span class="order-detail-value">$${order.serviceFee.toFixed(2)}</span></div><div class="order-detail"><span class="order-detail-label">Total Due:</span><span class="order-detail-value" style="font-weight: 700;">$${(order.amount + order.serviceFee).toFixed(2)}</span></div>` : ''}
                     ${order.acceptedBy ? `<div class="order-detail"><span class="order-detail-label">Agent:</span><span class="order-detail-value" style="font-weight: 600;">${order.acceptedBy}${agents[order.acceptedBy] ? ` (${agents[order.acceptedBy]})` : ''}</span></div>` : ''}
                     <div class="order-detail"><span class="order-detail-label">Created:</span><span class="order-detail-value">${order.createdAt.toLocaleDateString()} at ${order.createdAt.toLocaleTimeString()}</span></div>
                 </div>
@@ -18346,7 +18503,9 @@
                 container.innerHTML = '<p style="text-align:center; color: var(--slate-light); padding: 2rem 0;">Your cart is empty.</p>';
                 return;
             }
-            const total = cart.reduce((sum, c) => sum + c.price * c.quantity, 0);
+            const subtotal = cart.reduce((sum, c) => sum + c.price * c.quantity, 0);
+            const serviceFee = publicPlatformConfig.serviceFee || 0;
+            const total = subtotal + serviceFee;
             container.innerHTML = cart.map(c => {
                 const variantLine = [c.selectedColor ? `Color: ${c.selectedColor}` : '', c.selectedSize ? `Size: ${c.selectedSize}` : ''].filter(Boolean).join(' · ');
                 return `
@@ -18363,7 +18522,12 @@
                         <button type="button" class="cart-qty-btn" data-action="remove" data-id="${cartLineKey(c)}" title="Remove">×</button>
                     </div>
                 </div>
-            `; }).join('') + `<div style="text-align:right; font-weight: 800; font-size: 1.125rem; margin-top: 1rem;">Total: $${total.toFixed(2)}</div>`;
+            `; }).join('') + `
+                <div style="margin-top: 1rem; padding-top: 0.75rem; border-top: 1px solid var(--border); font-size: 0.9375rem;">
+                    <div style="display:flex; justify-content:space-between; color: var(--slate-light);"><span>Subtotal</span><span>$${subtotal.toFixed(2)}</span></div>
+                    <div style="display:flex; justify-content:space-between; color: var(--slate-light);"><span>Service Fee</span><span>$${serviceFee.toFixed(2)}</span></div>
+                    <div style="display:flex; justify-content:space-between; font-weight: 800; font-size: 1.125rem; margin-top: 0.375rem;"><span>Total</span><span>$${total.toFixed(2)}</span></div>
+                </div>`;
         }
 
         // ---- Reviews --------------------------------------------------------
@@ -18535,8 +18699,10 @@
             }
             document.getElementById('cart-modal').classList.remove('active');
             document.getElementById('checkout-error').style.display = 'none';
-            const total = cart.reduce((sum, c) => sum + c.price * c.quantity, 0);
-            document.getElementById('checkout-summary').textContent = `${cart.reduce((s, c) => s + c.quantity, 0)} item(s) — Total: $${total.toFixed(2)}`;
+            const subtotal = cart.reduce((sum, c) => sum + c.price * c.quantity, 0);
+            const serviceFee = publicPlatformConfig.serviceFee || 0;
+            const total = subtotal + serviceFee;
+            document.getElementById('checkout-summary').textContent = `${cart.reduce((s, c) => s + c.quantity, 0)} item(s) — Subtotal: $${subtotal.toFixed(2)} + Service Fee: $${serviceFee.toFixed(2)} = Total: $${total.toFixed(2)}`;
 
             // Reset to the form page (not the Mobile Money waiting page,
             // in case a previous checkout attempt left it showing) and
@@ -18667,7 +18833,7 @@
                 updateCartCount();
                 document.getElementById('checkout-modal').classList.remove('active');
                 document.getElementById('checkout-form').reset();
-                showToast(`Order placed! Total: $${result.totalAmount.toFixed(2)}`, 'success');
+                showToast(`Order placed! Total: $${result.grandTotal.toFixed(2)}`, 'success');
                 sendLocalNotification('Order Placed', { body: `Your marketplace order (${result.purchaseId}) was placed.` });
             } catch (err) {
                 errorEl.textContent = err.message;
